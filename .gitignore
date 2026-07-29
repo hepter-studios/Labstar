@@ -1,0 +1,30 @@
+# Dependências e artefatos de build
+node_modules/
+dist/
+coverage/
+.npm-cache/
+*.tsbuildinfo
+vite.config.js
+vite.config.d.ts
+
+# Variáveis locais e segredos
+.env
+.env.*
+!.env.example
+
+# Cloudflare e ferramentas
+.wrangler/
+.vite/
+
+# Logs e arquivos temporários
+*.log
+*.tmp
+*.temp
+*.zip
+*.tgz
+
+# Sistema operacional e editores
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
