@@ -14,7 +14,7 @@ on:
       - ".github/workflows/rust-backend-check.yml"
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: rust-backend-${{ github.ref }}
@@ -52,6 +52,9 @@ jobs:
           restore-keys: |
             backend-cargo-${{ runner.os }}-
 
+      - name: Atualizar dependências travadas
+        run: cargo generate-lockfile --manifest-path backend/Cargo.toml
+
       - name: Verificar formatação
         run: cargo fmt --manifest-path backend/Cargo.toml -- --check
 
@@ -60,3 +63,15 @@ jobs:
 
       - name: Executar testes
         run: cargo test --locked --manifest-path backend/Cargo.toml --all-features
+
+      - name: Versionar Cargo.lock validado
+        if: github.event_name == 'push' && github.ref == 'refs/heads/feat/rust-backend-clean'
+        shell: bash
+        run: |
+          if ! git diff --quiet -- backend/Cargo.lock || [ -n "$(git status --porcelain -- backend/Cargo.lock)" ]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add backend/Cargo.lock
+            git commit -m "Atualiza dependências dos convites Rust"
+            git push origin HEAD:feat/rust-backend-clean
+          fi
