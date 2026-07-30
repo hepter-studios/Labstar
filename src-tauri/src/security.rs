@@ -6,6 +6,8 @@ const INVITE_TOKEN_LENGTH: usize = 64;
 const MAX_DEEP_LINK_LENGTH: usize = 4_096;
 const MAX_OAUTH_VALUE_LENGTH: usize = 2_048;
 const WEB_INVITE_HOST: &str = "labstar.pages.dev";
+const SUPABASE_AUTH_HOST: &str = "pgzwyngxsxnheulvusdq.supabase.co";
+const SUPABASE_AUTHORIZE_PATH: &str = "/auth/v1/authorize";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "snake_case")]
@@ -21,6 +23,7 @@ pub struct ValidatedDeepLink {
     pub kind: DeepLinkKind,
     pub invite_token: Option<String>,
     pub token_hint: Option<String>,
+    pub authorization_code: Option<String>,
     pub has_authorization_code: bool,
     pub has_provider_error: bool,
     pub normalized_target: String,
@@ -75,6 +78,32 @@ pub fn build_invite_deep_link(token: &str) -> Result<String, SecurityError> {
     Ok(format!("labstar://invite/{token}"))
 }
 
+pub fn validate_auth_start_url(raw: &str) -> Result<String, SecurityError> {
+    let input = raw.trim();
+    if input.is_empty() {
+        return Err(SecurityError::EmptyInput);
+    }
+    if input.len() > MAX_DEEP_LINK_LENGTH {
+        return Err(SecurityError::InputTooLong);
+    }
+
+    let url = Url::parse(input).map_err(|_| SecurityError::InvalidUrl)?;
+    if url.scheme() != "https" {
+        return Err(SecurityError::UnsupportedScheme);
+    }
+    if url.host_str() != Some(SUPABASE_AUTH_HOST) || url.port().is_some() {
+        return Err(SecurityError::UnsupportedHost);
+    }
+    if url.path() != SUPABASE_AUTHORIZE_PATH || url.fragment().is_some() {
+        return Err(SecurityError::UnsupportedPath);
+    }
+    if url.query().is_none() {
+        return Err(SecurityError::InvalidOAuthValue);
+    }
+
+    Ok(url.to_string())
+}
+
 pub fn parse_deep_link(raw: &str) -> Result<ValidatedDeepLink, SecurityError> {
     let input = raw.trim();
     if input.is_empty() {
@@ -115,6 +144,7 @@ fn parse_native_invite(url: &Url) -> Result<ValidatedDeepLink, SecurityError> {
         kind: DeepLinkKind::Invite,
         token_hint: Some(token.chars().take(8).collect()),
         invite_token: Some(token),
+        authorization_code: None,
         has_authorization_code: false,
         has_provider_error: false,
         normalized_target: "labstar://invite".to_string(),
@@ -127,20 +157,18 @@ fn parse_auth_callback(url: &Url) -> Result<ValidatedDeepLink, SecurityError> {
     }
 
     let mut invite_token = None;
-    let mut has_authorization_code = false;
+    let mut authorization_code = None;
     let mut has_provider_error = false;
-    let mut seen_code = false;
     let mut seen_invite = false;
 
     for (key, value) in url.query_pairs() {
         match key.as_ref() {
             "code" => {
-                if seen_code {
+                if authorization_code.is_some() {
                     return Err(SecurityError::DuplicateParameter("code"));
                 }
-                seen_code = true;
                 validate_oauth_value(&value)?;
-                has_authorization_code = true;
+                authorization_code = Some(value.into_owned());
             }
             "invite" => {
                 if seen_invite {
@@ -158,7 +186,7 @@ fn parse_auth_callback(url: &Url) -> Result<ValidatedDeepLink, SecurityError> {
         }
     }
 
-    if !has_authorization_code && !has_provider_error {
+    if authorization_code.is_none() && !has_provider_error {
         return Err(SecurityError::InvalidOAuthValue);
     }
 
@@ -168,7 +196,8 @@ fn parse_auth_callback(url: &Url) -> Result<ValidatedDeepLink, SecurityError> {
             .as_ref()
             .map(|token| token.chars().take(8).collect()),
         invite_token,
-        has_authorization_code,
+        has_authorization_code: authorization_code.is_some(),
+        authorization_code,
         has_provider_error,
         normalized_target: "labstar://auth/callback".to_string(),
     })
@@ -198,6 +227,7 @@ fn parse_web_invite(url: &Url) -> Result<ValidatedDeepLink, SecurityError> {
         kind: DeepLinkKind::WebInvite,
         token_hint: Some(token.chars().take(8).collect()),
         invite_token: Some(token),
+        authorization_code: None,
         has_authorization_code: false,
         has_provider_error: false,
         normalized_target: format!("https://{WEB_INVITE_HOST}/?invite=<redacted>"),
@@ -237,23 +267,28 @@ mod tests {
     }
 
     #[test]
-    fn accepts_oauth_callback_without_exposing_code() {
+    fn accepts_oauth_callback_and_returns_validated_code() {
         let parsed = parse_deep_link(&format!(
             "labstar://auth/callback?code=secure-code-value&invite={TOKEN}"
         ))
         .unwrap();
         assert_eq!(parsed.kind, DeepLinkKind::AuthCallback);
-        assert!(parsed.has_authorization_code);
+        assert_eq!(parsed.authorization_code.as_deref(), Some("secure-code-value"));
         assert_eq!(parsed.normalized_target, "labstar://auth/callback");
     }
 
     #[test]
-    fn accepts_only_official_web_host() {
+    fn accepts_only_official_web_and_auth_hosts() {
         assert!(parse_deep_link(&format!("https://labstar.pages.dev/?invite={TOKEN}")).is_ok());
         assert_eq!(
             parse_deep_link(&format!("https://evil.example/?invite={TOKEN}")).unwrap_err(),
             SecurityError::UnsupportedHost
         );
+        assert!(validate_auth_start_url(
+            "https://pgzwyngxsxnheulvusdq.supabase.co/auth/v1/authorize?provider=google"
+        )
+        .is_ok());
+        assert!(validate_auth_start_url("https://evil.example/auth/v1/authorize?provider=google").is_err());
     }
 
     #[test]
