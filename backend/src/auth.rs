@@ -6,6 +6,7 @@ use axum::{
 };
 use reqwest::{Client, StatusCode};
 use serde::Deserialize;
+use serde_json::Value;
 use thiserror::Error;
 use uuid::Uuid;
 
@@ -16,6 +17,7 @@ pub struct AuthenticatedUser {
     pub id: Uuid,
     pub email: Option<String>,
     pub email_confirmed: bool,
+    pub display_name: String,
 }
 
 #[derive(Debug, Error)]
@@ -41,6 +43,8 @@ struct SupabaseUser {
     id: Uuid,
     email: Option<String>,
     email_confirmed_at: Option<String>,
+    #[serde(default)]
+    user_metadata: Value,
 }
 
 impl AuthService {
@@ -75,11 +79,14 @@ impl AuthService {
             .json::<SupabaseUser>()
             .await
             .map_err(|_| AuthError::InvalidUserPayload)?;
+        let email = user.email.map(|value| value.trim().to_ascii_lowercase());
+        let display_name = preferred_display_name(&user.user_metadata, email.as_deref());
 
         Ok(AuthenticatedUser {
             id: user.id,
-            email: user.email.map(|value| value.trim().to_ascii_lowercase()),
+            email,
             email_confirmed: user.email_confirmed_at.is_some(),
+            display_name,
         })
     }
 }
@@ -123,9 +130,31 @@ fn bearer_token(parts: &Parts) -> Result<&str, AuthError> {
     Ok(token)
 }
 
+fn preferred_display_name(metadata: &Value, email: Option<&str>) -> String {
+    for field in ["full_name", "name", "user_name", "preferred_username"] {
+        if let Some(value) = metadata
+            .get(field)
+            .and_then(Value::as_str)
+            .map(str::trim)
+            .filter(|value| value.len() >= 2)
+        {
+            return value.chars().take(100).collect();
+        }
+    }
+
+    email
+        .and_then(|value| value.split('@').next())
+        .filter(|value| !value.is_empty())
+        .unwrap_or("Membro Labstar")
+        .chars()
+        .take(100)
+        .collect()
+}
+
 #[cfg(test)]
 mod tests {
     use axum::http::Request;
+    use serde_json::json;
 
     use super::*;
 
@@ -152,5 +181,17 @@ mod tests {
             .unwrap();
         let (parts, _) = request.into_parts();
         assert!(matches!(bearer_token(&parts), Err(AuthError::InvalidToken)));
+    }
+
+    #[test]
+    fn prefers_oauth_name_and_falls_back_to_email() {
+        assert_eq!(
+            preferred_display_name(&json!({ "full_name": "Bruno Souto" }), None),
+            "Bruno Souto"
+        );
+        assert_eq!(
+            preferred_display_name(&json!({}), Some("mackson@example.com")),
+            "mackson"
+        );
     }
 }
