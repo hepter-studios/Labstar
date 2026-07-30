@@ -82,3 +82,11 @@ jobs:
 
       - name: Executar testes Rust
         run: cargo test --manifest-path src-tauri/Cargo.toml --all-features
+
+      - name: Disponibilizar Cargo.lock
+        uses: actions/upload-artifact@v4
+        with:
+          name: labstar-cargo-lock
+          path: src-tauri/Cargo.lock
+          if-no-files-found: error
+          retention-days: 7
