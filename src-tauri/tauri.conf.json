@@ -42,6 +42,11 @@
   "bundle": {
     "active": true,
     "targets": "all",
+    "icon": [
+      "../public/favicon.ico",
+      "../public/favicon-180.png",
+      "../public/pwa-512.png"
+    ],
     "category": "Business",
     "shortDescription": "Ambiente profissional para empresas, projetos e equipes.",
     "longDescription": "Labstar organiza empresas, projetos, equipes, comunicação e integrações em uma experiência profissional para desktop."
