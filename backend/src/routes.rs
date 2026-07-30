@@ -2,10 +2,9 @@ use axum::{
     Json, Router,
     extract::State,
     http::{HeaderValue, Method, StatusCode, header},
-    routing::get,
+    routing::{delete, get, post},
 };
 use serde::Serialize;
-use sqlx::FromRow;
 use tower_http::{
     cors::{AllowOrigin, CorsLayer},
     limit::RequestBodyLimitLayer,
@@ -14,7 +13,13 @@ use tower_http::{
 };
 use uuid::Uuid;
 
-use crate::{auth::AuthenticatedUser, error::ApiError, state::AppState};
+use crate::{
+    auth::AuthenticatedUser,
+    error::ApiError,
+    invites,
+    members::{MemberRecord, require_active_member},
+    state::AppState,
+};
 
 #[derive(Debug, Serialize)]
 struct HealthResponse {
@@ -22,17 +27,6 @@ struct HealthResponse {
     service: &'static str,
     version: &'static str,
     uptime_seconds: u64,
-}
-
-#[derive(Debug, FromRow)]
-struct MemberRecord {
-    id: Uuid,
-    email: String,
-    name: String,
-    status: String,
-    role: String,
-    job_title: Option<String>,
-    area: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -75,6 +69,10 @@ pub fn router(state: AppState) -> Result<Router, axum::http::header::InvalidHead
         .route("/health/live", get(live))
         .route("/health/ready", get(ready))
         .route("/v1/me", get(me))
+        .route("/v1/invites", post(invites::create).get(invites::list))
+        .route("/v1/invites/{token}", get(invites::inspect))
+        .route("/v1/invites/{token}/accept", post(invites::accept))
+        .route("/v1/invites/{invite_id}", delete(invites::revoke))
         .fallback(not_found)
         .with_state(state.clone())
         .layer(RequestBodyLimitLayer::new(2 * 1024 * 1024))
@@ -113,58 +111,25 @@ async fn me(
     State(state): State<AppState>,
     identity: AuthenticatedUser,
 ) -> Result<Json<MeResponse>, ApiError> {
-    if !identity.email_confirmed {
-        return Err(ApiError::MemberNotAuthorized);
+    let member = require_active_member(&state.database, &identity).await?;
+    Ok(Json(MeResponse::from_identity(identity.id, member)))
+}
+
+impl MeResponse {
+    fn from_identity(user_id: Uuid, member: MemberRecord) -> Self {
+        Self {
+            user_id,
+            email: member.email,
+            member: MemberResponse {
+                id: member.id,
+                name: member.name,
+                role: member.role,
+                status: member.status,
+                job_title: member.job_title.unwrap_or_default(),
+                area: member.area.unwrap_or_default(),
+            },
+        }
     }
-
-    let member = sqlx::query_as::<_, MemberRecord>(
-        r#"
-        select
-            id,
-            lower(trim(email)) as email,
-            name,
-            status::text as status,
-            role::text as role,
-            job_title,
-            area
-        from public.members
-        where auth_user_id = $1
-        limit 1
-        "#,
-    )
-    .bind(identity.id)
-    .fetch_optional(&state.database)
-    .await
-    .map_err(|_| ApiError::DatabaseUnavailable)?
-    .ok_or(ApiError::MemberNotAuthorized)?;
-
-    match member.status.as_str() {
-        "active" => {}
-        "pending" => return Err(ApiError::MemberPending),
-        "suspended" => return Err(ApiError::MemberSuspended),
-        _ => return Err(ApiError::MemberNotAuthorized),
-    }
-
-    let identity_email = identity
-        .email
-        .as_deref()
-        .ok_or(ApiError::MemberNotAuthorized)?;
-    if member.email != identity_email {
-        return Err(ApiError::MemberNotAuthorized);
-    }
-
-    Ok(Json(MeResponse {
-        user_id: identity.id,
-        email: member.email,
-        member: MemberResponse {
-            id: member.id,
-            name: member.name,
-            role: member.role,
-            status: member.status,
-            job_title: member.job_title.unwrap_or_default(),
-            area: member.area.unwrap_or_default(),
-        },
-    }))
 }
 
 async fn not_found() -> ApiError {
