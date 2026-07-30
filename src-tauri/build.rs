@@ -1,5 +1,11 @@
 fn main() {
-    const COMMANDS: &[&str] = &["native_health"];
+    const COMMANDS: &[&str] = &[
+        "native_health",
+        "validate_deep_link",
+        "build_invite_deep_link",
+        "take_pending_deep_links",
+        "focus_main_window",
+    ];
 
     tauri_build::try_build(
         tauri_build::Attributes::new()
