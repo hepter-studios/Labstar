@@ -18,6 +18,20 @@ pub enum ApiError {
     MemberPending,
     #[error("member_suspended")]
     MemberSuspended,
+    #[error("permission_denied")]
+    PermissionDenied,
+    #[error("invalid_invite_kind")]
+    InvalidInviteKind,
+    #[error("invalid_email")]
+    InvalidEmail,
+    #[error("invalid_role")]
+    InvalidRole,
+    #[error("invite_invalid_or_expired")]
+    InviteInvalidOrExpired,
+    #[error("invite_email_mismatch")]
+    InviteEmailMismatch,
+    #[error("member_already_linked")]
+    MemberAlreadyLinked,
     #[error("database_unavailable")]
     DatabaseUnavailable,
     #[error("route_not_found")]
@@ -57,6 +71,41 @@ impl IntoResponse for ApiError {
                 StatusCode::FORBIDDEN,
                 "member_suspended",
                 "Esta conta está suspensa pela administração.",
+            ),
+            Self::PermissionDenied => (
+                StatusCode::FORBIDDEN,
+                "permission_denied",
+                "Sua conta não possui permissão para esta ação.",
+            ),
+            Self::InvalidInviteKind => (
+                StatusCode::BAD_REQUEST,
+                "invalid_invite_kind",
+                "O tipo de convite é inválido.",
+            ),
+            Self::InvalidEmail => (
+                StatusCode::BAD_REQUEST,
+                "invalid_email",
+                "O e-mail informado é inválido.",
+            ),
+            Self::InvalidRole => (
+                StatusCode::BAD_REQUEST,
+                "invalid_role",
+                "O nível de acesso informado é inválido.",
+            ),
+            Self::InviteInvalidOrExpired => (
+                StatusCode::BAD_REQUEST,
+                "invite_invalid_or_expired",
+                "O convite é inválido, já foi usado ou expirou.",
+            ),
+            Self::InviteEmailMismatch => (
+                StatusCode::FORBIDDEN,
+                "invite_email_mismatch",
+                "O convite pertence a outro e-mail.",
+            ),
+            Self::MemberAlreadyLinked => (
+                StatusCode::CONFLICT,
+                "member_already_linked",
+                "Este membro já está vinculado a outra identidade.",
             ),
             Self::DatabaseUnavailable => (
                 StatusCode::SERVICE_UNAVAILABLE,
