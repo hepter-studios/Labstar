@@ -97,8 +97,17 @@ async function memberFromRow(row: MemberRow): Promise<Member> {
 function isMissingRpc(error: RpcError | null) {
   if (!error) return false;
   return error.code === "42883"
+    || error.code === "PGRST202"
     || error.message.includes("Could not find the function")
     || error.message.includes("does not exist");
+}
+
+function isMissingColumn(error: RpcError | null, column: string) {
+  if (!error) return false;
+  const message = `${error.message ?? ""} ${error.details ?? ""}`.toLowerCase();
+  return error.code === "42703"
+    || error.code === "PGRST204"
+    || (message.includes(column.toLowerCase()) && (message.includes("schema cache") || message.includes("does not exist")));
 }
 
 function normalizeInviteToken(value: string | null | undefined) {
@@ -172,7 +181,7 @@ async function loadCurrentMember(user: User) {
     .maybeSingle();
 
   if (!byId.error && byId.data) return byId.data as MemberRow;
-  if (byId.error && byId.error.code !== "42703") throw byId.error;
+  if (byId.error && !isMissingColumn(byId.error as RpcError, "auth_user_id")) throw byId.error;
 
   if (!user.email) return null;
   const byEmail = await client
@@ -305,8 +314,9 @@ export function accessErrorMessage(error: unknown) {
   if (message.includes("verified_email_required")) return "O provedor não confirmou um e-mail válido para esta conta.";
   if (message.includes("personal_invite_requires_email")) return "Informe o e-mail no convite pessoal.";
   if (message.includes("permission_denied") || code === "42501") return "Sua conta não possui permissão para realizar esta ação.";
-  if (message.includes("invite_system_not_installed") || code === "42883") return "A atualização de convites ainda não foi instalada no Supabase.";
+  if (message.includes("invite_system_not_installed") || code === "42883" || code === "PGRST202") return "A atualização de convites ainda não foi instalada no Supabase.";
   if (message.includes("rate limit") || message.includes("email rate")) return "O limite temporário de envio de e-mails foi atingido. Use Google ou GitHub.";
+  if (message.includes("signups not allowed") || message.includes("user not found")) return "Este e-mail ainda não possui uma identidade. Use Google ou GitHub para aceitar o convite.";
   if (message.includes("provider") && message.includes("disabled")) return "Este provedor ainda não foi habilitado no Supabase.";
   if (message.includes("auth session missing")) return "Sua sessão expirou. Entre novamente.";
   if (message.includes("failed to fetch") || message.includes("network")) return "Não foi possível conectar ao serviço de acesso.";
