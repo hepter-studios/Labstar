@@ -1,7 +1,9 @@
 mod commands;
+mod deep_links;
 mod security;
 
-use tauri::Manager;
+use deep_links::PendingDeepLinks;
+use tauri::{Emitter, Manager};
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -12,6 +14,8 @@ pub fn run() {
     #[cfg(desktop)]
     let builder = builder.plugin(tauri_plugin_single_instance::init(
         |app, arguments, _working_directory| {
+            // Não registra os argumentos: eles podem conter token de convite
+            // ou código temporário do OAuth.
             log::info!(
                 "Solicitação de segunda instância recebida com {} argumento(s)",
                 arguments.len()
@@ -30,16 +34,49 @@ pub fn run() {
 
     builder
         .setup(|app| {
+            app.manage(PendingDeepLinks::default());
+
             let app_data_directory = app.path().app_data_dir()?;
             std::fs::create_dir_all(&app_data_directory)?;
+
+            use tauri_plugin_deep_link::DeepLinkExt;
 
             // Em desenvolvimento no Windows e no Linux, registra o esquema
             // estático para permitir testar labstar:// sem instalar o bundle.
             #[cfg(any(target_os = "linux", all(debug_assertions, windows)))]
-            {
-                use tauri_plugin_deep_link::DeepLinkExt;
-                app.deep_link().register_all()?;
+            app.deep_link().register_all()?;
+
+            if let Some(urls) = app.deep_link().get_current()? {
+                let pending = app.state::<PendingDeepLinks>();
+                for url in urls {
+                    if let Err(error) = pending.ingest(url.as_str()) {
+                        log::warn!("Deep link inicial rejeitado: {error}");
+                    }
+                }
             }
+
+            let handle = app.handle().clone();
+            app.deep_link().on_open_url(move |event| {
+                let Some(pending) = handle.try_state::<PendingDeepLinks>() else {
+                    log::error!("Estado de deep links indisponível");
+                    return;
+                };
+
+                for url in event.urls() {
+                    match pending.ingest(url.as_str()) {
+                        Ok(parsed) => {
+                            // O payload contém somente valores já validados pelo Rust.
+                            let _ = handle.emit("labstar://deep-link", parsed);
+                        }
+                        Err(error) => log::warn!("Deep link rejeitado: {error}"),
+                    }
+                }
+
+                if let Some(window) = handle.get_webview_window("main") {
+                    let _ = window.show();
+                    let _ = window.set_focus();
+                }
+            });
 
             log::info!(
                 "Labstar {} iniciado em {}-{}; dados nativos em {}",
@@ -54,6 +91,7 @@ pub fn run() {
             commands::native_health,
             commands::validate_deep_link,
             commands::build_invite_deep_link,
+            commands::take_pending_deep_links,
             commands::focus_main_window
         ])
         .run(tauri::generate_context!())
