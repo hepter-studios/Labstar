@@ -37,8 +37,7 @@ impl Config {
         let supabase_publishable_key = required("SUPABASE_PUBLISHABLE_KEY")?;
         let allowed_origins = env::var("LABSTAR_ALLOWED_ORIGINS")
             .unwrap_or_else(|_| {
-                "https://labstar.pages.dev,http://localhost:5173,http://127.0.0.1:5173"
-                    .to_string()
+                "https://labstar.pages.dev,http://localhost:5173,http://127.0.0.1:5173".to_string()
             })
             .split(',')
             .map(str::trim)
@@ -51,8 +50,8 @@ impl Config {
         }
 
         for origin in &allowed_origins {
-            let parsed = Url::parse(origin)
-                .map_err(|_| ConfigError::Invalid("LABSTAR_ALLOWED_ORIGINS"))?;
+            let parsed =
+                Url::parse(origin).map_err(|_| ConfigError::Invalid("LABSTAR_ALLOWED_ORIGINS"))?;
             if parsed.scheme() != "https" && !is_local_http(&parsed) {
                 return Err(ConfigError::Invalid("LABSTAR_ALLOWED_ORIGINS"));
             }
@@ -115,8 +114,7 @@ fn validate_supabase_url(url: &Url) -> Result<(), ConfigError> {
 }
 
 fn is_local_http(url: &Url) -> bool {
-    url.scheme() == "http"
-        && matches!(url.host_str(), Some("localhost" | "127.0.0.1" | "::1"))
+    url.scheme() == "http" && matches!(url.host_str(), Some("localhost" | "127.0.0.1" | "::1"))
 }
 
 #[cfg(test)]
