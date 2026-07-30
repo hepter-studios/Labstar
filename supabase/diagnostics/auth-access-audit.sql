@@ -1,69 +1,126 @@
--- Labstar — auditoria somente de leitura para autenticação e membros.
+-- Labstar — auditoria consolidada e somente de leitura para autenticação e membros.
 -- Execute no SQL Editor do Supabase antes da migração v9.
--- Este script não altera nem remove dados.
+-- Este script não cria, altera nem remove dados.
+-- Ele retorna UM único relatório para o Supabase não esconder resultados anteriores.
 
--- 1. Resumo dos estados atuais.
+with member_auth as (
+  select
+    lower(trim(member.email)) as email,
+    member.id as member_id,
+    member.name as member_name,
+    member.status as member_status,
+    member.role as member_role,
+    member.created_at as member_created_at,
+    member.last_seen_at,
+    auth_user.id as auth_user_id,
+    auth_user.email_confirmed_at,
+    auth_user.last_sign_in_at,
+    case
+      when auth_user.id is null then 'membro_sem_usuario_auth'
+      when auth_user.email_confirmed_at is null then 'email_auth_nao_confirmado'
+      when member.status = 'suspended' then 'membro_suspenso'
+      when member.status = 'pending' then 'membro_pendente'
+      when member.status = 'active' then 'membro_ativo_pronto_para_vincular'
+      else 'estado_de_membro_desconhecido'
+    end as diagnostico
+  from public.members member
+  left join auth.users auth_user
+    on lower(trim(auth_user.email)) = lower(trim(member.email))
+),
+auth_without_member as (
+  select
+    lower(trim(auth_user.email)) as email,
+    auth_user.id as auth_user_id,
+    auth_user.email_confirmed_at,
+    auth_user.last_sign_in_at,
+    auth_user.created_at as auth_created_at
+  from auth.users auth_user
+  left join public.members member
+    on lower(trim(member.email)) = lower(trim(auth_user.email))
+  where member.id is null
+),
+member_duplicates as (
+  select
+    lower(trim(email)) as email,
+    count(*) as quantidade,
+    array_agg(id order by created_at) as ids
+  from public.members
+  group by lower(trim(email))
+  having count(*) > 1
+),
+auth_duplicates as (
+  select
+    lower(trim(email)) as email,
+    count(*) as quantidade,
+    array_agg(id order by created_at) as ids
+  from auth.users
+  where email is not null
+  group by lower(trim(email))
+  having count(*) > 1
+)
 select
-  status,
-  count(*) as quantidade
-from public.members
-group by status
-order by status;
+  'membro'::text as tipo,
+  member_auth.email,
+  member_auth.member_id::text,
+  member_auth.auth_user_id::text,
+  member_auth.member_name,
+  member_auth.member_status,
+  member_auth.member_role,
+  (member_auth.email_confirmed_at is not null) as email_confirmado,
+  member_auth.last_sign_in_at,
+  member_auth.diagnostico,
+  jsonb_build_object(
+    'member_created_at', member_auth.member_created_at,
+    'last_seen_at', member_auth.last_seen_at
+  ) as detalhes
+from member_auth
 
--- 2. Membros cadastrados e correspondência com Supabase Auth.
-select
-  member.id as member_id,
-  lower(trim(member.email)) as member_email,
-  member.name,
-  member.status,
-  member.role,
-  member.created_at,
-  member.last_seen_at,
-  auth_user.id as auth_user_id,
-  auth_user.email_confirmed_at,
-  auth_user.last_sign_in_at,
-  case
-    when auth_user.id is null then 'sem_usuario_auth'
-    when auth_user.email_confirmed_at is null then 'email_nao_confirmado'
-    when member.status = 'suspended' then 'suspenso'
-    when member.status = 'pending' then 'pendente'
-    when member.status = 'active' then 'pronto_para_vincular'
-    else 'estado_desconhecido'
-  end as diagnostico
-from public.members member
-left join auth.users auth_user
-  on lower(trim(auth_user.email)) = lower(trim(member.email))
-order by member.created_at;
+union all
 
--- 3. Usuários Auth que não possuem membro. Eles podem ter sido criados porque
--- o login anterior usava shouldCreateUser=true mesmo para não convidados.
 select
-  auth_user.id as auth_user_id,
-  lower(trim(auth_user.email)) as auth_email,
-  auth_user.email_confirmed_at,
-  auth_user.created_at,
-  auth_user.last_sign_in_at
-from auth.users auth_user
-left join public.members member
-  on lower(trim(member.email)) = lower(trim(auth_user.email))
-where member.id is null
-order by auth_user.created_at;
+  'auth_sem_membro'::text as tipo,
+  auth_without_member.email,
+  null::text as member_id,
+  auth_without_member.auth_user_id::text,
+  null::text as member_name,
+  null::text as member_status,
+  null::text as member_role,
+  (auth_without_member.email_confirmed_at is not null) as email_confirmado,
+  auth_without_member.last_sign_in_at,
+  'usuario_auth_sem_cadastro_em_members'::text as diagnostico,
+  jsonb_build_object('auth_created_at', auth_without_member.auth_created_at) as detalhes
+from auth_without_member
 
--- 4. Detecta e-mails que se tornariam duplicados após normalizar espaços e caixa.
-select
-  lower(trim(email)) as email_normalizado,
-  count(*) as quantidade,
-  array_agg(id order by created_at) as member_ids
-from public.members
-group by lower(trim(email))
-having count(*) > 1;
+union all
 
--- 5. Detecta mais de um usuário Auth para o mesmo e-mail normalizado.
 select
-  lower(trim(email)) as email_normalizado,
-  count(*) as quantidade,
-  array_agg(id order by created_at) as auth_user_ids
-from auth.users
-where email is not null
-group by lower(trim(email))
-having count(*) > 1;
+  'email_duplicado_em_members'::text as tipo,
+  member_duplicates.email,
+  null::text as member_id,
+  null::text as auth_user_id,
+  null::text as member_name,
+  null::text as member_status,
+  null::text as member_role,
+  null::boolean as email_confirmado,
+  null::timestamptz as last_sign_in_at,
+  'corrigir_antes_da_migracao'::text as diagnostico,
+  jsonb_build_object('quantidade', member_duplicates.quantidade, 'ids', member_duplicates.ids) as detalhes
+from member_duplicates
+
+union all
+
+select
+  'email_duplicado_em_auth'::text as tipo,
+  auth_duplicates.email,
+  null::text as member_id,
+  null::text as auth_user_id,
+  null::text as member_name,
+  null::text as member_status,
+  null::text as member_role,
+  null::boolean as email_confirmado,
+  null::timestamptz as last_sign_in_at,
+  'corrigir_antes_da_migracao'::text as diagnostico,
+  jsonb_build_object('quantidade', auth_duplicates.quantidade, 'ids', auth_duplicates.ids) as detalhes
+from auth_duplicates
+
+order by tipo, email;
