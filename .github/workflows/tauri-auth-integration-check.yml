@@ -1,0 +1,84 @@
+name: Validar integração Tauri Auth
+
+on:
+  push:
+    branches:
+      - "feat/tauri-auth-rust-integration"
+    paths:
+      - "src-tauri/**"
+      - "src/**"
+      - "package.json"
+      - "package-lock.json"
+      - "vite.config.ts"
+      - ".github/workflows/tauri-auth-integration-check.yml"
+  pull_request:
+    paths:
+      - "src-tauri/**"
+      - "src/**"
+      - "package.json"
+      - "package-lock.json"
+      - "vite.config.ts"
+      - ".github/workflows/tauri-auth-integration-check.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: tauri-auth-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  validate:
+    name: OAuth, web e Rust no Windows
+    runs-on: windows-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Baixar código
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Instalar dependências web
+        run: npm ci
+
+      - name: Validar TypeScript e Vite
+        run: npm run build
+
+      - name: Instalar Rust estável
+        shell: pwsh
+        run: |
+          rustup toolchain install stable --profile minimal --component rustfmt,clippy
+          rustup default stable
+
+      - name: Atualizar dependências travadas
+        run: cargo generate-lockfile --manifest-path src-tauri/Cargo.toml
+
+      - name: Aplicar rustfmt
+        run: cargo fmt --manifest-path src-tauri/Cargo.toml
+
+      - name: Executar Clippy sem avisos
+        run: cargo clippy --locked --manifest-path src-tauri/Cargo.toml --all-targets --all-features -- -D warnings
+
+      - name: Executar testes Rust
+        run: cargo test --locked --manifest-path src-tauri/Cargo.toml --all-features
+
+      - name: Versionar lockfile e formatação validados
+        if: github.event_name == 'push' && github.ref == 'refs/heads/feat/tauri-auth-rust-integration'
+        shell: pwsh
+        run: |
+          $changes = git status --porcelain -- src-tauri/Cargo.lock src-tauri/src
+          if ($changes) {
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add src-tauri/Cargo.lock src-tauri/src
+            git commit -m "Trava e formata integração OAuth Tauri"
+            git push origin HEAD:feat/tauri-auth-rust-integration
+          }
