@@ -70,6 +70,12 @@ impl IntoResponse for ApiError {
             ),
         };
 
-        (status, Json(ErrorEnvelope { error: ErrorPayload { code, message } })).into_response()
+        (
+            status,
+            Json(ErrorEnvelope {
+                error: ErrorPayload { code, message },
+            }),
+        )
+            .into_response()
     }
 }
