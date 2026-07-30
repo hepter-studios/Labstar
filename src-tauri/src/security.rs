@@ -273,7 +273,10 @@ mod tests {
         ))
         .unwrap();
         assert_eq!(parsed.kind, DeepLinkKind::AuthCallback);
-        assert_eq!(parsed.authorization_code.as_deref(), Some("secure-code-value"));
+        assert_eq!(
+            parsed.authorization_code.as_deref(),
+            Some("secure-code-value")
+        );
         assert_eq!(parsed.normalized_target, "labstar://auth/callback");
     }
 
@@ -284,11 +287,16 @@ mod tests {
             parse_deep_link(&format!("https://evil.example/?invite={TOKEN}")).unwrap_err(),
             SecurityError::UnsupportedHost
         );
-        assert!(validate_auth_start_url(
-            "https://pgzwyngxsxnheulvusdq.supabase.co/auth/v1/authorize?provider=google"
-        )
-        .is_ok());
-        assert!(validate_auth_start_url("https://evil.example/auth/v1/authorize?provider=google").is_err());
+        assert!(
+            validate_auth_start_url(
+                "https://pgzwyngxsxnheulvusdq.supabase.co/auth/v1/authorize?provider=google"
+            )
+            .is_ok()
+        );
+        assert!(
+            validate_auth_start_url("https://evil.example/auth/v1/authorize?provider=google")
+                .is_err()
+        );
     }
 
     #[test]
