@@ -1,7 +1,7 @@
 use axum::{
     Json, Router,
     extract::State,
-    http::{HeaderValue, Method, StatusCode, header},
+    http::{HeaderValue, Method, header},
     routing::get,
 };
 use serde::Serialize;
@@ -14,11 +14,7 @@ use tower_http::{
 };
 use uuid::Uuid;
 
-use crate::{
-    auth::AuthenticatedUser,
-    error::ApiError,
-    state::AppState,
-};
+use crate::{auth::AuthenticatedUser, error::ApiError, state::AppState};
 
 #[derive(Debug, Serialize)]
 struct HealthResponse {
@@ -56,7 +52,9 @@ struct MemberResponse {
     area: String,
 }
 
-pub fn router(state: AppState) -> Result<Router, http::header::InvalidHeaderValue> {
+pub fn router(
+    state: AppState,
+) -> Result<Router, axum::http::header::InvalidHeaderValue> {
     let origins = state
         .config
         .allowed_origins
@@ -168,14 +166,6 @@ async fn me(
     }))
 }
 
-async fn not_found() -> (StatusCode, Json<serde_json::Value>) {
-    (
-        StatusCode::NOT_FOUND,
-        Json(serde_json::json!({
-            "error": {
-                "code": "route_not_found",
-                "message": "O recurso solicitado não existe."
-            }
-        })),
-    )
+async fn not_found() -> ApiError {
+    ApiError::NotFound
 }
