@@ -83,13 +83,9 @@ jobs:
       - name: Executar testes Rust
         run: cargo test --locked --manifest-path src-tauri/Cargo.toml --all-features
 
-      - name: Instalar Tauri CLI
-        if: github.event_name == 'pull_request' && github.head_ref == 'feat/tauri2-rust-foundation'
-        run: cargo install tauri-cli --version "^2" --locked
-
       - name: Gerar instaladores Windows
         if: github.event_name == 'pull_request' && github.head_ref == 'feat/tauri2-rust-foundation'
-        run: cargo tauri build --ci --bundles nsis,msi
+        run: npx --yes @tauri-apps/cli@2 build --ci --bundles nsis,msi
 
       - name: Disponibilizar instaladores Windows
         if: github.event_name == 'pull_request' && github.head_ref == 'feat/tauri2-rust-foundation'
