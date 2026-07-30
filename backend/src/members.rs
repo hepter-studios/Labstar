@@ -77,7 +77,10 @@ pub async fn require_manager(
     }
 }
 
-pub fn ensure_role_can_be_granted(actor: &MemberRecord, invited_role: &str) -> Result<(), ApiError> {
+pub fn ensure_role_can_be_granted(
+    actor: &MemberRecord,
+    invited_role: &str,
+) -> Result<(), ApiError> {
     if !matches!(invited_role, "admin" | "manager" | "member" | "viewer") {
         return Err(ApiError::InvalidRole);
     }
