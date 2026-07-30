@@ -1,0 +1,55 @@
+name: Empacotar migrações de acesso
+
+on:
+  push:
+    branches:
+      - "fix/auth-membership-access"
+    paths:
+      - "supabase/labstar-supabase-v9-auth.sql"
+      - "supabase/labstar-supabase-v10-invite-links.sql"
+      - "supabase/labstar-supabase-v10-auth-hardening.sql"
+      - "supabase/labstar-supabase-v11-rust-backend-lockdown.sql"
+      - ".github/workflows/auth-migration-bundle.yml"
+  pull_request:
+    paths:
+      - "supabase/labstar-supabase-v9-auth.sql"
+      - "supabase/labstar-supabase-v10-invite-links.sql"
+      - "supabase/labstar-supabase-v10-auth-hardening.sql"
+      - "supabase/labstar-supabase-v11-rust-backend-lockdown.sql"
+      - ".github/workflows/auth-migration-bundle.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    name: Migrações ordenadas
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Baixar código
+        uses: actions/checkout@v4
+
+      - name: Preparar pacote numerado
+        shell: bash
+        run: |
+          mkdir -p labstar-migrations
+          cp supabase/labstar-supabase-v9-auth.sql labstar-migrations/01-members-auth.sql
+          cp supabase/labstar-supabase-v10-invite-links.sql labstar-migrations/02-invite-links.sql
+          cp supabase/labstar-supabase-v10-auth-hardening.sql labstar-migrations/03-auth-hardening.sql
+          cp supabase/labstar-supabase-v11-rust-backend-lockdown.sql labstar-migrations/04-rust-backend-lockdown.sql
+          printf '%s\n' \
+            'Execute somente após backup, nesta ordem:' \
+            '01-members-auth.sql' \
+            '02-invite-links.sql' \
+            '03-auth-hardening.sql' \
+            '04-rust-backend-lockdown.sql' \
+            > labstar-migrations/LEIA-ME.txt
+
+      - name: Disponibilizar pacote
+        uses: actions/upload-artifact@v4
+        with:
+          name: labstar-auth-migrations-final
+          path: labstar-migrations
+          if-no-files-found: error
+          retention-days: 14
