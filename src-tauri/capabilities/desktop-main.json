@@ -1,0 +1,11 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "desktop-main",
+  "description": "Permissões mínimas da janela principal do Labstar no desktop.",
+  "windows": ["main"],
+  "platforms": ["linux", "macOS", "windows"],
+  "permissions": [
+    "core:default",
+    "allow-native-health"
+  ]
+}
