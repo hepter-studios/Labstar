@@ -2,7 +2,7 @@
 name = "labstar"
 version = "11.0.0"
 description = "Aplicativo desktop profissional da Labstar"
-authors = ["Hepter Studios"]
+authors = ["Labstar"]
 edition = "2024"
 rust-version = "1.85"
 
