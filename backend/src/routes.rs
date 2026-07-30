@@ -2,7 +2,7 @@ use axum::{
     Json, Router,
     extract::State,
     http::{HeaderValue, Method, StatusCode, header},
-    routing::{delete, get, post},
+    routing::{get, post},
 };
 use serde::Serialize;
 use tower_http::{
@@ -70,9 +70,11 @@ pub fn router(state: AppState) -> Result<Router, axum::http::header::InvalidHead
         .route("/health/ready", get(ready))
         .route("/v1/me", get(me))
         .route("/v1/invites", post(invites::create).get(invites::list))
-        .route("/v1/invites/{token}", get(invites::inspect))
+        .route(
+            "/v1/invites/{value}",
+            get(invites::inspect).delete(invites::revoke),
+        )
         .route("/v1/invites/{token}/accept", post(invites::accept))
-        .route("/v1/invites/{invite_id}", delete(invites::revoke))
         .fallback(not_found)
         .with_state(state.clone())
         .layer(RequestBodyLimitLayer::new(2 * 1024 * 1024))
