@@ -1,12 +1,13 @@
 name: Publicar backend Rust na Fly.io
 
 on:
+  push:
+    branches:
+      - "feat/rust-backend-clean"
+    paths:
+      - "backend/**"
+      - ".github/workflows/deploy-rust-backend-fly.yml"
   workflow_dispatch:
-    inputs:
-      app_name:
-        description: "Nome do aplicativo criado na Fly.io"
-        required: true
-        type: string
 
 permissions:
   contents: read
@@ -47,7 +48,7 @@ jobs:
       - name: Publicar contêiner Rust
         run: >-
           flyctl deploy
-          --app "${{ inputs.app_name }}"
+          --app labstar-api-mackson
           --config backend/fly.toml
           --dockerfile backend/Dockerfile
           --remote-only
