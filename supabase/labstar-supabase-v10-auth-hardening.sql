@@ -4,7 +4,8 @@
 -- Objetivo:
 -- - membros antigos já cadastrados continuam sendo recuperados pelo e-mail verificado;
 -- - convites novos NUNCA são aceitos somente pelo e-mail;
--- - todo convite novo exige o token de uso único em accept_member_invite().
+-- - todo convite novo exige o token de uso único em accept_member_invite();
+-- - somente o proprietário pode conceder nível administrativo em um convite.
 
 begin;
 
@@ -78,6 +79,30 @@ $$;
 revoke all on function public.claim_my_membership() from public;
 grant execute on function public.claim_my_membership() to authenticated;
 
+create or replace function public.enforce_invite_role_delegation()
+returns trigger
+language plpgsql
+security definer
+set search_path = public, auth, pg_temp
+as $$
+begin
+  if new.role = 'admin'
+    and public.current_member_role() is distinct from 'owner'
+  then
+    raise exception 'only_owner_can_invite_admin' using errcode = '42501';
+  end if;
+
+  return new;
+end;
+$$;
+
+drop trigger if exists member_invites_role_delegation on public.member_invites;
+create trigger member_invites_role_delegation
+before insert or update of role on public.member_invites
+for each row execute function public.enforce_invite_role_delegation();
+
+revoke all on function public.enforce_invite_role_delegation() from public;
+
 commit;
 
-select 'Labstar v10 endurecida: convites novos exigem token de uso único.' as status;
+select 'Labstar v10 endurecida: token obrigatório e privilégios protegidos.' as status;
