@@ -52,9 +52,7 @@ struct MemberResponse {
     area: String,
 }
 
-pub fn router(
-    state: AppState,
-) -> Result<Router, axum::http::header::InvalidHeaderValue> {
+pub fn router(state: AppState) -> Result<Router, axum::http::header::InvalidHeaderValue> {
     let origins = state
         .config
         .allowed_origins
