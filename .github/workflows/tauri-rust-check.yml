@@ -24,7 +24,7 @@ on:
       - ".github/workflows/tauri-rust-check.yml"
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: tauri-rust-${{ github.ref }}
@@ -90,3 +90,16 @@ jobs:
           path: src-tauri/Cargo.lock
           if-no-files-found: error
           retention-days: 7
+
+      - name: Versionar Cargo.lock validado
+        if: github.event_name == 'push' && github.ref == 'refs/heads/feat/tauri2-rust-foundation'
+        shell: pwsh
+        run: |
+          $changes = git status --porcelain -- src-tauri/Cargo.lock
+          if ($changes) {
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add src-tauri/Cargo.lock
+            git commit -m "Versiona dependências Rust validadas"
+            git push origin HEAD:feat/tauri2-rust-foundation
+          }
