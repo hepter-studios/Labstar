@@ -11,6 +11,7 @@
     "allow-native-health",
     "allow-validate-deep-link",
     "allow-build-invite-deep-link",
+    "allow-take-pending-deep-links",
     "allow-focus-main-window"
   ]
 }
