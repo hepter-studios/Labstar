@@ -223,7 +223,10 @@ mod tests {
     #[test]
     fn validates_and_normalizes_invite_token() {
         assert_eq!(validate_invite_token(&TOKEN.to_uppercase()).unwrap(), TOKEN);
-        assert_eq!(validate_invite_token("abc").unwrap_err(), SecurityError::InvalidInviteToken);
+        assert_eq!(
+            validate_invite_token("abc").unwrap_err(),
+            SecurityError::InvalidInviteToken
+        );
     }
 
     #[test]
@@ -262,8 +265,10 @@ mod tests {
             Err(SecurityError::DuplicateParameter("code"))
         ));
         assert_eq!(
-            parse_deep_link(&format!("https://labstar.pages.dev/?invite={TOKEN}&next=evil"))
-                .unwrap_err(),
+            parse_deep_link(&format!(
+                "https://labstar.pages.dev/?invite={TOKEN}&next=evil"
+            ))
+            .unwrap_err(),
             SecurityError::UnsupportedParameter
         );
     }
