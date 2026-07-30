@@ -338,7 +338,10 @@ pub async fn accept(
 
     let member = match existing {
         Some(existing) => {
-            if existing.auth_user_id.is_some_and(|user_id| user_id != identity.id) {
+            if existing
+                .auth_user_id
+                .is_some_and(|user_id| user_id != identity.id)
+            {
                 return Err(ApiError::MemberAlreadyLinked);
             }
             if existing.status == "suspended" {
@@ -353,7 +356,11 @@ pub async fn accept(
             } else {
                 identity.display_name.clone()
             };
-            let final_status = if already_active { "active" } else { desired_status };
+            let final_status = if already_active {
+                "active"
+            } else {
+                desired_status
+            };
             let final_role = if already_active || existing.role == "owner" {
                 existing.role.clone()
             } else {
