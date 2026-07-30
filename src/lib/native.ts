@@ -2,6 +2,7 @@ import { requireAuthClient } from "./auth-client";
 
 const INVITE_STORAGE_KEY = "labstar-pending-invite";
 const ACCESS_CHANGED_EVENT = "labstar:access-changed";
+const NATIVE_ERROR_KEY = "labstar-native-auth-error";
 
 type ValidatedDeepLink = {
   kind: "invite" | "auth_callback" | "web_invite";
@@ -46,6 +47,12 @@ export async function openNativeAuthUrl(url: string) {
   await window.__TAURI__.core.invoke("open_auth_url", { url });
 }
 
+export function takeNativeAuthError() {
+  const error = window.sessionStorage.getItem(NATIVE_ERROR_KEY) ?? "";
+  window.sessionStorage.removeItem(NATIVE_ERROR_KEY);
+  return error;
+}
+
 function rememberInvite(token: string | null) {
   if (token && /^[0-9a-f]{64}$/.test(token)) {
     window.sessionStorage.setItem(INVITE_STORAGE_KEY, token);
@@ -57,9 +64,7 @@ async function processDeepLink(link: ValidatedDeepLink) {
 
   if (link.kind === "auth_callback") {
     if (link.hasProviderError) {
-      window.dispatchEvent(new CustomEvent(ACCESS_CHANGED_EVENT, {
-        detail: { error: "oauth_provider_error" },
-      }));
+      window.sessionStorage.setItem(NATIVE_ERROR_KEY, "oauth_provider_error");
       return;
     }
 
@@ -79,11 +84,12 @@ export async function initializeNativeBridge(): Promise<Unlisten> {
   for (const link of pending) await processDeepLink(link);
 
   return tauri.event.listen<ValidatedDeepLink>("labstar://deep-link", (event) => {
-    void processDeepLink(event.payload).catch(() => {
-      window.dispatchEvent(new CustomEvent(ACCESS_CHANGED_EVENT, {
-        detail: { error: "native_deep_link_failed" },
-      }));
-    });
+    void processDeepLink(event.payload)
+      .then(() => window.location.reload())
+      .catch(() => {
+        window.sessionStorage.setItem(NATIVE_ERROR_KEY, "native_deep_link_failed");
+        window.location.reload();
+      });
   });
 }
 
