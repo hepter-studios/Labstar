@@ -4,6 +4,7 @@ use crate::{
 };
 use serde::Serialize;
 use tauri::{AppHandle, Manager, State};
+use tauri_plugin_opener::OpenerExt;
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -72,4 +73,12 @@ pub fn focus_main_window(app: AppHandle) -> Result<(), String> {
         .set_focus()
         .map_err(|error| format!("main_window_focus_failed: {error}"))?;
     Ok(())
+}
+
+#[tauri::command]
+pub fn open_auth_url(app: AppHandle, url: String) -> Result<(), String> {
+    let safe_url = security::validate_auth_start_url(&url).map_err(|error| error.to_string())?;
+    app.opener()
+        .open_url(safe_url, None::<&str>)
+        .map_err(|error| format!("oauth_browser_open_failed: {error}"))
 }
