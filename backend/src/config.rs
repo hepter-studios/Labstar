@@ -12,14 +12,6 @@ pub struct Config {
     pub allowed_origins: Vec<String>,
     pub request_timeout: Duration,
     pub database_max_connections: u32,
-    pub auth_mode: AuthMode,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum AuthMode {
-    Auto,
-    Jwks,
-    Remote,
 }
 
 #[derive(Debug, Error, PartialEq, Eq)]
@@ -68,22 +60,15 @@ impl Config {
 
         let request_timeout_seconds =
             parse_or_default::<u64>("LABSTAR_REQUEST_TIMEOUT_SECONDS", "15")?;
-        let database_max_connections =
-            parse_or_default::<u32>("LABSTAR_DATABASE_MAX_CONNECTIONS", "10")?;
-        if database_max_connections == 0 {
-            return Err(ConfigError::Invalid("LABSTAR_DATABASE_MAX_CONNECTIONS"));
+        if request_timeout_seconds == 0 || request_timeout_seconds > 120 {
+            return Err(ConfigError::Invalid("LABSTAR_REQUEST_TIMEOUT_SECONDS"));
         }
 
-        let auth_mode = match env::var("LABSTAR_AUTH_MODE")
-            .unwrap_or_else(|_| "auto".to_string())
-            .to_ascii_lowercase()
-            .as_str()
-        {
-            "auto" => AuthMode::Auto,
-            "jwks" => AuthMode::Jwks,
-            "remote" => AuthMode::Remote,
-            _ => return Err(ConfigError::Invalid("LABSTAR_AUTH_MODE")),
-        };
+        let database_max_connections =
+            parse_or_default::<u32>("LABSTAR_DATABASE_MAX_CONNECTIONS", "10")?;
+        if !(1..=100).contains(&database_max_connections) {
+            return Err(ConfigError::Invalid("LABSTAR_DATABASE_MAX_CONNECTIONS"));
+        }
 
         Ok(Self {
             bind_addr,
@@ -93,18 +78,7 @@ impl Config {
             allowed_origins,
             request_timeout: Duration::from_secs(request_timeout_seconds),
             database_max_connections,
-            auth_mode,
         })
-    }
-
-    pub fn issuer(&self) -> String {
-        format!("{}/auth/v1", self.supabase_url.as_str().trim_end_matches('/'))
-    }
-
-    pub fn jwks_url(&self) -> Result<Url, ConfigError> {
-        self.supabase_url
-            .join("auth/v1/.well-known/jwks.json")
-            .map_err(|_| ConfigError::Invalid("SUPABASE_URL"))
     }
 
     pub fn auth_user_url(&self) -> Result<Url, ConfigError> {
