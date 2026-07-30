@@ -5,6 +5,7 @@ fn main() {
         "build_invite_deep_link",
         "take_pending_deep_links",
         "focus_main_window",
+        "open_auth_url",
     ];
 
     tauri_build::try_build(
