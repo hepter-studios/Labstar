@@ -85,7 +85,7 @@ jobs:
 
       - name: Instalar Tauri CLI
         if: github.event_name == 'pull_request' && github.head_ref == 'feat/tauri2-rust-foundation'
-        run: cargo install tauri-cli --version 2.11.5 --locked
+        run: cargo install tauri-cli --version "^2" --locked
 
       - name: Gerar instaladores Windows
         if: github.event_name == 'pull_request' && github.head_ref == 'feat/tauri2-rust-foundation'
