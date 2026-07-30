@@ -30,6 +30,9 @@ concurrency:
   group: tauri-rust-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  CARGO_TERM_COLOR: always
+
 jobs:
   validate:
     name: Web + Rust no Windows
@@ -59,6 +62,17 @@ jobs:
           rustup default stable
           rustc --version
           cargo --version
+
+      - name: Restaurar cache do Cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            src-tauri/target
+          key: cargo-${{ runner.os }}-${{ hashFiles('src-tauri/Cargo.toml', 'src-tauri/Cargo.lock') }}
+          restore-keys: |
+            cargo-${{ runner.os }}-
 
       - name: Verificar formatação Rust
         run: cargo fmt --manifest-path src-tauri/Cargo.toml -- --check
