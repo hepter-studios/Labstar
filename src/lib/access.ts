@@ -7,11 +7,14 @@ import {
   inspectBackendInvite,
   type BackendMember,
 } from "./backend";
+import { requireAuthClient } from "./auth-client";
 import {
-  supabaseClient,
-  type Member,
-  type MemberRole,
-} from "./supabase";
+  isTauriApp,
+  nativeAccessChangedEvent,
+  nativeOAuthReturnUrl,
+  openNativeAuthUrl,
+} from "./native";
+import type { Member, MemberRole } from "./supabase";
 
 export type AccessProvider = "google" | "github";
 export type InviteMode = "quick" | "personal";
@@ -49,11 +52,6 @@ type AccessError = Error & {
 
 const INVITE_STORAGE_KEY = "labstar-pending-invite";
 
-function requireClient() {
-  if (!supabaseClient) throw new Error("supabase_not_configured");
-  return supabaseClient;
-}
-
 function normalizeInviteToken(value: string | null | undefined) {
   const token = value?.trim().toLowerCase() ?? "";
   return /^[0-9a-f]{64}$/.test(token) ? token : "";
@@ -78,7 +76,7 @@ function memberFromBackend(member: BackendMember): Member {
 }
 
 async function currentSession() {
-  const { data, error } = await requireClient().auth.getSession();
+  const { data, error } = await requireAuthClient().auth.getSession();
   if (error) throw error;
   return data.session;
 }
@@ -102,6 +100,8 @@ export function clearPendingInviteToken() {
 }
 
 function oauthReturnUrl() {
+  if (isTauriApp()) return nativeOAuthReturnUrl();
+
   const url = new URL("/", window.location.origin);
   const token = getPendingInviteToken();
   if (token) url.searchParams.set("invite", token);
@@ -109,18 +109,25 @@ function oauthReturnUrl() {
 }
 
 export async function signInWithProvider(provider: AccessProvider) {
-  const { error } = await requireClient().auth.signInWithOAuth({
+  const native = isTauriApp();
+  const { data, error } = await requireAuthClient().auth.signInWithOAuth({
     provider,
     options: {
       redirectTo: oauthReturnUrl(),
+      skipBrowserRedirect: native,
     },
   });
   if (error) throw error;
+
+  if (native) {
+    if (!data.url) throw new Error("oauth_authorization_url_missing");
+    await openNativeAuthUrl(data.url);
+  }
 }
 
 export async function requestAccessLink(email: string) {
   const normalizedEmail = email.trim().toLowerCase();
-  const { error } = await requireClient().auth.signInWithOtp({
+  const { error } = await requireAuthClient().auth.signInWithOtp({
     email: normalizedEmail,
     options: {
       shouldCreateUser: false,
@@ -131,7 +138,7 @@ export async function requestAccessLink(email: string) {
 }
 
 export async function getCurrentAccessIdentity(): Promise<AccessIdentity | null> {
-  const client = requireClient();
+  const client = requireAuthClient();
   const session = await currentSession();
   if (!session) return null;
 
@@ -199,7 +206,7 @@ export async function createInviteLink(input: {
   return {
     id: invitation.id,
     token: invitation.token,
-    url: new URL(invitation.urlPath, window.location.origin).toString(),
+    url: new URL(invitation.urlPath, "https://labstar.pages.dev").toString(),
     mode: invitation.mode,
     email: invitation.email ?? "",
     expiresAt: invitation.expiresAt,
@@ -208,12 +215,17 @@ export async function createInviteLink(input: {
 }
 
 export function subscribeToAccessChanges(callback: (event: AuthChangeEvent, session: Session | null) => void) {
-  const { data } = requireClient().auth.onAuthStateChange(callback);
+  const { data } = requireAuthClient().auth.onAuthStateChange(callback);
   return () => data.subscription.unsubscribe();
 }
 
+export function subscribeToNativeAccessChanges(callback: () => void) {
+  window.addEventListener(nativeAccessChangedEvent, callback);
+  return () => window.removeEventListener(nativeAccessChangedEvent, callback);
+}
+
 export async function secureSignOut() {
-  const { error } = await requireClient().auth.signOut();
+  const { error } = await requireAuthClient().auth.signOut();
   if (error) throw error;
   clearPendingInviteToken();
   window.location.assign("/");
@@ -253,6 +265,9 @@ export function accessErrorMessage(error: unknown) {
   }
   if (code === "backend_unreachable") {
     return "Não foi possível conectar ao backend Rust.";
+  }
+  if (message.includes("oauth_provider_error")) {
+    return "O provedor cancelou ou recusou a autenticação.";
   }
   if (message.includes("rate limit") || message.includes("email rate")) {
     return "O limite temporário de envio de e-mails foi atingido. Use Google ou GitHub.";
