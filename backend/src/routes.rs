@@ -1,7 +1,7 @@
 use axum::{
     Json, Router,
     extract::State,
-    http::{HeaderValue, Method, header},
+    http::{HeaderValue, Method, StatusCode, header},
     routing::get,
 };
 use serde::Serialize;
@@ -78,7 +78,10 @@ pub fn router(state: AppState) -> Result<Router, axum::http::header::InvalidHead
         .fallback(not_found)
         .with_state(state.clone())
         .layer(RequestBodyLimitLayer::new(2 * 1024 * 1024))
-        .layer(TimeoutLayer::new(state.config.request_timeout))
+        .layer(TimeoutLayer::with_status_code(
+            StatusCode::REQUEST_TIMEOUT,
+            state.config.request_timeout,
+        ))
         .layer(cors)
         .layer(TraceLayer::new_for_http()))
 }
