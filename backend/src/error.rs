@@ -22,8 +22,6 @@ pub enum ApiError {
     DatabaseUnavailable,
     #[error("route_not_found")]
     NotFound,
-    #[error("internal_server_error")]
-    Internal,
 }
 
 #[derive(Debug, Serialize)]
@@ -69,11 +67,6 @@ impl IntoResponse for ApiError {
                 StatusCode::NOT_FOUND,
                 "route_not_found",
                 "O recurso solicitado não existe.",
-            ),
-            Self::Internal => (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "internal_server_error",
-                "Ocorreu um erro interno.",
             ),
         };
 
