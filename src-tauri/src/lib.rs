@@ -30,6 +30,7 @@ pub fn run() {
 
     let builder = builder
         .plugin(tauri_plugin_deep_link::init())
+        .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_log::Builder::new().build());
 
     builder
@@ -66,6 +67,7 @@ pub fn run() {
                     match pending.ingest(url.as_str()) {
                         Ok(parsed) => {
                             // O payload contém somente valores já validados pelo Rust.
+                            // Códigos OAuth nunca são escritos nos logs.
                             let _ = handle.emit("labstar://deep-link", parsed);
                         }
                         Err(error) => log::warn!("Deep link rejeitado: {error}"),
@@ -92,7 +94,8 @@ pub fn run() {
             commands::validate_deep_link,
             commands::build_invite_deep_link,
             commands::take_pending_deep_links,
-            commands::focus_main_window
+            commands::focus_main_window,
+            commands::open_auth_url
         ])
         .run(tauri::generate_context!())
         .expect("erro fatal ao executar o núcleo Tauri da Labstar");
