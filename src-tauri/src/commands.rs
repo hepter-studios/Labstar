@@ -1,6 +1,9 @@
-use crate::security::{self, ValidatedDeepLink};
+use crate::{
+    deep_links::PendingDeepLinks,
+    security::{self, ValidatedDeepLink},
+};
 use serde::Serialize;
-use tauri::{AppHandle, Manager};
+use tauri::{AppHandle, Manager, State};
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -47,6 +50,13 @@ pub fn validate_deep_link(raw: String) -> Result<ValidatedDeepLink, String> {
 #[tauri::command]
 pub fn build_invite_deep_link(token: String) -> Result<String, String> {
     security::build_invite_deep_link(&token).map_err(|error| error.to_string())
+}
+
+#[tauri::command]
+pub fn take_pending_deep_links(
+    pending: State<'_, PendingDeepLinks>,
+) -> Result<Vec<ValidatedDeepLink>, String> {
+    pending.drain()
 }
 
 #[tauri::command]
