@@ -12,6 +12,12 @@ use crate::auth::AuthError;
 pub enum ApiError {
     #[error("authentication_failed")]
     Authentication(#[from] AuthError),
+    #[error("member_not_authorized")]
+    MemberNotAuthorized,
+    #[error("member_pending")]
+    MemberPending,
+    #[error("member_suspended")]
+    MemberSuspended,
     #[error("database_unavailable")]
     DatabaseUnavailable,
     #[error("route_not_found")]
@@ -38,6 +44,21 @@ impl IntoResponse for ApiError {
                 StatusCode::UNAUTHORIZED,
                 "authentication_failed",
                 "A sessão é inválida ou expirou.",
+            ),
+            Self::MemberNotAuthorized => (
+                StatusCode::FORBIDDEN,
+                "member_not_authorized",
+                "Esta identidade não pertence à equipe Labstar.",
+            ),
+            Self::MemberPending => (
+                StatusCode::FORBIDDEN,
+                "member_pending",
+                "O acesso ainda aguarda aprovação da equipe.",
+            ),
+            Self::MemberSuspended => (
+                StatusCode::FORBIDDEN,
+                "member_suspended",
+                "Esta conta está suspensa pela administração.",
             ),
             Self::DatabaseUnavailable => (
                 StatusCode::SERVICE_UNAVAILABLE,
