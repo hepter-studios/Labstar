@@ -99,7 +99,7 @@ as $$
 declare
   raw_token text;
   hashed_token text;
-  normalized_email text;
+  normalized_target_email text;
   created_invite public.member_invites;
 begin
   if not public.current_member_can_manage() then
@@ -116,25 +116,25 @@ begin
   end if;
 
   if invitation_kind = 'personal' then
-    normalized_email := lower(trim(coalesce(invited_email, '')));
-    if normalized_email = '' or position('@' in normalized_email) < 2 then
+    normalized_target_email := lower(trim(coalesce(invited_email, '')));
+    if normalized_target_email = '' or position('@' in normalized_target_email) < 2 then
       raise exception 'personal_invite_requires_email' using errcode = '22023';
     end if;
 
     -- Só existe um convite pessoal pendente para o mesmo endereço.
-    update public.member_invites
+    update public.member_invites as pending_invite
     set status = 'revoked', revoked_at = now()
-    where status = 'pending'
-      and kind = 'personal'
-      and normalized_email = normalized_email;
+    where pending_invite.status = 'pending'
+      and pending_invite.kind = 'personal'
+      and pending_invite.normalized_email = normalized_target_email;
   else
-    normalized_email := null;
+    normalized_target_email := null;
   end if;
 
-  update public.member_invites
+  update public.member_invites as expired_invite
   set status = 'expired'
-  where status = 'pending'
-    and expires_at <= now();
+  where expired_invite.status = 'pending'
+    and expired_invite.expires_at <= now();
 
   raw_token := encode(gen_random_bytes(32), 'hex');
   hashed_token := encode(digest(raw_token, 'sha256'), 'hex');
@@ -156,7 +156,7 @@ begin
     use_count,
     approval_required
   ) values (
-    normalized_email,
+    normalized_target_email,
     left(trim(coalesce(invited_name, '')), 100),
     invited_role,
     left(trim(coalesce(invited_job_title, '')), 120),
@@ -339,9 +339,18 @@ begin
           else caller_name
         end,
         status = case when existing_member.status = 'active' then 'active' else desired_status end,
-        role = case when existing_member.role = 'owner' then 'owner' else invitation.role end,
-        job_title = case when trim(invitation.job_title) = '' then existing_member.job_title else invitation.job_title end,
-        area = case when trim(invitation.area) = '' then existing_member.area else invitation.area end,
+        role = case
+          when existing_member.status = 'active' or existing_member.role = 'owner' then existing_member.role
+          else invitation.role
+        end,
+        job_title = case
+          when existing_member.status = 'active' or trim(invitation.job_title) = '' then existing_member.job_title
+          else invitation.job_title
+        end,
+        area = case
+          when existing_member.status = 'active' or trim(invitation.area) = '' then existing_member.area
+          else invitation.area
+        end,
         last_seen_at = now()
     where id = existing_member.id
     returning * into existing_member;
