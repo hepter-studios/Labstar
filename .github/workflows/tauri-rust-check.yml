@@ -1,0 +1,70 @@
+name: Validar Tauri e Rust
+
+on:
+  push:
+    branches:
+      - main
+      - "feat/tauri2-rust-foundation"
+    paths:
+      - "src-tauri/**"
+      - "src/**"
+      - "public/**"
+      - "package.json"
+      - "package-lock.json"
+      - "vite.config.ts"
+      - ".github/workflows/tauri-rust-check.yml"
+  pull_request:
+    paths:
+      - "src-tauri/**"
+      - "src/**"
+      - "public/**"
+      - "package.json"
+      - "package-lock.json"
+      - "vite.config.ts"
+      - ".github/workflows/tauri-rust-check.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tauri-rust-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Web + Rust no Windows
+    runs-on: windows-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Baixar código
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Instalar dependências web
+        run: npm ci
+
+      - name: Validar build web
+        run: npm run build
+
+      - name: Instalar Rust estável
+        shell: pwsh
+        run: |
+          rustup toolchain install stable --profile minimal --component rustfmt,clippy
+          rustup default stable
+          rustc --version
+          cargo --version
+
+      - name: Verificar formatação Rust
+        run: cargo fmt --manifest-path src-tauri/Cargo.toml -- --check
+
+      - name: Executar Clippy sem avisos
+        run: cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets --all-features -- -D warnings
+
+      - name: Executar testes Rust
+        run: cargo test --manifest-path src-tauri/Cargo.toml --all-features
