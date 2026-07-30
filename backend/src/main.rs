@@ -1,6 +1,8 @@
 mod auth;
 mod config;
 mod error;
+mod invites;
+mod members;
 mod routes;
 mod state;
 
