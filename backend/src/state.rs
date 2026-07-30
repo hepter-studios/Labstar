@@ -2,8 +2,17 @@ use std::{sync::Arc, time::Instant};
 
 use reqwest::Client;
 use sqlx::{PgPool, postgres::PgPoolOptions};
+use thiserror::Error;
 
 use crate::{auth::AuthService, config::Config};
+
+#[derive(Debug, Error)]
+pub enum StateBuildError {
+    #[error("database_initialization_failed")]
+    Database(#[from] sqlx::Error),
+    #[error("http_client_initialization_failed")]
+    Http(#[from] reqwest::Error),
+}
 
 #[derive(Clone)]
 pub struct AppState {
@@ -14,7 +23,7 @@ pub struct AppState {
 }
 
 impl AppState {
-    pub async fn build(config: Config) -> Result<Self, sqlx::Error> {
+    pub async fn build(config: Config) -> Result<Self, StateBuildError> {
         let config = Arc::new(config);
         let database = PgPoolOptions::new()
             .max_connections(config.database_max_connections)
@@ -25,8 +34,7 @@ impl AppState {
         let http = Client::builder()
             .timeout(config.request_timeout)
             .user_agent("labstar-backend/0.1")
-            .build()
-            .map_err(sqlx::Error::Io)?;
+            .build()?;
         let auth = AuthService::new(http, Arc::clone(&config));
 
         Ok(Self {
