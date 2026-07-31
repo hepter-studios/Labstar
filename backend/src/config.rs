@@ -3,6 +3,15 @@ use std::{env, net::SocketAddr, str::FromStr, time::Duration};
 use thiserror::Error;
 use url::Url;
 
+const DEFAULT_ALLOWED_ORIGINS: &str = concat!(
+    "https://labstar.pages.dev,",
+    "http://tauri.localhost,",
+    "https://tauri.localhost,",
+    "tauri://localhost,",
+    "http://localhost:5173,",
+    "http://127.0.0.1:5173"
+);
+
 #[derive(Clone)]
 pub struct Config {
     pub bind_addr: SocketAddr,
@@ -36,9 +45,7 @@ impl Config {
 
         let supabase_publishable_key = required("SUPABASE_PUBLISHABLE_KEY")?;
         let allowed_origins = env::var("LABSTAR_ALLOWED_ORIGINS")
-            .unwrap_or_else(|_| {
-                "https://labstar.pages.dev,http://localhost:5173,http://127.0.0.1:5173".to_string()
-            })
+            .unwrap_or_else(|_| DEFAULT_ALLOWED_ORIGINS.to_string())
             .split(',')
             .map(str::trim)
             .filter(|value| !value.is_empty())
@@ -50,15 +57,11 @@ impl Config {
         }
 
         for origin in &allowed_origins {
-            let parsed =
-                Url::parse(origin).map_err(|_| ConfigError::Invalid("LABSTAR_ALLOWED_ORIGINS"))?;
-            if parsed.scheme() != "https" && !is_local_http(&parsed) {
-                return Err(ConfigError::Invalid("LABSTAR_ALLOWED_ORIGINS"));
-            }
+            validate_allowed_origin(origin)?;
         }
 
         let request_timeout_seconds =
-            parse_or_default::<u64>("LABSTAR_REQUEST_TIMEOUT_SECONDS", "15")?;
+            parse_or_default::<u64>("LABSTAR_REQUEST_TIMEOUT_SECONDS", "30")?;
         if request_timeout_seconds == 0 || request_timeout_seconds > 120 {
             return Err(ConfigError::Invalid("LABSTAR_REQUEST_TIMEOUT_SECONDS"));
         }
@@ -113,6 +116,24 @@ fn validate_supabase_url(url: &Url) -> Result<(), ConfigError> {
     }
 }
 
+fn validate_allowed_origin(origin: &str) -> Result<(), ConfigError> {
+    let parsed = Url::parse(origin)
+        .map_err(|_| ConfigError::Invalid("LABSTAR_ALLOWED_ORIGINS"))?;
+
+    let valid = match parsed.scheme() {
+        "https" => true,
+        "http" => is_local_http(&parsed) || parsed.host_str() == Some("tauri.localhost"),
+        "tauri" => parsed.host_str() == Some("localhost"),
+        _ => false,
+    };
+
+    if valid {
+        Ok(())
+    } else {
+        Err(ConfigError::Invalid("LABSTAR_ALLOWED_ORIGINS"))
+    }
+}
+
 fn is_local_http(url: &Url) -> bool {
     url.scheme() == "http" && matches!(url.host_str(), Some("localhost" | "127.0.0.1" | "::1"))
 }
@@ -140,5 +161,20 @@ mod tests {
     fn allows_local_http_for_development() {
         let url = Url::parse("http://127.0.0.1:54321").unwrap();
         assert_eq!(validate_supabase_url(&url), Ok(()));
+    }
+
+    #[test]
+    fn accepts_official_tauri_origins() {
+        assert_eq!(validate_allowed_origin("http://tauri.localhost"), Ok(()));
+        assert_eq!(validate_allowed_origin("https://tauri.localhost"), Ok(()));
+        assert_eq!(validate_allowed_origin("tauri://localhost"), Ok(()));
+    }
+
+    #[test]
+    fn rejects_untrusted_insecure_origin() {
+        assert_eq!(
+            validate_allowed_origin("http://example.com"),
+            Err(ConfigError::Invalid("LABSTAR_ALLOWED_ORIGINS"))
+        );
     }
 }
