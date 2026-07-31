@@ -33,56 +33,63 @@ jobs:
             exit 1
           fi
 
-      - name: Instalar cliente PostgreSQL
+      - name: Preparar cliente PostgreSQL 17
         shell: bash
         run: |
           set -euo pipefail
-          sudo apt-get update
-          sudo apt-get install --yes postgresql-client
-          pg_dump --version
+          docker pull postgres:17-bookworm
+          docker run --rm postgres:17-bookworm pg_dump --version
 
       - name: Criar backup completo
         shell: bash
         env:
           SUPABASE_DATABASE_URL: ${{ secrets.SUPABASE_DATABASE_URL }}
-          PGSSLMODE: require
         run: |
           set -euo pipefail
           mkdir -p backup
           timestamp="$(date -u +'%Y-%m-%dT%H-%M-%SZ')"
 
-          pg_dump \
-            --dbname="${SUPABASE_DATABASE_URL}" \
-            --format=custom \
-            --no-owner \
-            --no-privileges \
-            --verbose \
-            --file="backup/labstar-${timestamp}.dump"
+          docker run --rm \
+            -e SUPABASE_DATABASE_URL \
+            -e PGSSLMODE=require \
+            -e BACKUP_TIMESTAMP="${timestamp}" \
+            -v "${PWD}/backup:/backup" \
+            postgres:17-bookworm \
+            bash -euo pipefail -c '
+              pg_dump \
+                --dbname="${SUPABASE_DATABASE_URL}" \
+                --format=custom \
+                --no-owner \
+                --no-privileges \
+                --verbose \
+                --file="/backup/labstar-${BACKUP_TIMESTAMP}.dump"
 
-          pg_dump \
-            --dbname="${SUPABASE_DATABASE_URL}" \
-            --format=plain \
-            --schema-only \
-            --no-owner \
-            --no-privileges \
-            --file="backup/labstar-${timestamp}-schema.sql"
+              pg_dump \
+                --dbname="${SUPABASE_DATABASE_URL}" \
+                --format=plain \
+                --schema-only \
+                --no-owner \
+                --no-privileges \
+                --file="/backup/labstar-${BACKUP_TIMESTAMP}-schema.sql"
 
-          pg_dump \
-            --dbname="${SUPABASE_DATABASE_URL}" \
-            --format=plain \
-            --data-only \
-            --no-owner \
-            --no-privileges \
-            --file="backup/labstar-${timestamp}-data.sql"
+              pg_dump \
+                --dbname="${SUPABASE_DATABASE_URL}" \
+                --format=plain \
+                --data-only \
+                --no-owner \
+                --no-privileges \
+                --file="/backup/labstar-${BACKUP_TIMESTAMP}-data.sql"
+            '
 
           sha256sum backup/* > backup/SHA256SUMS.txt
-          printf 'Backup UTC: %s\nFormato principal: PostgreSQL custom dump\n' "${timestamp}" > backup/LEIA-ME.txt
+          printf 'Backup UTC: %s\nCliente: PostgreSQL 17\nFormato principal: PostgreSQL custom dump\n' "${timestamp}" > backup/LEIA-ME.txt
 
       - name: Verificar arquivos gerados
         shell: bash
         run: |
           set -euo pipefail
           test -s backup/SHA256SUMS.txt
+          test -n "$(find backup -maxdepth 1 -name '*.dump' -type f -size +0c -print -quit)"
           find backup -maxdepth 1 -type f -printf '%f %s bytes\n' | sort
 
       - name: Disponibilizar backup para download
