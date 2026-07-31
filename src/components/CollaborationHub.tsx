@@ -1,7 +1,7 @@
 import { Star } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { Member } from "../lib/supabase";
-import { DirectMessagesHub } from "./DirectMessagesHub";
+import { DirectMessagesHub } from "./DirectMessagesHubV2";
 import { CollaborationHub as LegacyCollaborationHub } from "./LegacyCollaborationHub";
 
 type CollaborationHubProps = {
