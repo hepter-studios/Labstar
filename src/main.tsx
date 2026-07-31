@@ -4,6 +4,7 @@ import App from "./App";
 import { AccessControl } from "./components/AccessControl";
 import { GlobalSettingsPortal } from "./components/GlobalSettingsPortal";
 import { InstallApp } from "./components/InstallApp";
+import { MemberQuickActions } from "./components/MemberQuickActions";
 import { RuntimeReliability } from "./components/RuntimeReliability";
 import { SafetyGuards } from "./components/SafetyGuards";
 import { WorkspaceSettingsPortal } from "./components/WorkspaceSettingsPortal";
@@ -21,6 +22,7 @@ import "./experience-polish.css";
 import "./global-settings.css";
 import "./workspace-settings.css";
 import "./runtime-reliability.css";
+import "./member-quick-actions.css";
 
 const BRAND_INTRO_DURATION_MS = 2350;
 
@@ -41,6 +43,7 @@ function RootSurfaces() {
       {introFinished && <AccessControl />}
       {introFinished && <GlobalSettingsPortal />}
       {introFinished && <WorkspaceSettingsPortal />}
+      {introFinished && <MemberQuickActions />}
       {introFinished && <InstallApp />}
     </>
   );
