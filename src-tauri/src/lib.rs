@@ -1,7 +1,9 @@
+mod backend_client;
 mod commands;
 mod deep_links;
 mod security;
 
+use backend_client::NativeBackendClient;
 use deep_links::PendingDeepLinks;
 use tauri::{Emitter, Manager};
 
@@ -36,6 +38,10 @@ pub fn run() {
     builder
         .setup(|app| {
             app.manage(PendingDeepLinks::default());
+
+            let backend_client = NativeBackendClient::new()
+                .map_err(std::io::Error::other)?;
+            app.manage(backend_client);
 
             let app_data_directory = app.path().app_data_dir()?;
             std::fs::create_dir_all(&app_data_directory)?;
@@ -81,7 +87,7 @@ pub fn run() {
             });
 
             log::info!(
-                "Labstar {} iniciado em {}-{}; dados nativos em {}",
+                "Labstar {} iniciado em {}-{}; dados nativos em {}; transporte do backend: rust-native-https",
                 app.package_info().version,
                 std::env::consts::OS,
                 std::env::consts::ARCH,
@@ -91,6 +97,7 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             commands::native_health,
+            commands::native_backend_request,
             commands::validate_deep_link,
             commands::build_invite_deep_link,
             commands::take_pending_deep_links,
