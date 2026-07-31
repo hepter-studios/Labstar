@@ -39,9 +39,22 @@ pub fn run() {
         .setup(|app| {
             app.manage(PendingDeepLinks::default());
 
-            let backend_client = NativeBackendClient::new()
-                .map_err(std::io::Error::other)?;
+            let backend_client = NativeBackendClient::new().map_err(std::io::Error::other)?;
+            let backend_warmup = backend_client.clone();
             app.manage(backend_client);
+
+            // A Fly.io pode estar hibernada. O aquecimento começa junto com a
+            // abertura do aplicativo, antes de a interface pedir /v1/me.
+            // Nenhum token é usado ou registrado nesta etapa.
+            tauri::async_runtime::spawn(async move {
+                match backend_warmup.warm_up().await {
+                    Ok(()) => log::info!("Backend Rust disponível para a sessão desktop"),
+                    Err(error) => log::warn!(
+                        "Aquecimento do backend Rust não concluiu: {}",
+                        error.code
+                    ),
+                }
+            });
 
             let app_data_directory = app.path().app_data_dir()?;
             std::fs::create_dir_all(&app_data_directory)?;
