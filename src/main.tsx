@@ -22,6 +22,7 @@ import "./access-control.css";
 import "./workspace-polish.css";
 import "./direct-messages.css";
 import "./direct-messages-v4.css";
+import "./direct-messages-v5.css";
 import "./workspace-layout-fix.css";
 import "./workspace-brand.css";
 import "./experience-polish.css";
