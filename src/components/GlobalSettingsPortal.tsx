@@ -1,5 +1,5 @@
 import { Settings } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
   DEFAULT_APP_SETTINGS,
@@ -15,6 +15,8 @@ export function GlobalSettingsPortal() {
   const [open, setOpen] = useState(false);
   const [member, setMember] = useState<Member | null>(null);
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_APP_SETTINGS);
+  const [settingsLoaded, setSettingsLoaded] = useState(false);
+  const startupApplied = useRef(false);
 
   useEffect(() => {
     const find = () => setTarget(document.querySelector(".rail-bottom"));
@@ -34,6 +36,7 @@ export function GlobalSettingsPortal() {
         ]);
         if (cancelled) return;
         setSettings(preferences);
+        setSettingsLoaded(true);
         if (!access?.member || access.authorization !== "active") return;
 
         try {
@@ -43,27 +46,21 @@ export function GlobalSettingsPortal() {
           if (!cancelled) setMember(access.member);
         }
       } catch {
-        // O portal não interfere com a tela de acesso quando ainda não há sessão válida.
+        if (!cancelled) setSettingsLoaded(true);
       }
     }
     void load();
     return () => { cancelled = true; };
   }, [open]);
 
-  if (!target || !member) return null;
-
-  const launcher = createPortal(
-    <button
-      type="button"
-      data-tooltip="Configurações"
-      aria-label="Configurações do Labstar"
-      className={open ? "active" : ""}
-      onClick={() => setOpen((value) => !value)}
-    >
-      <Settings size={17} />
-    </button>,
-    target,
-  );
+  useEffect(() => {
+    if (!target || !member || !settingsLoaded || startupApplied.current) return;
+    startupApplied.current = true;
+    window.requestAnimationFrame(() => {
+      navigate(settings.startView);
+      syncSound(settings.interfaceSounds);
+    });
+  }, [target, member, settingsLoaded, settings.startView, settings.interfaceSounds]);
 
   function navigate(view: "mapa" | "visao" | "colaboracao" | "equipe") {
     const labels: Record<typeof view, string> = {
@@ -81,6 +78,21 @@ export function GlobalSettingsPortal() {
     const currentlyEnabled = button.dataset.tooltip === "Desativar som";
     if (currentlyEnabled !== enabled) button.click();
   }
+
+  if (!target || !member) return null;
+
+  const launcher = createPortal(
+    <button
+      type="button"
+      data-tooltip="Configurações"
+      aria-label="Configurações do Labstar"
+      className={open ? "active" : ""}
+      onClick={() => setOpen((value) => !value)}
+    >
+      <Settings size={17} />
+    </button>,
+    target,
+  );
 
   return (
     <>
