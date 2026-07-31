@@ -20,7 +20,7 @@ jobs:
   validate-and-deploy:
     name: Validar e publicar API Rust
     runs-on: ubuntu-latest
-    timeout-minutes: 40
+    timeout-minutes: 50
     environment: production
 
     steps:
@@ -53,5 +53,19 @@ jobs:
           --dockerfile backend/Dockerfile
           --remote-only
           --ha=false
+          --wait-timeout 10m
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
+      - name: Diagnosticar estado da Fly.io
+        if: always()
+        shell: bash
+        run: |
+          echo "=== STATUS ==="
+          flyctl status --app labstar-api-mackson --all || true
+          echo "=== HEALTH CHECKS ==="
+          flyctl checks list --app labstar-api-mackson || true
+          echo "=== LOGS RECENTES ==="
+          flyctl logs --app labstar-api-mackson --no-tail || true
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
