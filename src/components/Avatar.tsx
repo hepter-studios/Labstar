@@ -1,5 +1,6 @@
 import { UserRound } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
+import { getPresenceSnapshot, resolvePresence, subscribePresence } from "../lib/presence";
 
 type AvatarProps = {
   name: string;
@@ -21,6 +22,8 @@ export function initials(name: string) {
 
 export function Avatar({ name, url, size = "md", className = "", status }: AvatarProps) {
   const [imageFailed, setImageFailed] = useState(false);
+  useSyncExternalStore(subscribePresence, getPresenceSnapshot, getPresenceSnapshot);
+  const effectiveStatus = resolvePresence(name, status);
 
   useEffect(() => setImageFailed(false), [url]);
 
@@ -33,10 +36,10 @@ export function Avatar({ name, url, size = "md", className = "", status }: Avata
             ? <b>{initials(name)}</b>
             : <UserRound size={16} />}
       </span>
-      {status && (
+      {effectiveStatus && (
         <i
-          className={`avatar-status ${status}`}
-          aria-label={status === "online" ? "Disponível" : status === "busy" ? "Ocupado" : "Offline"}
+          className={`avatar-status ${effectiveStatus}`}
+          aria-label={effectiveStatus === "online" ? "Disponível" : effectiveStatus === "busy" ? "Ocupado" : "Offline"}
         />
       )}
     </span>
