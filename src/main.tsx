@@ -17,6 +17,7 @@ import "./workspace-layout-fix.css";
 import "./workspace-brand.css";
 import "./experience-polish.css";
 import "./global-settings.css";
+import "./workspace-settings.css";
 import "./runtime-reliability.css";
 
 const BRAND_INTRO_DURATION_MS = 2350;
