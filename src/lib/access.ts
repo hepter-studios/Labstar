@@ -18,6 +18,7 @@ import type { Member, MemberRole } from "./supabase";
 
 export type AccessProvider = "google" | "github";
 export type InviteMode = "quick" | "personal";
+export type AuthorizationState = "active" | "pending" | "suspended" | "unauthorized";
 
 export type InviteInspection = {
   valid: boolean;
@@ -41,6 +42,7 @@ export type CreatedInvite = {
 export type AccessIdentity = {
   user: User;
   member: Member | null;
+  authorization: AuthorizationState;
   acceptedInvite: boolean;
 };
 
@@ -73,6 +75,20 @@ function memberFromBackend(member: BackendMember): Member {
     avatarUrl: "",
     jobRoles: [],
   };
+}
+
+function authorizationFromMember(member: BackendMember): AuthorizationState {
+  if (member.status === "pending") return "pending";
+  if (member.status === "suspended") return "suspended";
+  return "active";
+}
+
+function authorizationFromBackendError(error: unknown): AuthorizationState | null {
+  if (!(error instanceof BackendApiError)) return null;
+  if (error.code === "member_pending") return "pending";
+  if (error.code === "member_suspended") return "suspended";
+  if (error.code === "member_not_authorized") return "unauthorized";
+  return null;
 }
 
 async function currentSession() {
@@ -156,19 +172,36 @@ export async function getCurrentAccessIdentity(): Promise<AccessIdentity | null>
     return {
       user: userData.user,
       member: memberFromBackend(accepted.member),
+      authorization: authorizationFromMember(accepted.member),
       acceptedInvite: true,
     };
   }
 
-  const identity = await getBackendIdentity(session.access_token);
-  return {
-    user: userData.user,
-    member: memberFromBackend({
+  try {
+    const identity = await getBackendIdentity(session.access_token);
+    const member = memberFromBackend({
       ...identity.member,
       email: identity.email,
-    }),
-    acceptedInvite: false,
-  };
+    });
+    return {
+      user: userData.user,
+      member,
+      authorization: authorizationFromMember({
+        ...identity.member,
+        email: identity.email,
+      }),
+      acceptedInvite: false,
+    };
+  } catch (error) {
+    const authorization = authorizationFromBackendError(error);
+    if (!authorization) throw error;
+    return {
+      user: userData.user,
+      member: null,
+      authorization,
+      acceptedInvite: false,
+    };
+  }
 }
 
 export async function inspectInvite(token = getPendingInviteToken()): Promise<InviteInspection | null> {
@@ -227,16 +260,26 @@ export function subscribeToNativeAccessChanges(callback: () => void) {
   return () => window.removeEventListener(nativeAccessChangedEvent, callback);
 }
 
+function clearPersistedAuthSession() {
+  const keys = Array.from({ length: window.localStorage.length }, (_, index) => window.localStorage.key(index))
+    .filter((key): key is string => Boolean(key))
+    .filter((key) => key.startsWith("sb-") && key.includes("-auth-token"));
+
+  for (const key of keys) window.localStorage.removeItem(key);
+}
+
 export async function secureSignOut() {
   const pendingInvite = getPendingInviteToken();
-  const { error } = await requireAuthClient().auth.signOut();
-  if (error) throw error;
 
-  if (pendingInvite) {
-    window.sessionStorage.setItem(INVITE_STORAGE_KEY, pendingInvite);
+  try {
+    await requireAuthClient().auth.signOut({ scope: "local" });
+  } catch {
+    // A troca de conta não pode depender da rede ou do backend estar disponível.
+  } finally {
+    clearPersistedAuthSession();
+    if (pendingInvite) window.sessionStorage.setItem(INVITE_STORAGE_KEY, pendingInvite);
+    window.location.replace("/");
   }
-
-  window.location.assign("/");
 }
 
 export function accessErrorMessage(error: unknown) {
@@ -269,10 +312,10 @@ export function accessErrorMessage(error: unknown) {
     return "O endereço do backend Rust ainda não foi configurado.";
   }
   if (code === "backend_timeout") {
-    return "O serviço de acesso demorou para responder. Tente novamente.";
+    return "O backend Rust está iniciando ou demorou para responder. Tente novamente ou troque de conta.";
   }
   if (code === "backend_unreachable") {
-    return "Não foi possível conectar ao backend Rust.";
+    return "Não foi possível conectar ao backend Rust. Você ainda pode sair e entrar com outra conta.";
   }
   if (message.includes("oauth_provider_error")) {
     return "O provedor cancelou ou recusou a autenticação.";
