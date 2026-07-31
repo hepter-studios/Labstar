@@ -4,6 +4,7 @@ import App from "./App";
 import { AccessControl } from "./components/AccessControl";
 import { GlobalSettingsPortal } from "./components/GlobalSettingsPortal";
 import { InstallApp } from "./components/InstallApp";
+import { MediaPreferenceBridge } from "./components/MediaPreferenceBridge";
 import { MemberQuickActions } from "./components/MemberQuickActions";
 import { RuntimeReliability } from "./components/RuntimeReliability";
 import { SafetyGuards } from "./components/SafetyGuards";
@@ -40,6 +41,7 @@ function RootSurfaces() {
       <App />
       <SafetyGuards />
       <RuntimeReliability />
+      <MediaPreferenceBridge />
       {introFinished && <AccessControl />}
       {introFinished && <GlobalSettingsPortal />}
       {introFinished && <WorkspaceSettingsPortal />}
