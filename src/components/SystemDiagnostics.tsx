@@ -1,4 +1,4 @@
-import { CheckCircle2, Clipboard, LoaderCircle, Play, ShieldCheck, TriangleAlert, Wifi, XCircle } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Copy, LoaderCircle, Play, ShieldCheck, Wifi } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { requireAuthClient } from "../lib/auth-client";
@@ -102,9 +102,9 @@ function SystemDiagnostics() {
     <section className="settings-section diagnostics-section">
       <header><strong>Diagnóstico do sistema</strong><p>Testa as camadas essenciais sem expor tokens, senhas ou chaves.</p></header>
       <div className="settings-section-body">
-        <div className="diagnostic-list">{checks.map((check) => <article key={check.id} className={check.state}><span>{check.state === "running" ? <LoaderCircle className="spin" size={15}/> : check.state === "ok" ? <CheckCircle2 size={15}/> : check.state === "error" ? <XCircle size={15}/> : check.id === "network" ? <Wifi size={15}/> : <ShieldCheck size={15}/>}</span><div><strong>{check.label}</strong><small>{check.detail || "Ainda não verificado"}</small></div></article>)}</div>
-        <div className="settings-inline-actions"><button type="button" onClick={() => void run()} disabled={running}>{running ? <LoaderCircle className="spin" size={14}/> : <Play size={14}/>} {running ? "Executando diagnóstico" : "Executar diagnóstico"}</button><button type="button" onClick={() => void copy()}><Clipboard size={14}/> {copied ? "Resumo copiado" : "Copiar resumo seguro"}</button></div>
-        {checks.some((check) => check.state === "error") && <p className="diagnostic-warning"><TriangleAlert size={13}/> Um item em erro não significa perda de dados; o resumo ajuda a identificar exatamente qual camada falhou.</p>}
+        <div className="diagnostic-list">{checks.map((check) => <article key={check.id} className={check.state}><span>{check.state === "running" ? <LoaderCircle className="spin" size={15}/> : check.state === "ok" ? <CheckCircle2 size={15}/> : check.state === "error" ? <AlertTriangle size={15}/> : check.id === "network" ? <Wifi size={15}/> : <ShieldCheck size={15}/>}</span><div><strong>{check.label}</strong><small>{check.detail || "Ainda não verificado"}</small></div></article>)}</div>
+        <div className="settings-inline-actions"><button type="button" onClick={() => void run()} disabled={running}>{running ? <LoaderCircle className="spin" size={14}/> : <Play size={14}/>} {running ? "Executando diagnóstico" : "Executar diagnóstico"}</button><button type="button" onClick={() => void copy()}><Copy size={14}/> {copied ? "Resumo copiado" : "Copiar resumo seguro"}</button></div>
+        {checks.some((check) => check.state === "error") && <p className="diagnostic-warning"><AlertTriangle size={13}/> Um item em erro não significa perda de dados; o resumo ajuda a identificar exatamente qual camada falhou.</p>}
       </div>
     </section>
   );
