@@ -1,0 +1,121 @@
+/* LABSTAR — brand overrides shared by Work Center and Direct Messages */
+
+.workspace-dm-entry {
+  padding: 0;
+  overflow: visible;
+  border-color: rgba(96, 142, 255, .62);
+  background: #050a16;
+}
+
+.workspace-dm-entry::before {
+  inset: 2px;
+  z-index: 2;
+  pointer-events: none;
+  border-color: rgba(255, 255, 255, .07);
+  border-radius: 13px;
+}
+
+.labstar-dm-logo {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: contain;
+  object-position: center;
+  border-radius: 14px;
+}
+
+.workspace-dm-entry:hover .labstar-dm-logo,
+.dm-home-mark:hover {
+  filter: brightness(1.06);
+}
+
+/* A mesma marca continua visível depois que o usuário entra nas DMs. */
+.dm-home-mark {
+  overflow: visible;
+  background-color: #050a16;
+  background-image: url('/labstar-dm.svg');
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: contain;
+}
+
+.dm-home-mark > svg {
+  opacity: 0;
+}
+
+.dm-home-mark::after {
+  content: "";
+  position: absolute;
+  inset: 2px;
+  pointer-events: none;
+  border: 1px solid rgba(255, 255, 255, .07);
+  border-radius: 13px;
+}
+
+/* Logos de workspaces nunca herdam deformação do conteúdo original. */
+.space-list button img,
+.space-title > span img,
+.dm-space-list button img {
+  max-width: 100%;
+  max-height: 100%;
+  aspect-ratio: 1 / 1;
+  object-fit: contain !important;
+  object-position: center !important;
+}
+
+/* Protege textos e ações contra avatares/logos em qualquer densidade. */
+.channel-user > div,
+.channel-member-row > span,
+.dm-contact-list > button > span,
+.dm-own-profile > span,
+.message-body,
+.profile-card > div {
+  min-width: 0;
+}
+
+.channel-user strong,
+.channel-user small,
+.channel-members b,
+.channel-members small,
+.dm-contact-list strong,
+.dm-contact-list small,
+.dm-own-profile strong,
+.dm-own-profile small,
+.profile-card b,
+.profile-card small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* O status pertence ao avatar, mas nunca fica dentro da máscara da foto. */
+.user-avatar {
+  overflow: visible !important;
+}
+
+.avatar-media {
+  overflow: hidden;
+}
+
+.avatar-status {
+  right: -1px !important;
+  bottom: -1px !important;
+  flex: 0 0 auto;
+}
+
+@media (max-width: 760px) {
+  .workspace-dm-entry {
+    top: 8px;
+    left: 9px;
+    width: 42px;
+    height: 42px;
+    border-radius: 13px;
+  }
+
+  .labstar-dm-logo,
+  .workspace-dm-entry::before {
+    border-radius: 11px;
+  }
+}
