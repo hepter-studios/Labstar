@@ -1,4 +1,5 @@
 import { createClient, type RealtimeChannel, type SupabaseClient, type User } from "@supabase/supabase-js";
+import { BackendApiError, getBackendIdentity, type BackendMember } from "./backend";
 
 export type MemberRole = "owner" | "admin" | "manager" | "member" | "viewer";
 export type MemberStatus = "pending" | "active" | "suspended";
@@ -204,6 +205,59 @@ async function memberFromRow(row: MemberRow, jobRoles: JobRole[] = []): Promise<
   };
 }
 
+function memberFromBackend(member: BackendMember): Member {
+  return {
+    id: member.id,
+    email: member.email,
+    name: member.name,
+    status: member.status,
+    role: member.role,
+    jobTitle: member.jobTitle ?? "",
+    area: member.area ?? "",
+    assignments: [],
+    createdAt: "",
+    lastSeenAt: new Date().toISOString(),
+    avatarPath: "",
+    avatarUrl: "",
+    jobRoles: [],
+  };
+}
+
+async function enrichAuthorizedMember(member: Member): Promise<Member> {
+  try {
+    const { data, error } = await requireClient()
+      .from("members")
+      .select("*")
+      .eq("id", member.id)
+      .maybeSingle();
+    if (error || !data) return member;
+    const roles = await listRolesForMember(member.id);
+    return memberFromRow(data as MemberRow, roles);
+  } catch {
+    return member;
+  }
+}
+
+function fallbackBlockedMember(user: User, status: "pending" | "suspended"): Member {
+  const email = user.email?.trim().toLowerCase() ?? "";
+  const metadataName = String(user.user_metadata?.full_name ?? user.user_metadata?.name ?? "").trim();
+  return {
+    id: user.id,
+    email,
+    name: metadataName || email.split("@")[0] || "Membro Labstar",
+    status,
+    role: "viewer",
+    jobTitle: "",
+    area: "",
+    assignments: [],
+    createdAt: "",
+    lastSeenAt: new Date().toISOString(),
+    avatarPath: "",
+    avatarUrl: "",
+    jobRoles: [],
+  };
+}
+
 function memberToUpdates(updates: Partial<Member>) {
   const patch: Record<string, unknown> = {};
   if (typeof updates.name === "string") patch.name = updates.name.trim();
@@ -221,7 +275,7 @@ export async function requestMagicLink(email: string) {
   const { error } = await requireClient().auth.signInWithOtp({
     email: normalizedEmail,
     options: {
-      shouldCreateUser: true,
+      shouldCreateUser: false,
       emailRedirectTo: window.location.origin,
     },
   });
@@ -240,18 +294,38 @@ export async function getCurrentIdentity(): Promise<{ user: User; member: Member
   if (sessionError) throw sessionError;
   if (!session?.user?.email) return null;
 
-  const email = session.user.email.trim().toLowerCase();
-  const { data, error } = await supabase
-    .from("members")
-    .select("*")
-    .eq("email", email)
-    .maybeSingle();
+  try {
+    const identity = await getBackendIdentity(session.access_token);
+    const authorized = memberFromBackend({ ...identity.member, email: identity.email });
+    return { user: session.user, member: await enrichAuthorizedMember(authorized) };
+  } catch (error) {
+    if (!(error instanceof BackendApiError)) throw error;
 
-  if (error) throw error;
-  if (!data) return { user: session.user, member: null };
+    if (error.code === "member_not_authorized") {
+      return { user: session.user, member: null };
+    }
 
-  const roles = await listRolesForMember(String(data.id));
-  return { user: session.user, member: await memberFromRow(data as MemberRow, roles) };
+    if (error.code === "member_pending" || error.code === "member_suspended") {
+      const status = error.code === "member_pending" ? "pending" : "suspended";
+      try {
+        const email = session.user.email.trim().toLowerCase();
+        const { data } = await supabase
+          .from("members")
+          .select("*")
+          .eq("email", email)
+          .maybeSingle();
+        if (data) {
+          const roles = await listRolesForMember(String(data.id));
+          return { user: session.user, member: await memberFromRow(data as MemberRow, roles) };
+        }
+      } catch {
+        // O estado de autorização vem do Rust; o Supabase é apenas enriquecimento visual.
+      }
+      return { user: session.user, member: fallbackBlockedMember(session.user, status) };
+    }
+
+    throw error;
+  }
 }
 
 export async function loadWorkspace<T>() {
