@@ -115,6 +115,9 @@ export async function signInWithProvider(provider: AccessProvider) {
     options: {
       redirectTo: oauthReturnUrl(),
       skipBrowserRedirect: native,
+      queryParams: provider === "google"
+        ? { prompt: "select_account" }
+        : undefined,
     },
   });
   if (error) throw error;
