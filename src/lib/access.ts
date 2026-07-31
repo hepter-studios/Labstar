@@ -228,9 +228,14 @@ export function subscribeToNativeAccessChanges(callback: () => void) {
 }
 
 export async function secureSignOut() {
+  const pendingInvite = getPendingInviteToken();
   const { error } = await requireAuthClient().auth.signOut();
   if (error) throw error;
-  clearPendingInviteToken();
+
+  if (pendingInvite) {
+    window.sessionStorage.setItem(INVITE_STORAGE_KEY, pendingInvite);
+  }
+
   window.location.assign("/");
 }
 
