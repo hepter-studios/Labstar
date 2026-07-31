@@ -23,6 +23,11 @@ function presenceStatus(row: PresenceRow, currentMemberId: string): PresenceStat
 
 export function PresenceBridge() {
   useEffect(() => {
+    if (!supabaseClient) {
+      clearPresence();
+      return;
+    }
+
     let disposed = false;
     let heartbeatTimer: number | null = null;
     let refreshTimer: number | null = null;
@@ -37,7 +42,7 @@ export function PresenceBridge() {
     };
 
     const refresh = async () => {
-      if (disposed || !supabaseClient || !currentMemberId) return;
+      if (disposed || !currentMemberId) return;
       const { data, error } = await supabaseClient
         .from("members")
         .select("id,name,status,last_seen_at")
@@ -52,7 +57,7 @@ export function PresenceBridge() {
     };
 
     const heartbeat = async () => {
-      if (disposed || !supabaseClient || !currentMemberId || document.visibilityState !== "visible") return;
+      if (disposed || !currentMemberId || document.visibilityState !== "visible") return;
       const now = new Date().toISOString();
       await supabaseClient
         .from("members")
@@ -62,7 +67,7 @@ export function PresenceBridge() {
     };
 
     const stopRealtime = async () => {
-      if (realtimeChannel && supabaseClient) {
+      if (realtimeChannel) {
         await supabaseClient.removeChannel(realtimeChannel).catch(() => undefined);
       }
       realtimeChannel = null;
@@ -74,7 +79,6 @@ export function PresenceBridge() {
       clearPresence();
       currentMemberId = "";
 
-      if (!supabaseClient) return;
       try {
         const identity = await getCurrentAccessIdentity();
         if (disposed || !identity?.member || identity.authorization !== "active") return;
