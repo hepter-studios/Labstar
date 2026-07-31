@@ -35,6 +35,9 @@ jobs:
       CARGO_TERM_COLOR: always
       VITE_SUPABASE_URL: https://pgzwyngxsxnheulvusdq.supabase.co
       VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
+      # Compatibilidade temporária com módulos antigos que ainda leem VITE_SUPABASE_ANON_KEY.
+      # O valor é a MESMA chave publicável; não existe um segundo segredo.
+      VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
       VITE_LABSTAR_API_URL: https://labstar-api-mackson.fly.dev
       LABSTAR_SOURCE_BRANCH: ${{ github.head_ref || github.ref_name }}
       LABSTAR_SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
@@ -64,6 +67,11 @@ jobs:
             exit 1
           }
 
+          if ($env:VITE_SUPABASE_ANON_KEY -ne $env:VITE_SUPABASE_PUBLISHABLE_KEY) {
+            Write-Error "O alias legado da chave pública não está sincronizado."
+            exit 1
+          }
+
       - name: Configurar Node.js 22
         uses: actions/setup-node@v4
         with:
@@ -87,6 +95,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           VITE_SUPABASE_URL: ${{ env.VITE_SUPABASE_URL }}
           VITE_SUPABASE_PUBLISHABLE_KEY: ${{ env.VITE_SUPABASE_PUBLISHABLE_KEY }}
+          VITE_SUPABASE_ANON_KEY: ${{ env.VITE_SUPABASE_ANON_KEY }}
           VITE_LABSTAR_API_URL: ${{ env.VITE_LABSTAR_API_URL }}
         with:
           uploadWorkflowArtifacts: true
