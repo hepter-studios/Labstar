@@ -11,6 +11,7 @@ use tower_http::{
     timeout::TimeoutLayer,
     trace::TraceLayer,
 };
+use url::Url;
 use uuid::Uuid;
 
 use crate::{
@@ -47,15 +48,18 @@ struct MemberResponse {
 }
 
 pub fn router(state: AppState) -> Result<Router, axum::http::header::InvalidHeaderValue> {
-    let origins = state
+    let configured_origins = state
         .config
         .allowed_origins
         .iter()
         .map(|origin| HeaderValue::from_str(origin))
         .collect::<Result<Vec<_>, _>>()?;
 
+    let origins_for_predicate = configured_origins.clone();
     let cors = CorsLayer::new()
-        .allow_origin(AllowOrigin::list(origins))
+        .allow_origin(AllowOrigin::predicate(move |origin: &HeaderValue, _| {
+            origin_is_allowed(origin, &origins_for_predicate)
+        }))
         .allow_methods([
             Method::GET,
             Method::POST,
@@ -84,6 +88,29 @@ pub fn router(state: AppState) -> Result<Router, axum::http::header::InvalidHead
         ))
         .layer(cors)
         .layer(TraceLayer::new_for_http()))
+}
+
+fn origin_is_allowed(origin: &HeaderValue, configured_origins: &[HeaderValue]) -> bool {
+    if configured_origins.iter().any(|allowed| allowed == origin) {
+        return true;
+    }
+
+    let Ok(origin) = origin.to_str() else {
+        return false;
+    };
+    let Ok(parsed) = Url::parse(origin) else {
+        return false;
+    };
+
+    if parsed.scheme() != "https" {
+        return false;
+    }
+
+    let Some(host) = parsed.host_str() else {
+        return false;
+    };
+
+    host.ends_with(".labstar.pages.dev") && host != "labstar.pages.dev"
 }
 
 async fn live(State(state): State<AppState>) -> Json<HealthResponse> {
@@ -136,4 +163,52 @@ impl MeResponse {
 
 async fn not_found() -> ApiError {
     ApiError::NotFound
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn header(value: &str) -> HeaderValue {
+        HeaderValue::from_str(value).unwrap()
+    }
+
+    #[test]
+    fn accepts_configured_origin() {
+        let configured = vec![header("https://labstar.pages.dev")];
+        assert!(origin_is_allowed(
+            &header("https://labstar.pages.dev"),
+            &configured
+        ));
+    }
+
+    #[test]
+    fn accepts_cloudflare_preview_origin() {
+        let configured = vec![header("https://labstar.pages.dev")];
+        assert!(origin_is_allowed(
+            &header("https://99ba6ad0.labstar.pages.dev"),
+            &configured
+        ));
+        assert!(origin_is_allowed(
+            &header("https://feat-tauri-auth-rust-integration.labstar.pages.dev"),
+            &configured
+        ));
+    }
+
+    #[test]
+    fn rejects_untrusted_origin() {
+        let configured = vec![header("https://labstar.pages.dev")];
+        assert!(!origin_is_allowed(
+            &header("https://example.com"),
+            &configured
+        ));
+        assert!(!origin_is_allowed(
+            &header("http://99ba6ad0.labstar.pages.dev"),
+            &configured
+        ));
+        assert!(!origin_is_allowed(
+            &header("https://labstar.pages.dev.evil.example"),
+            &configured
+        ));
+    }
 }
