@@ -178,3 +178,79 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+/* Controles funcionais adicionados na V3. */
+.dm-search-hint {
+  min-width: 24px;
+  color: #566277;
+  font-size: 7px;
+  text-align: right;
+}
+
+.dm-inbox-list article.clickable {
+  cursor: pointer;
+  transition: background .14s ease, border-color .14s ease;
+}
+
+.dm-inbox-list article.clickable:hover {
+  background: rgba(77,132,255,.045);
+}
+
+.dm-conversation-actions > button.active {
+  color: #dbe7ff;
+  border-color: rgba(77,132,255,.34);
+  background: rgba(77,132,255,.14);
+}
+
+.dm-profile-actions {
+  grid-template-columns: repeat(3,1fr) !important;
+}
+
+.dm-shared-file {
+  min-width: 0;
+  min-height: 34px;
+  margin-top: 6px;
+  padding: 0 9px;
+  display: grid;
+  grid-template-columns: 16px minmax(0,1fr) 15px;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid rgba(151,173,220,.09);
+  border-radius: 8px;
+  color: #8290a6;
+  background: rgba(255,255,255,.018);
+  text-decoration: none;
+}
+
+.dm-shared-file:hover {
+  color: #d6e2f7;
+  border-color: rgba(77,132,255,.22);
+  background: rgba(77,132,255,.045);
+}
+
+.dm-shared-file span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 8px;
+}
+
+.dm-note-field {
+  width: 100%;
+  min-height: 72px;
+  resize: vertical;
+  padding: 9px 10px;
+  border: 1px solid rgba(151,173,220,.09);
+  border-radius: 8px;
+  outline: none;
+  color: #aeb8c8;
+  background: rgba(255,255,255,.018);
+  font: inherit;
+  font-size: 8px;
+  line-height: 1.5;
+}
+
+.dm-note-field:focus {
+  border-color: rgba(77,132,255,.28);
+  box-shadow: 0 0 0 3px rgba(77,132,255,.04);
+}
