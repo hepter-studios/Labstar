@@ -14,14 +14,8 @@ import "./experience-polish.css";
 
 const BRAND_INTRO_DURATION_MS = 2350;
 
-function isCloudflareBranchPreview() {
-  const hostname = window.location.hostname.toLowerCase();
-  return hostname.endsWith(".labstar.pages.dev") && hostname !== "labstar.pages.dev";
-}
-
 function RootSurfaces() {
   const [introFinished, setIntroFinished] = useState(false);
-  const branchPreview = isCloudflareBranchPreview();
 
   useEffect(() => {
     const timer = window.setTimeout(() => setIntroFinished(true), BRAND_INTRO_DURATION_MS);
@@ -31,13 +25,8 @@ function RootSurfaces() {
   return (
     <>
       <App />
-      {/*
-        Produção e Tauri continuam usando o gate Rust obrigatório.
-        Nas URLs de Preview do Cloudflare, o App usa a sessão/RLS do Supabase
-        para não bloquear testes de interface quando a API externa estiver
-        indisponível ou em atualização. Nenhuma URL de produção recebe bypass.
-      */}
-      {introFinished && !branchPreview && <AccessControl />}
+      {/* Web, Preview e Tauri usam o mesmo gate de autorização Rust. */}
+      {introFinished && <AccessControl />}
       {introFinished && <InstallApp />}
     </>
   );
