@@ -8,6 +8,8 @@ Este documento responde três perguntas para qualquer pessoa da equipe ou agente
 2. onde cada parte está;
 3. qual branch ou serviço contém cada responsabilidade.
 
+Para reconstruir o projeto do zero, comece por `docs/BUILD_FROM_SOURCE.md`.
+
 ## Por que Rust não aparece na porcentagem principal do GitHub
 
 O repositório usa `main` como branch padrão. A branch `main` ainda representa a produção web atual e não contém `src-tauri/Cargo.toml` nem o backend Rust novo. O código Rust está nos PRs e branches de integração abaixo.
@@ -35,7 +37,7 @@ Isso não significa que o Rust esteja ausente. Ele já existe em duas camadas:
 | --- | --- | --- |
 | `main` | produção web atual | — |
 | `feat/rust-backend-clean` | API central Rust, Docker e Fly.io | #5 |
-| `fix/auth-membership-access` | fundação de autenticação, membros e convites | #3 |
+| `fix/auth-membership-access` | fundação de autenticação, membros, convites e SQL | #3 |
 | `feat/auth-rust-api-integration` | interface ligada à API Rust | #6 |
 | `feat/tauri2-rust-foundation` | fundação desktop Tauri 2 e Rust local | #1 |
 | `feat/tauri-auth-rust-integration` | integração desktop, OAuth, API e instaladores | #7 |
@@ -59,12 +61,12 @@ React apresenta estados e envia comandos. Ele não deve decidir regras críticas
 ### Aplicativo desktop Tauri 2
 
 - `src-tauri/Cargo.toml`: dependências Rust do aplicativo desktop.
+- `src-tauri/Cargo.lock`: versões Rust travadas e reproduzíveis.
 - `src-tauri/src/lib.rs`: inicialização do Tauri e plugins.
 - `src-tauri/src/commands.rs`: comandos nativos expostos à interface.
 - `src-tauri/src/security.rs`: validação de URLs, callbacks e deep links.
 - `src-tauri/capabilities/desktop-main.json`: permissões explícitas da janela principal.
 - `src-tauri/tauri.conf.json`: janela, CSP, ícones, bundle e esquema `labstar://`.
-- `src-tauri/Cargo.lock`: versões Rust travadas e reproduzíveis.
 
 O Rust local cuida de recursos nativos, não das regras centrais do negócio.
 
@@ -72,11 +74,13 @@ O Rust local cuida de recursos nativos, não das regras centrais do negócio.
 
 Na branch `feat/rust-backend-clean`:
 
-- `backend/src/`: API Axum/Tokio.
-- `backend/src/main.rs`: inicialização HTTP e encerramento gracioso.
+- `backend/Cargo.toml` e `backend/Cargo.lock`: crate e dependências travadas;
+- `backend/src/`: API Axum/Tokio;
+- `backend/src/main.rs`: inicialização HTTP e encerramento gracioso;
 - módulos de configuração, autenticação, membros, convites e erros tipados;
 - `backend/Dockerfile`: imagem de produção;
-- `backend/fly.toml`: configuração da aplicação Fly.io.
+- `backend/fly.toml`: configuração da aplicação Fly.io;
+- `backend/.env.example`: nomes das configurações sem valores secretos.
 
 Endpoints principais:
 
@@ -91,28 +95,50 @@ Endpoints principais:
 
 ### Supabase e banco
 
-- `supabase/`: scripts históricos e migrações preservadas.
-- migrações de acesso aplicadas em quatro etapas: vínculo Auth, convites, endurecimento e bloqueio do frontend.
-- backup manual privado gerado pelo GitHub Actions antes das mudanças.
+Enquanto o PR #3 não for mesclado, os arquivos atuais ficam na branch `fix/auth-membership-access`:
+
+- `supabase/labstar-supabase-v9-auth.sql`;
+- `supabase/labstar-supabase-v10-invite-links.sql`;
+- `supabase/labstar-supabase-v10-auth-hardening.sql`;
+- `supabase/labstar-supabase-v11-rust-backend-lockdown.sql`;
+- `supabase/diagnostics/auth-access-audit.sql`.
+
+A ordem e o procedimento estão em `docs/DATABASE_BOOTSTRAP.md`.
 
 Nunca execute novamente uma migração sem confirmar o ambiente, gerar novo backup e revisar o SQL.
 
 ### Workflows
 
-- `.github/workflows/`: validação, build, backup e deploy.
-- `build-windows-integrated.yml`: gera EXE e MSI privados.
+- `.github/workflows/`: validação, build, backup, smoke tests e deploy.
+- `build-windows-integrated.yml`: gera EXE e MSI privados ligados a branch/commit.
 - workflows de validação verificam TypeScript, Vite, Rustfmt, Clippy e testes Rust.
-- workflow da Fly.io publica somente a branch do backend.
+- workflow da Fly.io publica a branch do backend e valida saúde/CORS depois do deploy.
+- workflow de backup gera Artifact privado antes de mudanças no banco.
 
-### Documentação
+## Documentação oficial
 
 - `README.md`: entrada principal e estado atual.
+- `docs/README.md`: índice da documentação.
+- `docs/BUILD_FROM_SOURCE.md`: reconstrução completa a partir do GitHub.
+- `docs/ENVIRONMENT_SETUP.md`: variáveis, secrets, OAuth, CORS e ambientes.
+- `docs/DATABASE_BOOTSTRAP.md`: banco, backup, migrações e auditoria.
 - `docs/PROJECT_MAP.md`: este mapa.
 - `docs/TEAM_ONBOARDING.md`: como trabalhar no projeto sem quebrar nada.
 - `docs/ARCHITECTURE_DECISIONS.md`: decisões que não devem ser revertidas sem discussão.
+- `docs/OPERATIONS.md`: operação, incidentes e rollback.
+- `docs/RELEASE_CHECKLIST.md`: gate de release.
+- `docs/UPDATER.md`: plano de atualização assinada.
 - `docs/INTERNATIONAL_RELEASE_ROADMAP.md`: plano até o lançamento internacional.
 - `docs/CODEX_HANDOFF.md`: instruções específicas para continuidade com Codex.
 - `CONTRIBUTING.md`: padrão de branches, commits, PRs e testes.
+
+## Arquivos que garantem builds reproduzíveis
+
+- `package.json` + `package-lock.json` para web/frontend;
+- `src-tauri/Cargo.toml` + `src-tauri/Cargo.lock` para desktop;
+- `backend/Cargo.toml` + `backend/Cargo.lock` para API;
+- `.env.example` e `backend/.env.example` para nomes/configuração sem secrets;
+- workflows do GitHub Actions para CI, instaladores, backup e deploy.
 
 ## Identidade e autorização
 
@@ -149,7 +175,7 @@ Não alterar vínculos diretamente para contornar testes. Uma segunda identidade
 
 - instaladores: GitHub Actions > `Gerar instalador Windows integrado` > Artifacts;
 - backup do banco: Artifact privado do workflow de backup e cópia local segura do proprietário;
-- pacotes de migração: somente em local seguro e na documentação interna;
+- migrações: arquivos SQL versionados no PR #3 enquanto não houver merge;
 - secrets: GitHub Actions Secrets, Fly Secrets ou Supabase, nunca no código.
 
 ## Regra final
