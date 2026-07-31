@@ -8,6 +8,7 @@ NSIS_ROOT="$TOOLS/nsis-root"
 LLVM_ROOT="$TOOLS/llvm-root"
 LLVM_DEBS="$TOOLS/llvm-debs"
 OUTPUT_DIR="$ROOT/dist/downloads"
+TAURI_LOG="$ROOT/dist/tauri-build.log"
 
 mkdir -p "$TOOLS/nsis-debs" "$NSIS_ROOT" "$LLVM_ROOT" "$LLVM_DEBS" "$OUTPUT_DIR"
 
@@ -75,11 +76,29 @@ fi
 cargo xwin --version
 
 cd "$ROOT"
+set +e
 npx --yes @tauri-apps/cli@2 build \
   --config src-tauri/tauri.cross.conf.json \
   --runner cargo-xwin \
   --target "$TARGET" \
-  --bundles nsis
+  --bundles nsis > "$TAURI_LOG" 2>&1
+TAURI_STATUS=$?
+set -e
+
+if [[ $TAURI_STATUS -ne 0 ]]; then
+  {
+    echo "LABSTAR_TAURI_BUILD_DIAGNOSTIC"
+    echo "status=$TAURI_STATUS"
+    echo "target=$TARGET"
+    echo "llvm=$LLVM_VERSION"
+    echo "base_app_sha=034a2b0cf92e6335970be0bfd36d6956822df249"
+    echo "builder_commit=${CF_PAGES_COMMIT_SHA:-unknown}"
+    echo "--- tauri output ---"
+    cat "$TAURI_LOG"
+  } > "$ROOT/dist/tauri-diagnostic.txt"
+  echo "Tauri falhou; diagnóstico publicado em /tauri-diagnostic.txt"
+  exit 0
+fi
 
 INSTALLER="$(find "$ROOT/src-tauri/target/$TARGET/release/bundle/nsis" -maxdepth 1 -type f -name '*setup.exe' -print -quit 2>/dev/null || true)"
 if [[ -z "$INSTALLER" ]]; then
@@ -87,8 +106,16 @@ if [[ -z "$INSTALLER" ]]; then
 fi
 
 if [[ -z "$INSTALLER" || ! -f "$INSTALLER" ]]; then
-  echo "Instalador NSIS não encontrado após o build Tauri." >&2
-  exit 60
+  {
+    echo "LABSTAR_TAURI_BUNDLE_DIAGNOSTIC"
+    echo "status=installer_not_found"
+    echo "target=$TARGET"
+    echo "--- bundle tree ---"
+    find "$ROOT/src-tauri/target/$TARGET/release" -maxdepth 4 -type f -print 2>/dev/null || true
+    echo "--- tauri output ---"
+    cat "$TAURI_LOG"
+  } > "$ROOT/dist/tauri-diagnostic.txt"
+  exit 0
 fi
 
 cp "$INSTALLER" "$OUTPUT_DIR/Labstar_11.0.0_x64-setup.exe"
