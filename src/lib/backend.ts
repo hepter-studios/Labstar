@@ -100,6 +100,15 @@ function isRetryableReadError(error: unknown) {
   ].includes(error.code);
 }
 
+function isNativeTransportFailure(error: unknown) {
+  if (!(error instanceof BackendApiError)) return false;
+  return [
+    "backend_timeout",
+    "backend_connect_failed",
+    "backend_transport_failed",
+  ].includes(error.code);
+}
+
 function asBackendErrorBody(value: unknown): BackendErrorBody {
   if (!value || typeof value !== "object") return {};
   return value as BackendErrorBody;
@@ -215,10 +224,21 @@ async function requestOnceWeb<T>(
 }
 
 async function requestOnce<T>(path: string, options: RequestInit, accessToken?: string): Promise<T> {
-  // No desktop, todo o tráfego crítico sai pelo cliente HTTPS do próprio Rust.
-  // Isso remove CORS/CSP/WebView da cadeia de autorização nativa.
-  if (isTauriApp()) return requestOnceNative<T>(path, options, accessToken);
-  return requestOnceWeb<T>(path, options, accessToken);
+  if (!isTauriApp()) return requestOnceWeb<T>(path, options, accessToken);
+
+  const method = (options.method ?? "GET").toUpperCase();
+  try {
+    // No desktop, o caminho primário é Rust nativo -> Rust/Fly.io.
+    return await requestOnceNative<T>(path, options, accessToken);
+  } catch (error) {
+    // GET é idempotente: se o transporte nativo falhar por rede/TLS, ainda há
+    // uma rota independente pelo WebView. Escritas nunca usam fallback para
+    // evitar duplicação de convite, aceite ou revogação.
+    if (method === "GET" && isNativeTransportFailure(error)) {
+      return requestOnceWeb<T>(path, options, accessToken);
+    }
+    throw error;
+  }
 }
 
 async function request<T>(path: string, options: RequestInit = {}, accessToken?: string): Promise<T> {
