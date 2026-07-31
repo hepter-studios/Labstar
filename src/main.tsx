@@ -4,6 +4,7 @@ import App from "./App";
 import { AccessControl } from "./components/AccessControl";
 import { GlobalSettingsPortal } from "./components/GlobalSettingsPortal";
 import { InstallApp } from "./components/InstallApp";
+import { RuntimeReliability } from "./components/RuntimeReliability";
 import { SafetyGuards } from "./components/SafetyGuards";
 import { applyAppSettings, loadAppSettings } from "./lib/app-settings";
 import { prewarmRustBackend } from "./lib/backend-prewarm";
@@ -16,6 +17,7 @@ import "./workspace-layout-fix.css";
 import "./workspace-brand.css";
 import "./experience-polish.css";
 import "./global-settings.css";
+import "./runtime-reliability.css";
 
 const BRAND_INTRO_DURATION_MS = 2350;
 
@@ -32,6 +34,7 @@ function RootSurfaces() {
     <>
       <App />
       <SafetyGuards />
+      <RuntimeReliability />
       {introFinished && <AccessControl />}
       {introFinished && <GlobalSettingsPortal />}
       {introFinished && <InstallApp />}
