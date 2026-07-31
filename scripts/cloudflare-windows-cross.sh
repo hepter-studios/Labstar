@@ -17,18 +17,9 @@ if ! command -v makensis >/dev/null 2>&1; then
 fi
 makensis -VERSION
 
-for tool in clang lld curl unzip; do command -v "$tool" >/dev/null 2>&1; done
+command -v clang >/dev/null 2>&1
+(command -v lld-link >/dev/null 2>&1 || command -v ld.lld >/dev/null 2>&1)
+command -v curl >/dev/null 2>&1
+command -v unzip >/dev/null 2>&1
 
-export PATH="$HOME/.cargo/bin:$PATH"
-if ! command -v rustup >/dev/null 2>&1; then
-  curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs -o "$TOOLS/rustup-init.sh"
-  sh "$TOOLS/rustup-init.sh" -y --profile minimal
-  source "$HOME/.cargo/env"
-fi
-rustup toolchain install stable --profile minimal
-rustup default stable
-rustup target add "$TARGET"
-rustc --version
-cargo --version
-
-echo "Rust e ferramentas base prontos para cross-build."
+echo "NSIS, Clang e LLD disponíveis."
