@@ -2,6 +2,7 @@ import { StrictMode, useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import App from "./App";
 import { AccessControl } from "./components/AccessControl";
+import { AppSessionRecovery } from "./components/AppSessionRecovery";
 import { GlobalSettingsPortal } from "./components/GlobalSettingsPortal";
 import { InstallApp } from "./components/InstallApp";
 import { MediaPreferenceBridge } from "./components/MediaPreferenceBridge";
@@ -42,6 +43,7 @@ function RootSurfaces() {
       <SafetyGuards />
       <RuntimeReliability />
       <MediaPreferenceBridge />
+      <AppSessionRecovery />
       {introFinished && <AccessControl />}
       {introFinished && <GlobalSettingsPortal />}
       {introFinished && <WorkspaceSettingsPortal />}
