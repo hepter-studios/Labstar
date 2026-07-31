@@ -25,6 +25,8 @@ jobs:
 
     env:
       API_URL: https://labstar-api-mackson.fly.dev
+      WEB_ORIGIN: https://labstar.pages.dev
+      PREVIEW_ORIGIN: https://preview-ci.labstar.pages.dev
       TAURI_ORIGIN: http://tauri.localhost
       UNTRUSTED_ORIGIN: http://example.com
 
@@ -77,6 +79,46 @@ jobs:
             --connect-timeout 20 --max-time 60 \
             "$API_URL/health/ready" | tee ready.json
           grep -q '"status":"ready"' ready.json
+
+      - name: Confirmar CORS da Web oficial
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error \
+            --retry 5 --retry-all-errors --retry-delay 3 \
+            --connect-timeout 20 --max-time 60 \
+            --dump-header web-headers.txt \
+            --output /dev/null \
+            --request OPTIONS \
+            --header "Origin: $WEB_ORIGIN" \
+            --header "Access-Control-Request-Method: GET" \
+            --header "Access-Control-Request-Headers: authorization,content-type" \
+            "$API_URL/v1/me"
+
+          tr -d '\r' < web-headers.txt > web-headers-normalized.txt
+          grep -Eiq '^access-control-allow-origin:[[:space:]]*https://labstar\.pages\.dev[[:space:]]*$' web-headers-normalized.txt
+          grep -Eiq '^access-control-allow-methods:.*GET' web-headers-normalized.txt
+          grep -Eiq '^access-control-allow-headers:.*authorization' web-headers-normalized.txt
+
+      - name: Confirmar CORS das Previews do Cloudflare Pages
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error \
+            --retry 5 --retry-all-errors --retry-delay 3 \
+            --connect-timeout 20 --max-time 60 \
+            --dump-header preview-headers.txt \
+            --output /dev/null \
+            --request OPTIONS \
+            --header "Origin: $PREVIEW_ORIGIN" \
+            --header "Access-Control-Request-Method: GET" \
+            --header "Access-Control-Request-Headers: authorization,content-type" \
+            "$API_URL/v1/me"
+
+          tr -d '\r' < preview-headers.txt > preview-headers-normalized.txt
+          grep -Eiq '^access-control-allow-origin:[[:space:]]*https://preview-ci\.labstar\.pages\.dev[[:space:]]*$' preview-headers-normalized.txt
+          grep -Eiq '^access-control-allow-methods:.*GET' preview-headers-normalized.txt
+          grep -Eiq '^access-control-allow-headers:.*authorization' preview-headers-normalized.txt
 
       - name: Confirmar CORS do aplicativo Tauri
         shell: bash
