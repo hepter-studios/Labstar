@@ -12,10 +12,14 @@ export async function updateChannelPermissions(input: {
   allowedRoles: MemberRole[];
   allowedAssignments: string[];
 }) {
-  const allowedRoles = [...new Set(input.allowedRoles)].filter((role) => validRoles.has(role));
   const allowedAssignments = [...new Set(input.allowedAssignments.map((value) => value.trim()).filter(Boolean))]
     .map((value) => value.slice(0, 100))
     .slice(0, 50);
+  const requestedRoles = [...new Set(input.allowedRoles)].filter((role) => validRoles.has(role));
+  const restricted = requestedRoles.length > 0 || allowedAssignments.length > 0;
+  const allowedRoles = restricted
+    ? [...new Set<MemberRole>(["owner", "admin", ...requestedRoles])]
+    : [];
 
   const { data, error } = await requireClient()
     .from("channels")
