@@ -1,10 +1,11 @@
 name: Gerar instalador Windows integrado
-run-name: Instalador Windows integrado — ${{ github.ref_name }} @ ${{ github.sha }}
+run-name: Instalador Windows integrado — ${{ github.head_ref || github.ref_name }} @ ${{ github.event.pull_request.head.sha || github.sha }}
 
 on:
-  push:
+  pull_request:
     branches:
-      - "feat/tauri-auth-rust-integration"
+      - "feat/tauri2-rust-foundation"
+    types: [opened, synchronize, reopened]
     paths:
       - "src/**"
       - "src-tauri/**"
@@ -20,12 +21,13 @@ permissions:
   contents: read
 
 concurrency:
-  group: labstar-windows-integrated
+  group: labstar-windows-integrated-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
   build-windows:
     name: Compilar EXE e MSI integrados
+    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: windows-latest
     timeout-minutes: 60
 
@@ -34,16 +36,19 @@ jobs:
       VITE_SUPABASE_URL: https://pgzwyngxsxnheulvusdq.supabase.co
       VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
       VITE_LABSTAR_API_URL: https://labstar-api-mackson.fly.dev
+      LABSTAR_SOURCE_BRANCH: ${{ github.head_ref || github.ref_name }}
+      LABSTAR_SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
 
     steps:
-      - name: Baixar código da branch integrada
+      - name: Baixar código validado pelo PR
         uses: actions/checkout@v4
 
       - name: Identificar origem do build
         shell: pwsh
         run: |
-          Write-Host "Branch: $env:GITHUB_REF_NAME"
-          Write-Host "Commit: $env:GITHUB_SHA"
+          Write-Host "Branch de origem: $env:LABSTAR_SOURCE_BRANCH"
+          Write-Host "Commit de origem: $env:LABSTAR_SOURCE_SHA"
+          Write-Host "Commit testado pelo Actions: $env:GITHUB_SHA"
           Write-Host "Execução: $env:GITHUB_RUN_NUMBER"
 
       - name: Validar configuração pública do Supabase
