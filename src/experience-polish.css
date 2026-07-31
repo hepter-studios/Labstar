@@ -1,0 +1,176 @@
+/* LABSTAR — acabamento de experiência da Central de Trabalho */
+
+/* O marcador azul indica seleção real. No modo de servidor o botão de DMs é só um atalho. */
+.collaboration-server-mode .workspace-dm-entry i {
+  display: none !important;
+}
+
+.workspace-dm-entry,
+.dm-home-mark {
+  box-shadow:
+    0 0 0 2px rgba(77,132,255,.045),
+    0 8px 24px rgba(0,0,0,.28),
+    inset 0 1px rgba(255,255,255,.08) !important;
+}
+
+.workspace-dm-entry {
+  border-color: rgba(88,139,255,.34) !important;
+  background:
+    radial-gradient(circle at 50% 36%, rgba(104,149,255,.14), transparent 42%),
+    linear-gradient(145deg,#0d1c3b,#071020 70%) !important;
+}
+
+.dm-home-mark {
+  border-color: rgba(77,132,255,.48) !important;
+  background:
+    radial-gradient(circle at 50% 36%,rgba(108,153,255,.19),transparent 42%),
+    linear-gradient(145deg,#102145,#071022 70%) !important;
+}
+
+.dm-home-mark i {
+  box-shadow: 0 0 7px rgba(87,137,255,.35) !important;
+}
+
+/* Cosmic Chat: usa o SVG vetorial real no vazio das DMs. */
+.dm-orbit {
+  width: min(290px, 42vw) !important;
+  height: auto !important;
+  aspect-ratio: 4 / 3;
+  margin-bottom: 8px !important;
+  background: url('/cosmic-chat.svg') center / contain no-repeat;
+  filter: drop-shadow(0 18px 35px rgba(0,0,0,.26));
+}
+
+.dm-orbit > i,
+.dm-orbit > span,
+.dm-orbit::before,
+.dm-orbit::after {
+  display: none !important;
+}
+
+/* Nebulosas discretas, sem competir com texto e controles. */
+.direct-hub,
+.collaboration-server-mode {
+  background-color: #04070d;
+}
+
+.direct-hub::after,
+.collaboration-server-mode::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: .56;
+  background:
+    radial-gradient(58% 36% at 92% 19%, rgba(28,92,191,.115), transparent 68%),
+    radial-gradient(42% 58% at 67% 72%, rgba(19,74,164,.075), transparent 72%),
+    radial-gradient(38% 28% at 20% 82%, rgba(37,96,180,.055), transparent 74%);
+  filter: saturate(.9);
+}
+
+.direct-hub > *,
+.collaboration-server-mode > * {
+  position: relative;
+  z-index: 1;
+}
+
+.dm-home-main,
+.dm-inbox,
+.dm-sidebar,
+.dm-conversation,
+.dm-profile-panel {
+  background-color: rgba(5,8,13,.93);
+}
+
+.dm-home-main {
+  background:
+    radial-gradient(46% 32% at 72% 62%, rgba(28,86,180,.065), transparent 72%),
+    linear-gradient(160deg,rgba(7,11,17,.94),rgba(7,12,20,.91)) !important;
+}
+
+.dm-inbox {
+  background:
+    radial-gradient(54% 32% at 82% 30%, rgba(30,88,185,.055), transparent 76%),
+    linear-gradient(180deg,#090d14,#06090e) !important;
+}
+
+/* Estrela Labstar: gira, para, gira, para. Só em estados de carregamento de seção/tela. */
+@keyframes labstar-loading-turn-pause {
+  0%, 12% { transform: rotate(0deg) scale(.96); }
+  42% { transform: rotate(360deg) scale(1); }
+  43%, 70% { transform: rotate(360deg) scale(1); }
+  100% { transform: rotate(720deg) scale(.96); }
+}
+
+.dm-loading,
+.dm-thread-loading,
+.team-loading,
+.access-v2-card.compact {
+  position: relative;
+}
+
+.dm-loading > .spin,
+.dm-thread-loading > .spin,
+.team-loading > .spin,
+.access-v2-card.compact > .spin {
+  display: none !important;
+}
+
+.dm-loading::before,
+.dm-thread-loading::before,
+.team-loading::before,
+.access-v2-card.compact::before {
+  content: "";
+  width: 30px;
+  height: 30px;
+  flex: 0 0 30px;
+  display: block;
+  background: url('/labstar-loading-star.svg') center / contain no-repeat;
+  filter: drop-shadow(0 0 6px rgba(94,142,255,.22));
+  animation: labstar-loading-turn-pause 2.65s cubic-bezier(.58,.06,.35,.98) infinite;
+  transform-origin: 50% 50%;
+}
+
+.dm-loading::before {
+  width: 38px;
+  height: 38px;
+  margin-bottom: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dm-loading::before,
+  .dm-thread-loading::before,
+  .team-loading::before,
+  .access-v2-card.compact::before {
+    animation: none;
+  }
+}
+
+/* Logos e avatares: nunca esticam nem deixam texto invadir a imagem. */
+.dm-space-list img,
+.space-rail img,
+.space-title img,
+.logo-upload img {
+  object-fit: contain !important;
+  object-position: center !important;
+}
+
+.dm-contact-list > button > span,
+.dm-own-profile > span,
+.member-list button .member-main,
+.dm-message-body,
+.dm-inbox-list article > div {
+  min-width: 0;
+}
+
+.dm-contact-list strong,
+.dm-contact-list small,
+.dm-own-profile strong,
+.dm-own-profile small,
+.member-list button .member-main b,
+.member-list button .member-main small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
