@@ -7,6 +7,7 @@ import { GlobalSettingsPortal } from "./components/GlobalSettingsPortal";
 import { InstallApp } from "./components/InstallApp";
 import { LegacyActionBridge } from "./components/LegacyActionBridge";
 import { MediaPreferenceBridge } from "./components/MediaPreferenceBridge";
+import { MemberPanelTools } from "./components/MemberPanelTools";
 import { MemberQuickActions } from "./components/MemberQuickActions";
 import { RuntimeReliability } from "./components/RuntimeReliability";
 import { SafetyGuards } from "./components/SafetyGuards";
@@ -28,6 +29,7 @@ import "./global-settings.css";
 import "./workspace-settings.css";
 import "./runtime-reliability.css";
 import "./member-quick-actions.css";
+import "./member-panel-tools.css";
 import "./system-diagnostics.css";
 import "./workspace-quick-menus.css";
 import "./identity-assets-fix.css";
@@ -56,6 +58,7 @@ function RootSurfaces() {
       {introFinished && <SystemDiagnosticsAddon />}
       {introFinished && <WorkspaceSettingsPortal />}
       {introFinished && <MemberQuickActions />}
+      {introFinished && <MemberPanelTools />}
       {introFinished && <WorkspaceQuickMenus />}
       {introFinished && <InstallApp />}
     </>
