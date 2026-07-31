@@ -312,10 +312,19 @@ export function accessErrorMessage(error: unknown) {
     return "O endereço do backend Rust ainda não foi configurado.";
   }
   if (code === "backend_timeout") {
-    return "O backend Rust está iniciando ou demorou para responder. Tente novamente ou troque de conta.";
+    return "O backend Rust demorou para responder. O Labstar já tentou novamente automaticamente.";
   }
-  if (code === "backend_unreachable") {
-    return "Não foi possível conectar ao backend Rust. Você ainda pode sair e entrar com outra conta.";
+  if (code === "backend_unreachable" || code === "backend_connect_failed" || code === "backend_transport_failed") {
+    return "A conexão segura com o backend Rust foi interrompida. O Labstar tentou uma rota alternativa de leitura, mas a API ainda não respondeu.";
+  }
+  if (code === "authentication_service_unavailable") {
+    return "O backend Rust está online, mas o serviço de identidade está temporariamente indisponível. O Labstar já repetiu a verificação automaticamente.";
+  }
+  if (code === "authentication_invalid_response") {
+    return "O serviço de identidade respondeu de forma inesperada. Sua sessão não foi apagada.";
+  }
+  if (code === "database_unavailable") {
+    return "O backend Rust está online, mas o banco de dados não respondeu. Sua sessão continua preservada.";
   }
   if (message.includes("oauth_provider_error")) {
     return "O provedor cancelou ou recusou a autenticação.";
