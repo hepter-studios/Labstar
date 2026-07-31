@@ -1,6 +1,11 @@
 name: Gerar backup manual do Supabase
 
 on:
+  push:
+    branches:
+      - "feat/rust-backend-clean"
+    paths:
+      - ".github/workflows/backup-supabase.yml"
   workflow_dispatch:
 
 permissions:
