@@ -6,6 +6,16 @@ import { isTauriApp, requestNativeBackend } from "../lib/native";
 
 type CheckState = "idle" | "running" | "ok" | "error";
 type DiagnosticCheck = { id: string; label: string; state: CheckState; detail: string };
+type NativeHealth = {
+  status: string;
+  appVersion: string;
+  platform: string;
+  architecture: string;
+  buildProfile: string;
+  appDataDirectory: string;
+  deepLinkScheme: string;
+  backendTransport: string;
+};
 
 const API_URL = (import.meta.env.VITE_LABSTAR_API_URL ?? "https://labstar-api-mackson.fly.dev").replace(/\/+$/, "");
 
@@ -23,6 +33,12 @@ async function webHealth(path: string) {
 async function backendHealth(path: string) {
   if (isTauriApp()) return requestNativeBackend({ path, method: "GET" });
   return webHealth(path);
+}
+
+async function nativeRuntimeHealth() {
+  const tauri = window.__TAURI__;
+  if (!tauri?.core?.invoke) return null;
+  return tauri.core.invoke<NativeHealth>("native_health");
 }
 
 export function SystemDiagnosticsAddon() {
@@ -59,7 +75,22 @@ function SystemDiagnostics() {
     setChecks(baseChecks().map((check) => ({ ...check, state: "running", detail: "Verificando…" })));
 
     patch("network", navigator.onLine ? { state: "ok", detail: "Dispositivo reporta conexão disponível" } : { state: "error", detail: "Dispositivo está offline" });
-    patch("runtime", { state: "ok", detail: isTauriApp() ? "Tauri 2 + transporte Rust nativo" : "Web / Cloudflare Pages" });
+
+    if (isTauriApp()) {
+      try {
+        const native = await nativeRuntimeHealth();
+        patch("runtime", native?.status === "ok"
+          ? {
+              state: "ok",
+              detail: `Labstar ${native.appVersion} · ${native.platform}-${native.architecture} · ${native.buildProfile} · ${native.backendTransport}`,
+            }
+          : { state: "error", detail: "O núcleo Tauri não retornou o estado esperado" });
+      } catch {
+        patch("runtime", { state: "error", detail: "A interface abriu, mas o núcleo Tauri não respondeu ao diagnóstico" });
+      }
+    } else {
+      patch("runtime", { state: "ok", detail: "Web · Cloudflare Pages Preview/produção · backend HTTPS remoto" });
+    }
 
     try {
       const live = await backendHealth("/health/live");
@@ -100,7 +131,7 @@ function SystemDiagnostics() {
 
   return (
     <section className="settings-section diagnostics-section">
-      <header><strong>Diagnóstico do sistema</strong><p>Testa as camadas essenciais sem expor tokens, senhas ou chaves.</p></header>
+      <header><strong>Diagnóstico do sistema</strong><p>Testa as camadas essenciais e identifica a versão instalada sem expor tokens, senhas ou chaves.</p></header>
       <div className="settings-section-body">
         <div className="diagnostic-list">{checks.map((check) => <article key={check.id} className={check.state}><span>{check.state === "running" ? <LoaderCircle className="spin" size={15}/> : check.state === "ok" ? <CheckCircle2 size={15}/> : check.state === "error" ? <AlertTriangle size={15}/> : check.id === "network" ? <Wifi size={15}/> : <ShieldCheck size={15}/>}</span><div><strong>{check.label}</strong><small>{check.detail || "Ainda não verificado"}</small></div></article>)}</div>
         <div className="settings-inline-actions"><button type="button" onClick={() => void run()} disabled={running}>{running ? <LoaderCircle className="spin" size={14}/> : <Play size={14}/>} {running ? "Executando diagnóstico" : "Executar diagnóstico"}</button><button type="button" onClick={() => void copy()}><Copy size={14}/> {copied ? "Resumo copiado" : "Copiar resumo seguro"}</button></div>
@@ -112,7 +143,7 @@ function SystemDiagnostics() {
 
 function baseChecks(): DiagnosticCheck[] {
   return [
-    { id: "runtime", label: "Modo do aplicativo", state: "idle", detail: "" },
+    { id: "runtime", label: "Versão e núcleo do aplicativo", state: "idle", detail: "" },
     { id: "network", label: "Rede do dispositivo", state: "idle", detail: "" },
     { id: "api", label: "API Rust", state: "idle", detail: "" },
     { id: "database", label: "Banco / prontidão", state: "idle", detail: "" },
