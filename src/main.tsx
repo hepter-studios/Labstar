@@ -8,6 +8,7 @@ import "./styles.css";
 import "./access-control.css";
 import "./workspace-polish.css";
 import "./direct-messages.css";
+import "./workspace-layout-fix.css";
 
 const BRAND_INTRO_DURATION_MS = 2350;
 
