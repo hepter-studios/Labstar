@@ -21,11 +21,24 @@ export function initials(name: string) {
 
 export function Avatar({ name, url, size = "md", className = "", status }: AvatarProps) {
   const [imageFailed, setImageFailed] = useState(false);
+
   useEffect(() => setImageFailed(false), [url]);
+
   return (
     <span className={`user-avatar user-avatar-${size} ${className}`} aria-label={`Foto de ${name}`}>
-      {url && !imageFailed ? <img src={url} alt="" onError={() => setImageFailed(true)} /> : name ? <b>{initials(name)}</b> : <UserRound size={16} />}
-      {status && <i className={`avatar-status ${status}`} aria-label={status === "online" ? "Disponível" : status === "busy" ? "Ocupado" : "Offline"} />}
+      <span className="avatar-media" aria-hidden="true">
+        {url && !imageFailed
+          ? <img src={url} alt="" onError={() => setImageFailed(true)} />
+          : name
+            ? <b>{initials(name)}</b>
+            : <UserRound size={16} />}
+      </span>
+      {status && (
+        <i
+          className={`avatar-status ${status}`}
+          aria-label={status === "online" ? "Disponível" : status === "busy" ? "Ocupado" : "Offline"}
+        />
+      )}
     </span>
   );
 }
