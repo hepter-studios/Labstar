@@ -3,6 +3,7 @@ set -euo pipefail
 
 ROOT="$(pwd)"
 TOOLS="$ROOT/.cross-tools"
+TARGET="x86_64-pc-windows-msvc"
 NSIS_ROOT="$TOOLS/nsis-root"
 LLVM_ROOT="$TOOLS/llvm-root"
 LLVM_DEBS="$TOOLS/llvm-debs"
@@ -42,7 +43,7 @@ done
 
 for deb in ./*.deb; do dpkg-deb -x "$deb" "$LLVM_ROOT"; done
 
-export PATH="$LLVM_ROOT/usr/bin:$LLVM_ROOT/usr/lib/llvm-$LLVM_VERSION/bin:$PATH"
+export PATH="$LLVM_ROOT/usr/bin:$LLVM_ROOT/usr/lib/llvm-$LLVM_VERSION/bin:$HOME/.cargo/bin:$PATH"
 export LD_LIBRARY_PATH="$LLVM_ROOT/usr/lib/x86_64-linux-gnu:$LLVM_ROOT/usr/lib/llvm-$LLVM_VERSION/lib:${LD_LIBRARY_PATH:-}"
 
 "clang-$LLVM_VERSION" --version
@@ -52,4 +53,19 @@ else
   lld-link --version
 fi
 
-echo "LABSTAR_STAGE_ROOTLESS_LLVM_OK version=$LLVM_VERSION"
+if ! command -v rustup >/dev/null 2>&1; then
+  cd "$TOOLS"
+  curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs -o rustup-init.sh
+  sh rustup-init.sh -y --profile minimal
+  # shellcheck disable=SC1090
+  source "$HOME/.cargo/env"
+fi
+
+rustup toolchain install stable --profile minimal
+rustup default stable
+rustup target add "$TARGET"
+rustc --version
+cargo --version
+rustup target list --installed | grep -F "$TARGET"
+
+echo "LABSTAR_STAGE_RUST_OK llvm=$LLVM_VERSION target=$TARGET"
