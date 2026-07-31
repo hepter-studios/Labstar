@@ -3,13 +3,23 @@ set -euo pipefail
 
 ROOT="$(pwd)"
 TOOLS="$ROOT/.cross-tools"
-LLVM_ROOT="$TOOLS/llvm-root"
+TARGET="x86_64-pc-windows-msvc"
+OUTPUT_DIR="$ROOT/dist/downloads"
 NSIS_ROOT="$TOOLS/nsis-root"
-mkdir -p "$TOOLS/nsis-debs" "$NSIS_ROOT" "$TOOLS/llvm-debs" "$LLVM_ROOT"
+LLVM_ARCHIVE="$TOOLS/clang+llvm-18.1.8-x86_64-linux-gnu-ubuntu-18.04.tar.xz"
+LLVM_DIR="$TOOLS/clang+llvm-18.1.8-x86_64-linux-gnu-ubuntu-18.04"
+LLVM_URL="https://github.com/llvm/llvm-project/releases/download/llvmorg-18.1.8/clang+llvm-18.1.8-x86_64-linux-gnu-ubuntu-18.04.tar.xz"
+LLVM_SHA256="54ec30358afcc9fb8aa74307db3046f5187f9fb89fb37064cdde906e062ebf36"
 
+mkdir -p "$TOOLS/nsis-debs" "$NSIS_ROOT" "$OUTPUT_DIR"
+
+log() { printf '\n[labstar-cross] %s\n' "$*"; }
+
+log "Validando frontend corrigido"
 ./node_modules/.bin/tsc -b
 ./node_modules/.bin/vite build
 
+log "Preparando NSIS local sem sudo"
 if ! command -v makensis >/dev/null 2>&1; then
   cd "$TOOLS/nsis-debs"
   apt-get download nsis nsis-common
@@ -19,16 +29,74 @@ if ! command -v makensis >/dev/null 2>&1; then
 fi
 makensis -VERSION
 
-cd "$TOOLS/llvm-debs"
-apt-get download clang-18 lld-18 libllvm18 libclang-cpp18 libclang-common-18-dev
-for deb in ./*.deb; do dpkg-deb -x "$deb" "$LLVM_ROOT"; done
+log "Baixando LLVM/Clang portátil verificado"
+cd "$TOOLS"
+if [[ ! -x "$LLVM_DIR/bin/clang" || ! -x "$LLVM_DIR/bin/lld-link" ]]; then
+  rm -rf "$LLVM_DIR" "$LLVM_ARCHIVE"
+  curl -fL --retry 3 --retry-delay 2 "$LLVM_URL" -o "$LLVM_ARCHIVE"
+  printf '%s  %s\n' "$LLVM_SHA256" "$LLVM_ARCHIVE" | sha256sum -c -
+  tar -xJf "$LLVM_ARCHIVE"
+fi
+export PATH="$LLVM_DIR/bin:$PATH"
+export LD_LIBRARY_PATH="$LLVM_DIR/lib:${LD_LIBRARY_PATH:-}"
+clang --version
+lld-link --version
 
-export PATH="$LLVM_ROOT/usr/bin:$LLVM_ROOT/usr/lib/llvm-18/bin:$PATH"
-export LD_LIBRARY_PATH="$LLVM_ROOT/usr/lib/x86_64-linux-gnu:$LLVM_ROOT/usr/lib/llvm-18/lib:${LD_LIBRARY_PATH:-}"
+log "Preparando Rust estável"
+export PATH="$HOME/.cargo/bin:$PATH"
+if ! command -v rustup >/dev/null 2>&1; then
+  curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs -o "$TOOLS/rustup-init.sh"
+  sh "$TOOLS/rustup-init.sh" -y --profile minimal
+  # shellcheck disable=SC1090
+  source "$HOME/.cargo/env"
+fi
+rustup toolchain install stable --profile minimal
+rustup default stable
+rustup target add "$TARGET"
+rustc --version
+cargo --version
 
-CLANG_BIN="$(command -v clang-18 || command -v clang)"
-LLD_BIN="$(command -v lld-link-18 || command -v lld-link || command -v ld.lld-18 || command -v ld.lld)"
-"$CLANG_BIN" --version
-"$LLD_BIN" --version
+log "Preparando cargo-xwin"
+export XWIN_CACHE_DIR="$TOOLS/xwin-cache"
+if ! command -v cargo-xwin >/dev/null 2>&1; then
+  cargo install --locked cargo-xwin
+fi
+cargo xwin --version
 
-echo "LABSTAR_LLVM18_READY"
+cd "$ROOT"
+log "Gerando Labstar Windows x64 pelo Tauri 2"
+npx --yes @tauri-apps/cli@2 build \
+  --config src-tauri/tauri.cross.conf.json \
+  --runner cargo-xwin \
+  --target "$TARGET" \
+  --bundles nsis
+
+log "Localizando instalador NSIS"
+INSTALLER="$(find "$ROOT/src-tauri/target/$TARGET/release/bundle/nsis" -maxdepth 1 -type f -name '*setup.exe' -print -quit 2>/dev/null || true)"
+if [[ -z "$INSTALLER" ]]; then
+  INSTALLER="$(find "$ROOT/src-tauri/target/$TARGET/release/bundle/nsis" -maxdepth 1 -type f -name '*.exe' -print -quit 2>/dev/null || true)"
+fi
+if [[ -z "$INSTALLER" || ! -f "$INSTALLER" ]]; then
+  echo "Instalador NSIS não encontrado após o build." >&2
+  exit 44
+fi
+
+cp "$INSTALLER" "$OUTPUT_DIR/Labstar_11.0.0_x64-setup.exe"
+SIZE_BYTES="$(wc -c < "$OUTPUT_DIR/Labstar_11.0.0_x64-setup.exe" | tr -d ' ')"
+SHA256="$(sha256sum "$OUTPUT_DIR/Labstar_11.0.0_x64-setup.exe" | awk '{print $1}')"
+SOURCE_SHA="${CF_PAGES_COMMIT_SHA:-unknown}"
+SOURCE_BRANCH="${CF_PAGES_BRANCH:-build/windows-cross-cloudflare}"
+cat > "$OUTPUT_DIR/build-info.txt" <<EOF
+Labstar 11.0.0
+source_branch=$SOURCE_BRANCH
+source_sha=$SOURCE_SHA
+base_app_sha=034a2b0cf92e6335970be0bfd36d6956822df249
+target=$TARGET
+bundle=nsis
+size_bytes=$SIZE_BYTES
+sha256=$SHA256
+generated_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+EOF
+
+log "Instalador novo pronto: $OUTPUT_DIR/Labstar_11.0.0_x64-setup.exe"
+log "SHA256: $SHA256"
