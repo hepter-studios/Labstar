@@ -1,188 +1,182 @@
 # Labstar
 
-> **Projeto interno e privado.** Este repositório, seus instaladores, documentos e ambientes são destinados somente a colaboradores autorizados. Não publique artefatos, capturas, chaves, links de convite ou informações operacionais fora da equipe.
+> **Projeto interno e privado da Hepter Studios.** Código, documentação, builds, backups, convites e informações operacionais são restritos a colaboradores autorizados.
 
-Labstar é o ambiente operacional privado da Hepter Studios para organizar empresas, produtos, projetos, equipes, comunicação, reuniões, integrações e acessos em uma única aplicação.
+Labstar é uma plataforma privada para organizar empresas, produtos, projetos, equipes, comunicação, reuniões, integrações e acessos em uma única experiência web e desktop.
 
-A arquitetura atual reúne:
-
-- aplicação web/PWA em React;
-- aplicativo desktop em Tauri 2;
-- recursos nativos e validações locais em Rust;
-- backend central em Rust com Axum;
-- Supabase para Auth, PostgreSQL, Storage e Realtime;
-- Fly.io para a API Rust;
-- Cloudflare Pages para a aplicação web.
-
-## Estado atual
+## Estado do projeto
 
 **Versão em teste:** `11.0.0`
 
-| Componente | Estado |
+| Área | Estado atual |
 | --- | --- |
-| Aplicação web/PWA | Em funcionamento na produção atual |
-| Backend Rust | Publicado e conectado ao PostgreSQL |
-| OAuth Google | Configurado |
-| OAuth GitHub | Configurado, ainda exige testes de vinculação de identidade |
-| Convites de uso único | Migrações aplicadas; testes reais em andamento |
-| Aplicativo Windows | EXE e MSI gerados para teste interno |
-| Assinatura digital | Ainda não configurada |
-| Atualizador automático | Ainda não configurado |
-| Liberação para a equipe | **Ainda não autorizada** |
-| Merge dos PRs | **Ainda não autorizado** |
+| Web/PWA | produção atual em Cloudflare Pages |
+| Aplicativo Windows | Tauri 2 com EXE e MSI privados |
+| Backend | API Rust/Axum publicada na Fly.io |
+| Banco e Auth | Supabase PostgreSQL + Auth |
+| Google OAuth | configurado; seletor de contas implementado |
+| GitHub OAuth | configurado; vinculação de segunda identidade ainda pendente |
+| Convites | migrações aplicadas; testes reais em andamento |
+| Troca de conta | corrigida para funcionar até quando a API falha |
+| CORS do desktop | origem oficial do Tauri adicionada ao backend |
+| Atualizador | planejado; aguardando assinatura e chaves definitivas |
+| Assinatura digital | ainda não configurada |
+| Merge/lançamento | **não autorizado até concluir os testes** |
 
-Os endpoints de saúde do backend são:
+## Correção crítica desta rodada
 
-- `https://labstar-api-mackson.fly.dev/health/live`
-- `https://labstar-api-mackson.fly.dev/health/ready`
+O primeiro EXE conseguia abrir o login, mas mostrava `Não foi possível conectar ao backend Rust`.
 
-## Baixar os instaladores privados
+A API estava funcionando no navegador. O problema era o CORS: no Windows, o aplicativo Tauri executa a interface em `http://tauri.localhost`, e o backend permitia a web oficial e localhost de desenvolvimento, mas ainda não essa origem do aplicativo instalado.
 
-Os instaladores não são publicados em páginas públicas e não devem ser adicionados ao histórico Git. Eles são gerados como **Artifacts privados do GitHub Actions**.
+A correção inclui:
 
-### Download recomendado
-
-1. Abra o workflow [Gerar instalador Windows integrado](https://github.com/macksonvictor/Labstar/actions/workflows/build-windows-integrated.yml).
-2. Abra a execução verde mais recente da branch `feat/tauri-auth-rust-integration`.
-3. Confirme que o commit da execução corresponde ao commit mais recente da branch.
-4. Na seção **Artifacts**, baixe um dos pacotes:
-
-| Artefato | Conteúdo | Uso |
-| --- | --- | --- |
-| `labstar-windows-x64-nsis` | Instalador `.exe` dentro de um ZIP | Recomendado para testes comuns no Windows |
-| `labstar-windows-x64-msi` | Instalador `.msi` dentro de um ZIP | Instalação administrativa ou corporativa |
-
-Os Artifacts do GitHub são temporários e exigem acesso ao repositório privado. Para distribuição interna permanente, será criada futuramente uma **Release privada assinada**, somente depois da conclusão dos testes e da assinatura digital.
-
-> Não use um instalador antigo depois de alterações de autenticação, backend, deep link ou segurança. Gere ou baixe a execução verde mais recente.
-
-## Acesso e autenticação
-
-O Google e o GitHub comprovam a identidade da pessoa. A autorização real é decidida pelo backend Rust com base nos membros e convites do banco.
-
-Fluxo atual:
-
-1. a pessoa entra com Google, GitHub ou link por e-mail;
-2. o Supabase valida a identidade;
-3. o aplicativo envia a sessão para a API Rust;
-4. a API consulta o vínculo permanente em `members.auth_user_id`;
-5. somente membros autorizados recebem acesso;
-6. membros pendentes, suspensos ou não cadastrados permanecem bloqueados.
-
-Regras obrigatórias:
-
-- Google deve permitir escolher outra conta;
-- uma conta não autorizada deve poder sair e tentar outra identidade;
-- convites pessoais são presos ao e-mail informado;
-- convites rápidos exigem aprovação administrativa;
-- convite é de uso único, expira e pode ser revogado;
-- convite nunca reativa conta suspensa;
-- somente o proprietário concede nível administrativo;
-- sair da conta não pode apagar um convite pendente antes da troca de identidade.
-
-## Funcionalidades do produto
-
-- empresas, produtos, projetos e equipes em Espaços;
-- categorias e canais de texto, avisos, regras, voz e social;
-- mensagens, respostas, anexos, fixação e visualização de imagens;
-- perfis, avatares, cargos, áreas e permissões;
-- reuniões por voz e vídeo com WebRTC;
-- teste e medidor de microfone com Web Audio API;
-- agendamento, cancelamento e notificações de reuniões;
-- Central de Integrações para GitHub, Discord, suporte, cobrança e monitoramento;
-- PWA responsiva para desktop e dispositivos móveis;
-- aplicativo Windows com Tauri 2 e deep links `labstar://`.
+- `http://tauri.localhost`, `https://tauri.localhost` e `tauri://localhost` autorizados explicitamente;
+- origens HTTP remotas não confiáveis continuam bloqueadas;
+- 30 segundos de tolerância para a API iniciar;
+- uma segunda tentativa apenas para leituras seguras;
+- criação, aceite e revogação de convites nunca são repetidos automaticamente;
+- estados `não autorizado`, `pendente` e `suspenso` tratados separadamente;
+- botão **Entrar com outra conta** em todos os estados bloqueantes e de erro;
+- saída local funcionando sem depender do backend responder;
+- convite pendente preservado durante a troca de conta.
 
 ## Arquitetura
 
 ```text
 React 19 + TypeScript + Vite
             │
-            ├── Interface web/PWA ── Cloudflare Pages
+            ├── Web/PWA ───────────── Cloudflare Pages
             │
-            ├── Aplicativo desktop ── Tauri 2
-            │                          └── Rust nativo
+            ├── Desktop ───────────── Tauri 2
+            │                           └── Rust local
             │
-            ├── Supabase Auth ─────── Google / GitHub / e-mail
+            ├── Identidade ────────── Supabase Auth
+            │                           ├── Google
+            │                           ├── GitHub
+            │                           └── e-mail
             │
-            └── API central Rust ──── Fly.io
-                                       └── PostgreSQL Supabase
+            └── Regras centrais ───── API Rust / Axum / Fly.io
+                                        └── PostgreSQL Supabase
 ```
-
-### Responsabilidades
 
 | Camada | Responsabilidade |
 | --- | --- |
-| React | Interface, navegação e apresentação de estados |
-| Tauri/Rust | Deep links, navegador do sistema, instância única e recursos nativos |
-| API Rust | Autorização, membros, convites e regras críticas de negócio |
-| Supabase Auth | Identidade e sessão |
-| PostgreSQL | Dados, vínculos, estados, auditoria e permissões |
-| Supabase Storage | Arquivos privados e avatares |
-| Supabase Realtime | Mensagens, Presence e Broadcast autorizados |
+| React | interface, navegação e apresentação de estados |
+| Tauri/Rust local | janela, deep links, navegador do sistema, instância única e segurança nativa |
+| API Rust | autorização, membros, convites e regras críticas |
+| Supabase Auth | identidade e sessão |
+| PostgreSQL | vínculos, estados, dados e auditoria |
+| Storage | arquivos privados e avatares |
+| Realtime | mensagens, Presence e Broadcast autorizados |
 
-**React não deve decidir autorização crítica nem manipular diretamente convites protegidos.**
+**React não concede acesso administrativo e não manipula diretamente convites protegidos.**
 
-## Tecnologias
+## Por que Rust ainda não aparece na porcentagem principal do GitHub
 
-- React 19;
-- TypeScript 5;
-- Vite 7;
-- Tauri 2;
-- Rust estável;
-- Axum e Tokio;
-- Supabase Auth, PostgreSQL, Storage e Realtime;
-- WebRTC e Web Audio API;
-- Cloudflare Pages;
-- Fly.io;
-- GitHub Actions.
+O repositório usa `main` como branch padrão. Ela ainda representa a produção web atual e não contém os novos diretórios Rust.
 
-## Estrutura de continuidade
+O Rust está nas branches e PRs de trabalho:
 
-| Recurso | Finalidade |
+- `src-tauri/` em `feat/tauri2-rust-foundation` e `feat/tauri-auth-rust-integration`;
+- `backend/` em `feat/rust-backend-clean`.
+
+O gráfico de linguagens da página principal é calculado a partir da branch padrão. Rust aparecerá corretamente depois da integração segura na `main`; a ausência atual no gráfico não significa ausência de código Rust.
+
+## Serviços
+
+- Web: `https://labstar.pages.dev`
+- API: `https://labstar-api-mackson.fly.dev`
+- Saúde do processo: `https://labstar-api-mackson.fly.dev/health/live`
+- Saúde com banco: `https://labstar-api-mackson.fly.dev/health/ready`
+- Callback desktop: `labstar://auth/callback`
+
+## Baixar os instaladores privados
+
+Os instaladores não são versionados no Git. Eles são gerados como **Artifacts privados**.
+
+1. Abra [Gerar instalador Windows integrado](https://github.com/macksonvictor/Labstar/actions/workflows/build-windows-integrated.yml).
+2. Escolha a execução verde mais recente da branch `feat/tauri-auth-rust-integration`.
+3. Confirme branch e commit exibidos na execução.
+4. Baixe:
+
+| Artifact | Conteúdo | Uso |
+| --- | --- | --- |
+| `labstar-windows-x64-nsis` | instalador `.exe` em ZIP | recomendado para testes comuns |
+| `labstar-windows-x64-msi` | instalador `.msi` em ZIP | instalação administrativa |
+
+Não use o instalador anterior após mudanças em autenticação, CORS, backend, deep link ou segurança.
+
+## Acesso e autorização
+
+Google e GitHub comprovam identidade. A API Rust decide se a identidade pertence à equipe.
+
+Fluxo:
+
+1. Supabase autentica a pessoa;
+2. o aplicativo envia a sessão à API Rust;
+3. a API valida o vínculo `members.auth_user_id = auth.uid()`;
+4. o estado do membro define o resultado;
+5. somente membro ativo autorizado entra.
+
+Estados:
+
+- `active`: acesso normal;
+- `pending`: aguarda aprovação;
+- `suspended`: bloqueado;
+- identidade sem membro: bloqueada;
+- convite pessoal com e-mail diferente: recusado.
+
+Identidade principal do proprietário para o teste atual:
+
+```text
+hepterstudios@gmail.com
+```
+
+A identidade retornada pelo primeiro teste do GitHub, `mackson777@gmail.com`, permanece separada. Ela não pode virar proprietária automaticamente; a vinculação futura deve partir de uma sessão de owner já autorizada e ser auditável.
+
+## Branches e PRs
+
+| Branch | Responsabilidade | PR |
+| --- | --- | --- |
+| `main` | produção web atual | — |
+| `feat/rust-backend-clean` | backend Rust e deploy Fly.io | #5 |
+| `fix/auth-membership-access` | membros, autenticação e convites | #3 |
+| `feat/auth-rust-api-integration` | interface ligada à API | #6 |
+| `feat/tauri2-rust-foundation` | fundação Tauri 2/Rust | #1 |
+| `feat/tauri-auth-rust-integration` | aplicativo integrado e documentação | #7 |
+
+Os PRs são empilhados. Não retargetar, achatar, forçar push ou mesclar sem revisar a ordem.
+
+## Documentação interna
+
+Use [`docs/README.md`](docs/README.md) como índice central.
+
+| Documento | Conteúdo |
 | --- | --- |
-| [`docs/CODEX_HANDOFF.md`](docs/CODEX_HANDOFF.md) | Contexto técnico e limites para o Codex |
-| [Issue #8](https://github.com/macksonvictor/Labstar/issues/8) | Matriz de testes e melhorias pendentes |
-| [PR #7](https://github.com/macksonvictor/Labstar/pull/7) | Integração Tauri, OAuth, convites e API Rust |
-| [PR #5](https://github.com/macksonvictor/Labstar/pull/5) | Backend central Rust |
-| [PR #3](https://github.com/macksonvictor/Labstar/pull/3) | Autenticação e autorização de membros |
-| [PR #1](https://github.com/macksonvictor/Labstar/pull/1) | Fundação Tauri 2 e Rust |
+| [`docs/PROJECT_MAP.md`](docs/PROJECT_MAP.md) | mapa de arquivos, serviços, branches e responsabilidades |
+| [`docs/TEAM_ONBOARDING.md`](docs/TEAM_ONBOARDING.md) | entrada de equipe e Codex |
+| [`docs/ARCHITECTURE_DECISIONS.md`](docs/ARCHITECTURE_DECISIONS.md) | decisões permanentes de arquitetura |
+| [`docs/OPERATIONS.md`](docs/OPERATIONS.md) | diagnóstico, deploy, backup, incidentes e rollback |
+| [`docs/RELEASE_CHECKLIST.md`](docs/RELEASE_CHECKLIST.md) | checklist de release interna e pública |
+| [`docs/UPDATER.md`](docs/UPDATER.md) | atualização automática assinada |
+| [`docs/INTERNATIONAL_RELEASE_ROADMAP.md`](docs/INTERNATIONAL_RELEASE_ROADMAP.md) | caminho até o lançamento internacional |
+| [`docs/CODEX_HANDOFF.md`](docs/CODEX_HANDOFF.md) | estado técnico para continuidade no Codex |
+| [`CONTRIBUTING.md`](CONTRIBUTING.md) | branches, commits, PRs, testes e segurança |
 
-### Branches principais do trabalho
+Tarefas principais:
 
-| Branch | Conteúdo |
-| --- | --- |
-| `main` | Produção web atual |
-| `feat/rust-backend-clean` | Backend Rust publicado na Fly.io |
-| `fix/auth-membership-access` | Fundação de autenticação e membros |
-| `feat/auth-rust-api-integration` | Frontend ligado à API Rust |
-| `feat/tauri2-rust-foundation` | Fundação desktop Tauri 2 |
-| `feat/tauri-auth-rust-integration` | Integração completa usada nos instaladores de teste |
+- [Issue #8 — autenticação, troca de conta e acabamento](https://github.com/macksonvictor/Labstar/issues/8)
+- [Issue #9 — updater assinado e releases privadas](https://github.com/macksonvictor/Labstar/issues/9)
 
-Os PRs são empilhados. Não altere a base, faça rebase, force push ou merge sem revisar a ordem e confirmar todos os testes.
+## Desenvolvimento local
 
-## Workflows do GitHub Actions
-
-| Workflow | Finalidade |
-| --- | --- |
-| `Validar Labstar` | TypeScript e build Vite |
-| `Validar Tauri e Rust` | Formatação, Clippy, testes e build do núcleo desktop |
-| `Validar integração Tauri Auth` | OAuth, frontend e Rust no Windows |
-| `Gerar instalador Windows integrado` | Gera EXE e MSI privados |
-| `Publicar backend Rust na Fly.io` | Publica a API Rust da branch do backend |
-| `Gerar backup manual do Supabase` | Gera backup privado antes de mudanças no banco |
-| `Empacotar migrações de acesso` | Preserva e valida o pacote de migrações |
-
-O instalador integrado é reconstruído quando arquivos relevantes de `src/`, `src-tauri/`, configuração ou dependências mudam. Também pode ser iniciado manualmente pelo botão **Run workflow**.
-
-## Instalação local da interface web
-
-### Requisitos
+Requisitos:
 
 - Node.js 22;
-- npm compatível;
-- acesso autorizado ao repositório;
-- variáveis públicas corretas em `.env.local`.
+- npm;
+- Rust estável para Tauri;
+- acesso ao repositório privado.
 
 ```bash
 git clone https://github.com/macksonvictor/Labstar.git
@@ -190,150 +184,122 @@ cd Labstar
 npm ci
 ```
 
-No Windows PowerShell:
+Windows PowerShell:
 
 ```powershell
 Copy-Item .env.example .env.local
 ```
 
-Em Linux ou macOS:
+Linux/macOS:
 
 ```bash
 cp .env.example .env.local
 ```
 
-Depois:
-
 ```bash
 npm run dev
+npm run build
+npm run preview
 ```
 
-### Comandos
+Para instaladores oficiais de teste, use o GitHub Actions em vez de distribuir builds locais.
 
-```bash
-npm run dev      # desenvolvimento web
-npm run build    # TypeScript + build de produção
-npm run preview  # pré-visualização do diretório dist
-```
+## Variáveis e secrets
 
-Para gerar o aplicativo Windows, prefira o workflow privado do GitHub Actions. Isso mantém Node, Rust, Tauri, variáveis e artefatos reproduzíveis.
+### Públicas no frontend
 
-## Variáveis de ambiente
+- `VITE_SUPABASE_URL`
+- `VITE_SUPABASE_PUBLISHABLE_KEY`
+- `VITE_LABSTAR_API_URL`
 
-### Frontend e Tauri
+Tudo com prefixo `VITE_` é incorporado ao aplicativo e não pode conter segredo.
 
-| Variável | Tipo | Uso |
-| --- | --- | --- |
-| `VITE_SUPABASE_URL` | Pública | URL do projeto Supabase |
-| `VITE_SUPABASE_PUBLISHABLE_KEY` | Pública | Chave publicável usada pelo cliente |
-| `VITE_LABSTAR_API_URL` | Pública | URL HTTPS da API Rust |
+### Backend
 
-Variáveis `VITE_` são incorporadas ao aplicativo e **não podem conter segredos**.
+- `DATABASE_URL`
+- `SUPABASE_URL`
+- `SUPABASE_PUBLISHABLE_KEY`
+- `LABSTAR_ALLOWED_ORIGINS`
+- `LABSTAR_REQUEST_TIMEOUT_SECONDS`
 
-### Backend Rust
-
-| Variável | Armazenamento permitido |
-| --- | --- |
-| `DATABASE_URL` | Fly Secrets e ambiente seguro |
-| `SUPABASE_URL` | Fly Secrets ou configuração segura |
-| `SUPABASE_PUBLISHABLE_KEY` | Fly Secrets ou configuração segura |
-| `LABSTAR_ALLOWED_ORIGINS` | Fly Secrets ou configuração segura |
-
-### Secrets do GitHub usados atualmente
-
-Somente os nomes são documentados. Os valores nunca devem ser escritos em arquivos, issues, PRs, logs ou mensagens.
+### GitHub Actions
 
 - `VITE_SUPABASE_PUBLISHABLE_KEY`
 - `SUPABASE_DATABASE_URL`
 - `FLY_API_TOKEN`
 
-Nunca armazene:
+Nunca versionar:
 
-- `service_role` no frontend;
-- senha do banco no código;
-- Client Secret do Google ou GitHub no repositório;
-- token de sessão em logs;
-- token completo de convite no banco ou em logs;
-- instaladores dentro do histórico Git.
+- senha do banco;
+- `service_role`;
+- OAuth Client Secret;
+- token de sessão;
+- token completo de convite;
+- chave privada do updater;
+- certificado ou senha de assinatura;
+- backups e instaladores.
 
 ## Banco e migrações
 
-Um backup manual foi gerado antes da migração de acesso. As quatro migrações abaixo já foram aplicadas no ambiente atual:
+Um backup manual foi gerado e baixado antes das quatro migrações de acesso:
 
-1. membros e vínculo permanente com Auth;
+1. membros e vínculo Auth;
 2. convites de uso único;
 3. endurecimento da autenticação;
 4. bloqueio do acesso direto do frontend aos convites.
 
-Nenhum SQL deve ser aplicado novamente sem:
+Antes de qualquer SQL futuro:
 
 1. confirmar o ambiente;
-2. gerar um novo backup;
-3. revisar o conteúdo;
+2. gerar e baixar novo backup;
+3. revisar SQL e rollback;
 4. executar uma migração por vez;
-5. validar o resultado antes da próxima.
+5. validar API e acesso após cada etapa.
 
-Os arquivos históricos em `supabase/` preservam a evolução da aplicação e não representam autorização para execução automática.
+## Atualização automática
 
-## Matriz obrigatória antes do merge
+O updater não será ativado com chave temporária. O Tauri exige assinatura dos pacotes.
 
-- proprietário pelo Google;
-- escolha e troca de conta Google;
-- proprietário pelo GitHub após vinculação explícita;
-- membro ativo antigo;
-- segundo login sem novo convite;
-- membro pendente;
-- membro suspenso;
-- identidade não cadastrada;
-- convite rápido;
-- convite pessoal com e-mail correto;
-- convite pessoal com e-mail incorreto;
-- reutilização do mesmo convite;
-- convite expirado;
-- convite revogado;
-- aplicativo fechado durante callback;
-- aplicativo aberto durante callback;
-- instalação e remoção pelo EXE;
-- instalação e remoção pelo MSI;
-- imagens dos Espaços sem distorção;
-- avatar e indicador online sem recorte;
-- telas em `1024×640`, `1366×768`, `1440×900` e `1920×1080`.
+Antes da ativação:
 
-A lista operacional permanece na [Issue #8](https://github.com/macksonvictor/Labstar/issues/8).
+- certificado de assinatura do Windows;
+- par de chaves definitivo do updater;
+- backup seguro da chave privada;
+- endpoint HTTPS;
+- Release privada;
+- teste de atualização e rollback.
 
-## Publicação e distribuição
+Plano completo: [`docs/UPDATER.md`](docs/UPDATER.md).
 
-### Web
+## Próximos testes obrigatórios
 
-A produção web atual usa Cloudflare Pages. Alterações nas branches de integração não devem substituir a produção antes da aprovação.
+- instalar o novo EXE gerado após a correção CORS;
+- entrar pelo Google com `hepterstudios@gmail.com`;
+- testar seletor e troca de conta;
+- confirmar que troca funciona com a API indisponível;
+- testar membro ativo, pendente, suspenso e não cadastrado;
+- testar convite rápido e pessoal;
+- testar reutilização, expiração e revogação;
+- testar callback com aplicativo fechado e aberto;
+- testar EXE e MSI;
+- corrigir imagens, avatar e indicador online;
+- validar `1024×640`, `1366×768`, `1440×900` e `1920×1080`.
 
-### Windows
+## Lançamento internacional
 
-O EXE e o MSI atuais são candidatos de teste sem assinatura digital. O Windows pode exibir aviso de editor desconhecido.
+O lançamento internacional exige mais do que traduzir a interface:
 
-Antes da distribuição para a equipe:
+- i18n estrutural;
+- datas, números, moedas e fusos;
+- assinatura e updater;
+- observabilidade e suporte;
+- isolamento multiempresa;
+- segurança, backup e restauração;
+- LGPD/GDPR e documentação jurídica;
+- infraestrutura e testes globais.
 
-1. concluir a matriz de testes;
-2. corrigir os problemas encontrados;
-3. definir a ordem dos merges;
-4. configurar assinatura digital;
-5. configurar o updater;
-6. gerar uma Release privada;
-7. validar instalação limpa e atualização.
+Plano: [`docs/INTERNATIONAL_RELEASE_ROADMAP.md`](docs/INTERNATIONAL_RELEASE_ROADMAP.md).
 
-## Segurança
+## Regra final
 
-- o repositório permanece privado;
-- somente colaboradores autorizados recebem acesso;
-- RLS permanece habilitado nas tabelas privadas;
-- arquivos permanecem em bucket privado com URLs assinadas;
-- a API Rust centraliza autorização e regras críticas;
-- senhas e tokens ficam somente em serviços de secrets;
-- backups não são versionados no repositório;
-- Artifacts e instaladores não substituem backup do código ou do banco;
-- nenhuma conta recebe privilégios por coincidência de nome ou por login social;
-- vinculação de uma segunda identidade deve exigir uma sessão proprietária já autorizada.
-
-## Regra de trabalho
-
-> **Não fazer merge, publicar uma nova produção ou distribuir o instalador para a equipe até que os testes reais estejam concluídos e documentados.**
+> **Não fazer merge, substituir a produção ou distribuir o aplicativo para a equipe antes da CI verde, do novo instalador e da matriz de testes reais documentada.**
