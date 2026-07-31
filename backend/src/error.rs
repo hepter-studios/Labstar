@@ -52,10 +52,20 @@ struct ErrorPayload {
 impl IntoResponse for ApiError {
     fn into_response(self) -> Response {
         let (status, code, message) = match self {
-            Self::Authentication(_) => (
+            Self::Authentication(AuthError::MissingToken | AuthError::InvalidToken) => (
                 StatusCode::UNAUTHORIZED,
                 "authentication_failed",
                 "A sessão é inválida ou expirou.",
+            ),
+            Self::Authentication(AuthError::ServiceUnavailable) => (
+                StatusCode::SERVICE_UNAVAILABLE,
+                "authentication_service_unavailable",
+                "O serviço de identidade está temporariamente indisponível.",
+            ),
+            Self::Authentication(AuthError::InvalidUserPayload) => (
+                StatusCode::BAD_GATEWAY,
+                "authentication_invalid_response",
+                "O serviço de identidade respondeu em um formato inesperado.",
             ),
             Self::MemberNotAuthorized => (
                 StatusCode::FORBIDDEN,
