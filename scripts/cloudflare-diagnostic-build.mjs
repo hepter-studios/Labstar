@@ -17,38 +17,37 @@ function run(label, args) {
   };
 }
 
-function publishDiagnostic(result) {
+function publishProbe(label) {
   mkdirSync("dist", { recursive: true });
-  const text = [
-    `LABSTAR BUILD DIAGNOSTIC`,
-    `stage=${result.label}`,
-    `status=${String(result.status)}`,
-    `signal=${String(result.signal ?? "")}`,
-    result.error ? `error=${result.error}` : "",
-    "--- STDOUT ---",
-    result.stdout,
-    "--- STDERR ---",
-    result.stderr,
-  ].filter(Boolean).join("\n");
-  writeFileSync("dist/build-diagnostic.txt", text, "utf8");
-  writeFileSync(
-    "dist/index.html",
-    "<!doctype html><meta charset=\"utf-8\"><title>Labstar build diagnostic</title><body style=\"background:#05070d;color:#dce5f4;font:16px system-ui;padding:32px\"><h1>Labstar — diagnóstico de build</h1><p>Arquivo temporário de diagnóstico. A interface normal será restaurada após a correção.</p></body>",
-    "utf8",
-  );
+  writeFileSync("dist/index.html", `<!doctype html><meta charset="utf-8"><title>${label}</title><body>${label}</body>`, "utf8");
 }
 
 const typecheck = run("typescript", ["node_modules/typescript/bin/tsc", "-b"]);
 if (typecheck.status !== 0) {
-  publishDiagnostic(typecheck);
-  process.exit(0);
+  const output = `${typecheck.stdout}\n${typecheck.stderr}`;
+  const groupA = [
+    "DirectMessagesHubV3.tsx",
+    "DirectMessagesHubV4.tsx",
+    "DirectMessagesHubV5.tsx",
+    "GlobalSettings.tsx",
+    "GlobalSettingsPortal.tsx",
+    "WorkspaceSettingsCenter.tsx",
+    "WorkspaceSettingsPortal.tsx",
+    "SystemDiagnostics.tsx",
+    "MemberQuickActions.tsx",
+    "MemberPanelTools.tsx",
+    "WorkspaceQuickMenus.tsx"
+  ];
+  const matched = groupA.some((name) => output.includes(name));
+  if (matched) {
+    publishProbe("LABSTAR_DIAGNOSTIC_GROUP_A");
+    process.exit(0);
+  }
+  process.stderr.write(output);
+  process.exit(1);
 }
 
 const vite = run("vite", ["node_modules/vite/bin/vite.js", "build"]);
-if (vite.status !== 0) {
-  publishDiagnostic(vite);
-  process.exit(0);
-}
-
 process.stdout.write(vite.stdout);
 process.stderr.write(vite.stderr);
+process.exit(vite.status ?? 1);
