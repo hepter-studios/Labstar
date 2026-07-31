@@ -1,6 +1,12 @@
 import { Bell, BellRing, CheckCheck, LoaderCircle, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import {
+  DEFAULT_APP_SETTINGS,
+  loadAppSettings,
+  subscribeToAppSettings,
+  type AppSettings,
+} from "../lib/app-settings";
+import {
   listNotifications,
   markAllNotificationsRead,
   markNotificationRead,
@@ -14,13 +20,63 @@ export function NotificationsButton({ member, onOpenChannel }: { member: Member;
   const [open, setOpen] = useState(false);
   const [notifications, setNotifications] = useState<LabstarNotification[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
   const wrapRef = useRef<HTMLDivElement>(null);
+  const knownIds = useRef<Set<string>>(new Set());
+  const settingsRef = useRef<AppSettings>(DEFAULT_APP_SETTINGS);
 
-  async function refresh() {
+  useEffect(() => {
+    let cancelled = false;
+    void loadAppSettings().then((settings) => {
+      if (!cancelled) settingsRef.current = settings;
+    });
+    const unsubscribeSettings = subscribeToAppSettings((settings) => {
+      settingsRef.current = settings;
+    });
+    return () => {
+      cancelled = true;
+      unsubscribeSettings();
+    };
+  }, []);
+
+  function mayNotify(item: LabstarNotification) {
+    const settings = settingsRef.current;
+    if (!settings.desktopNotifications || !("Notification" in window) || Notification.permission !== "granted") return false;
+    if (document.visibilityState === "visible") return false;
+    const isMention = /menç|mencion|@/i.test(`${item.title} ${item.body}`);
+    return !isMention || settings.mentionNotifications;
+  }
+
+  function showDeviceNotification(item: LabstarNotification) {
+    if (!mayNotify(item)) return;
     try {
-      setNotifications(await listNotifications(member.id));
+      const notification = new Notification(item.title || "Labstar", {
+        body: item.body,
+        tag: `labstar-${item.id}`,
+      });
+      notification.onclick = () => {
+        window.focus();
+        if (item.channelId) onOpenChannel(item.channelId);
+        notification.close();
+      };
     } catch {
-      setNotifications([]);
+      // A notificação interna continua disponível mesmo se o SO recusar a nativa.
+    }
+  }
+
+  async function refresh(notifyNew = false) {
+    try {
+      const data = await listNotifications(member.id);
+      if (notifyNew) {
+        for (const item of data) {
+          if (!item.isRead && !knownIds.current.has(item.id)) showDeviceNotification(item);
+        }
+      }
+      knownIds.current = new Set(data.map((item) => item.id));
+      setNotifications(data);
+      setError("");
+    } catch {
+      setError("Não foi possível sincronizar as notificações agora.");
     } finally {
       setLoading(false);
     }
@@ -31,8 +87,8 @@ export function NotificationsButton({ member, onOpenChannel }: { member: Member;
       setLoading(false);
       return;
     }
-    void refresh();
-    const subscription = subscribeToTable("notifications", `recipient_id=eq.${member.id}`, () => void refresh());
+    void refresh(false);
+    const subscription = subscribeToTable("notifications", `recipient_id=eq.${member.id}`, () => void refresh(true));
     return () => unsubscribe(subscription);
   }, [member.id]);
 
@@ -54,6 +110,26 @@ export function NotificationsButton({ member, onOpenChannel }: { member: Member;
 
   const unread = notifications.filter((item) => !item.isRead).length;
 
+  async function markAll() {
+    try {
+      await markAllNotificationsRead(member.id);
+      await refresh(false);
+    } catch {
+      setError("Não foi possível marcar as notificações como lidas.");
+    }
+  }
+
+  async function openNotification(notification: LabstarNotification) {
+    try {
+      if (!notification.isRead) await markNotificationRead(notification.id);
+      if (notification.channelId) onOpenChannel(notification.channelId);
+      setOpen(false);
+      await refresh(false);
+    } catch {
+      setError("Não foi possível abrir esta notificação.");
+    }
+  }
+
   return (
     <div ref={wrapRef} className="notifications-wrap">
       <button className={`icon-button notification-button ${open ? "active" : ""}`} onClick={() => setOpen((value) => !value)} aria-label="Notificações">
@@ -62,16 +138,12 @@ export function NotificationsButton({ member, onOpenChannel }: { member: Member;
       </button>
       {open && (
         <section className="notifications-panel">
-          <header><div><strong>Notificações</strong><small>{unread ? `${unread} não lida${unread === 1 ? "" : "s"}` : "Tudo em dia"}</small></div><button onClick={() => setOpen(false)}><X size={15} /></button></header>
-          {unread > 0 && <button className="mark-all" onClick={async () => { await markAllNotificationsRead(member.id); await refresh(); }}><CheckCheck size={14} /> Marcar tudo como lido</button>}
+          <header><div><strong>Notificações</strong><small>{unread ? `${unread} não lida${unread === 1 ? "" : "s"}` : "Tudo em dia"}</small></div><button type="button" onClick={() => setOpen(false)} aria-label="Fechar notificações"><X size={15} /></button></header>
+          {error && <div className="notifications-error"><span>{error}</span><button type="button" onClick={() => void refresh(false)}>Tentar novamente</button></div>}
+          {unread > 0 && <button className="mark-all" type="button" onClick={() => void markAll()}><CheckCheck size={14} /> Marcar tudo como lido</button>}
           <div className="notifications-list">
             {loading ? <span className="notifications-loading"><LoaderCircle className="spin" /> Carregando</span> : notifications.map((notification) => (
-              <button key={notification.id} className={notification.isRead ? "" : "unread"} onClick={async () => {
-                if (!notification.isRead) await markNotificationRead(notification.id);
-                if (notification.channelId) onOpenChannel(notification.channelId);
-                setOpen(false);
-                await refresh();
-              }}>
+              <button key={notification.id} type="button" className={notification.isRead ? "" : "unread"} onClick={() => void openNotification(notification)}>
                 <i />
                 <span><b>{notification.title}</b><p>{notification.body}</p><time>{new Date(notification.createdAt).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })}</time></span>
               </button>
