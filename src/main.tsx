@@ -5,6 +5,7 @@ import { AccessControl } from "./components/AccessControl";
 import { AppSessionRecovery } from "./components/AppSessionRecovery";
 import { GlobalSettingsPortal } from "./components/GlobalSettingsPortal";
 import { InstallApp } from "./components/InstallApp";
+import { LegacyActionBridge } from "./components/LegacyActionBridge";
 import { MediaPreferenceBridge } from "./components/MediaPreferenceBridge";
 import { MemberQuickActions } from "./components/MemberQuickActions";
 import { RuntimeReliability } from "./components/RuntimeReliability";
@@ -45,6 +46,7 @@ function RootSurfaces() {
     <>
       <App />
       <SafetyGuards />
+      <LegacyActionBridge />
       <RuntimeReliability />
       <MediaPreferenceBridge />
       <AppSessionRecovery />
