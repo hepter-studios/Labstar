@@ -1,4 +1,4 @@
-import { Copy, MessageSquare, UserRoundSearch, X } from "lucide-react";
+import { Copy, MessageSquare, Users, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { listMembers, type Member } from "../lib/supabase";
 import { Avatar } from "./Avatar";
@@ -92,7 +92,7 @@ export function MemberQuickActions() {
       <div className="member-quick-actions">
         <button type="button" onClick={() => { openDirectMessage(menu.member); setMenu(null); }}><MessageSquare size={14}/> Mensagem</button>
         <button type="button" onClick={() => { void navigator.clipboard.writeText(menu.member.email); setMenu(null); }}><Copy size={14}/> Copiar e-mail</button>
-        <button type="button" onClick={() => { document.querySelector<HTMLButtonElement>('button[aria-label="Equipe"]')?.click(); setMenu(null); }}><UserRoundSearch size={14}/> Abrir na Equipe</button>
+        <button type="button" onClick={() => { document.querySelector<HTMLButtonElement>('button[aria-label="Equipe"]')?.click(); setMenu(null); }}><Users size={14}/> Abrir na Equipe</button>
       </div>
     </aside>
   );
