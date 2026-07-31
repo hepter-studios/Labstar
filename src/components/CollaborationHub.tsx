@@ -21,6 +21,17 @@ export function CollaborationHub({ member, initialChannelId, soundEnabled = true
     setSurface("workspace");
   }, [initialChannelId]);
 
+  useEffect(() => {
+    const shortcuts = (event: KeyboardEvent) => {
+      if (!(event.ctrlKey || event.metaKey) || event.key.toLocaleLowerCase() !== "k") return;
+      event.preventDefault();
+      const selector = surface === "direct" ? ".dm-search input" : ".channel-search input";
+      document.querySelector<HTMLInputElement>(selector)?.focus();
+    };
+    window.addEventListener("keydown", shortcuts);
+    return () => window.removeEventListener("keydown", shortcuts);
+  }, [surface]);
+
   if (surface === "direct") {
     return (
       <DirectMessagesHub
