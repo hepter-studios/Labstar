@@ -48,7 +48,7 @@
   display: none !important;
 }
 
-/* Nebulosas discretas, sem competir com texto e controles. */
+/* Nebulosas: trilhas longas e suaves, não manchas redondas. */
 .direct-hub,
 .collaboration-server-mode {
   background-color: #04070d;
@@ -58,15 +58,19 @@
 .collaboration-server-mode::after {
   content: "";
   position: absolute;
-  inset: 0;
+  inset: -18%;
   z-index: 0;
   pointer-events: none;
-  opacity: .56;
+  opacity: .54;
+  transform: rotate(-11deg) scale(1.04);
+  transform-origin: center;
   background:
-    radial-gradient(58% 36% at 92% 19%, rgba(28,92,191,.115), transparent 68%),
-    radial-gradient(42% 58% at 67% 72%, rgba(19,74,164,.075), transparent 72%),
-    radial-gradient(38% 28% at 20% 82%, rgba(37,96,180,.055), transparent 74%);
-  filter: saturate(.9);
+    radial-gradient(ellipse 8% 48% at 68% 50%, rgba(37,101,206,.12), transparent 70%),
+    radial-gradient(ellipse 5% 39% at 66% 53%, rgba(73,139,243,.075), transparent 72%),
+    radial-gradient(ellipse 12% 55% at 73% 47%, rgba(16,61,137,.085), transparent 74%),
+    radial-gradient(ellipse 7% 34% at 39% 67%, rgba(32,94,190,.055), transparent 72%),
+    radial-gradient(ellipse 4% 25% at 42% 63%, rgba(91,154,255,.035), transparent 75%);
+  filter: saturate(.9) blur(.15px);
 }
 
 .direct-hub > * {
@@ -89,17 +93,17 @@
 
 .dm-home-main {
   background:
-    radial-gradient(46% 32% at 72% 62%, rgba(28,86,180,.065), transparent 72%),
+    radial-gradient(46% 32% at 72% 62%, rgba(28,86,180,.055), transparent 72%),
     linear-gradient(160deg,rgba(7,11,17,.94),rgba(7,12,20,.91)) !important;
 }
 
 .dm-inbox {
   background:
-    radial-gradient(54% 32% at 82% 30%, rgba(30,88,185,.055), transparent 76%),
+    radial-gradient(54% 32% at 82% 30%, rgba(30,88,185,.045), transparent 76%),
     linear-gradient(180deg,#090d14,#06090e) !important;
 }
 
-/* Estrela Labstar: gira, para, gira, para. Só em estados de carregamento de seção/tela. */
+/* Estrela Labstar: gira, para, gira, para. Só em estados de carregamento. */
 @keyframes labstar-loading-turn-pause {
   0%, 12% { transform: rotate(0deg) scale(.96); }
   42% { transform: rotate(360deg) scale(1); }
@@ -110,6 +114,7 @@
 .dm-loading,
 .dm-thread-loading,
 .team-loading,
+.collab-loading,
 .access-v2-card.compact {
   position: relative;
 }
@@ -117,6 +122,7 @@
 .dm-loading > .spin,
 .dm-thread-loading > .spin,
 .team-loading > .spin,
+.collab-loading > .spin,
 .access-v2-card.compact > .spin {
   display: none !important;
 }
@@ -124,6 +130,7 @@
 .dm-loading::before,
 .dm-thread-loading::before,
 .team-loading::before,
+.collab-loading::before,
 .access-v2-card.compact::before {
   content: "";
   width: 30px;
@@ -136,17 +143,37 @@
   transform-origin: 50% 50%;
 }
 
-.dm-loading::before {
+.dm-loading::before,
+.collab-loading::before {
   width: 38px;
   height: 38px;
   margin-bottom: 2px;
+}
+
+.sync-state.carregando .spin,
+.sync-state.salvando .spin {
+  display: none !important;
+}
+
+.sync-state.carregando::before,
+.sync-state.salvando::before {
+  content: "";
+  width: 13px;
+  height: 13px;
+  flex: 0 0 13px;
+  background: url('/labstar-loading-star.svg') center / contain no-repeat;
+  filter: drop-shadow(0 0 4px rgba(94,142,255,.2));
+  animation: labstar-loading-turn-pause 2.65s cubic-bezier(.58,.06,.35,.98) infinite;
 }
 
 @media (prefers-reduced-motion: reduce) {
   .dm-loading::before,
   .dm-thread-loading::before,
   .team-loading::before,
-  .access-v2-card.compact::before {
+  .collab-loading::before,
+  .access-v2-card.compact::before,
+  .sync-state.carregando::before,
+  .sync-state.salvando::before {
     animation: none;
   }
 }
