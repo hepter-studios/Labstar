@@ -88,6 +88,7 @@ export function AccessControl() {
 
   const refresh = useCallback(async () => {
     setStage("loading");
+    setIdentity(null);
     setError("");
     try {
       const token = getPendingInviteToken();
@@ -95,7 +96,6 @@ export function AccessControl() {
 
       const result = await getCurrentAccessIdentity();
       if (!result) {
-        setIdentity(null);
         setStage("anonymous");
         return;
       }
@@ -106,15 +106,7 @@ export function AccessControl() {
       }
 
       setIdentity(result);
-      if (!result.member) {
-        setStage("unauthorized");
-      } else if (result.member.status === "suspended") {
-        setStage("suspended");
-      } else if (result.member.status === "pending") {
-        setStage("pending");
-      } else {
-        setStage("active");
-      }
+      setStage(result.authorization);
     } catch (cause) {
       setError(accessErrorMessage(cause));
       setStage("error");
@@ -134,26 +126,26 @@ export function AccessControl() {
 
   if (stage === "loading") return <AccessLoading />;
   if (stage === "anonymous") return <SignInScreen inspection={inspection} />;
-  if (stage === "pending" && identity?.member) {
+  if (stage === "pending" && identity) {
     return (
       <AccessFrame>
         <span className="access-v2-icon amber"><Clock3 size={22} /></span>
         <small>APROVAÇÃO PENDENTE</small>
         <h1>Seu acesso está aguardando confirmação.</h1>
-        <p>Olá, <b>{identity.member.name}</b>. Sua identidade foi confirmada. Um administrador precisa liberar o convite rápido antes de você entrar.</p>
-        <div className="access-v2-identity"><b>{identity.member.email}</b><span>Conta vinculada com segurança</span></div>
+        <p>Sua identidade foi confirmada. Um administrador precisa liberar o convite rápido antes de você entrar.</p>
+        <div className="access-v2-identity"><b>{identity.user.email ?? "conta sem e-mail confirmado"}</b><span>Conta identificada com segurança</span></div>
         <button className="access-v2-secondary" type="button" onClick={() => void secureSignOut()}><LogOut size={15} /> Entrar com outra conta</button>
       </AccessFrame>
     );
   }
-  if (stage === "suspended" && identity?.member) {
+  if (stage === "suspended" && identity) {
     return (
       <AccessFrame>
         <span className="access-v2-icon red"><LockKeyhole size={22} /></span>
         <small>CONTA SUSPENSA</small>
         <h1>Este acesso foi suspenso.</h1>
-        <p>A conta <b>{identity.member.email}</b> continua identificada, mas não pode abrir dados da equipe.</p>
-        <button className="access-v2-secondary" type="button" onClick={() => void secureSignOut()}><LogOut size={15} /> Desconectar</button>
+        <p>A conta <b>{identity.user.email ?? "conta sem e-mail confirmado"}</b> continua identificada, mas não pode abrir dados da equipe.</p>
+        <button className="access-v2-secondary" type="button" onClick={() => void secureSignOut()}><LogOut size={15} /> Entrar com outra conta</button>
       </AccessFrame>
     );
   }
@@ -177,7 +169,8 @@ export function AccessControl() {
       <p>{error || "O serviço de identidade não respondeu como esperado."}</p>
       <div className="access-v2-actions">
         <button type="button" onClick={() => void refresh()}><RotateCcw size={15} /> Tentar novamente</button>
-        {getPendingInviteToken() && <button className="access-v2-secondary" type="button" onClick={() => { clearPendingInviteToken(); window.location.assign("/"); }}>Remover convite</button>}
+        <button className="access-v2-secondary" type="button" onClick={() => void secureSignOut()}><LogOut size={15} /> Entrar com outra conta</button>
+        {getPendingInviteToken() && <button className="access-v2-secondary" type="button" onClick={() => { clearPendingInviteToken(); window.location.replace("/"); }}>Remover convite</button>}
       </div>
     </AccessFrame>
   );
