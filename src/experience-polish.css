@@ -103,22 +103,22 @@
     linear-gradient(180deg,#090d14,#06090e) !important;
 }
 
-/* Estrela Labstar: volta 3D, pausa, volta 3D, pausa. Só em carregamentos. */
-@keyframes labstar-loading-turn-pause {
+/* Estrela Labstar: giro 2D, pausa, giro 2D, pausa. Só em carregamentos. */
+@keyframes labstar-loading-spin-pause {
   0%, 8% {
-    transform: perspective(620px) rotateX(-7deg) rotateY(0deg) scale(.96);
+    transform: rotate(0deg) scale(.96);
   }
   30% {
-    transform: perspective(620px) rotateX(5deg) rotateY(360deg) scale(1);
+    transform: rotate(360deg) scale(1);
   }
   31%, 54% {
-    transform: perspective(620px) rotateX(0deg) rotateY(360deg) scale(1);
+    transform: rotate(360deg) scale(1);
   }
   78% {
-    transform: perspective(620px) rotateX(-5deg) rotateY(720deg) scale(1);
+    transform: rotate(720deg) scale(1);
   }
   79%, 100% {
-    transform: perspective(620px) rotateX(0deg) rotateY(720deg) scale(.96);
+    transform: rotate(720deg) scale(.96);
   }
 }
 
@@ -130,7 +130,6 @@
 .sync-state.carregando,
 .sync-state.salvando {
   position: relative;
-  perspective: 620px;
 }
 
 .dm-loading > .spin,
@@ -153,10 +152,8 @@
   display: block;
   background: url('/labstar-loading-star.svg') center / contain no-repeat;
   filter: drop-shadow(0 0 5px rgba(94,142,255,.18));
-  animation: labstar-loading-turn-pause 4.1s cubic-bezier(.45,.05,.22,1) infinite;
+  animation: labstar-loading-spin-pause 4.1s cubic-bezier(.45,.05,.22,1) infinite;
   transform-origin: 50% 50%;
-  transform-style: preserve-3d;
-  backface-visibility: visible;
   will-change: transform;
 }
 
@@ -180,10 +177,8 @@
   flex: 0 0 13px;
   background: url('/labstar-loading-star.svg') center / contain no-repeat;
   filter: drop-shadow(0 0 3px rgba(94,142,255,.16));
-  animation: labstar-loading-turn-pause 4.1s cubic-bezier(.45,.05,.22,1) infinite;
+  animation: labstar-loading-spin-pause 4.1s cubic-bezier(.45,.05,.22,1) infinite;
   transform-origin: 50% 50%;
-  transform-style: preserve-3d;
-  backface-visibility: visible;
 }
 
 @media (prefers-reduced-motion: reduce) {
