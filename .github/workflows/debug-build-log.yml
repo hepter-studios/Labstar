@@ -1,0 +1,35 @@
+name: Diagnosticar build Labstar
+
+on:
+  push:
+    branches:
+      - feat/tauri-auth-rust-integration
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Capturar saída do build
+        shell: bash
+        run: |
+          set +e
+          npm run build > build.log 2>&1
+          echo $? > build.exit
+          cat build.log
+          exit 0
+      - name: Guardar diagnóstico
+        uses: actions/upload-artifact@v4
+        with:
+          name: labstar-build-diagnostic
+          path: |
+            build.log
+            build.exit
