@@ -23,6 +23,11 @@ jobs:
     timeout-minutes: 50
     environment: production
 
+    env:
+      API_URL: https://labstar-api-mackson.fly.dev
+      TAURI_ORIGIN: http://tauri.localhost
+      UNTRUSTED_ORIGIN: http://example.com
+
     steps:
       - name: Baixar código
         uses: actions/checkout@v4
@@ -56,6 +61,62 @@ jobs:
           --wait-timeout 10m
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
+      - name: Confirmar saúde da versão publicada
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error \
+            --retry 8 --retry-all-errors --retry-delay 5 \
+            --connect-timeout 20 --max-time 60 \
+            "$API_URL/health/live" | tee live.json
+          grep -q '"status":"ok"' live.json
+
+          curl --fail --silent --show-error \
+            --retry 8 --retry-all-errors --retry-delay 5 \
+            --connect-timeout 20 --max-time 60 \
+            "$API_URL/health/ready" | tee ready.json
+          grep -q '"status":"ready"' ready.json
+
+      - name: Confirmar CORS do aplicativo Tauri
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error \
+            --retry 5 --retry-all-errors --retry-delay 3 \
+            --connect-timeout 20 --max-time 60 \
+            --dump-header tauri-headers.txt \
+            --output /dev/null \
+            --request OPTIONS \
+            --header "Origin: $TAURI_ORIGIN" \
+            --header "Access-Control-Request-Method: GET" \
+            --header "Access-Control-Request-Headers: authorization,content-type" \
+            "$API_URL/v1/me"
+
+          tr -d '\r' < tauri-headers.txt > tauri-headers-normalized.txt
+          grep -Eiq '^access-control-allow-origin:[[:space:]]*http://tauri\.localhost[[:space:]]*$' tauri-headers-normalized.txt
+          grep -Eiq '^access-control-allow-methods:.*GET' tauri-headers-normalized.txt
+          grep -Eiq '^access-control-allow-headers:.*authorization' tauri-headers-normalized.txt
+
+      - name: Confirmar bloqueio de origem não confiável
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --silent --show-error \
+            --connect-timeout 20 --max-time 60 \
+            --dump-header untrusted-headers.txt \
+            --output /dev/null \
+            --request OPTIONS \
+            --header "Origin: $UNTRUSTED_ORIGIN" \
+            --header "Access-Control-Request-Method: GET" \
+            --header "Access-Control-Request-Headers: authorization,content-type" \
+            "$API_URL/v1/me"
+
+          tr -d '\r' < untrusted-headers.txt > untrusted-headers-normalized.txt
+          if grep -Eiq '^access-control-allow-origin:[[:space:]]*http://example\.com[[:space:]]*$' untrusted-headers-normalized.txt; then
+            echo "A API autorizou uma origem HTTP remota não confiável."
+            exit 1
+          fi
 
       - name: Diagnosticar estado da Fly.io
         if: always()
