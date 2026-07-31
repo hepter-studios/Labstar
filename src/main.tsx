@@ -10,6 +10,7 @@ import { MemberQuickActions } from "./components/MemberQuickActions";
 import { RuntimeReliability } from "./components/RuntimeReliability";
 import { SafetyGuards } from "./components/SafetyGuards";
 import { SystemDiagnosticsAddon } from "./components/SystemDiagnostics";
+import { WorkspaceQuickMenus } from "./components/WorkspaceQuickMenus";
 import { WorkspaceSettingsPortal } from "./components/WorkspaceSettingsPortal";
 import { applyAppSettings, loadAppSettings } from "./lib/app-settings";
 import { prewarmRustBackend } from "./lib/backend-prewarm";
@@ -27,6 +28,7 @@ import "./workspace-settings.css";
 import "./runtime-reliability.css";
 import "./member-quick-actions.css";
 import "./system-diagnostics.css";
+import "./workspace-quick-menus.css";
 
 const BRAND_INTRO_DURATION_MS = 2350;
 
@@ -51,6 +53,7 @@ function RootSurfaces() {
       {introFinished && <SystemDiagnosticsAddon />}
       {introFinished && <WorkspaceSettingsPortal />}
       {introFinished && <MemberQuickActions />}
+      {introFinished && <WorkspaceQuickMenus />}
       {introFinished && <InstallApp />}
     </>
   );
