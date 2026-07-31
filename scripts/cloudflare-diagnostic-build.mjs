@@ -12,15 +12,13 @@ function publishProbe(label) {
 const typecheck = run("typescript", ["node_modules/typescript/bin/tsc", "-b"]);
 if (typecheck.status !== 0) {
   const output = `${typecheck.stdout}\n${typecheck.stderr}`;
-  const groupA1 = [
-    "DirectMessagesHubV3.tsx",
-    "DirectMessagesHubV4.tsx",
-    "DirectMessagesHubV5.tsx",
-    "GlobalSettings.tsx",
-    "GlobalSettingsPortal.tsx"
+  const groupA2a = [
+    "WorkspaceSettingsCenter.tsx",
+    "WorkspaceSettingsPortal.tsx",
+    "SystemDiagnostics.tsx"
   ];
-  if (groupA1.some((name) => output.includes(name))) {
-    publishProbe("LABSTAR_DIAGNOSTIC_GROUP_A1");
+  if (groupA2a.some((name) => output.includes(name))) {
+    publishProbe("LABSTAR_DIAGNOSTIC_GROUP_A2A");
     process.exit(0);
   }
   process.stderr.write(output);
