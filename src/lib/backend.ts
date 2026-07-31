@@ -45,7 +45,10 @@ type BackendErrorBody = {
   };
 };
 
-const configuredUrl = (import.meta.env.VITE_LABSTAR_API_URL ?? "").trim().replace(/\/+$/, "");
+const DEFAULT_RUST_BACKEND_URL = "https://labstar-api-mackson.fly.dev";
+const configuredUrl = (import.meta.env.VITE_LABSTAR_API_URL ?? DEFAULT_RUST_BACKEND_URL)
+  .trim()
+  .replace(/\/+$/, "");
 
 export const isRustBackendConfigured = /^https:\/\//.test(configuredUrl)
   || /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(configuredUrl);
