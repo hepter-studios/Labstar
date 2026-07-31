@@ -103,20 +103,34 @@
     linear-gradient(180deg,#090d14,#06090e) !important;
 }
 
-/* Estrela Labstar: gira, para, gira, para. Só em estados de carregamento. */
+/* Estrela Labstar: volta 3D, pausa, volta 3D, pausa. Só em carregamentos. */
 @keyframes labstar-loading-turn-pause {
-  0%, 12% { transform: rotate(0deg) scale(.96); }
-  42% { transform: rotate(360deg) scale(1); }
-  43%, 70% { transform: rotate(360deg) scale(1); }
-  100% { transform: rotate(720deg) scale(.96); }
+  0%, 8% {
+    transform: perspective(620px) rotateX(-7deg) rotateY(0deg) scale(.96);
+  }
+  30% {
+    transform: perspective(620px) rotateX(5deg) rotateY(360deg) scale(1);
+  }
+  31%, 54% {
+    transform: perspective(620px) rotateX(0deg) rotateY(360deg) scale(1);
+  }
+  78% {
+    transform: perspective(620px) rotateX(-5deg) rotateY(720deg) scale(1);
+  }
+  79%, 100% {
+    transform: perspective(620px) rotateX(0deg) rotateY(720deg) scale(.96);
+  }
 }
 
 .dm-loading,
 .dm-thread-loading,
 .team-loading,
 .collab-loading,
-.access-v2-card.compact {
+.access-v2-card.compact,
+.sync-state.carregando,
+.sync-state.salvando {
   position: relative;
+  perspective: 620px;
 }
 
 .dm-loading > .spin,
@@ -138,9 +152,12 @@
   flex: 0 0 30px;
   display: block;
   background: url('/labstar-loading-star.svg') center / contain no-repeat;
-  filter: drop-shadow(0 0 6px rgba(94,142,255,.22));
-  animation: labstar-loading-turn-pause 2.65s cubic-bezier(.58,.06,.35,.98) infinite;
+  filter: drop-shadow(0 0 5px rgba(94,142,255,.18));
+  animation: labstar-loading-turn-pause 4.1s cubic-bezier(.45,.05,.22,1) infinite;
   transform-origin: 50% 50%;
+  transform-style: preserve-3d;
+  backface-visibility: visible;
+  will-change: transform;
 }
 
 .dm-loading::before,
@@ -162,8 +179,11 @@
   height: 13px;
   flex: 0 0 13px;
   background: url('/labstar-loading-star.svg') center / contain no-repeat;
-  filter: drop-shadow(0 0 4px rgba(94,142,255,.2));
-  animation: labstar-loading-turn-pause 2.65s cubic-bezier(.58,.06,.35,.98) infinite;
+  filter: drop-shadow(0 0 3px rgba(94,142,255,.16));
+  animation: labstar-loading-turn-pause 4.1s cubic-bezier(.45,.05,.22,1) infinite;
+  transform-origin: 50% 50%;
+  transform-style: preserve-3d;
+  backface-visibility: visible;
 }
 
 @media (prefers-reduced-motion: reduce) {
