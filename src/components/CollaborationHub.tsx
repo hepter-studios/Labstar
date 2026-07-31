@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import type { Member } from "../lib/supabase";
-import { DirectMessagesHub } from "./DirectMessagesHubV3";
+import { DirectMessagesHub } from "./DirectMessagesHubV4";
 import { CollaborationHub as LegacyCollaborationHub } from "./LegacyCollaborationHub";
 
 type CollaborationHubProps = {
