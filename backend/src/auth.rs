@@ -1,4 +1,4 @@
-use std::{future::Future, sync::Arc};
+use std::{future::Future, sync::Arc, time::Duration};
 
 use axum::{
     extract::FromRequestParts,
@@ -8,9 +8,12 @@ use reqwest::{Client, StatusCode};
 use serde::Deserialize;
 use serde_json::Value;
 use thiserror::Error;
+use tokio::time::sleep;
 use uuid::Uuid;
 
 use crate::{config::Config, error::ApiError, state::AppState};
+
+const AUTH_RETRY_DELAY: Duration = Duration::from_millis(350);
 
 #[derive(Debug, Clone)]
 pub struct AuthenticatedUser {
@@ -53,6 +56,17 @@ impl AuthService {
     }
 
     pub async fn authenticate(&self, token: &str) -> Result<AuthenticatedUser, AuthError> {
+        match self.authenticate_once(token).await {
+            Ok(user) => Ok(user),
+            Err(AuthError::ServiceUnavailable) => {
+                sleep(AUTH_RETRY_DELAY).await;
+                self.authenticate_once(token).await
+            }
+            Err(error) => Err(error),
+        }
+    }
+
+    async fn authenticate_once(&self, token: &str) -> Result<AuthenticatedUser, AuthError> {
         let url = self
             .config
             .auth_user_url()
@@ -72,7 +86,12 @@ impl AuthService {
             StatusCode::UNAUTHORIZED | StatusCode::FORBIDDEN => {
                 return Err(AuthError::InvalidToken);
             }
-            _ => return Err(AuthError::ServiceUnavailable),
+            StatusCode::TOO_MANY_REQUESTS
+            | StatusCode::BAD_GATEWAY
+            | StatusCode::SERVICE_UNAVAILABLE
+            | StatusCode::GATEWAY_TIMEOUT => return Err(AuthError::ServiceUnavailable),
+            status if status.is_server_error() => return Err(AuthError::ServiceUnavailable),
+            _ => return Err(AuthError::InvalidUserPayload),
         }
 
         let user = response
