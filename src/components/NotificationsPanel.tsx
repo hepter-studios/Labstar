@@ -16,6 +16,29 @@ import {
   type Member,
 } from "../lib/supabase";
 
+function playNotificationTone() {
+  const AudioContextClass = window.AudioContext || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+  if (!AudioContextClass) return;
+  try {
+    const context = new AudioContextClass();
+    const gain = context.createGain();
+    gain.gain.setValueAtTime(.0001, context.currentTime);
+    gain.gain.exponentialRampToValueAtTime(.028, context.currentTime + .015);
+    gain.gain.exponentialRampToValueAtTime(.0001, context.currentTime + .28);
+    gain.connect(context.destination);
+    const oscillator = context.createOscillator();
+    oscillator.type = "sine";
+    oscillator.frequency.setValueAtTime(660, context.currentTime);
+    oscillator.frequency.exponentialRampToValueAtTime(880, context.currentTime + .12);
+    oscillator.connect(gain);
+    oscillator.start();
+    oscillator.stop(context.currentTime + .3);
+    oscillator.addEventListener("ended", () => void context.close());
+  } catch {
+    // O alerta visual continua funcionando caso áudio seja bloqueado pelo sistema.
+  }
+}
+
 export function NotificationsButton({ member, onOpenChannel }: { member: Member; onOpenChannel: (channelId: string) => void }) {
   const [open, setOpen] = useState(false);
   const [notifications, setNotifications] = useState<LabstarNotification[]>([]);
@@ -53,6 +76,7 @@ export function NotificationsButton({ member, onOpenChannel }: { member: Member;
       const notification = new Notification(item.title || "Labstar", {
         body: item.body,
         tag: `labstar-${item.id}`,
+        silent: !settingsRef.current.messageSounds,
       });
       notification.onclick = () => {
         window.focus();
@@ -68,9 +92,9 @@ export function NotificationsButton({ member, onOpenChannel }: { member: Member;
     try {
       const data = await listNotifications(member.id);
       if (notifyNew) {
-        for (const item of data) {
-          if (!item.isRead && !knownIds.current.has(item.id)) showDeviceNotification(item);
-        }
+        const newItems = data.filter((item) => !item.isRead && !knownIds.current.has(item.id));
+        if (newItems.length && settingsRef.current.messageSounds) playNotificationTone();
+        for (const item of newItems) showDeviceNotification(item);
       }
       knownIds.current = new Set(data.map((item) => item.id));
       setNotifications(data);
