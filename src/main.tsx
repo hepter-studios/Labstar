@@ -7,6 +7,7 @@ import { initializeNativeBridge } from "./lib/native";
 import "./styles.css";
 import "./access-control.css";
 import "./workspace-polish.css";
+import "./direct-messages.css";
 
 const BRAND_INTRO_DURATION_MS = 2350;
 
