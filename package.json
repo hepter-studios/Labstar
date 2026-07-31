@@ -6,6 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "desktop:build": "npx --yes @tauri-apps/cli@2 build",
+    "desktop:build:windows": "powershell -ExecutionPolicy Bypass -File scripts/build-windows.ps1",
     "preview": "vite preview"
   },
   "dependencies": {
