@@ -4,7 +4,9 @@ import {
   CheckCircle2,
   FolderPlus,
   Hash,
+  LoaderCircle,
   LockKeyhole,
+  Save,
   Search,
   Settings2,
   ShieldCheck,
@@ -15,11 +17,13 @@ import {
   X,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { updateChannelPermissions } from "../lib/channel-admin";
 import type {
   ChannelCategory,
   CollaborationSpace,
   LabstarChannel,
   Member,
+  MemberRole,
 } from "../lib/supabase";
 import { Avatar } from "./Avatar";
 
@@ -38,6 +42,7 @@ type Props = {
   onSelectChannel: (channelId: string) => void;
   onOpenIntegrations: () => void;
   onOpenTeam: () => void;
+  onPermissionsSaved: () => Promise<void>;
 };
 
 const tabs: Array<{ id: Tab; label: string; icon: typeof Settings2 }> = [
@@ -47,6 +52,14 @@ const tabs: Array<{ id: Tab; label: string; icon: typeof Settings2 }> = [
   { id: "permissions", label: "Permissões", icon: LockKeyhole },
   { id: "integrations", label: "Integrações", icon: Webhook },
   { id: "security", label: "Segurança", icon: ShieldCheck },
+];
+
+const roleOptions: Array<{ value: MemberRole; label: string }> = [
+  { value: "owner", label: "Proprietário" },
+  { value: "admin", label: "Administrador" },
+  { value: "manager", label: "Gestor" },
+  { value: "member", label: "Membro" },
+  { value: "viewer", label: "Visualizador" },
 ];
 
 export function WorkspaceSettingsCenter({
@@ -62,6 +75,7 @@ export function WorkspaceSettingsCenter({
   onSelectChannel,
   onOpenIntegrations,
   onOpenTeam,
+  onPermissionsSaved,
 }: Props) {
   const [tab, setTab] = useState<Tab>("general");
   const [memberSearch, setMemberSearch] = useState("");
@@ -85,6 +99,13 @@ export function WorkspaceSettingsCenter({
     if (!query) return channels;
     return channels.filter((channel) => `${channel.name} ${channel.description} ${channel.type}`.toLocaleLowerCase().includes(query));
   }, [channels, channelSearch]);
+
+  const assignmentOptions = useMemo(() => {
+    const values = new Set<string>();
+    for (const member of activeMembers) member.assignments.forEach((assignment) => assignment.trim() && values.add(assignment.trim()));
+    for (const channel of channels) channel.allowedAssignments.forEach((assignment) => assignment.trim() && values.add(assignment.trim()));
+    return [...values].sort((a, b) => a.localeCompare(b, "pt-BR"));
+  }, [activeMembers, channels]);
 
   const restrictedChannels = channels.filter((channel) => channel.allowedRoles.length || channel.allowedAssignments.length);
   const voiceChannels = channels.filter((channel) => channel.type === "voice").length;
@@ -128,7 +149,7 @@ export function WorkspaceSettingsCenter({
                     if (channelSearch.trim() && !categoryChannels.length) return null;
                     return <article key={category.id}>
                       <header><span><strong>{category.name}</strong><small>{categoryChannels.length} canal{categoryChannels.length === 1 ? "" : "is"}</small></span>{canManage && <button type="button" onClick={() => onCreateChannel(category.id)}>+ Canal</button>}</header>
-                      <div>{categoryChannels.map((channel) => <button key={channel.id} type="button" onClick={() => { onSelectChannel(channel.id); onClose(); }}><Hash size={14} /><span><strong>{channel.name}</strong><small>{channel.description || channel.type}</small></span>{channel.allowedRoles.length > 0 && <LockKeyhole size={12} />}</button>)}</div>
+                      <div>{categoryChannels.map((channel) => <button key={channel.id} type="button" onClick={() => { onSelectChannel(channel.id); onClose(); }}><Hash size={14} /><span><strong>{channel.name}</strong><small>{channel.description || channel.type}</small></span>{(channel.allowedRoles.length > 0 || channel.allowedAssignments.length > 0) && <LockKeyhole size={12} />}</button>)}</div>
                     </article>;
                   })}
                   {!categories.length && <WorkspaceEmpty icon={<Hash size={22} />} title="Nenhuma categoria" text="Crie uma categoria para começar a organizar os canais deste Espaço." />}
@@ -149,10 +170,11 @@ export function WorkspaceSettingsCenter({
 
             {tab === "permissions" && (
               <section className="workspace-admin-section">
-                <header><div><strong>Mapa de permissões</strong><p>Veja imediatamente quais canais têm restrições por cargo ou atribuição.</p></div></header>
+                <header><div><strong>Permissões por canal</strong><p>{canManage ? "Defina níveis técnicos e atribuições que podem abrir cada canal. Vazio significa toda a equipe ativa." : "Veja quais canais têm restrições por nível ou atribuição."}</p></div></header>
                 <div className="permission-summary-grid"><article><LockKeyhole size={16} /><strong>{restrictedChannels.length}</strong><span>Canais restritos</span></article><article><Hash size={16} /><strong>{channels.length - restrictedChannels.length}</strong><span>Canais gerais</span></article><article><ShieldCheck size={16} /><strong>{currentMember.role}</strong><span>Seu nível</span></article></div>
-                <div className="workspace-permission-list">
-                  {channels.map((channel) => <article key={channel.id}><span><Hash size={14} /><div><strong>{channel.name}</strong><small>{channel.description || "Sem descrição"}</small></div></span><div>{channel.allowedRoles.length ? channel.allowedRoles.map((role) => <b key={role}>{role}</b>) : <b className="open">Equipe ativa</b>}{channel.allowedAssignments.map((assignment) => <b key={assignment}>{assignment}</b>)}</div></article>)}
+                <div className="workspace-permission-editor-list">
+                  {channels.map((channel) => <ChannelPermissionEditor key={channel.id} channel={channel} assignments={assignmentOptions} canManage={canManage} onSaved={onPermissionsSaved} />)}
+                  {!channels.length && <WorkspaceEmpty icon={<LockKeyhole size={22} />} title="Nenhum canal" text="Crie canais antes de configurar permissões." />}
                 </div>
               </section>
             )}
@@ -180,6 +202,79 @@ export function WorkspaceSettingsCenter({
       </section>
     </div>
   );
+}
+
+function ChannelPermissionEditor({ channel, assignments, canManage, onSaved }: {
+  channel: LabstarChannel;
+  assignments: string[];
+  canManage: boolean;
+  onSaved: () => Promise<void>;
+}) {
+  const [roles, setRoles] = useState<MemberRole[]>(channel.allowedRoles);
+  const [selectedAssignments, setSelectedAssignments] = useState<string[]>(channel.allowedAssignments);
+  const [saving, setSaving] = useState(false);
+  const [status, setStatus] = useState("");
+
+  useEffect(() => {
+    setRoles(channel.allowedRoles);
+    setSelectedAssignments(channel.allowedAssignments);
+  }, [channel.id, channel.allowedRoles.join("|"), channel.allowedAssignments.join("|")]);
+
+  const dirty = roles.join("|") !== channel.allowedRoles.join("|")
+    || selectedAssignments.join("|") !== channel.allowedAssignments.join("|");
+  const openToTeam = roles.length === 0 && selectedAssignments.length === 0;
+
+  function toggleRole(role: MemberRole) {
+    if (!canManage) return;
+    setRoles((current) => current.includes(role) ? current.filter((item) => item !== role) : [...current, role]);
+    setStatus("");
+  }
+
+  function toggleAssignment(assignment: string) {
+    if (!canManage) return;
+    setSelectedAssignments((current) => current.includes(assignment) ? current.filter((item) => item !== assignment) : [...current, assignment]);
+    setStatus("");
+  }
+
+  async function save() {
+    if (!canManage || !dirty) return;
+    setSaving(true);
+    setStatus("Salvando…");
+    try {
+      const result = await updateChannelPermissions({ channelId: channel.id, allowedRoles: roles, allowedAssignments: selectedAssignments });
+      setRoles(result.allowedRoles);
+      setSelectedAssignments(result.allowedAssignments);
+      await onSaved();
+      setStatus("Permissões salvas");
+    } catch {
+      setRoles(channel.allowedRoles);
+      setSelectedAssignments(channel.allowedAssignments);
+      setStatus("O banco recusou a alteração. Nada foi modificado.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return <article className="channel-permission-editor">
+    <header>
+      <span><Hash size={14}/><div><strong>{channel.name}</strong><small>{channel.description || channel.type}</small></div></span>
+      <b className={openToTeam ? "open" : "restricted"}>{openToTeam ? "Equipe ativa" : "Restrito"}</b>
+    </header>
+    <div className="channel-permission-groups">
+      <fieldset disabled={!canManage || saving}>
+        <legend>Níveis de acesso</legend>
+        <div>{roleOptions.map((role) => <label key={role.value}><input type="checkbox" checked={roles.includes(role.value)} onChange={() => toggleRole(role.value)}/><span>{role.label}</span></label>)}</div>
+      </fieldset>
+      <fieldset disabled={!canManage || saving}>
+        <legend>Atribuições / projetos</legend>
+        {assignments.length ? <div>{assignments.map((assignment) => <label key={assignment}><input type="checkbox" checked={selectedAssignments.includes(assignment)} onChange={() => toggleAssignment(assignment)}/><span>{assignment}</span></label>)}</div> : <p>Nenhuma atribuição foi cadastrada na equipe.</p>}
+      </fieldset>
+    </div>
+    <footer>
+      <span className={status.includes("recusou") ? "error" : ""}>{status || (openToTeam ? "Sem restrições adicionais." : `${roles.length} nível(is) · ${selectedAssignments.length} atribuição(ões)`)}</span>
+      {canManage && <button type="button" disabled={!dirty || saving} onClick={() => void save()}>{saving ? <LoaderCircle className="spin" size={13}/> : <Save size={13}/>} Salvar</button>}
+    </footer>
+  </article>;
 }
 
 function GeneralTab({ space, categories, channels, members, voiceChannels, textChannels, canManage, onEditIdentity }: {
