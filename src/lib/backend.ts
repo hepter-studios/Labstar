@@ -46,6 +46,8 @@ type BackendErrorBody = {
 };
 
 const DEFAULT_RUST_BACKEND_URL = "https://labstar-api-mackson.fly.dev";
+const REQUEST_TIMEOUT_MS = 30_000;
+const READ_RETRY_DELAY_MS = 900;
 const configuredUrl = (import.meta.env.VITE_LABSTAR_API_URL ?? DEFAULT_RUST_BACKEND_URL)
   .trim()
   .replace(/\/+$/, "");
@@ -74,9 +76,25 @@ function requireBackendUrl() {
   return configuredUrl;
 }
 
-async function request<T>(path: string, options: RequestInit = {}, accessToken?: string): Promise<T> {
+function wait(milliseconds: number) {
+  return new Promise<void>((resolve) => window.setTimeout(resolve, milliseconds));
+}
+
+function isRetryableReadError(error: unknown) {
+  if (!(error instanceof BackendApiError)) return false;
+  return [
+    "backend_timeout",
+    "backend_unreachable",
+    "database_unavailable",
+    "backend_http_502",
+    "backend_http_503",
+    "backend_http_504",
+  ].includes(error.code);
+}
+
+async function requestOnce<T>(path: string, options: RequestInit, accessToken?: string): Promise<T> {
   const controller = new AbortController();
-  const timeout = window.setTimeout(() => controller.abort(), 15_000);
+  const timeout = window.setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
   try {
     const headers = new Headers(options.headers);
@@ -118,6 +136,24 @@ async function request<T>(path: string, options: RequestInit = {}, accessToken?:
   } finally {
     window.clearTimeout(timeout);
   }
+}
+
+async function request<T>(path: string, options: RequestInit = {}, accessToken?: string): Promise<T> {
+  const method = (options.method ?? "GET").toUpperCase();
+  const attempts = method === "GET" ? 2 : 1;
+  let lastError: unknown;
+
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    try {
+      return await requestOnce<T>(path, options, accessToken);
+    } catch (error) {
+      lastError = error;
+      if (attempt === attempts || !isRetryableReadError(error)) throw error;
+      await wait(READ_RETRY_DELAY_MS);
+    }
+  }
+
+  throw lastError;
 }
 
 export async function getBackendIdentity(accessToken: string) {
