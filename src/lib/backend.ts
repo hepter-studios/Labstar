@@ -1,3 +1,9 @@
+import {
+  isTauriApp,
+  requestNativeBackend,
+  type NativeBackendFailure,
+} from "./native";
+
 export type BackendMember = {
   id: string;
   email: string;
@@ -85,6 +91,8 @@ function isRetryableReadError(error: unknown) {
   return [
     "backend_timeout",
     "backend_unreachable",
+    "backend_connect_failed",
+    "backend_transport_failed",
     "database_unavailable",
     "backend_http_502",
     "backend_http_503",
@@ -92,7 +100,82 @@ function isRetryableReadError(error: unknown) {
   ].includes(error.code);
 }
 
-async function requestOnce<T>(path: string, options: RequestInit, accessToken?: string): Promise<T> {
+function asBackendErrorBody(value: unknown): BackendErrorBody {
+  if (!value || typeof value !== "object") return {};
+  return value as BackendErrorBody;
+}
+
+function decodeResponse<T>(status: number, payload: unknown): T {
+  if (status >= 200 && status < 300) {
+    if (status === 204) return undefined as T;
+    return payload as T;
+  }
+
+  const errorPayload = asBackendErrorBody(payload);
+  throw new BackendApiError(
+    errorPayload.error?.code || `backend_http_${status}`,
+    errorPayload.error?.message || "O backend Rust recusou a solicitação.",
+    status,
+  );
+}
+
+function requestJsonBody(body: BodyInit | null | undefined) {
+  if (body == null) return undefined;
+  if (typeof body !== "string") {
+    throw new BackendApiError(
+      "backend_unsupported_body",
+      "O núcleo do Labstar recebeu um corpo de requisição não suportado.",
+      400,
+    );
+  }
+
+  try {
+    return JSON.parse(body) as unknown;
+  } catch {
+    throw new BackendApiError(
+      "backend_invalid_json_body",
+      "O núcleo do Labstar recebeu JSON inválido.",
+      400,
+    );
+  }
+}
+
+function normalizeNativeFailure(error: unknown) {
+  const failure = (error && typeof error === "object" ? error : {}) as NativeBackendFailure;
+  const code = typeof failure.code === "string" && failure.code
+    ? failure.code
+    : "backend_transport_failed";
+  const message = typeof failure.message === "string" && failure.message
+    ? failure.message
+    : "A comunicação nativa com o backend Rust foi interrompida.";
+  const status = code === "backend_timeout" ? 408 : 503;
+  return new BackendApiError(code, message, status);
+}
+
+async function requestOnceNative<T>(
+  path: string,
+  options: RequestInit,
+  accessToken?: string,
+): Promise<T> {
+  try {
+    const response = await requestNativeBackend({
+      path,
+      method: (options.method ?? "GET").toUpperCase(),
+      accessToken,
+      body: requestJsonBody(options.body),
+    });
+    return decodeResponse<T>(response.status, response.body);
+  } catch (error) {
+    if (error instanceof BackendApiError) throw error;
+    throw normalizeNativeFailure(error);
+  }
+}
+
+async function requestOnceWeb<T>(
+  path: string,
+  options: RequestInit,
+  accessToken?: string,
+): Promise<T> {
   const controller = new AbortController();
   const timeout = window.setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
@@ -110,23 +193,16 @@ async function requestOnce<T>(path: string, options: RequestInit, accessToken?: 
       cache: "no-store",
     });
 
-    if (response.ok) {
-      if (response.status === 204) return undefined as T;
-      return await response.json() as T;
-    }
+    if (response.status === 204) return undefined as T;
 
-    let payload: BackendErrorBody = {};
+    let payload: unknown = null;
     try {
-      payload = await response.json() as BackendErrorBody;
+      payload = await response.json() as unknown;
     } catch {
-      // A resposta sem JSON ainda será convertida em erro tipado abaixo.
+      payload = null;
     }
 
-    throw new BackendApiError(
-      payload.error?.code || `backend_http_${response.status}`,
-      payload.error?.message || "O backend Rust recusou a solicitação.",
-      response.status,
-    );
+    return decodeResponse<T>(response.status, payload);
   } catch (error) {
     if (error instanceof BackendApiError) throw error;
     if (error instanceof DOMException && error.name === "AbortError") {
@@ -136,6 +212,13 @@ async function requestOnce<T>(path: string, options: RequestInit, accessToken?: 
   } finally {
     window.clearTimeout(timeout);
   }
+}
+
+async function requestOnce<T>(path: string, options: RequestInit, accessToken?: string): Promise<T> {
+  // No desktop, todo o tráfego crítico sai pelo cliente HTTPS do próprio Rust.
+  // Isso remove CORS/CSP/WebView da cadeia de autorização nativa.
+  if (isTauriApp()) return requestOnceNative<T>(path, options, accessToken);
+  return requestOnceWeb<T>(path, options, accessToken);
 }
 
 async function request<T>(path: string, options: RequestInit = {}, accessToken?: string): Promise<T> {
