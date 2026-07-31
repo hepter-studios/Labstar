@@ -14,12 +14,12 @@ function run(args) {
 
 const typecheck = run(["node_modules/typescript/bin/tsc", "-b"]);
 if (typecheck.status !== 0) {
-  if (typecheck.output.includes("Avatar.tsx")) {
-    console.log("LABSTAR_PROBE_AVATAR_MATCH");
+  if (typecheck.output.includes("src/components/")) {
+    console.log("LABSTAR_PROBE_COMPONENTS_MATCH");
     process.exit(0);
   }
-  console.error("LABSTAR_PROBE_NOT_AVATAR");
-  process.exit(33);
+  console.error("LABSTAR_PROBE_NOT_COMPONENTS");
+  process.exit(34);
 }
 
 const vite = run(["node_modules/vite/bin/vite.js", "build"]);
