@@ -40,6 +40,22 @@ export function WorkspaceSettingsPortal() {
     return () => document.removeEventListener("click", capture, true);
   }, []);
 
+  async function loadSnapshot() {
+    const [collaboration, team, identity] = await Promise.all([
+      loadCollaboration(),
+      listMembers(),
+      getCurrentAccessIdentity(),
+    ]);
+    if (!identity?.member) throw new Error("member_not_authorized");
+    setSnapshot({
+      spaces: collaboration.spaces,
+      categories: collaboration.categories,
+      channels: collaboration.channels,
+      members: team.members,
+      currentMember: identity.member,
+    });
+  }
+
   useEffect(() => {
     if (!open) return;
     let cancelled = false;
@@ -136,6 +152,7 @@ export function WorkspaceSettingsPortal() {
       onSelectChannel={selectChannel}
       onOpenIntegrations={openIntegrations}
       onOpenTeam={openTeam}
+      onPermissionsSaved={loadSnapshot}
     />
   );
 }
