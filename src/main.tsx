@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client";
 import App from "./App";
 import { AccessControl } from "./components/AccessControl";
 import { InstallApp } from "./components/InstallApp";
+import { applyAppSettings, loadAppSettings } from "./lib/app-settings";
 import { prewarmRustBackend } from "./lib/backend-prewarm";
 import { initializeNativeBridge } from "./lib/native";
 import "./styles.css";
@@ -12,6 +13,7 @@ import "./direct-messages.css";
 import "./workspace-layout-fix.css";
 import "./workspace-brand.css";
 import "./experience-polish.css";
+import "./global-settings.css";
 
 const BRAND_INTRO_DURATION_MS = 2350;
 
@@ -27,7 +29,6 @@ function RootSurfaces() {
   return (
     <>
       <App />
-      {/* Web, Preview e Tauri usam o mesmo gate de autorização Rust. */}
       {introFinished && <AccessControl />}
       {introFinished && <InstallApp />}
     </>
@@ -39,6 +40,12 @@ async function bootstrap() {
     await initializeNativeBridge();
   } catch {
     // A tela de acesso exibirá o estado correto caso o callback nativo falhe.
+  }
+
+  try {
+    applyAppSettings(await loadAppSettings());
+  } catch {
+    // Preferências inválidas nunca impedem a inicialização do Labstar.
   }
 
   createRoot(document.getElementById("root")!).render(
