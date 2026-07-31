@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "bash scripts/cloudflare-windows-cross.sh",
+    "build": "npm run build:installer",
+    "build:installer": "bash scripts/cloudflare-windows-cross.sh",
     "build:web": "tsc -b && vite build",
     "preview": "vite preview"
   },
