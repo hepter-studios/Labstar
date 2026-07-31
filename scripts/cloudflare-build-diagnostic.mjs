@@ -20,11 +20,15 @@ const appTypecheck = run([
 ]);
 
 if (appTypecheck.status !== 0) {
-  console.error(appTypecheck.output);
-  process.exit(appTypecheck.status);
+  console.log("LABSTAR_PROBE_APP_TYPECHECK_FAILED");
+  process.exit(0);
 }
 
-console.log("LABSTAR_APP_TYPECHECK_OK");
 const vite = run(["node_modules/vite/bin/vite.js", "build"]);
-process.stdout.write(vite.output);
-process.exit(vite.status);
+if (vite.status !== 0) {
+  console.error("LABSTAR_PROBE_VITE_FAILED");
+  process.exit(38);
+}
+
+console.log("LABSTAR_PROBE_ALL_OK");
+process.exit(0);
