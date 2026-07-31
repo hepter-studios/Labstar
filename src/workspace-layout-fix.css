@@ -1,0 +1,26 @@
+.workspace.collaboration-workspace {
+  grid-template-columns: 64px minmax(0, 1fr) !important;
+}
+
+.workspace.collaboration-workspace > .collaboration-server-mode,
+.workspace.collaboration-workspace > .direct-hub,
+.collaboration-server-mode > .collaboration-shell,
+.direct-hub {
+  width: 100%;
+  min-width: 0;
+}
+
+.collaboration-server-mode > .collaboration-shell,
+.direct-hub {
+  height: 100%;
+}
+
+@media (max-width: 700px) {
+  .workspace.collaboration-workspace {
+    grid-template-columns: 1fr !important;
+  }
+
+  .workspace.collaboration-workspace > .rail {
+    display: none;
+  }
+}
