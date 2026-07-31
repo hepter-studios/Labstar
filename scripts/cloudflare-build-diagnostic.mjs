@@ -14,14 +14,12 @@ function run(args) {
 
 const typecheck = run(["node_modules/typescript/bin/tsc", "-b"]);
 if (typecheck.status !== 0) {
-  const uiFiles = ["WorkspaceSettingsPortal.tsx", "CommandPalette.tsx", "main.tsx"];
-  const isUiFailure = uiFiles.some((name) => typecheck.output.includes(name));
-  if (isUiFailure) {
-    console.log("LABSTAR_PROBE_UI_MATCH");
+  if (typecheck.output.includes("Avatar.tsx")) {
+    console.log("LABSTAR_PROBE_AVATAR_MATCH");
     process.exit(0);
   }
-  console.error("LABSTAR_PROBE_NOT_UI");
-  process.exit(32);
+  console.error("LABSTAR_PROBE_NOT_AVATAR");
+  process.exit(33);
 }
 
 const vite = run(["node_modules/vite/bin/vite.js", "build"]);
