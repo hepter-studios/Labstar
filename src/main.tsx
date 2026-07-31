@@ -30,6 +30,7 @@ import "./runtime-reliability.css";
 import "./member-quick-actions.css";
 import "./system-diagnostics.css";
 import "./workspace-quick-menus.css";
+import "./identity-assets-fix.css";
 
 const BRAND_INTRO_DURATION_MS = 2350;
 
