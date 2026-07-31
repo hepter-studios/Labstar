@@ -66,6 +66,11 @@ rustup default stable
 rustup target add "$TARGET"
 rustc --version
 cargo --version
-rustup target list --installed | grep -F "$TARGET"
 
-echo "LABSTAR_STAGE_RUST_OK llvm=$LLVM_VERSION target=$TARGET"
+export XWIN_CACHE_DIR="$TOOLS/xwin-cache"
+if ! command -v cargo-xwin >/dev/null 2>&1; then
+  cargo install --locked cargo-xwin
+fi
+cargo xwin --version
+
+echo "LABSTAR_STAGE_CARGO_XWIN_OK llvm=$LLVM_VERSION target=$TARGET"
