@@ -1,0 +1,90 @@
+name: Gerar backup manual do Supabase
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: backup-supabase-manual
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    name: Criar e empacotar backup do banco
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+
+    steps:
+      - name: Validar secret de conexão
+        shell: bash
+        env:
+          SUPABASE_DATABASE_URL: ${{ secrets.SUPABASE_DATABASE_URL }}
+        run: |
+          set -euo pipefail
+          if [ -z "${SUPABASE_DATABASE_URL:-}" ]; then
+            echo "O secret SUPABASE_DATABASE_URL não foi configurado."
+            exit 1
+          fi
+
+      - name: Instalar cliente PostgreSQL
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install --yes postgresql-client
+          pg_dump --version
+
+      - name: Criar backup completo
+        shell: bash
+        env:
+          SUPABASE_DATABASE_URL: ${{ secrets.SUPABASE_DATABASE_URL }}
+          PGSSLMODE: require
+        run: |
+          set -euo pipefail
+          mkdir -p backup
+          timestamp="$(date -u +'%Y-%m-%dT%H-%M-%SZ')"
+
+          pg_dump \
+            --dbname="${SUPABASE_DATABASE_URL}" \
+            --format=custom \
+            --no-owner \
+            --no-privileges \
+            --verbose \
+            --file="backup/labstar-${timestamp}.dump"
+
+          pg_dump \
+            --dbname="${SUPABASE_DATABASE_URL}" \
+            --format=plain \
+            --schema-only \
+            --no-owner \
+            --no-privileges \
+            --file="backup/labstar-${timestamp}-schema.sql"
+
+          pg_dump \
+            --dbname="${SUPABASE_DATABASE_URL}" \
+            --format=plain \
+            --data-only \
+            --no-owner \
+            --no-privileges \
+            --file="backup/labstar-${timestamp}-data.sql"
+
+          sha256sum backup/* > backup/SHA256SUMS.txt
+          printf 'Backup UTC: %s\nFormato principal: PostgreSQL custom dump\n' "${timestamp}" > backup/LEIA-ME.txt
+
+      - name: Verificar arquivos gerados
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s backup/SHA256SUMS.txt
+          find backup -maxdepth 1 -type f -printf '%f %s bytes\n' | sort
+
+      - name: Disponibilizar backup para download
+        uses: actions/upload-artifact@v4
+        with:
+          name: labstar-supabase-backup-${{ github.run_number }}
+          path: backup/
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 6
