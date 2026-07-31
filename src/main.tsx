@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client";
 import App from "./App";
 import { AccessControl } from "./components/AccessControl";
 import { InstallApp } from "./components/InstallApp";
+import { prewarmRustBackend } from "./lib/backend-prewarm";
 import { initializeNativeBridge } from "./lib/native";
 import "./styles.css";
 import "./access-control.css";
@@ -18,6 +19,7 @@ function RootSurfaces() {
   const [introFinished, setIntroFinished] = useState(false);
 
   useEffect(() => {
+    void prewarmRustBackend();
     const timer = window.setTimeout(() => setIntroFinished(true), BRAND_INTRO_DURATION_MS);
     return () => window.clearTimeout(timer);
   }, []);
