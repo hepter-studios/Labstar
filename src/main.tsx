@@ -2,6 +2,7 @@ import { StrictMode, useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import App from "./App";
 import { AccessControl } from "./components/AccessControl";
+import { GlobalSettingsPortal } from "./components/GlobalSettingsPortal";
 import { InstallApp } from "./components/InstallApp";
 import { applyAppSettings, loadAppSettings } from "./lib/app-settings";
 import { prewarmRustBackend } from "./lib/backend-prewarm";
@@ -30,6 +31,7 @@ function RootSurfaces() {
     <>
       <App />
       {introFinished && <AccessControl />}
+      {introFinished && <GlobalSettingsPortal />}
       {introFinished && <InstallApp />}
     </>
   );
