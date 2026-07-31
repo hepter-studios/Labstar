@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client";
 import App from "./App";
 import { AccessControl } from "./components/AccessControl";
 import { AppSessionRecovery } from "./components/AppSessionRecovery";
+import { CommandPalette } from "./components/CommandPalette";
 import { GlobalSettingsPortal } from "./components/GlobalSettingsPortal";
 import { InstallApp } from "./components/InstallApp";
 import { LegacyActionBridge } from "./components/LegacyActionBridge";
@@ -35,6 +36,7 @@ import "./member-panel-tools.css";
 import "./system-diagnostics.css";
 import "./workspace-quick-menus.css";
 import "./identity-assets-fix.css";
+import "./command-palette.css";
 
 const BRAND_INTRO_DURATION_MS = 2350;
 
@@ -62,6 +64,7 @@ function RootSurfaces() {
       {introFinished && <MemberQuickActions />}
       {introFinished && <MemberPanelTools />}
       {introFinished && <WorkspaceQuickMenus />}
+      {introFinished && <CommandPalette />}
       {introFinished && <InstallApp />}
     </>
   );
