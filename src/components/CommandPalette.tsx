@@ -9,6 +9,7 @@ import {
   Plus,
   Search,
   Settings,
+  Settings2,
   ShieldCheck,
   UserRound,
   Users,
@@ -53,6 +54,25 @@ function afterPaint(callback: () => void, attempts = 8) {
     });
   };
   check();
+}
+
+function openCurrentWorkspaceSettings() {
+  const dispatch = () => window.dispatchEvent(new Event("labstar:open-workspace-settings"));
+  if (document.querySelector(".space-title strong")) {
+    dispatch();
+    return;
+  }
+  click('button[aria-label="Central de trabalho"]');
+  let attempts = 10;
+  const wait = () => {
+    if (document.querySelector(".space-title strong")) {
+      dispatch();
+      return;
+    }
+    attempts -= 1;
+    if (attempts > 0) window.setTimeout(wait, 40);
+  };
+  window.setTimeout(wait, 25);
 }
 
 export function CommandPalette() {
@@ -112,6 +132,14 @@ export function CommandPalette() {
       keywords: "central trabalho discord canais mensagens dm chat",
       icon: MessagesSquare,
       run: () => { click('button[aria-label="Central de trabalho"]'); },
+    },
+    {
+      id: "workspace-settings",
+      title: "Configurações do Espaço atual",
+      description: "Abrir canais, membros, permissões, integrações e segurança do Espaço.",
+      keywords: "espaço servidor configuração canais permissões integrações segurança admin",
+      icon: Settings2,
+      run: openCurrentWorkspaceSettings,
     },
     {
       id: "team",
