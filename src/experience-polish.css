@@ -69,8 +69,12 @@
   filter: saturate(.9);
 }
 
-.direct-hub > *,
-.collaboration-server-mode > * {
+.direct-hub > * {
+  position: relative;
+  z-index: 1;
+}
+
+.collaboration-server-mode > .collaboration-shell {
   position: relative;
   z-index: 1;
 }
