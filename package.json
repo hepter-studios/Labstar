@@ -8,6 +8,7 @@
     "build": "npm run build:installer",
     "build:installer": "bash scripts/cloudflare-windows-cross.sh",
     "build:web": "tsc -b && vite build",
+    "build:probe": "echo labstar-windows-cross-probe",
     "preview": "vite preview"
   },
   "dependencies": {
