@@ -27,6 +27,7 @@ import "./workspace-brand.css";
 import "./experience-polish.css";
 import "./global-settings.css";
 import "./workspace-settings.css";
+import "./workspace-permissions.css";
 import "./runtime-reliability.css";
 import "./member-quick-actions.css";
 import "./member-panel-tools.css";
