@@ -117,8 +117,7 @@ fn validate_supabase_url(url: &Url) -> Result<(), ConfigError> {
 }
 
 fn validate_allowed_origin(origin: &str) -> Result<(), ConfigError> {
-    let parsed = Url::parse(origin)
-        .map_err(|_| ConfigError::Invalid("LABSTAR_ALLOWED_ORIGINS"))?;
+    let parsed = Url::parse(origin).map_err(|_| ConfigError::Invalid("LABSTAR_ALLOWED_ORIGINS"))?;
 
     let valid = match parsed.scheme() {
         "https" => true,
