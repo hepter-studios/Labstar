@@ -48,11 +48,15 @@
   max-width: 100%;
   overflow: hidden;
   color: #c4d1e4;
-  font-size: .36em;
   font-weight: 700;
   letter-spacing: .02em;
   line-height: 1;
 }
+.user-avatar-xs > .avatar-media > b { font-size: 7px; }
+.user-avatar-sm > .avatar-media > b { font-size: 9px; }
+.user-avatar-md > .avatar-media > b { font-size: 10px; }
+.user-avatar-lg > .avatar-media > b { font-size: 12px; }
+.user-avatar-xl > .avatar-media > b { font-size: 15px; }
 .avatar-status {
   position: absolute !important;
   right: -2px !important;
@@ -98,11 +102,19 @@
   object-fit: contain !important;
   object-position: center !important;
   transform: none !important;
+  border-radius: inherit !important;
 }
+/* O botão externo precisa deixar o marcador ativo aparecer fora da imagem. */
 .space-list button,
-.dm-space-list button,
+.dm-space-list button {
+  overflow: visible !important;
+  padding: 0 !important;
+  background-clip: padding-box !important;
+}
 .space-title > span,
-.logo-upload > span {
+.logo-upload > span,
+.workspace-settings-identity > span,
+.workspace-overview-identity > span {
   overflow: hidden !important;
   padding: 0 !important;
   background-clip: padding-box !important;
