@@ -1,0 +1,136 @@
+/* Identidade visual — uma única regra final para avatar, presença e logos. */
+.user-avatar {
+  position: relative !important;
+  flex: 0 0 auto !important;
+  display: inline-grid !important;
+  place-items: center !important;
+  overflow: visible !important;
+  aspect-ratio: 1 / 1 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  vertical-align: middle;
+}
+.user-avatar-xs { width: 20px !important; height: 20px !important; }
+.user-avatar-sm { width: 28px !important; height: 28px !important; }
+.user-avatar-md { width: 34px !important; height: 34px !important; }
+.user-avatar-lg { width: 44px !important; height: 44px !important; }
+.user-avatar-xl { width: 58px !important; height: 58px !important; }
+
+.user-avatar > .avatar-media {
+  width: 100% !important;
+  height: 100% !important;
+  min-width: 0 !important;
+  display: grid !important;
+  place-items: center !important;
+  overflow: hidden !important;
+  border: 1px solid rgba(137,165,222,.13) !important;
+  border-radius: 31% !important;
+  color: #a9b7cb;
+  background: linear-gradient(145deg, #111a29, #080d15) !important;
+  box-shadow: inset 0 1px rgba(255,255,255,.04) !important;
+}
+.user-avatar > .avatar-media > img {
+  width: 100% !important;
+  height: 100% !important;
+  min-width: 100% !important;
+  min-height: 100% !important;
+  display: block !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  object-fit: cover !important;
+  object-position: center !important;
+  transform: none !important;
+}
+.user-avatar > .avatar-media > b {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  color: #c4d1e4;
+  font-size: .36em;
+  font-weight: 700;
+  letter-spacing: .02em;
+  line-height: 1;
+}
+.avatar-status {
+  position: absolute !important;
+  right: -2px !important;
+  bottom: -2px !important;
+  z-index: 8 !important;
+  width: 11px !important;
+  height: 11px !important;
+  box-sizing: border-box !important;
+  border: 3px solid #080c13 !important;
+  border-radius: 50% !important;
+  pointer-events: none !important;
+  transform: none !important;
+}
+.user-avatar-xs .avatar-status { width: 8px !important; height: 8px !important; border-width: 2px !important; right: -1px !important; bottom: -1px !important; }
+.user-avatar-sm .avatar-status { width: 10px !important; height: 10px !important; border-width: 2.5px !important; }
+.user-avatar-lg .avatar-status { width: 12px !important; height: 12px !important; }
+.user-avatar-xl .avatar-status { width: 14px !important; height: 14px !important; }
+.avatar-status.online { background: #5cc59d !important; box-shadow: 0 0 7px rgba(92,197,157,.25) !important; }
+.avatar-status.busy { background: #db6e78 !important; box-shadow: 0 0 7px rgba(219,110,120,.18) !important; }
+.avatar-status.offline { background: #5f6a79 !important; box-shadow: none !important; }
+
+/* Logos dos Espaços: sempre quadrados e inteiros, nunca esticados. */
+.space-list button,
+.add-space,
+.dm-space-list button,
+.dm-add-space,
+.space-title > span,
+.logo-upload > span,
+.workspace-settings-identity > span,
+.workspace-overview-identity > span {
+  aspect-ratio: 1 / 1 !important;
+  flex: 0 0 auto !important;
+}
+.space-list button img,
+.dm-space-list button img,
+.space-title > span img,
+.logo-upload > span img,
+.workspace-settings-identity > span img,
+.workspace-overview-identity > span img {
+  width: 100% !important;
+  height: 100% !important;
+  display: block !important;
+  object-fit: contain !important;
+  object-position: center !important;
+  transform: none !important;
+}
+.space-list button,
+.dm-space-list button,
+.space-title > span,
+.logo-upload > span {
+  overflow: hidden !important;
+  padding: 0 !important;
+  background-clip: padding-box !important;
+}
+.logo-upload > span { width: 48px !important; height: 48px !important; }
+.space-title > span { width: 36px !important; height: 36px !important; }
+.space-list button,
+.dm-space-list button { width: 48px !important; height: 48px !important; }
+
+/* Texto ao lado de identidade nunca invade avatar/logo. */
+.channel-user > div,
+.channel-member-row > span,
+.dm-own-profile > span,
+.dm-conversation-person > span,
+.settings-profile-row > div,
+.workspace-settings-identity > div,
+.workspace-overview-identity > div {
+  min-width: 0 !important;
+}
+.channel-user strong,
+.channel-user small,
+.channel-member-row b,
+.channel-member-row small,
+.dm-own-profile strong,
+.dm-own-profile small,
+.dm-conversation-person strong,
+.dm-conversation-person small {
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
