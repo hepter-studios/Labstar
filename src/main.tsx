@@ -10,7 +10,6 @@ import { LegacyActionBridge } from "./components/LegacyActionBridge";
 import { MediaPreferenceBridge } from "./components/MediaPreferenceBridge";
 import { MemberPanelTools } from "./components/MemberPanelTools";
 import { MemberQuickActions } from "./components/MemberQuickActions";
-import { PresenceBridge } from "./components/PresenceBridge";
 import { RuntimeReliability } from "./components/RuntimeReliability";
 import { SafetyGuards } from "./components/SafetyGuards";
 import { SystemDiagnosticsAddon } from "./components/SystemDiagnostics";
@@ -59,7 +58,6 @@ function RootSurfaces() {
       <MediaPreferenceBridge />
       <AppSessionRecovery />
       {introFinished && <AccessControl />}
-      {introFinished && <PresenceBridge />}
       {introFinished && <GlobalSettingsPortal />}
       {introFinished && <SystemDiagnosticsAddon />}
       {introFinished && <WorkspaceSettingsPortal />}
