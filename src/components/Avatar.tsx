@@ -1,6 +1,6 @@
 import { UserRound } from "lucide-react";
-import { useEffect, useState, useSyncExternalStore } from "react";
-import { getPresenceSnapshot, resolvePresence, subscribePresence } from "../lib/presence";
+import { useEffect, useState } from "react";
+import { resolvePresence, subscribePresence } from "../lib/presence";
 
 type AvatarProps = {
   name: string;
@@ -22,10 +22,11 @@ export function initials(name: string) {
 
 export function Avatar({ name, url, size = "md", className = "", status }: AvatarProps) {
   const [imageFailed, setImageFailed] = useState(false);
-  useSyncExternalStore(subscribePresence, getPresenceSnapshot, getPresenceSnapshot);
+  const [, setPresenceRevision] = useState(0);
   const effectiveStatus = resolvePresence(name, status);
 
   useEffect(() => setImageFailed(false), [url]);
+  useEffect(() => subscribePresence(() => setPresenceRevision((value) => value + 1)), []);
 
   return (
     <span className={`user-avatar user-avatar-${size} ${className}`} aria-label={`Foto de ${name}`}>
