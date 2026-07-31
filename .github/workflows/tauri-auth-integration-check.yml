@@ -58,11 +58,14 @@ jobs:
           rustup toolchain install stable --profile minimal --component rustfmt,clippy
           rustup default stable
 
+      - name: Resolver dependências nativas
+        run: cargo fetch --manifest-path src-tauri/Cargo.toml
+
       - name: Verificar formatação Rust
         run: cargo fmt --manifest-path src-tauri/Cargo.toml -- --check
 
       - name: Executar Clippy sem avisos
-        run: cargo clippy --locked --manifest-path src-tauri/Cargo.toml --all-targets --all-features -- -D warnings
+        run: cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets --all-features -- -D warnings
 
       - name: Executar testes Rust
-        run: cargo test --locked --manifest-path src-tauri/Cargo.toml --all-features
+        run: cargo test --manifest-path src-tauri/Cargo.toml --all-features
