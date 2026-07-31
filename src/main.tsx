@@ -6,6 +6,7 @@ import { GlobalSettingsPortal } from "./components/GlobalSettingsPortal";
 import { InstallApp } from "./components/InstallApp";
 import { RuntimeReliability } from "./components/RuntimeReliability";
 import { SafetyGuards } from "./components/SafetyGuards";
+import { WorkspaceSettingsPortal } from "./components/WorkspaceSettingsPortal";
 import { applyAppSettings, loadAppSettings } from "./lib/app-settings";
 import { prewarmRustBackend } from "./lib/backend-prewarm";
 import { initializeNativeBridge } from "./lib/native";
@@ -38,6 +39,7 @@ function RootSurfaces() {
       <RuntimeReliability />
       {introFinished && <AccessControl />}
       {introFinished && <GlobalSettingsPortal />}
+      {introFinished && <WorkspaceSettingsPortal />}
       {introFinished && <InstallApp />}
     </>
   );
