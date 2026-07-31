@@ -1,0 +1,69 @@
+name: Gerar instalador Windows integrado
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: labstar-windows-integrated
+  cancel-in-progress: false
+
+jobs:
+  build-windows:
+    name: Compilar EXE e MSI integrados
+    runs-on: windows-latest
+    timeout-minutes: 60
+
+    env:
+      CARGO_TERM_COLOR: always
+      VITE_SUPABASE_URL: https://pgzwyngxsxnheulvusdq.supabase.co
+      VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
+      VITE_LABSTAR_API_URL: https://labstar-api-mackson.fly.dev
+
+    steps:
+      - name: Baixar código da branch integrada
+        uses: actions/checkout@v4
+
+      - name: Validar configuração pública do Supabase
+        shell: pwsh
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:VITE_SUPABASE_PUBLISHABLE_KEY)) {
+            Write-Error "O secret VITE_SUPABASE_PUBLISHABLE_KEY não foi configurado."
+            exit 1
+          }
+
+          if (-not $env:VITE_SUPABASE_PUBLISHABLE_KEY.StartsWith("sb_publishable_") -and $env:VITE_SUPABASE_PUBLISHABLE_KEY.Length -lt 40) {
+            Write-Error "A chave publicável do Supabase tem formato inválido."
+            exit 1
+          }
+
+      - name: Configurar Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Instalar dependências web
+        run: npm ci
+
+      - name: Configurar Rust estável
+        shell: pwsh
+        run: |
+          rustup toolchain install stable --profile minimal
+          rustup default stable
+          rustc --version
+          cargo --version
+
+      - name: Gerar instaladores Windows
+        uses: tauri-apps/tauri-action@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VITE_SUPABASE_URL: ${{ env.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_PUBLISHABLE_KEY: ${{ env.VITE_SUPABASE_PUBLISHABLE_KEY }}
+          VITE_LABSTAR_API_URL: ${{ env.VITE_LABSTAR_API_URL }}
+        with:
+          uploadWorkflowArtifacts: true
+          workflowArtifactNamePattern: labstar-windows-[arch]-[bundle]
+          retryAttempts: 1
