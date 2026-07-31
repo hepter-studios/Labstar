@@ -34,9 +34,11 @@ export function clearPresence() {
   listeners.forEach((listener) => listener());
 }
 
-export function subscribePresence(listener: () => void) {
+export function subscribePresence(listener: () => void): () => void {
   listeners.add(listener);
-  return () => listeners.delete(listener);
+  return () => {
+    listeners.delete(listener);
+  };
 }
 
 export function resolvePresence(name: string, requested?: PresenceStatus): PresenceStatus | undefined {
