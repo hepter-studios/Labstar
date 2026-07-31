@@ -1,4 +1,3 @@
-import { Star } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { Member } from "../lib/supabase";
 import { DirectMessagesHub } from "./DirectMessagesHubV2";
@@ -43,7 +42,7 @@ export function CollaborationHub({ member, initialChannelId, soundEnabled = true
         title="Mensagens diretas"
         aria-label="Abrir mensagens diretas"
       >
-        <Star size={25} fill="currentColor" />
+        <img className="labstar-dm-logo" src="/labstar-dm.svg" alt="" aria-hidden="true" />
         <i />
       </button>
       <LegacyCollaborationHub
