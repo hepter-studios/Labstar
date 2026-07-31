@@ -9,6 +9,7 @@ import { MediaPreferenceBridge } from "./components/MediaPreferenceBridge";
 import { MemberQuickActions } from "./components/MemberQuickActions";
 import { RuntimeReliability } from "./components/RuntimeReliability";
 import { SafetyGuards } from "./components/SafetyGuards";
+import { SystemDiagnosticsAddon } from "./components/SystemDiagnostics";
 import { WorkspaceSettingsPortal } from "./components/WorkspaceSettingsPortal";
 import { applyAppSettings, loadAppSettings } from "./lib/app-settings";
 import { prewarmRustBackend } from "./lib/backend-prewarm";
@@ -25,6 +26,7 @@ import "./global-settings.css";
 import "./workspace-settings.css";
 import "./runtime-reliability.css";
 import "./member-quick-actions.css";
+import "./system-diagnostics.css";
 
 const BRAND_INTRO_DURATION_MS = 2350;
 
@@ -46,6 +48,7 @@ function RootSurfaces() {
       <AppSessionRecovery />
       {introFinished && <AccessControl />}
       {introFinished && <GlobalSettingsPortal />}
+      {introFinished && <SystemDiagnosticsAddon />}
       {introFinished && <WorkspaceSettingsPortal />}
       {introFinished && <MemberQuickActions />}
       {introFinished && <InstallApp />}
