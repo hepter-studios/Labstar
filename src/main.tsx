@@ -10,6 +10,7 @@ import "./workspace-polish.css";
 import "./direct-messages.css";
 import "./workspace-layout-fix.css";
 import "./workspace-brand.css";
+import "./experience-polish.css";
 
 const BRAND_INTRO_DURATION_MS = 2350;
 
