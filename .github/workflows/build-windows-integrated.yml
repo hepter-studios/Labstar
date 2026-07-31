@@ -1,10 +1,18 @@
 name: Gerar instalador Windows integrado
+run-name: Instalador Windows integrado — ${{ github.ref_name }} @ ${{ github.sha }}
 
 on:
   push:
     branches:
       - "feat/tauri-auth-rust-integration"
     paths:
+      - "src/**"
+      - "src-tauri/**"
+      - "public/**"
+      - "package.json"
+      - "package-lock.json"
+      - "vite.config.ts"
+      - ".env.example"
       - ".github/workflows/build-windows-integrated.yml"
   workflow_dispatch:
 
@@ -13,7 +21,7 @@ permissions:
 
 concurrency:
   group: labstar-windows-integrated
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   build-windows:
@@ -30,6 +38,13 @@ jobs:
     steps:
       - name: Baixar código da branch integrada
         uses: actions/checkout@v4
+
+      - name: Identificar origem do build
+        shell: pwsh
+        run: |
+          Write-Host "Branch: $env:GITHUB_REF_NAME"
+          Write-Host "Commit: $env:GITHUB_SHA"
+          Write-Host "Execução: $env:GITHUB_RUN_NUMBER"
 
       - name: Validar configuração pública do Supabase
         shell: pwsh
