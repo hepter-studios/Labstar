@@ -1,4 +1,4 @@
-use reqwest::{Client, Method, redirect::Policy};
+use reqwest::{redirect::Policy, Client, Method};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::time::Duration;
@@ -7,6 +7,7 @@ const BACKEND_BASE_URL: &str = "https://labstar-api-mackson.fly.dev";
 const REQUEST_TIMEOUT: Duration = Duration::from_secs(30);
 const CONNECT_TIMEOUT: Duration = Duration::from_secs(10);
 const MAX_RESPONSE_BYTES: usize = 2 * 1024 * 1024;
+const MAX_REQUEST_BYTES: usize = 2 * 1024 * 1024;
 const MAX_TOKEN_BYTES: usize = 16 * 1024;
 
 #[derive(Clone)]
@@ -52,6 +53,27 @@ impl NativeBackendClient {
         Ok(Self { client })
     }
 
+    pub async fn warm_up(&self) -> Result<(), NativeBackendFailure> {
+        let response = self
+            .execute(NativeBackendRequest {
+                path: "/health/live".to_string(),
+                method: "GET".to_string(),
+                access_token: None,
+                body: None,
+            })
+            .await?;
+
+        if (200..300).contains(&response.status) {
+            Ok(())
+        } else {
+            Err(failure(
+                "backend_warmup_failed",
+                "O backend Rust respondeu ao aquecimento com estado inesperado.",
+                true,
+            ))
+        }
+    }
+
     pub async fn execute(
         &self,
         input: NativeBackendRequest,
@@ -69,7 +91,23 @@ impl NativeBackendClient {
         }
 
         if let Some(body) = input.body.as_ref() {
-            request = request.json(body);
+            let encoded = serde_json::to_vec(body).map_err(|_| {
+                failure(
+                    "backend_invalid_json_body",
+                    "O núcleo nativo recebeu um corpo JSON inválido.",
+                    false,
+                )
+            })?;
+            if encoded.len() > MAX_REQUEST_BYTES {
+                return Err(failure(
+                    "backend_request_too_large",
+                    "A solicitação excedeu o limite seguro do núcleo nativo.",
+                    false,
+                ));
+            }
+            request = request
+                .header("Content-Type", "application/json")
+                .body(encoded);
         }
 
         let response = request.send().await.map_err(map_transport_error)?;
@@ -97,9 +135,8 @@ impl NativeBackendClient {
         let body = if bytes.is_empty() {
             Value::Null
         } else {
-            serde_json::from_slice::<Value>(&bytes).unwrap_or_else(|_| {
-                Value::String(String::from_utf8_lossy(&bytes).into_owned())
-            })
+            serde_json::from_slice::<Value>(&bytes)
+                .unwrap_or_else(|_| Value::String(String::from_utf8_lossy(&bytes).into_owned()))
         };
 
         Ok(NativeBackendResponse { status, body })
@@ -169,8 +206,8 @@ fn path_allows_method(path: &str, method: &Method) -> bool {
     }
 
     match path {
-        "/health/live" | "/health/ready" | "/v1/me" => return *method == Method::GET,
-        "/v1/invites" => return matches!(*method, Method::GET | Method::POST),
+        "/health/live" | "/health/ready" | "/v1/me" => return method == Method::GET,
+        "/v1/invites" => return method == Method::GET || method == Method::POST,
         _ => {}
     }
 
@@ -180,8 +217,10 @@ fn path_allows_method(path: &str, method: &Method) -> bool {
     let segments: Vec<&str> = rest.split('/').collect();
 
     match segments.as_slice() {
-        [value] if valid_invite_reference(value) => matches!(*method, Method::GET | Method::DELETE),
-        [token, "accept"] if valid_invite_token(token) => *method == Method::POST,
+        [value] if valid_invite_reference(value) => {
+            method == Method::GET || method == Method::DELETE
+        }
+        [token, "accept"] if valid_invite_token(token) => method == Method::POST,
         _ => false,
     }
 }
