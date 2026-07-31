@@ -2,6 +2,7 @@ mod backend_client;
 mod commands;
 mod deep_links;
 mod security;
+mod settings;
 
 use backend_client::NativeBackendClient;
 use deep_links::PendingDeepLinks;
@@ -11,13 +12,9 @@ use tauri::{Emitter, Manager};
 pub fn run() {
     let builder = tauri::Builder::default();
 
-    // Deve ser o primeiro plugin: no desktop, uma segunda abertura apenas
-    // entrega o deep link à instância já existente e traz a janela para frente.
     #[cfg(desktop)]
     let builder = builder.plugin(tauri_plugin_single_instance::init(
         |app, arguments, _working_directory| {
-            // Não registra os argumentos: eles podem conter token de convite
-            // ou código temporário do OAuth.
             log::info!(
                 "Solicitação de segunda instância recebida com {} argumento(s)",
                 arguments.len()
@@ -43,9 +40,6 @@ pub fn run() {
             let backend_warmup = backend_client.clone();
             app.manage(backend_client);
 
-            // A Fly.io pode estar hibernada. O aquecimento começa junto com a
-            // abertura do aplicativo, antes de a interface pedir /v1/me.
-            // Nenhum token é usado ou registrado nesta etapa.
             tauri::async_runtime::spawn(async move {
                 match backend_warmup.warm_up().await {
                     Ok(()) => log::info!("Backend Rust disponível para a sessão desktop"),
@@ -61,8 +55,6 @@ pub fn run() {
 
             use tauri_plugin_deep_link::DeepLinkExt;
 
-            // Em desenvolvimento no Windows e no Linux, registra o esquema
-            // estático para permitir testar labstar:// sem instalar o bundle.
             #[cfg(any(target_os = "linux", all(debug_assertions, windows)))]
             app.deep_link().register_all()?;
 
@@ -85,8 +77,6 @@ pub fn run() {
                 for url in event.urls() {
                     match pending.ingest(url.as_str()) {
                         Ok(parsed) => {
-                            // O payload contém somente valores já validados pelo Rust.
-                            // Códigos OAuth nunca são escritos nos logs.
                             let _ = handle.emit("labstar://deep-link", parsed);
                         }
                         Err(error) => log::warn!("Deep link rejeitado: {error}"),
@@ -115,7 +105,10 @@ pub fn run() {
             commands::build_invite_deep_link,
             commands::take_pending_deep_links,
             commands::focus_main_window,
-            commands::open_auth_url
+            commands::open_auth_url,
+            settings::load_app_settings,
+            settings::save_app_settings,
+            settings::reset_app_settings
         ])
         .run(tauri::generate_context!())
         .expect("erro fatal ao executar o núcleo Tauri da Labstar");
