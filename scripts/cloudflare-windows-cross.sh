@@ -2,7 +2,6 @@
 set -euo pipefail
 ROOT="$(pwd)"
 TOOLS="$ROOT/.cross-tools"
-TARGET="x86_64-pc-windows-msvc"
 mkdir -p "$TOOLS/nsis-debs" "$TOOLS/nsis-root"
 
 ./node_modules/.bin/tsc -b
@@ -16,10 +15,4 @@ if ! command -v makensis >/dev/null 2>&1; then
   export NSISDIR="$TOOLS/nsis-root/usr/share/nsis"
 fi
 makensis -VERSION
-
 command -v clang >/dev/null 2>&1
-(command -v lld-link >/dev/null 2>&1 || command -v ld.lld >/dev/null 2>&1)
-command -v curl >/dev/null 2>&1
-command -v unzip >/dev/null 2>&1
-
-echo "NSIS, Clang e LLD disponíveis."
