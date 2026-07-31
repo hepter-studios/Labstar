@@ -25,6 +25,13 @@ export function WorkspaceSettingsPortal() {
   const legacyBypass = useRef(false);
 
   useEffect(() => {
+    const openCurrentSpace = () => {
+      const name = document.querySelector<HTMLElement>(".space-title strong")?.textContent?.trim() ?? "";
+      if (!name) return;
+      setSelectedSpaceName(name);
+      setOpen(true);
+    };
+
     const capture = (event: MouseEvent) => {
       const target = event.target as HTMLElement | null;
       const button = target?.closest<HTMLButtonElement>('button[aria-label="Configurar espaço"]');
@@ -32,12 +39,15 @@ export function WorkspaceSettingsPortal() {
       event.preventDefault();
       event.stopPropagation();
       event.stopImmediatePropagation();
-      const name = document.querySelector<HTMLElement>(".space-title strong")?.textContent?.trim() ?? "";
-      setSelectedSpaceName(name);
-      setOpen(true);
+      openCurrentSpace();
     };
+
     document.addEventListener("click", capture, true);
-    return () => document.removeEventListener("click", capture, true);
+    window.addEventListener("labstar:open-workspace-settings", openCurrentSpace);
+    return () => {
+      document.removeEventListener("click", capture, true);
+      window.removeEventListener("labstar:open-workspace-settings", openCurrentSpace);
+    };
   }, []);
 
   async function loadSnapshot() {
