@@ -6,6 +6,7 @@ import { InstallApp } from "./components/InstallApp";
 import { initializeNativeBridge } from "./lib/native";
 import "./styles.css";
 import "./access-control.css";
+import "./workspace-polish.css";
 
 const BRAND_INTRO_DURATION_MS = 2350;
 
