@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - feat/tauri-auth-rust-integration
+  pull_request:
+    branches:
+      - feat/tauri2-rust-foundation
 
 permissions:
   contents: read
