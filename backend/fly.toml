@@ -8,8 +8,8 @@ kill_timeout = "30s"
 
 [env]
   LABSTAR_BIND_ADDR = "0.0.0.0:8080"
-  LABSTAR_ALLOWED_ORIGINS = "https://labstar.pages.dev"
-  LABSTAR_REQUEST_TIMEOUT_SECONDS = "15"
+  LABSTAR_ALLOWED_ORIGINS = "https://labstar.pages.dev,http://tauri.localhost,https://tauri.localhost,tauri://localhost"
+  LABSTAR_REQUEST_TIMEOUT_SECONDS = "30"
   LABSTAR_DATABASE_MAX_CONNECTIONS = "10"
   RUST_LOG = "labstar_backend=info,tower_http=info"
 
