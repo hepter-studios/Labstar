@@ -3,14 +3,11 @@ set -euo pipefail
 
 ROOT="$(pwd)"
 TOOLS="$ROOT/.cross-tools"
-TARGET="x86_64-pc-windows-msvc"
 NSIS_ROOT="$TOOLS/nsis-root"
-LLVM_ARCHIVE="$TOOLS/clang+llvm-18.1.8-x86_64-linux-gnu-ubuntu-18.04.tar.xz"
-LLVM_DIR="$TOOLS/clang+llvm-18.1.8-x86_64-linux-gnu-ubuntu-18.04"
-LLVM_URL="https://github.com/llvm/llvm-project/releases/download/llvmorg-18.1.8/clang+llvm-18.1.8-x86_64-linux-gnu-ubuntu-18.04.tar.xz"
-LLVM_SHA256="54ec30358afcc9fb8aa74307db3046f5187f9fb89fb37064cdde906e062ebf36"
+LLVM_ROOT="$TOOLS/llvm-root"
+LLVM_DEBS="$TOOLS/llvm-debs"
 
-mkdir -p "$TOOLS/nsis-debs" "$NSIS_ROOT"
+mkdir -p "$TOOLS/nsis-debs" "$NSIS_ROOT" "$LLVM_ROOT" "$LLVM_DEBS"
 
 ./node_modules/.bin/tsc -b
 ./node_modules/.bin/vite build
@@ -24,28 +21,35 @@ if ! command -v makensis >/dev/null 2>&1; then
 fi
 makensis -VERSION
 
-cd "$TOOLS"
-rm -rf "$LLVM_DIR" "$LLVM_ARCHIVE"
-curl -fL --retry 3 --retry-delay 2 "$LLVM_URL" -o "$LLVM_ARCHIVE"
-printf '%s  %s\n' "$LLVM_SHA256" "$LLVM_ARCHIVE" | sha256sum -c -
-tar -xJf "$LLVM_ARCHIVE"
-export PATH="$LLVM_DIR/bin:$HOME/.cargo/bin:$PATH"
-export LD_LIBRARY_PATH="$LLVM_DIR/lib:${LD_LIBRARY_PATH:-}"
-clang --version
-lld-link --version
+CLANG_PACKAGE="$(apt-cache depends clang | awk '/Depends: clang-[0-9]+/ {print $2; exit}')"
+if [[ -z "$CLANG_PACKAGE" ]]; then
+  echo "Não foi possível resolver a versão do clang disponível no builder." >&2
+  exit 51
+fi
+LLVM_VERSION="${CLANG_PACKAGE#clang-}"
 
-if ! command -v rustup >/dev/null 2>&1; then
-  curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs -o "$TOOLS/rustup-init.sh"
-  sh "$TOOLS/rustup-init.sh" -y --profile minimal
-  # shellcheck disable=SC1090
-  source "$HOME/.cargo/env"
+cd "$LLVM_DEBS"
+rm -f ./*.deb
+for pkg in \
+  "clang-$LLVM_VERSION" \
+  "lld-$LLVM_VERSION" \
+  "libllvm$LLVM_VERSION" \
+  "libclang-cpp$LLVM_VERSION" \
+  "libclang-common-$LLVM_VERSION-dev" \
+  "llvm-$LLVM_VERSION-linker-tools"; do
+  apt-get download "$pkg"
+done
+
+for deb in ./*.deb; do dpkg-deb -x "$deb" "$LLVM_ROOT"; done
+
+export PATH="$LLVM_ROOT/usr/bin:$LLVM_ROOT/usr/lib/llvm-$LLVM_VERSION/bin:$PATH"
+export LD_LIBRARY_PATH="$LLVM_ROOT/usr/lib/x86_64-linux-gnu:$LLVM_ROOT/usr/lib/llvm-$LLVM_VERSION/lib:${LD_LIBRARY_PATH:-}"
+
+"clang-$LLVM_VERSION" --version
+if command -v "lld-link-$LLVM_VERSION" >/dev/null 2>&1; then
+  "lld-link-$LLVM_VERSION" --version
+else
+  lld-link --version
 fi
 
-rustup toolchain install stable --profile minimal
-rustup default stable
-rustup target add "$TARGET"
-rustc --version
-cargo --version
-rustup target list --installed | grep -F "$TARGET"
-
-echo "LABSTAR_STAGE_RUST_OK"
+echo "LABSTAR_STAGE_ROOTLESS_LLVM_OK version=$LLVM_VERSION"
