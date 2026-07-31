@@ -4,6 +4,7 @@ import App from "./App";
 import { AccessControl } from "./components/AccessControl";
 import { GlobalSettingsPortal } from "./components/GlobalSettingsPortal";
 import { InstallApp } from "./components/InstallApp";
+import { SafetyGuards } from "./components/SafetyGuards";
 import { applyAppSettings, loadAppSettings } from "./lib/app-settings";
 import { prewarmRustBackend } from "./lib/backend-prewarm";
 import { initializeNativeBridge } from "./lib/native";
@@ -30,6 +31,7 @@ function RootSurfaces() {
   return (
     <>
       <App />
+      <SafetyGuards />
       {introFinished && <AccessControl />}
       {introFinished && <GlobalSettingsPortal />}
       {introFinished && <InstallApp />}
