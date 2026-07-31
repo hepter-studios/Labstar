@@ -18,16 +18,17 @@ const appTypecheck = run([
   "tsconfig.app.json",
   "--noEmit",
 ]);
-
-if (appTypecheck.status !== 0) {
-  console.log("LABSTAR_PROBE_APP_TYPECHECK_FAILED");
-  process.exit(0);
-}
+if (appTypecheck.status !== 0) process.exit(39);
 
 const vite = run(["node_modules/vite/bin/vite.js", "build"]);
 if (vite.status !== 0) {
-  console.error("LABSTAR_PROBE_VITE_FAILED");
-  process.exit(38);
+  const presenceHints = ["PresenceBridge", "presence.ts", "../lib/presence", "./lib/presence"];
+  if (presenceHints.some((hint) => vite.output.includes(hint))) {
+    console.log("LABSTAR_PROBE_VITE_PRESENCE_MATCH");
+    process.exit(0);
+  }
+  console.error("LABSTAR_PROBE_VITE_NOT_PRESENCE");
+  process.exit(40);
 }
 
 console.log("LABSTAR_PROBE_ALL_OK");
