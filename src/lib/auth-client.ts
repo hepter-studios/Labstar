@@ -1,14 +1,17 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 const supabaseUrl = (import.meta.env.VITE_SUPABASE_URL ?? "").replace(/\/rest\/v1\/?$/, "");
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY ?? "";
+const supabasePublicKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY
+  ?? import.meta.env.VITE_SUPABASE_ANON_KEY
+  ?? "";
 
 const configured = supabaseUrl.startsWith("https://")
-  && supabaseAnonKey.length > 40
-  && !supabaseAnonKey.includes("cole_a_chave");
+  && supabasePublicKey.length > 20
+  && !supabasePublicKey.includes("SUA_CHAVE")
+  && !supabasePublicKey.includes("cole_a_chave");
 
 export const authClient: SupabaseClient | null = configured
-  ? createClient(supabaseUrl, supabaseAnonKey, {
+  ? createClient(supabaseUrl, supabasePublicKey, {
       auth: {
         flowType: "pkce",
         persistSession: true,
