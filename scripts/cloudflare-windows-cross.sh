@@ -7,8 +7,9 @@ TARGET="x86_64-pc-windows-msvc"
 NSIS_ROOT="$TOOLS/nsis-root"
 LLVM_ROOT="$TOOLS/llvm-root"
 LLVM_DEBS="$TOOLS/llvm-debs"
+OUTPUT_DIR="$ROOT/dist/downloads"
 
-mkdir -p "$TOOLS/nsis-debs" "$NSIS_ROOT" "$LLVM_ROOT" "$LLVM_DEBS"
+mkdir -p "$TOOLS/nsis-debs" "$NSIS_ROOT" "$LLVM_ROOT" "$LLVM_DEBS" "$OUTPUT_DIR"
 
 ./node_modules/.bin/tsc -b
 ./node_modules/.bin/vite build
@@ -73,4 +74,36 @@ if ! command -v cargo-xwin >/dev/null 2>&1; then
 fi
 cargo xwin --version
 
-echo "LABSTAR_STAGE_CARGO_XWIN_OK llvm=$LLVM_VERSION target=$TARGET"
+cd "$ROOT"
+npx --yes @tauri-apps/cli@2 build \
+  --config src-tauri/tauri.cross.conf.json \
+  --runner cargo-xwin \
+  --target "$TARGET" \
+  --bundles nsis
+
+INSTALLER="$(find "$ROOT/src-tauri/target/$TARGET/release/bundle/nsis" -maxdepth 1 -type f -name '*setup.exe' -print -quit 2>/dev/null || true)"
+if [[ -z "$INSTALLER" ]]; then
+  INSTALLER="$(find "$ROOT/src-tauri/target/$TARGET/release/bundle/nsis" -maxdepth 1 -type f -name '*.exe' -print -quit 2>/dev/null || true)"
+fi
+
+if [[ -z "$INSTALLER" || ! -f "$INSTALLER" ]]; then
+  echo "Instalador NSIS não encontrado após o build Tauri." >&2
+  exit 60
+fi
+
+cp "$INSTALLER" "$OUTPUT_DIR/Labstar_11.0.0_x64-setup.exe"
+SIZE_BYTES="$(wc -c < "$OUTPUT_DIR/Labstar_11.0.0_x64-setup.exe" | tr -d ' ')"
+SHA256="$(sha256sum "$OUTPUT_DIR/Labstar_11.0.0_x64-setup.exe" | awk '{print $1}')"
+
+cat > "$OUTPUT_DIR/build-info.txt" <<EOF
+Labstar 11.0.0
+base_app_sha=034a2b0cf92e6335970be0bfd36d6956822df249
+builder_commit=${CF_PAGES_COMMIT_SHA:-unknown}
+target=$TARGET
+bundle=nsis
+size_bytes=$SIZE_BYTES
+sha256=$SHA256
+generated_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+EOF
+
+echo "LABSTAR_WINDOWS_INSTALLER_READY path=$OUTPUT_DIR/Labstar_11.0.0_x64-setup.exe size=$SIZE_BYTES sha256=$SHA256"
