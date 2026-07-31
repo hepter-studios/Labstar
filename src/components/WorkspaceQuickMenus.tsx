@@ -31,19 +31,34 @@ export function WorkspaceQuickMenus() {
       const channel = target?.closest<HTMLButtonElement>(".channel-list button");
       if (channel) {
         event.preventDefault();
-        setMenu({ kind: "channel", x: Math.min(event.clientX, window.innerWidth - 245), y: Math.min(event.clientY, window.innerHeight - 245), button: channel, name: channel.querySelector("span")?.textContent?.trim() || "canal" });
+        setMenu({
+          kind: "channel",
+          x: Math.min(event.clientX, window.innerWidth - 245),
+          y: Math.min(event.clientY, window.innerHeight - 245),
+          button: channel,
+          name: channel.querySelector("span")?.textContent?.trim() || "canal",
+        });
         return;
       }
+
       const space = target?.closest<HTMLButtonElement>(".space-list button");
       if (space) {
         event.preventDefault();
-        setMenu({ kind: "space", x: Math.min(event.clientX, window.innerWidth - 245), y: Math.min(event.clientY, window.innerHeight - 200), button: space, name: space.getAttribute("title")?.trim() || "Espaço" });
+        setMenu({
+          kind: "space",
+          x: Math.min(event.clientX, window.innerWidth - 245),
+          y: Math.min(event.clientY, window.innerHeight - 200),
+          button: space,
+          name: space.getAttribute("title")?.trim() || "Espaço",
+        });
       }
     };
+
     const close = (event: PointerEvent) => {
       if (!ref.current?.contains(event.target as Node)) setMenu(null);
     };
     const escape = (event: KeyboardEvent) => event.key === "Escape" && setMenu(null);
+
     document.addEventListener("contextmenu", open, true);
     document.addEventListener("pointerdown", close);
     window.addEventListener("keydown", escape);
@@ -55,46 +70,47 @@ export function WorkspaceQuickMenus() {
   }, []);
 
   if (!menu) return null;
+  const activeMenu = menu;
 
   function openSelected() {
-    menu.button.click();
+    activeMenu.button.click();
     setMenu(null);
   }
 
   function openSpaceSettings() {
-    menu.button.click();
+    activeMenu.button.click();
     window.setTimeout(() => document.querySelector<HTMLButtonElement>('button[aria-label="Configurar espaço"]')?.click(), 30);
     setMenu(null);
   }
 
   function focusChannelSearch() {
-    menu.button.click();
+    activeMenu.button.click();
     window.setTimeout(() => document.querySelector<HTMLInputElement>(".message-toolbar input")?.focus(), 30);
     setMenu(null);
   }
 
   function toggleMembers() {
-    menu.button.click();
+    activeMenu.button.click();
     window.setTimeout(() => document.querySelector<HTMLButtonElement>('.channel-head-actions button[title="Mostrar membros"]')?.click(), 30);
     setMenu(null);
   }
 
   function openIntegrations() {
-    menu.button.click();
+    activeMenu.button.click();
     window.setTimeout(() => document.querySelector<HTMLButtonElement>('.channel-head-actions button[title="Integrações e automações"]')?.click(), 30);
     setMenu(null);
   }
 
   return (
-    <aside ref={ref} className="workspace-quick-menu" style={{ left: menu.x, top: menu.y }} onClick={(event) => event.stopPropagation()}>
-      <header><strong>{menu.kind === "channel" ? `# ${menu.name}` : menu.name}</strong><button type="button" onClick={() => setMenu(null)} aria-label="Fechar"><X size={12}/></button></header>
+    <aside ref={ref} className="workspace-quick-menu" style={{ left: activeMenu.x, top: activeMenu.y }} onClick={(event) => event.stopPropagation()}>
+      <header><strong>{activeMenu.kind === "channel" ? `# ${activeMenu.name}` : activeMenu.name}</strong><button type="button" onClick={() => setMenu(null)} aria-label="Fechar"><X size={12}/></button></header>
       <div>
-        <button type="button" onClick={openSelected}>{menu.kind === "channel" ? <Search size={14}/> : <Settings2 size={14}/>} Abrir {menu.kind === "channel" ? "canal" : "Espaço"}</button>
-        {menu.kind === "channel" && <button type="button" onClick={focusChannelSearch}><Search size={14}/> Buscar neste canal</button>}
-        <button type="button" onClick={() => { void copyText(menu.kind === "channel" ? `#${menu.name}` : menu.name); setMenu(null); }}><Copy size={14}/> Copiar nome</button>
-        {menu.kind === "channel" && <button type="button" onClick={toggleMembers}><Users size={14}/> Alternar membros</button>}
-        {menu.kind === "channel" && <button type="button" onClick={openIntegrations}><Webhook size={14}/> Integrações</button>}
-        {menu.kind === "space" && <button type="button" onClick={openSpaceSettings}><Settings2 size={14}/> Configurações do Espaço</button>}
+        <button type="button" onClick={openSelected}>{activeMenu.kind === "channel" ? <Search size={14}/> : <Settings2 size={14}/>} Abrir {activeMenu.kind === "channel" ? "canal" : "Espaço"}</button>
+        {activeMenu.kind === "channel" && <button type="button" onClick={focusChannelSearch}><Search size={14}/> Buscar neste canal</button>}
+        <button type="button" onClick={() => { void copyText(activeMenu.kind === "channel" ? `#${activeMenu.name}` : activeMenu.name); setMenu(null); }}><Copy size={14}/> Copiar nome</button>
+        {activeMenu.kind === "channel" && <button type="button" onClick={toggleMembers}><Users size={14}/> Alternar membros</button>}
+        {activeMenu.kind === "channel" && <button type="button" onClick={openIntegrations}><Webhook size={14}/> Integrações</button>}
+        {activeMenu.kind === "space" && <button type="button" onClick={openSpaceSettings}><Settings2 size={14}/> Configurações do Espaço</button>}
       </div>
     </aside>
   );
