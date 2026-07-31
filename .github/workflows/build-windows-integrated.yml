@@ -1,6 +1,11 @@
 name: Gerar instalador Windows integrado
 
 on:
+  push:
+    branches:
+      - "feat/tauri-auth-rust-integration"
+    paths:
+      - ".github/workflows/build-windows-integrated.yml"
   workflow_dispatch:
 
 permissions:
