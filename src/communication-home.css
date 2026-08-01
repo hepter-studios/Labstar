@@ -540,3 +540,27 @@
     border-right: 0;
   }
 }
+
+
+/* Canais de servidores/comunidades: ancorados entre o cabeçalho e a base da janela. */
+@media (min-width: 761px) {
+  .collaboration-server-mode > .collaboration-shell {
+    position: fixed !important;
+    z-index: 1 !important;
+    top: 68px !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    left: 64px !important;
+    width: auto !important;
+    height: auto !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    transform: none !important;
+  }
+}
+
+@media (min-width: 761px) and (max-width: 1280px) {
+  .collaboration-server-mode > .collaboration-shell {
+    left: 58px !important;
+  }
+}
