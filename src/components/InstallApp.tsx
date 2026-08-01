@@ -1,4 +1,4 @@
-import { Download, Share, X } from "lucide-react";
+import { Share, X } from "lucide-react";
 import { useEffect, useState } from "react";
 
 type InstallPromptEvent = Event & {
@@ -54,7 +54,7 @@ export function InstallApp() {
   return (
     <aside className="install-app" aria-label="Instalar Labstar">
       <button className="install-app-close" type="button" onClick={dismiss} aria-label="Fechar"><X size={14} /></button>
-      <div className="install-app-icon"><Download size={18} /></div>
+      <div className="install-app-icon"><img src="/app-icon.png" alt="" /></div>
       <div>
         <strong>Instale a Labstar</strong>
         <span>{showIosHelp ? <>No Safari, toque em <Share size={13} /> e depois em <b>Adicionar à Tela de Início</b>.</> : "Abra como aplicativo no seu dispositivo."}</span>
