@@ -9,7 +9,6 @@
     <filter id="blur4" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="4"/></filter>
     <filter id="bubbleShadow" x="-30%" y="-30%" width="160%" height="160%"><feDropShadow dx="0" dy="10" stdDeviation="10" flood-color="#01050d" flood-opacity=".34"/></filter>
   </defs>
-  <rect width="640" height="480" fill="#041022"/>
   <rect width="640" height="480" fill="url(#bgGlow)"/>
   <circle cx="320" cy="250" r="145" fill="#0f3d79" opacity=".14" filter="url(#blur10)"/><circle cx="320" cy="250" r="125" fill="#082d5d" opacity=".12" filter="url(#blur10)"/>
   <circle cx="320" cy="240" r="165" fill="none" stroke="#7fb1e2" stroke-opacity=".16" stroke-width="1.5"/><circle cx="320" cy="240" r="151" fill="none" stroke="#7fb1e2" stroke-opacity=".10" stroke-width="1.1"/><circle cx="320" cy="240" r="119" fill="none" stroke="#7fb1e2" stroke-opacity=".07"/>
@@ -23,5 +22,4 @@
   <g filter="url(#bubbleShadow)"><path d="M194 108 Q194 78 224 78 H387 Q417 78 417 108 V193 Q417 223 387 223 H298 L271 252 Q267 257 267 249 V223 H224 Q194 223 194 193 Z" fill="url(#bubbleFront)" stroke="#9dbadc" stroke-opacity=".34" stroke-width="1.9"/></g>
   <g opacity=".98"><circle cx="258" cy="146" r="10.2" fill="url(#dot)"/><circle cx="307" cy="146" r="10.2" fill="url(#dot)"/><circle cx="356" cy="146" r="10.2" fill="url(#dot)"/></g>
   <g opacity=".28" fill="#627a97"><circle cx="410" cy="261" r="8"/><circle cx="441" cy="261" r="8"/><circle cx="472" cy="261" r="8"/></g>
-  <rect width="640" height="480" fill="#020814" opacity=".08"/>
 </svg>
