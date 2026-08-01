@@ -3,6 +3,7 @@ import {
   requestNativeBackend,
   type NativeBackendFailure,
 } from "./native";
+import { requireAuthClient } from "./auth-client";
 
 export type BackendMember = {
   id: string;
@@ -49,6 +50,17 @@ type BackendErrorBody = {
     code?: string;
     message?: string;
   };
+};
+
+type IdentityFallbackRow = {
+  id: string;
+  auth_user_id?: string | null;
+  email: string;
+  name: string;
+  status: "pending" | "active" | "suspended";
+  role: "owner" | "admin" | "manager" | "member" | "viewer";
+  job_title?: string | null;
+  area?: string | null;
 };
 
 const DEFAULT_RUST_BACKEND_URL = "https://labstar-api-mackson.fly.dev";
@@ -261,8 +273,87 @@ async function request<T>(path: string, options: RequestInit = {}, accessToken?:
   throw lastError;
 }
 
+function memberAuthorizationError(status: IdentityFallbackRow["status"]) {
+  if (status === "pending") {
+    return new BackendApiError("member_pending", "O membro ainda aguarda aprovação.", 403);
+  }
+  if (status === "suspended") {
+    return new BackendApiError("member_suspended", "O acesso deste membro está suspenso.", 403);
+  }
+  return null;
+}
+
+async function getBackendIdentityFromSupabase(
+  accessToken: string,
+  originalError: unknown,
+): Promise<BackendMeResponse> {
+  const client = requireAuthClient();
+  const { data: sessionData, error: sessionError } = await client.auth.getSession();
+  const session = sessionData.session;
+
+  if (sessionError || !session?.user || session.access_token !== accessToken) {
+    throw originalError;
+  }
+
+  const user = session.user;
+  const email = user.email?.trim().toLowerCase() ?? "";
+  let row: IdentityFallbackRow | null = null;
+
+  const byIdentity = await client
+    .from("members")
+    .select("id,auth_user_id,email,name,status,role,job_title,area")
+    .eq("auth_user_id", user.id)
+    .maybeSingle();
+
+  if (byIdentity.error) throw originalError;
+  row = byIdentity.data as IdentityFallbackRow | null;
+
+  if (!row && email) {
+    const byEmail = await client
+      .from("members")
+      .select("id,auth_user_id,email,name,status,role,job_title,area")
+      .eq("email", email)
+      .maybeSingle();
+    if (byEmail.error) throw originalError;
+    row = byEmail.data as IdentityFallbackRow | null;
+  }
+
+  if (!row) {
+    throw new BackendApiError(
+      "member_not_authorized",
+      "Esta identidade não possui vínculo ativo com a equipe.",
+      403,
+    );
+  }
+
+  const authorizationError = memberAuthorizationError(row.status);
+  if (authorizationError) throw authorizationError;
+
+  window.sessionStorage.setItem("labstar-backend-mode", "degraded-supabase-identity");
+
+  return {
+    userId: user.id,
+    email: row.email,
+    member: {
+      id: row.id,
+      name: row.name,
+      status: row.status,
+      role: row.role,
+      jobTitle: row.job_title ?? "",
+      area: row.area ?? "",
+    },
+  };
+}
+
 export async function getBackendIdentity(accessToken: string) {
-  return request<BackendMeResponse>("/v1/me", { method: "GET" }, accessToken);
+  try {
+    const identity = await request<BackendMeResponse>("/v1/me", { method: "GET" }, accessToken);
+    window.sessionStorage.setItem("labstar-backend-mode", "rust-api");
+    return identity;
+  } catch (error) {
+    if (!isRetryableReadError(error)) throw error;
+    return getBackendIdentityFromSupabase(accessToken, error);
+  }
 }
 
 export async function inspectBackendInvite(token: string) {
