@@ -52,6 +52,7 @@ import "./workspace-intelligence.css";
 import "./global-search-v2.css";
 import "./work-home.css";
 import "./work-surface-nav.css";
+import "./communication-home.css";
 import "./work-items-center.css";
 import "./dashboard-work-surface.css";
 import "./message-work-item.css";
