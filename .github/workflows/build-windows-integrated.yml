@@ -110,8 +110,8 @@ jobs:
           VITE_SUPABASE_ANON_KEY: ${{ env.VITE_SUPABASE_ANON_KEY }}
           VITE_LABSTAR_API_URL: ${{ env.VITE_LABSTAR_API_URL }}
         with:
-          tagName: ${{ github.event_name == 'push' && 'desktop-v11.2.4' || '' }}
-          releaseName: ${{ github.event_name == 'push' && 'Labstar 11.2.4' || '' }}
+          tagName: ${{ github.event_name == 'push' && 'desktop-v11.2.5' || '' }}
+          releaseName: ${{ github.event_name == 'push' && 'Labstar 11.2.5' || '' }}
           releaseBody: "Versão oficial consolidada do Labstar para Windows, com Central de Trabalho, DMs, busca, tarefas, backend Rust e identidade visual atualizada."
           releaseDraft: false
           prerelease: false

@@ -23,7 +23,7 @@ function setNativeInputValue(input: HTMLInputElement, value: string) {
 }
 
 export function CollaborationHub({ member, initialChannelId, soundEnabled = true }: CollaborationHubProps) {
-  const [surface, setSurface] = useState<WorkSurface>(initialChannelId ? "workspace" : "home");
+  const [surface, setSurface] = useState<WorkSurface>("workspace");
   const [workspaceChannelId, setWorkspaceChannelId] = useState<string | null>(initialChannelId ?? null);
 
   useEffect(() => {
