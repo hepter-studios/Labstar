@@ -5,6 +5,7 @@ import {
   CameraOff,
   CalendarDays,
   Check,
+  Copy,
   ChevronDown,
   ChevronRight,
   Download,
@@ -110,7 +111,22 @@ const channelLabels = {
   social: "Planejamento social",
 };
 
-const emojiSet = ["😀", "😂", "🥹", "😍", "🤔", "👏", "🔥", "✨", "⭐", "🚀", "✅", "❤️", "👀", "💡", "🎯", "📌", "🧠", "🎉"];
+const emojiSet = ["😀", "😃", "😄", "😁", "😂", "🤣", "😊", "🥹", "😍", "🥰", "😎", "🤔", "🫡", "😮", "😢", "😭", "😡", "👍", "👎", "👏", "🙌", "🤝", "💪", "🙏", "👀", "🧠", "💡", "❤️", "💙", "💚", "🔥", "✨", "⭐", "🚀", "✅", "❌", "⚠️", "🎯", "📌", "📎", "📝", "🎉", "🥳", "💬", "🔒", "🔔", "☕", "💻"];
+
+async function copyToClipboard(value: string) {
+  try {
+    await navigator.clipboard.writeText(value);
+  } catch {
+    const textarea = document.createElement("textarea");
+    textarea.value = value;
+    textarea.style.position = "fixed";
+    textarea.style.opacity = "0";
+    document.body.appendChild(textarea);
+    textarea.select();
+    document.execCommand("copy");
+    textarea.remove();
+  }
+}
 
 function canManage(member: Member) {
   return member.role === "owner" || member.role === "admin" || member.jobRoles.some((role) => role.permissions.includes("manage_channels"));
@@ -477,6 +493,8 @@ function MessageRoom({ channel, space, member }: { channel: LabstarChannel; spac
     setFiles([]);
     setReplying(null);
     setEditing(null);
+    setEmojiOpen(false);
+    setContextMenu(null);
     void refreshMessages(true);
     const messageSubscription = subscribeToTable("channel_messages", `channel_id=eq.${channel.id}`, () => void refreshMessages());
     const attachmentSubscription = subscribeToTable("channel_message_attachments", "", () => void refreshMessages());
@@ -532,6 +550,15 @@ function MessageRoom({ channel, space, member }: { channel: LabstarChannel; spac
     }
   }
 
+  function openMessageMenu(message: ChannelMessage, x: number, y: number) {
+    setEmojiOpen(false);
+    setContextMenu({
+      x: Math.max(8, Math.min(x, window.innerWidth - 197)),
+      y: Math.max(8, Math.min(y, window.innerHeight - 250)),
+      message,
+    });
+  }
+
   function beginEdit(message: ChannelMessage) {
     setEditing(message);
     setReplying(null);
@@ -569,7 +596,7 @@ function MessageRoom({ channel, space, member }: { channel: LabstarChannel; spac
               className={`chat-message ${message.isPinned ? "pinned" : ""}`}
               onContextMenu={(event) => {
                 event.preventDefault();
-                setContextMenu({ x: Math.min(event.clientX, window.innerWidth - 190), y: Math.min(event.clientY, window.innerHeight - 210), message });
+                openMessageMenu(message, event.clientX, event.clientY);
               }}
             >
               <Avatar name={message.author?.name ?? "Membro removido"} url={message.author?.avatarUrl} size="md" />
@@ -614,7 +641,7 @@ function MessageRoom({ channel, space, member }: { channel: LabstarChannel; spac
               <div className="message-actions">
                 <button title="Responder" onClick={() => { setReplying(message); setEditing(null); }}><Reply size={14} /></button>
                 {(own || member.role === "owner" || member.role === "admin") && <button title="Editar" onClick={() => beginEdit(message)}><Pencil size={13} /></button>}
-                <button title="Mais ações" onClick={(event) => setContextMenu({ x: event.clientX - 170, y: event.clientY + 8, message })}><MoreHorizontal size={15} /></button>
+                <button type="button" title="Mais ações" aria-label="Mais ações da mensagem" onClick={(event) => openMessageMenu(message, event.clientX - 170, event.clientY + 8)}><MoreHorizontal size={15} /></button>
               </div>
             </article>
           );
@@ -657,7 +684,7 @@ function MessageRoom({ channel, space, member }: { channel: LabstarChannel; spac
               {sending ? <LoaderCircle className="spin" size={17} /> : editing ? <Save size={17} /> : <Send size={17} />}
             </button>
           </div>
-          {emojiOpen && <div className="emoji-picker">{emojiSet.map((emoji) => <button key={emoji} type="button" onClick={() => { setDraft((current) => `${current}${emoji}`); setEmojiOpen(false); }}>{emoji}</button>)}</div>}
+          {emojiOpen && <div className="emoji-picker" role="listbox" aria-label="Emojis disponíveis">{emojiSet.map((emoji) => <button key={emoji} type="button" title={`Inserir ${emoji}`} aria-label={`Inserir emoji ${emoji}`} onClick={() => setDraft((current) => `${current}${emoji}`)}>{emoji}</button>)}</div>}
           <input ref={fileRef} hidden multiple type="file" onChange={(event) => setFiles((current) => [...current, ...Array.from(event.target.files ?? [])].slice(0, 8))} />
           <input ref={stickerRef} hidden type="file" accept="image/*,.gif,.webp" onChange={(event) => {
             const file = event.target.files?.[0];
@@ -669,7 +696,8 @@ function MessageRoom({ channel, space, member }: { channel: LabstarChannel; spac
 
       {contextMenu && (
         <div className="context-menu" style={{ left: contextMenu.x, top: contextMenu.y }} onClick={(event) => event.stopPropagation()}>
-          <button onClick={() => { setReplying(contextMenu.message); setEditing(null); setContextMenu(null); }}><Reply size={14} /> Responder</button>
+          <button type="button" onClick={() => { setReplying(contextMenu.message); setEditing(null); setContextMenu(null); }}><Reply size={14} /> Responder</button>
+          <button type="button" onClick={() => { const text = contextMenu.message.body.trim() || contextMenu.message.attachments.map((attachment) => attachment.url).join("\n"); void copyToClipboard(text); setContextMenu(null); }}><Copy size={14} /> Copiar texto</button>
           {(contextMenu.message.authorId === member.id || member.role === "owner" || member.role === "admin") && <button onClick={() => beginEdit(contextMenu.message)}><Pencil size={14} /> Editar mensagem</button>}
           <button onClick={async () => { await pinMessage(contextMenu.message.id, !contextMenu.message.isPinned); setContextMenu(null); await refreshMessages(); }}><Pin size={14} /> {contextMenu.message.isPinned ? "Desafixar" : "Fixar mensagem"}</button>
           {(contextMenu.message.authorId === member.id || member.role === "owner" || member.role === "admin") && <button className="danger" onClick={async () => { await deleteMessage(contextMenu.message.id); setContextMenu(null); await refreshMessages(); }}><Trash2 size={14} /> Excluir mensagem</button>}

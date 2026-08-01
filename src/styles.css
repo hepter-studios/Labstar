@@ -744,7 +744,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .composer-row textarea { width: 100%; min-height: 44px; max-height: 140px; padding: 13px 7px; border: 0; outline: 0; resize: none; color: #d7dbe3; background: transparent; font-size: 11px; line-height: 1.5; }
 .composer-row .send-message { margin: 4px; width: 34px; height: 36px; color: #09101e; background: #a9bef0; }
 .composer-row .send-message:disabled { color: #505863; background: rgba(255,255,255,.035); cursor: default; }
-.emoji-picker { position: absolute; z-index: 30; right: 54px; bottom: 62px; width: 250px; padding: 10px; display: grid; grid-template-columns: repeat(6,1fr); gap: 3px; border: 1px solid var(--line-strong); border-radius: 11px; background: #0b0e13; box-shadow: 0 18px 45px #000d; }
+.emoji-picker { position: absolute; z-index: 30; right: 54px; bottom: 62px; width: min(338px,calc(100vw - 28px)); max-height: 248px; padding: 10px; display: grid; grid-template-columns: repeat(8,1fr); gap: 3px; overflow-y: auto; border: 1px solid var(--line-strong); border-radius: 11px; background: #0b0e13; box-shadow: 0 18px 45px #000d; }
 .emoji-picker button { width: 34px; height: 34px; border: 0; border-radius: 7px; background: transparent; cursor: pointer; font-size: 18px; }
 .emoji-picker button:hover { background: rgba(255,255,255,.05); }
 .read-only-notice { min-height: 54px; margin: 8px 13px 13px; display: flex; align-items: center; justify-content: center; gap: 7px; border: 1px solid var(--line); border-radius: 10px; color: #69727f; background: #0b0d12; font-size: 10px; }
@@ -1119,3 +1119,5 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .install-app-action{border:0;border-radius:9px;padding:9px 12px;background:#8baeff;color:#071020;font-size:12px;font-weight:800;cursor:pointer}
 .install-app-close{position:absolute;top:-7px;right:-7px;display:grid;place-items:center;width:23px;height:23px;border:1px solid #30384b;border-radius:50%;background:#151a27;color:#aeb7cc;cursor:pointer}
 @media(max-width:640px){.install-app{right:14px;bottom:14px}.install-app-action{padding:9px 10px}}
+
+@media(max-width:760px){.emoji-picker{right:8px;grid-template-columns:repeat(6,1fr);width:min(260px,calc(100vw - 20px))}}

@@ -1118,7 +1118,7 @@ function QuickPanel({
 }
 
 function AccessLoading() {
-  return <main className="access-screen brand-intro" aria-label="Abrindo Labstar"><Wordmark large /></main>;
+  return <main className="access-screen brand-intro" aria-label="Carregando Labstar" aria-live="polite" aria-busy="true" />;
 }
 
 function AccessGate() {

@@ -124,7 +124,7 @@ export function AccessControl() {
     return canInvite ? <InvitePortal /> : null;
   }
 
-  if (stage === "loading") return <AccessLoading />;
+  if (stage === "loading") return null;
   if (stage === "anonymous") return <SignInScreen inspection={inspection} />;
   if (stage === "pending" && identity) {
     return (
@@ -173,14 +173,6 @@ export function AccessControl() {
         {getPendingInviteToken() && <button className="access-v2-secondary" type="button" onClick={() => { clearPendingInviteToken(); window.location.replace("/"); }}>Remover convite</button>}
       </div>
     </AccessFrame>
-  );
-}
-
-function AccessLoading() {
-  return (
-    <main className="access-v2-screen access-v2-logo-screen" aria-live="polite" aria-busy="true">
-      <strong className="access-v2-wordmark access-v2-logo-only" aria-label="Labstar">L<span>★</span>BSTAR</strong>
-    </main>
   );
 }
 
