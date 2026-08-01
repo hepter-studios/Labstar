@@ -1,6 +1,6 @@
 [package]
 name = "labstar"
-version = "11.1.0"
+version = "11.2.0"
 description = "Aplicativo desktop profissional da Labstar"
 authors = ["Labstar"]
 edition = "2024"
