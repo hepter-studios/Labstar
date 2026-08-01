@@ -197,6 +197,7 @@ function AccessFrame({ children, compact = false }: { children: React.ReactNode;
 }
 
 function SignInScreen({ inspection }: { inspection: InviteInspection | null }) {
+  const [loginVisible, setLoginVisible] = useState(false);
   const [emailMode, setEmailMode] = useState(false);
   const [email, setEmail] = useState("");
   const [sent, setSent] = useState(false);
@@ -234,6 +235,22 @@ function SignInScreen({ inspection }: { inspection: InviteInspection | null }) {
     if (inspection.kind === "personal") return `Convite pessoal válido${inspection.emailHint ? ` para ${inspection.emailHint}` : ""}.`;
     return "Convite rápido válido. Depois do login, um administrador confirma sua entrada.";
   }, [inspection]);
+
+  if (!loginVisible) {
+    return (
+      <main className="access-v2-screen access-v2-logo-screen">
+        <button
+          className="access-v2-logo-button"
+          type="button"
+          onClick={() => setLoginVisible(true)}
+          aria-label="Abrir entrada do Labstar"
+          title="Entrar no Labstar"
+        >
+          <strong className="access-v2-wordmark access-v2-logo-only" aria-hidden="true">L<span>★</span>BSTAR</strong>
+        </button>
+      </main>
+    );
+  }
 
   return (
     <AccessFrame>

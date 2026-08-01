@@ -244,3 +244,23 @@
   margin: 0;
   font-size: clamp(30px, 5vw, 52px);
 }
+
+.access-v2-logo-button {
+  position: relative;
+  z-index: 1;
+  padding: 18px;
+  border: 0;
+  color: inherit;
+  background: transparent;
+  cursor: pointer;
+}
+
+.access-v2-logo-button:focus-visible {
+  outline: 1px solid rgba(139, 174, 255, .48);
+  outline-offset: 8px;
+  border-radius: 12px;
+}
+
+.access-v2-logo-button .access-v2-wordmark {
+  margin: 0;
+}
