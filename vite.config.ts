@@ -7,7 +7,7 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: "autoUpdate",
-      includeAssets: ["favicon.ico", "favicon.svg", "favicon-180.png"],
+      includeAssets: ["favicon.ico", "favicon-180.png", "app-icon.png"],
       manifest: {
         id: "/",
         name: "Labstar",
