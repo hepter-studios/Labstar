@@ -1118,7 +1118,31 @@ function QuickPanel({
 }
 
 function AccessLoading() {
-  return <main className="access-screen"><div className="access-card secure-loading"><Wordmark large /><span className="security-orbit"><ShieldCheck size={21} /><i /></span><h1>Verificando acesso</h1><p>Validando sua identidade e as permissões do ambiente.</p><div className="security-progress"><i /></div><small>CONEXÃO PROTEGIDA</small></div></main>;
+  const verificationMessages = [
+    "Verificando sua identidade…",
+    "Localizando seu perfil autorizado…",
+    "Confirmando suas permissões…",
+    "Protegendo seu acesso…",
+  ];
+  const [messageIndex, setMessageIndex] = useState(0);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      setMessageIndex((current) => (current + 1) % verificationMessages.length);
+    }, 900);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  return (
+    <main className="access-screen access-verification" aria-live="polite" aria-busy="true">
+      <div className="verification-stage">
+        <span className="verification-star" aria-hidden="true">
+          <Star fill="currentColor" strokeWidth={1.2} />
+        </span>
+        <p key={messageIndex}>{verificationMessages[messageIndex]}</p>
+      </div>
+    </main>
+  );
 }
 
 function AccessGate() {
