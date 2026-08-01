@@ -1119,3 +1119,101 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .install-app-action{border:0;border-radius:9px;padding:9px 12px;background:#8baeff;color:#071020;font-size:12px;font-weight:800;cursor:pointer}
 .install-app-close{position:absolute;top:-7px;right:-7px;display:grid;place-items:center;width:23px;height:23px;border:1px solid #30384b;border-radius:50%;background:#151a27;color:#aeb7cc;cursor:pointer}
 @media(max-width:640px){.install-app{right:14px;bottom:14px}.install-app-action{padding:9px 10px}}
+
+
+/* Verificação de acesso minimalista */
+.access-screen.access-verification {
+  position: relative;
+  display: grid;
+  min-height: 100dvh;
+  place-items: center;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 50% 48%, rgba(84, 116, 196, .08), transparent 24%),
+    #030407;
+}
+
+.access-screen.access-verification::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: .2;
+  background-image:
+    radial-gradient(circle at 18% 23%, rgba(255,255,255,.8) 0 .55px, transparent .9px),
+    radial-gradient(circle at 76% 31%, rgba(168,191,255,.72) 0 .55px, transparent .95px),
+    radial-gradient(circle at 32% 78%, rgba(255,255,255,.55) 0 .5px, transparent .9px),
+    radial-gradient(circle at 87% 72%, rgba(255,255,255,.64) 0 .55px, transparent .95px);
+  background-size: 211px 197px, 263px 239px, 307px 281px, 359px 337px;
+}
+
+.verification-stage {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  justify-items: center;
+  gap: 30px;
+  padding: 32px;
+}
+
+.verification-star {
+  position: relative;
+  width: 58px;
+  height: 58px;
+  display: grid;
+  place-items: center;
+  color: #e7edff;
+  filter:
+    drop-shadow(0 0 9px rgba(170, 195, 255, .48))
+    drop-shadow(0 0 28px rgba(100, 139, 235, .2));
+  animation: verification-star-spin 2.15s cubic-bezier(.45, .08, .55, .92) infinite;
+  will-change: transform;
+}
+
+.verification-star::before {
+  content: "";
+  position: absolute;
+  width: 106px;
+  height: 106px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(125, 160, 245, .12), transparent 67%);
+  animation: verification-star-breathe 1.8s ease-in-out infinite;
+}
+
+.verification-star svg {
+  width: 100%;
+  height: 100%;
+}
+
+.verification-stage p {
+  min-width: min(310px, calc(100vw - 48px));
+  margin: 0;
+  color: #8f98aa;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: .025em;
+  line-height: 1.5;
+  text-align: center;
+  animation: verification-message-in .32s ease both;
+}
+
+@keyframes verification-star-spin {
+  0% { transform: rotate(0deg) scale(.98); }
+  50% { transform: rotate(180deg) scale(1.025); }
+  100% { transform: rotate(360deg) scale(.98); }
+}
+
+@keyframes verification-star-breathe {
+  0%, 100% { opacity: .42; transform: scale(.9); }
+  50% { opacity: 1; transform: scale(1.08); }
+}
+
+@keyframes verification-message-in {
+  from { opacity: 0; transform: translateY(4px); filter: blur(2px); }
+  to { opacity: 1; transform: translateY(0); filter: blur(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .verification-star { animation: verification-star-breathe 2s ease-in-out infinite; }
+  .verification-stage p { animation: none; }
+}
