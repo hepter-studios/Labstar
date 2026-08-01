@@ -1,5 +1,7 @@
+import { House } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { Member } from "../lib/supabase";
+import { CommunicationHome } from "./CommunicationHome";
 import { DirectMessagesHub } from "./DirectMessagesHubV5";
 import { CollaborationHub as LegacyCollaborationHub } from "./LegacyCollaborationHub";
 
@@ -9,7 +11,7 @@ type CollaborationHubProps = {
   soundEnabled?: boolean;
 };
 
-type WorkSurface = "workspace" | "direct";
+type WorkSurface = "home" | "workspace" | "direct";
 type OpenChannelDetail = { channelId?: string; query?: string };
 type OpenDirectDetail = { query?: string };
 
@@ -21,7 +23,7 @@ function setNativeInputValue(input: HTMLInputElement, value: string) {
 }
 
 export function CollaborationHub({ member, initialChannelId, soundEnabled = true }: CollaborationHubProps) {
-  const [surface, setSurface] = useState<WorkSurface>("workspace");
+  const [surface, setSurface] = useState<WorkSurface>(initialChannelId ? "workspace" : "home");
   const [workspaceChannelId, setWorkspaceChannelId] = useState<string | null>(initialChannelId ?? null);
 
   useEffect(() => {
@@ -34,7 +36,11 @@ export function CollaborationHub({ member, initialChannelId, soundEnabled = true
     const shortcuts = (event: KeyboardEvent) => {
       if (!(event.ctrlKey || event.metaKey) || event.key.toLocaleLowerCase() !== "k") return;
       event.preventDefault();
-      const selector = surface === "direct" ? ".dm-search input" : ".channel-search input";
+      const selector = surface === "direct"
+        ? ".dm-search input"
+        : surface === "workspace"
+          ? ".channel-search input"
+          : ".global-search input";
       document.querySelector<HTMLInputElement>(selector)?.focus();
     };
     window.addEventListener("keydown", shortcuts);
@@ -66,17 +72,15 @@ export function CollaborationHub({ member, initialChannelId, soundEnabled = true
       }, 160);
     };
 
-    const openDashboard = () => {
-      document.querySelector<HTMLButtonElement>('button[aria-label="Visão geral"]')?.click();
-    };
+    const openHome = () => setSurface("home");
 
     window.addEventListener("labstar:open-channel", openChannel);
     window.addEventListener("labstar:open-direct", openDirect);
-    window.addEventListener("labstar:open-work-home", openDashboard);
+    window.addEventListener("labstar:open-work-home", openHome);
     return () => {
       window.removeEventListener("labstar:open-channel", openChannel);
       window.removeEventListener("labstar:open-direct", openDirect);
-      window.removeEventListener("labstar:open-work-home", openDashboard);
+      window.removeEventListener("labstar:open-work-home", openHome);
     };
   }, []);
 
@@ -86,14 +90,35 @@ export function CollaborationHub({ member, initialChannelId, soundEnabled = true
         member={member}
         onOpenWorkspace={(channelId) => {
           setWorkspaceChannelId(channelId ?? null);
-          setSurface("workspace");
+          setSurface(channelId ? "workspace" : "home");
         }}
       />
     );
   }
 
+  const openWorkspaceChannel = (channelId: string) => {
+    setWorkspaceChannelId(channelId);
+    setSurface("workspace");
+  };
+
   return (
-    <div className="collaboration-server-mode">
+    <div
+      className={`collaboration-server-mode ${surface === "home" ? "communication-home-active" : ""}`}
+      onClickCapture={(event) => {
+        const target = event.target as HTMLElement;
+        if (target.closest(".space-list button, .add-space")) setSurface("workspace");
+      }}
+    >
+      <button
+        type="button"
+        className={`workspace-home-entry ${surface === "home" ? "active" : ""}`}
+        onClick={() => setSurface("home")}
+        title="Home da Central de trabalho"
+        aria-label="Abrir Home da Central de trabalho"
+      >
+        <House size={21} />
+        <i />
+      </button>
       <button
         type="button"
         className="workspace-dm-entry"
@@ -109,6 +134,15 @@ export function CollaborationHub({ member, initialChannelId, soundEnabled = true
         initialChannelId={workspaceChannelId}
         soundEnabled={soundEnabled}
       />
+      {surface === "home" && (
+        <div className="communication-home-overlay">
+          <CommunicationHome
+            member={member}
+            onOpenChannel={openWorkspaceChannel}
+            onOpenDirect={() => setSurface("direct")}
+          />
+        </div>
+      )}
     </div>
   );
 }
