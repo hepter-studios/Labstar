@@ -1,45 +1,50 @@
-name: Build Labstar Windows
+name: Publicar Labstar Windows 11.2.0
 
 on:
   workflow_dispatch:
-    inputs:
-      upload_release_assets:
-        description: "Publicar também em uma GitHub Release existente/criada por tag"
-        required: false
-        default: false
-        type: boolean
   push:
-    tags:
-      - "desktop-v*"
+    branches:
+      - main
+    paths:
+      - "src/**"
+      - "src-tauri/**"
+      - "public/**"
+      - "scripts/load-production-env.mjs"
+      - "package.json"
+      - "package-lock.json"
+      - ".github/workflows/release-windows.yml"
 
 permissions:
   contents: write
 
 concurrency:
-  group: labstar-windows-${{ github.ref }}
-  cancel-in-progress: false
+  group: labstar-windows-release-11-2
+  cancel-in-progress: true
 
 jobs:
   windows:
-    name: Windows x64 (NSIS + MSI)
+    name: Windows x64 (EXE + MSI)
     runs-on: windows-latest
-    timeout-minutes: 45
-
+    timeout-minutes: 60
     env:
       CARGO_TERM_COLOR: always
       RUST_BACKTRACE: "1"
+      VITE_SUPABASE_URL: https://pgzwyngxsxnheulvusdq.supabase.co
+      VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
+      VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
+      VITE_LABSTAR_API_URL: https://labstar-api-mackson.fly.dev
 
     steps:
-      - name: Checkout
+      - name: Baixar código oficial
         uses: actions/checkout@v4
 
-      - name: Node.js 22
+      - name: Configurar Node.js 22
         uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
 
-      - name: Rust stable
+      - name: Configurar Rust
         uses: dtolnay/rust-toolchain@stable
         with:
           targets: x86_64-pc-windows-msvc
@@ -49,58 +54,59 @@ jobs:
         with:
           workspaces: "src-tauri -> target"
 
-      - name: Install frontend dependencies
+      - name: Instalar dependências
         run: npm ci
 
-      - name: Validate frontend
+      - name: Sincronizar configuração pública com o site
+        run: node scripts/load-production-env.mjs
+
+      - name: Validar frontend
         run: npm run build
 
-      - name: Build Tauri Windows
+      - name: Compilar Tauri 2
         shell: pwsh
-        run: |
-          npx --yes @tauri-apps/cli@2 build --target x86_64-pc-windows-msvc --bundles nsis,msi
+        run: npx --yes @tauri-apps/cli@2 build --target x86_64-pc-windows-msvc --bundles nsis,msi
 
-      - name: Collect installers
+      - name: Organizar instaladores
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
           New-Item -ItemType Directory -Force -Path artifacts | Out-Null
-
-          $nsis = Get-ChildItem -Path 'src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis' -Filter '*.exe' -File | Select-Object -First 1
-          $msi = Get-ChildItem -Path 'src-tauri/target/x86_64-pc-windows-msvc/release/bundle/msi' -Filter '*.msi' -File | Select-Object -First 1
-
-          if (-not $nsis) { throw 'Instalador NSIS não encontrado.' }
+          $nsis = Get-ChildItem 'src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis' -Filter '*.exe' -File | Select-Object -First 1
+          $msi = Get-ChildItem 'src-tauri/target/x86_64-pc-windows-msvc/release/bundle/msi' -Filter '*.msi' -File | Select-Object -First 1
+          if (-not $nsis) { throw 'Instalador EXE não encontrado.' }
           if (-not $msi) { throw 'Instalador MSI não encontrado.' }
-
-          Copy-Item $nsis.FullName 'artifacts/Labstar_11.0.0_x64-setup.exe'
-          Copy-Item $msi.FullName 'artifacts/Labstar_11.0.0_x64.msi'
-
-          $exeHash = (Get-FileHash 'artifacts/Labstar_11.0.0_x64-setup.exe' -Algorithm SHA256).Hash.ToLowerInvariant()
-          $msiHash = (Get-FileHash 'artifacts/Labstar_11.0.0_x64.msi' -Algorithm SHA256).Hash.ToLowerInvariant()
+          Copy-Item $nsis.FullName 'artifacts/Labstar_11.2.0_x64-setup.exe' -Force
+          Copy-Item $msi.FullName 'artifacts/Labstar_11.2.0_x64.msi' -Force
+          $exeHash = (Get-FileHash 'artifacts/Labstar_11.2.0_x64-setup.exe' -Algorithm SHA256).Hash.ToLowerInvariant()
+          $msiHash = (Get-FileHash 'artifacts/Labstar_11.2.0_x64.msi' -Algorithm SHA256).Hash.ToLowerInvariant()
           @"
-          Labstar 11.0.0
+          Labstar 11.2.0
           source_sha=${{ github.sha }}
-          target=x86_64-pc-windows-msvc
           exe_sha256=$exeHash
           msi_sha256=$msiHash
           generated_at=$(Get-Date -AsUTC -Format o)
           "@ | Set-Content -Encoding utf8 'artifacts/build-info.txt'
 
-      - name: Upload Windows artifacts
+      - name: Guardar artefatos da execução
         uses: actions/upload-artifact@v4
         with:
-          name: labstar-windows-x64-${{ github.sha }}
+          name: labstar-windows-11.2.0-${{ github.sha }}
           path: artifacts/*
           if-no-files-found: error
           retention-days: 30
 
-      - name: Publish GitHub Release assets
-        if: startsWith(github.ref, 'refs/tags/desktop-v') || inputs.upload_release_assets == true
+      - name: Publicar download oficial
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ github.ref_name }}
+          tag_name: desktop-v11.2.0
+          name: Labstar 11.2.0
+          body: |
+            Versão oficial consolidada do Labstar para Windows.
+            Inclui Central de Trabalho completa, mensagens diretas, busca global, tarefas e decisões, backend Rust/Fly.io, ícone oficial e carregamento minimalista.
+          draft: false
+          prerelease: false
           files: |
-            artifacts/Labstar_11.0.0_x64-setup.exe
-            artifacts/Labstar_11.0.0_x64.msi
+            artifacts/Labstar_11.2.0_x64-setup.exe
+            artifacts/Labstar_11.2.0_x64.msi
             artifacts/build-info.txt
-          generate_release_notes: true
