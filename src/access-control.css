@@ -1,0 +1,165 @@
+.access-v2-screen {
+  position: fixed;
+  z-index: 10000;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  overflow: auto;
+  color: #f3f6fc;
+  background-color: #010207;
+  background-image:
+    radial-gradient(circle at 16% 24%, rgba(255,255,255,.75) 0 .6px, transparent 1px),
+    radial-gradient(circle at 74% 17%, rgba(139,174,255,.72) 0 .7px, transparent 1.1px),
+    radial-gradient(circle at 31% 76%, rgba(255,255,255,.48) 0 .55px, transparent 1px),
+    radial-gradient(circle at 85% 71%, rgba(255,255,255,.62) 0 .6px, transparent 1px),
+    radial-gradient(ellipse at 50% 45%, rgba(35,57,119,.18), transparent 34%);
+  background-size: 151px 143px, 207px 191px, 239px 223px, 293px 271px, auto;
+}
+
+.access-v2-screen::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(135deg, rgba(4,6,12,.2), rgba(0,0,0,.6));
+}
+
+.access-v2-card {
+  width: min(100%, 470px);
+  position: relative;
+  padding: 34px;
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 22px;
+  background: linear-gradient(145deg, rgba(13,16,24,.98), rgba(6,8,13,.985));
+  box-shadow: 0 40px 120px rgba(0,0,0,.78), inset 0 1px rgba(255,255,255,.035);
+  text-align: center;
+}
+
+.access-v2-card.compact { width: min(100%, 390px); }
+.access-v2-card > svg { color: #9db7ff; }
+.access-v2-card > small { display: block; margin: 16px 0 8px; color: #75819a; font-size: 9px; font-weight: 800; letter-spacing: .16em; }
+.access-v2-card h1 { margin: 12px 0 10px; color: #f4f6fb; font-size: clamp(23px, 5vw, 31px); line-height: 1.16; letter-spacing: -.045em; }
+.access-v2-card p { margin: 0 auto 20px; color: #828a9a; font-size: 13px; line-height: 1.65; }
+.access-v2-card p b { color: #cdd6e8; }
+
+.access-v2-wordmark { display: inline-flex; align-items: center; gap: .24em; margin-bottom: 18px; color: #f4f7ff; font-size: 22px; font-weight: 850; letter-spacing: .17em; }
+.access-v2-wordmark span { color: #dfe8ff; font-size: .8em; filter: drop-shadow(0 0 8px rgba(139,174,255,.6)); }
+.access-v2-badge { min-height: 28px; padding: 0 10px; display: inline-flex; align-items: center; gap: 6px; border: 1px solid rgba(95,194,166,.18); border-radius: 999px; color: #80b5a6; background: rgba(73,145,126,.07); font-size: 9px; font-weight: 800; letter-spacing: .12em; }
+.access-v2-icon { width: 48px; height: 48px; margin: 0 auto; display: grid; place-items: center; border: 1px solid rgba(139,174,255,.2); border-radius: 16px; color: #9db7ff; background: rgba(112,145,228,.08); }
+.access-v2-icon.amber { color: #d6a260; border-color: rgba(214,162,96,.2); background: rgba(214,162,96,.07); }
+.access-v2-icon.red { color: #e57f88; border-color: rgba(229,127,136,.2); background: rgba(229,127,136,.07); }
+
+.access-v2-provider-list { display: grid; gap: 10px; margin-top: 22px; }
+.access-v2-provider-list button,
+.access-v2-primary,
+.access-v2-actions > button,
+.access-v2-secondary {
+  min-height: 46px;
+  border: 1px solid rgba(255,255,255,.11);
+  border-radius: 12px;
+  color: #e9edf6;
+  background: #11151d;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 750;
+  transition: border-color .16s, background .16s, transform .16s;
+}
+.access-v2-provider-list button { display: flex; align-items: center; justify-content: center; gap: 10px; }
+.access-v2-provider-list button:first-child { color: #12151b; background: #f1f3f7; }
+.access-v2-provider-list button:hover:not(:disabled),
+.access-v2-primary:hover:not(:disabled),
+.access-v2-actions > button:hover:not(:disabled) { transform: translateY(-1px); border-color: rgba(155,181,255,.35); }
+.access-v2-provider-list button:disabled,
+.access-v2-primary:disabled { opacity: .62; cursor: wait; }
+.google-mark { width: 18px; height: 18px; display: grid; place-items: center; border-radius: 50%; color: #315be8; background: white; font-size: 16px; font-weight: 900; }
+
+.access-v2-email-toggle { margin: 15px auto 0; padding: 7px 10px; display: inline-flex; align-items: center; gap: 6px; border: 0; color: #687184; background: transparent; cursor: pointer; font-size: 10px; }
+.access-v2-email-toggle:hover { color: #aeb8ca; }
+.access-v2-email-form { margin-top: 12px; display: grid; grid-template-columns: 1fr auto; gap: 8px; }
+.access-v2-email-form input { min-width: 0; height: 42px; padding: 0 12px; border: 1px solid rgba(255,255,255,.1); border-radius: 10px; color: #e6eaf2; background: #080b10; outline: 0; }
+.access-v2-email-form input:focus { border-color: rgba(139,174,255,.4); box-shadow: 0 0 0 3px rgba(139,174,255,.06); }
+.access-v2-email-form button { padding: 0 13px; display: flex; align-items: center; gap: 6px; border: 0; border-radius: 10px; color: #11141a; background: #e9edf6; cursor: pointer; font-size: 10px; font-weight: 800; }
+.access-v2-sent { margin-top: 12px; padding: 12px; display: flex; align-items: center; gap: 10px; border: 1px solid rgba(93,190,157,.16); border-radius: 11px; color: #7fc1aa; background: rgba(93,190,157,.06); text-align: left; }
+.access-v2-sent div { display: grid; gap: 2px; }
+.access-v2-sent b { font-size: 11px; }
+.access-v2-sent span { color: #718178; font-size: 9px; }
+
+.access-v2-invite-state,
+.access-v2-identity,
+.access-v2-error,
+.access-v2-mode-note {
+  margin: 16px 0;
+  padding: 12px 13px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid rgba(255,255,255,.085);
+  border-radius: 12px;
+  background: rgba(255,255,255,.025);
+  text-align: left;
+}
+.access-v2-invite-state.valid { color: #78bca7; border-color: rgba(82,181,151,.18); background: rgba(82,181,151,.055); }
+.access-v2-invite-state.invalid,
+.access-v2-error { color: #d67b84; border-color: rgba(214,93,106,.18); background: rgba(214,93,106,.055); }
+.access-v2-invite-state div,
+.access-v2-identity { display: grid; gap: 3px; }
+.access-v2-invite-state b,
+.access-v2-identity b { color: #d8deea; font-size: 11px; }
+.access-v2-invite-state span,
+.access-v2-identity span { color: #747d8e; font-size: 9px; }
+.access-v2-error { font-size: 10px; line-height: 1.4; }
+.access-v2-actions { display: grid; gap: 9px; }
+.access-v2-actions > button,
+.access-v2-secondary { padding: 0 15px; display: inline-flex; align-items: center; justify-content: center; gap: 7px; }
+.access-v2-secondary { color: #8992a4; background: transparent; }
+.access-v2-security { margin-top: 22px; padding-top: 17px; display: flex; align-items: center; justify-content: center; gap: 7px; border-top: 1px solid rgba(255,255,255,.065); color: #505867; font-size: 9px; }
+
+.team-head > button:not(.secure-invite-button) { display: none !important; }
+.secure-invite-button { min-height: 34px; padding: 0 13px; display: inline-flex; align-items: center; gap: 7px; border: 1px solid rgba(139,174,255,.2); border-radius: 9px; color: #b8c9f5; background: rgba(107,139,222,.08); cursor: pointer; font-size: 9px; font-weight: 750; }
+.secure-invite-button:hover { border-color: rgba(139,174,255,.4); background: rgba(107,139,222,.13); }
+
+.access-v2-modal-backdrop { position: fixed; z-index: 12000; inset: 0; padding: 24px; display: grid; place-items: center; overflow: auto; background: rgba(0,0,0,.74); backdrop-filter: blur(12px); }
+.access-v2-invite-modal { width: min(100%, 560px); border: 1px solid rgba(255,255,255,.11); border-radius: 18px; color: #eef2f8; background: linear-gradient(145deg, #10141c, #080b10); box-shadow: 0 40px 120px #000d; }
+.access-v2-invite-modal > header { min-height: 70px; padding: 0 20px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,.075); }
+.access-v2-invite-modal > header > div { display: flex; align-items: center; gap: 11px; }
+.access-v2-invite-modal > header > div > span { width: 36px; height: 36px; display: grid; place-items: center; border: 1px solid rgba(139,174,255,.18); border-radius: 10px; color: #9db7ff; background: rgba(139,174,255,.07); }
+.access-v2-invite-modal > header div div { display: grid; gap: 3px; }
+.access-v2-invite-modal > header b { font-size: 13px; }
+.access-v2-invite-modal > header small { color: #667083; font-size: 9px; }
+.access-v2-invite-modal > header > button { width: 32px; height: 32px; display: grid; place-items: center; border: 0; border-radius: 8px; color: #697184; background: transparent; cursor: pointer; }
+.access-v2-invite-modal > header > button:hover { color: #dbe1ec; background: rgba(255,255,255,.04); }
+.access-v2-invite-modal > form,
+.access-v2-created-invite { padding: 20px; }
+.access-v2-invite-modal label { display: grid; gap: 7px; color: #8a93a5; font-size: 9px; font-weight: 700; }
+.access-v2-invite-modal label > small { color: #515969; font-weight: 500; }
+.access-v2-invite-modal input,
+.access-v2-invite-modal select { width: 100%; height: 41px; padding: 0 11px; border: 1px solid rgba(255,255,255,.09); border-radius: 9px; color: #dce2ed; background: #080b10; outline: 0; }
+.access-v2-invite-modal input:focus,
+.access-v2-invite-modal select:focus { border-color: rgba(139,174,255,.38); box-shadow: 0 0 0 3px rgba(139,174,255,.055); }
+.access-v2-invite-tabs { margin-bottom: 14px; display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
+.access-v2-invite-tabs button { height: 39px; display: flex; align-items: center; justify-content: center; gap: 7px; border: 1px solid rgba(255,255,255,.08); border-radius: 9px; color: #70798a; background: #090c11; cursor: pointer; font-size: 10px; }
+.access-v2-invite-tabs button.active { color: #b9caff; border-color: rgba(139,174,255,.26); background: rgba(139,174,255,.075); }
+.access-v2-mode-note { margin: 0 0 16px; color: #8494bd; font-size: 9px; line-height: 1.5; }
+.access-v2-invite-grid { margin-top: 14px; display: grid; grid-template-columns: 1fr 1fr; gap: 13px; }
+.access-v2-primary { width: 100%; margin-top: 18px; display: flex; align-items: center; justify-content: center; gap: 7px; color: #11141a; border-color: #eef1f7; background: #eef1f7; }
+.access-v2-created-invite { text-align: center; }
+.access-v2-created-icon { width: 48px; height: 48px; margin: 0 auto 10px; display: grid; place-items: center; border: 1px solid rgba(91,190,158,.2); border-radius: 15px; color: #78c2aa; background: rgba(91,190,158,.07); }
+.access-v2-created-invite h2 { margin: 8px 0; font-size: 19px; }
+.access-v2-created-invite p { margin: 0 auto 17px; max-width: 430px; color: #778092; font-size: 10px; line-height: 1.55; }
+.access-v2-created-invite label { text-align: left; }
+.access-v2-created-invite label > div { display: grid; grid-template-columns: 1fr 42px; gap: 7px; }
+.access-v2-created-invite label button { display: grid; place-items: center; border: 1px solid rgba(255,255,255,.09); border-radius: 9px; color: #aab7dc; background: #0b0e14; cursor: pointer; }
+.access-v2-created-meta { margin-top: 12px; display: flex; justify-content: center; flex-wrap: wrap; gap: 8px; }
+.access-v2-created-meta span { min-height: 27px; padding: 0 9px; display: inline-flex; align-items: center; gap: 6px; border: 1px solid rgba(255,255,255,.07); border-radius: 999px; color: #687184; font-size: 8px; }
+
+@media (max-width: 620px) {
+  .access-v2-screen,
+  .access-v2-modal-backdrop { padding: 12px; align-items: start; }
+  .access-v2-card { margin: auto 0; padding: 26px 20px; border-radius: 18px; }
+  .access-v2-email-form,
+  .access-v2-invite-grid { grid-template-columns: 1fr; }
+  .access-v2-invite-modal { margin: auto 0; }
+  .access-v2-invite-modal > form,
+  .access-v2-created-invite { padding: 16px; }
+}
