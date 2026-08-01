@@ -78,6 +78,32 @@
 .avatar-status.busy { background: #db6e78 !important; box-shadow: 0 0 7px rgba(219,110,120,.18) !important; }
 .avatar-status.offline { background: #5f6a79 !important; box-shadow: none !important; }
 
+/*
+ * Presença real ainda não foi ligada ao Supabase Realtime. Componentes antigos
+ * passavam status="online" apenas porque a conta estava ativa. Escondemos esses
+ * indicadores simulados até existir heartbeat/presence verdadeiro.
+ */
+.channel-user .avatar-status,
+.channel-members .avatar-status,
+.dm-own-profile .avatar-status,
+.dm-contact-list .avatar-status,
+.dm-home-contact-grid .avatar-status,
+.dm-conversation .avatar-status,
+.channel-user .online-label,
+.dm-own-profile > b {
+  display: none !important;
+}
+
+.dm-conversation-person small > i {
+  display: none !important;
+}
+.dm-conversation-person small {
+  color: #78849a !important;
+}
+.dm-conversation-person small::first-letter {
+  text-transform: uppercase;
+}
+
 /* Logos dos Espaços: sempre quadrados e inteiros, nunca esticados. */
 .space-list button,
 .add-space,
