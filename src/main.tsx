@@ -20,6 +20,7 @@ import { MemberQuickActions } from "./components/MemberQuickActions";
 import { RuntimeReliability } from "./components/RuntimeReliability";
 import { SafetyGuards } from "./components/SafetyGuards";
 import { SystemDiagnosticsAddon } from "./components/SystemDiagnostics";
+import { WorkspaceIntelligence } from "./components/WorkspaceIntelligence";
 import { WorkspaceQuickMenus } from "./components/WorkspaceQuickMenus";
 import { WorkspaceSettingsPortal } from "./components/WorkspaceSettingsPortal";
 import { applyAppSettings, loadAppSettings } from "./lib/app-settings";
@@ -44,6 +45,7 @@ import "./system-diagnostics.css";
 import "./workspace-quick-menus.css";
 import "./identity-assets-fix.css";
 import "./command-palette.css";
+import "./workspace-intelligence.css";
 
 const BRAND_INTRO_DURATION_MS = 2350;
 const NATIVE_BRIDGE_TIMEOUT_MS = 4000;
@@ -136,6 +138,7 @@ function RootSurfaces() {
       {introFinished && <OptionalSurface name="ferramentas do painel de membros"><MemberPanelTools /></OptionalSurface>}
       {introFinished && <OptionalSurface name="menus rápidos do espaço"><WorkspaceQuickMenus /></OptionalSurface>}
       {introFinished && <OptionalSurface name="central de comandos"><CommandPalette /></OptionalSurface>}
+      {introFinished && <OptionalSurface name="busca e visão geral inteligentes"><WorkspaceIntelligence /></OptionalSurface>}
       {introFinished && <OptionalSurface name="instalação web"><InstallApp /></OptionalSurface>}
     </>
   );
