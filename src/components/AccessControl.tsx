@@ -184,10 +184,10 @@ function AccessLoading() {
   );
 }
 
-function AccessFrame({ children, compact = false }: { children: React.ReactNode; compact?: boolean }) {
+function AccessFrame({ children, compact = false, login = false }: { children: React.ReactNode; compact?: boolean; login?: boolean }) {
   return (
     <main className="access-v2-screen">
-      <section className={`access-v2-card ${compact ? "compact" : ""}`}>
+      <section className={`access-v2-card ${compact ? "compact" : ""} ${login ? "login" : ""}`}>
         <strong className="access-v2-wordmark">L<span>★</span>BSTAR</strong>
         {children}
         <div className="access-v2-security"><ShieldCheck size={14} /> Autenticação não libera dados sem autorização interna.</div>
@@ -197,7 +197,6 @@ function AccessFrame({ children, compact = false }: { children: React.ReactNode;
 }
 
 function SignInScreen({ inspection }: { inspection: InviteInspection | null }) {
-  const [loginVisible, setLoginVisible] = useState(false);
   const [emailMode, setEmailMode] = useState(false);
   const [email, setEmail] = useState("");
   const [sent, setSent] = useState(false);
@@ -236,27 +235,9 @@ function SignInScreen({ inspection }: { inspection: InviteInspection | null }) {
     return "Convite rápido válido. Depois do login, um administrador confirma sua entrada.";
   }, [inspection]);
 
-  if (!loginVisible) {
-    return (
-      <main className="access-v2-screen access-v2-logo-screen">
-        <button
-          className="access-v2-logo-button"
-          type="button"
-          onClick={() => setLoginVisible(true)}
-          aria-label="Abrir entrada do Labstar"
-          title="Entrar no Labstar"
-        >
-          <strong className="access-v2-wordmark access-v2-logo-only" aria-hidden="true">L<span>★</span>BSTAR</strong>
-        </button>
-      </main>
-    );
-  }
-
   return (
-    <AccessFrame>
-      <span className="access-v2-badge"><LockKeyhole size={13} /> ACESSO PRIVADO</span>
-      <h1>{inspection?.valid ? "Aceite seu convite para o Labstar." : "Entre no ambiente da sua equipe."}</h1>
-      <p>{inviteMessage}</p>
+    <AccessFrame login>
+      {inspection && <p className="access-v2-invite-copy">{inviteMessage}</p>}
 
       {inspection && (
         <div className={`access-v2-invite-state ${inspection.valid ? "valid" : "invalid"}`}>

@@ -245,22 +245,33 @@
   font-size: clamp(30px, 5vw, 52px);
 }
 
-.access-v2-logo-button {
-  position: relative;
-  z-index: 1;
-  padding: 18px;
+/* Login integrado ao céu: sem cartão, sem selo e sem chamada promocional. */
+.access-v2-card.login {
+  width: min(100%, 500px);
+  margin: auto;
+  padding: 30px 20px;
   border: 0;
-  color: inherit;
+  border-radius: 0;
   background: transparent;
-  cursor: pointer;
+  box-shadow: none;
+  backdrop-filter: none;
 }
 
-.access-v2-logo-button:focus-visible {
-  outline: 1px solid rgba(139, 174, 255, .48);
-  outline-offset: 8px;
-  border-radius: 12px;
-}
-
-.access-v2-logo-button .access-v2-wordmark {
+.access-v2-card.login .access-v2-wordmark {
+  justify-content: center;
   margin: 0;
+  font-size: clamp(30px, 4vw, 46px);
+  text-shadow: 0 0 28px rgba(103, 142, 238, .18);
+}
+
+.access-v2-card.login .access-v2-provider-list {
+  margin-top: 32px;
+}
+
+.access-v2-card.login .access-v2-invite-copy {
+  margin: 20px auto 0;
+}
+
+.access-v2-card.login .access-v2-security {
+  border-top-color: rgba(255,255,255,.045);
 }

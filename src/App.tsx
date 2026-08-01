@@ -1194,7 +1194,10 @@ function Wordmark({ large = false, animated = false }: { large?: boolean; animat
 function BrandIntro() {
   return (
     <main className="access-screen brand-intro" aria-label="Abrindo Labstar">
-      <Wordmark large />
+      <div className="intro-mark">
+        <Wordmark large animated />
+        <span className="intro-progress" aria-hidden="true"><i /></span>
+      </div>
     </main>
   );
 }
