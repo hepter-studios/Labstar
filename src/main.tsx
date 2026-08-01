@@ -11,6 +11,7 @@ import App from "./App";
 import { AccessControl } from "./components/AccessControl";
 import { AppSessionRecovery } from "./components/AppSessionRecovery";
 import { CommandPalette } from "./components/CommandPalette";
+import { GlobalSearchBridge } from "./components/GlobalSearchBridge";
 import { GlobalSettingsPortal } from "./components/GlobalSettingsPortal";
 import { InstallApp } from "./components/InstallApp";
 import { LegacyActionBridge } from "./components/LegacyActionBridge";
@@ -46,6 +47,7 @@ import "./workspace-quick-menus.css";
 import "./identity-assets-fix.css";
 import "./command-palette.css";
 import "./workspace-intelligence.css";
+import "./global-search-v2.css";
 
 const BRAND_INTRO_DURATION_MS = 2350;
 const NATIVE_BRIDGE_TIMEOUT_MS = 4000;
@@ -138,7 +140,8 @@ function RootSurfaces() {
       {introFinished && <OptionalSurface name="ferramentas do painel de membros"><MemberPanelTools /></OptionalSurface>}
       {introFinished && <OptionalSurface name="menus rápidos do espaço"><WorkspaceQuickMenus /></OptionalSurface>}
       {introFinished && <OptionalSurface name="central de comandos"><CommandPalette /></OptionalSurface>}
-      {introFinished && <OptionalSurface name="busca e visão geral inteligentes"><WorkspaceIntelligence /></OptionalSurface>}
+      {introFinished && <OptionalSurface name="visão geral inteligente"><WorkspaceIntelligence /></OptionalSurface>}
+      {introFinished && <OptionalSurface name="busca global"><GlobalSearchBridge /></OptionalSurface>}
       {introFinished && <OptionalSurface name="instalação web"><InstallApp /></OptionalSurface>}
     </>
   );
