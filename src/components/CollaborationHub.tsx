@@ -53,11 +53,15 @@ import {
   createSpace,
   cancelMeeting,
   deleteMessage,
+  deleteDirectMessage,
+  editDirectMessage,
+  getOrCreateDirectConversation,
   deleteSocialPost,
   editMessage,
   listMembers,
   listMeetings,
   listMessages,
+  listDirectMessages,
   listIntegrationRules,
   listSocialPosts,
   loadCollaboration,
@@ -65,6 +69,7 @@ import {
   saveSocialPost,
   saveIntegrationRule,
   sendMessage,
+  sendDirectMessage,
   subscribeToTable,
   supabaseClient,
   unsubscribe,
@@ -73,6 +78,7 @@ import {
   removeIntegrationRule,
   type ChannelCategory,
   type ChannelMessage,
+  type DirectMessage,
   type CollaborationSpace,
   type LabstarChannel,
   type Member,
@@ -131,6 +137,7 @@ export function CollaborationHub({ member, initialChannelId, soundEnabled = true
   const [createModal, setCreateModal] = useState<CreateModal>(null);
   const [integrationsOpen, setIntegrationsOpen] = useState(false);
   const [showMembers, setShowMembers] = useState(true);
+  const [directMember, setDirectMember] = useState<Member | null>(null);
 
   async function refresh() {
     setLoading(true);
@@ -298,11 +305,12 @@ export function CollaborationHub({ member, initialChannelId, soundEnabled = true
           <header><strong>Membros</strong><span>{visibleMembers.length}</span></header>
           <div className="member-group-label">DISPONÍVEIS — {visibleMembers.length}</div>
           {visibleMembers.map((item) => (
-            <div className="channel-member-row" key={item.id}>
+            <button className="channel-member-row" key={item.id} disabled={item.id === member.id} onClick={() => item.id !== member.id && setDirectMember(item)} title={item.id === member.id ? "Este é você" : `Enviar mensagem para ${item.name}`}>
               <Avatar name={item.name} url={item.avatarUrl} size="sm" status="online" />
               <span><b>{item.name}</b><small>{item.jobRoles[0]?.name || item.jobTitle || "Membro"}</small></span>
               {item.jobRoles[0] && <i className="member-role-star" style={{ color: item.jobRoles[0].color }}><Star size={11} fill="currentColor" /></i>}
-            </div>
+              {item.id !== member.id && <MessageSquare className="member-dm-icon" size={14} />}
+            </button>
           ))}
         </aside>
       )}
@@ -326,8 +334,54 @@ export function CollaborationHub({ member, initialChannelId, soundEnabled = true
           onClose={() => setIntegrationsOpen(false)}
         />
       )}
+      {directMember && <DirectMessagePanel member={member} other={directMember} onClose={() => setDirectMember(null)} />}
     </section>
   );
+}
+
+function DirectMessagePanel({ member, other, onClose }: { member: Member; other: Member; onClose: () => void }) {
+  const [conversationId, setConversationId] = useState("");
+  const [messages, setMessages] = useState<DirectMessage[]>([]);
+  const [draft, setDraft] = useState("");
+  const [editing, setEditing] = useState<DirectMessage | null>(null);
+  const [busy, setBusy] = useState(true);
+  const [error, setError] = useState("");
+  const endRef = useRef<HTMLDivElement>(null);
+
+  async function refresh(id: string) {
+    const items = await listDirectMessages(id);
+    setMessages(items);
+    requestAnimationFrame(() => endRef.current?.scrollIntoView({ behavior: "smooth" }));
+  }
+
+  useEffect(() => {
+    let active = true;
+    let realtime: ReturnType<typeof subscribeToTable> | null = null;
+    (async () => {
+      try {
+        const id = await getOrCreateDirectConversation(other.id);
+        if (!active) return;
+        setConversationId(id);
+        await refresh(id);
+        realtime = subscribeToTable("direct_messages", `conversation_id=eq.${id}`, () => void refresh(id));
+      } catch { if (active) setError("Mensagens privadas precisam da atualização v9 do banco."); }
+      finally { if (active) setBusy(false); }
+    })();
+    return () => { active = false; unsubscribe(realtime); };
+  }, [other.id]);
+
+  async function submit(event: React.FormEvent) {
+    event.preventDefault();
+    if (!draft.trim() || !conversationId) return;
+    setBusy(true); setError("");
+    try {
+      if (editing) await editDirectMessage(editing.id, draft); else await sendDirectMessage(conversationId, draft);
+      setDraft(""); setEditing(null); await refresh(conversationId);
+    } catch { setError("Não foi possível enviar a mensagem. O texto foi preservado."); }
+    finally { setBusy(false); }
+  }
+
+  return <div className="dm-backdrop" role="presentation" onMouseDown={onClose}><section className="dm-panel" role="dialog" aria-modal="true" aria-label={`Conversa com ${other.name}`} onMouseDown={(event) => event.stopPropagation()}><header><Avatar name={other.name} url={other.avatarUrl} size="sm" status="online" /><div><strong>{other.name}</strong><small>{other.jobRoles[0]?.name || other.jobTitle || "Membro"}</small></div><button onClick={onClose} aria-label="Fechar conversa"><X size={17} /></button></header><div className="dm-messages">{busy && !messages.length ? <div className="message-loading"><LoaderCircle className="spin" /> Abrindo conversa segura</div> : messages.map((message) => <article className={message.authorId === member.id ? "own" : ""} key={message.id}><Avatar name={message.author?.name || other.name} url={message.author?.avatarUrl || ""} size="sm" /><div><span><b>{message.authorId === member.id ? "Você" : message.author?.name}</b><time>{new Date(message.createdAt).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}</time></span><p>{message.body}</p>{message.authorId === member.id && <nav><button onClick={() => { setEditing(message); setDraft(message.body); }}><Pencil size={12} /> Editar</button><button onClick={async () => { await deleteDirectMessage(message.id); await refresh(conversationId); }}><Trash2 size={12} /> Excluir</button></nav>}</div></article>)}{!busy && !messages.length && !error && <div className="dm-empty"><MessageSquare size={25} /><strong>Conversa privada</strong><p>Somente vocês dois podem ler estas mensagens.</p></div>}<div ref={endRef} /></div><form className="dm-composer" onSubmit={submit}>{editing && <div><span>Editando mensagem</span><button type="button" onClick={() => { setEditing(null); setDraft(""); }}><X size={12} /></button></div>}<textarea value={draft} onChange={(event) => setDraft(event.target.value)} placeholder={`Mensagem para ${other.name}`} rows={2} /><footer>{error ? <span className="dm-error">{error}</span> : <span><LockKeyhole size={12} /> Conversa privada</span>}<button disabled={busy || !draft.trim()}>{busy ? <LoaderCircle className="spin" size={15} /> : <Send size={15} />}</button></footer></form></section></div>;
 }
 
 const integrationCatalog: Record<IntegrationRule["provider"], { label: string; description: string; events: string[] }> = {
