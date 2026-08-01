@@ -1,5 +1,5 @@
 import { ArrowRight, LayoutDashboard, LoaderCircle, Network, Server, Sparkles } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { createPortal } from "react-dom";
 import {
   getCurrentIdentity,
@@ -148,7 +148,7 @@ export function DashboardWorkSurface() {
               type="button"
               key={space.id}
               onClick={() => openChannel(firstChannelBySpace.get(space.id))}
-              style={{ "--server-color": space.color } as React.CSSProperties}
+              style={{ "--server-color": space.color } as CSSProperties}
               title={`Abrir ${space.name}`}
             >
               <span>{space.logoUrl ? <img src={space.logoUrl} alt="" /> : space.icon || "★"}</span>
