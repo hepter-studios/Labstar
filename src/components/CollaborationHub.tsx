@@ -1,9 +1,7 @@
-import { Hash, Home, MessageSquareText } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { Member } from "../lib/supabase";
 import { DirectMessagesHub } from "./DirectMessagesHubV5";
 import { CollaborationHub as LegacyCollaborationHub } from "./LegacyCollaborationHub";
-import { WorkHome } from "./WorkHome";
 
 type CollaborationHubProps = {
   member: Member;
@@ -11,7 +9,7 @@ type CollaborationHubProps = {
   soundEnabled?: boolean;
 };
 
-type WorkSurface = "home" | "workspace" | "direct";
+type WorkSurface = "workspace" | "direct";
 type OpenChannelDetail = { channelId?: string; query?: string };
 type OpenDirectDetail = { query?: string };
 
@@ -23,7 +21,7 @@ function setNativeInputValue(input: HTMLInputElement, value: string) {
 }
 
 export function CollaborationHub({ member, initialChannelId, soundEnabled = true }: CollaborationHubProps) {
-  const [surface, setSurface] = useState<WorkSurface>(initialChannelId ? "workspace" : "home");
+  const [surface, setSurface] = useState<WorkSurface>("workspace");
   const [workspaceChannelId, setWorkspaceChannelId] = useState<string | null>(initialChannelId ?? null);
 
   useEffect(() => {
@@ -36,7 +34,7 @@ export function CollaborationHub({ member, initialChannelId, soundEnabled = true
     const shortcuts = (event: KeyboardEvent) => {
       if (!(event.ctrlKey || event.metaKey) || event.key.toLocaleLowerCase() !== "k") return;
       event.preventDefault();
-      const selector = surface === "direct" ? ".dm-search input" : surface === "workspace" ? ".channel-search input" : ".global-search input";
+      const selector = surface === "direct" ? ".dm-search input" : ".channel-search input";
       document.querySelector<HTMLInputElement>(selector)?.focus();
     };
     window.addEventListener("keydown", shortcuts);
@@ -57,6 +55,7 @@ export function CollaborationHub({ member, initialChannelId, soundEnabled = true
         }
       }, 180);
     };
+
     const openDirect = (event: Event) => {
       const detail = (event as CustomEvent<OpenDirectDetail>).detail ?? {};
       setSurface("direct");
@@ -66,58 +65,45 @@ export function CollaborationHub({ member, initialChannelId, soundEnabled = true
         input?.focus();
       }, 160);
     };
-    const openHome = () => setSurface("home");
+
+    const openDashboard = () => {
+      document.querySelector<HTMLButtonElement>('button[aria-label="Visão geral"]')?.click();
+    };
+
     window.addEventListener("labstar:open-channel", openChannel);
     window.addEventListener("labstar:open-direct", openDirect);
-    window.addEventListener("labstar:open-work-home", openHome);
+    window.addEventListener("labstar:open-work-home", openDashboard);
     return () => {
       window.removeEventListener("labstar:open-channel", openChannel);
       window.removeEventListener("labstar:open-direct", openDirect);
-      window.removeEventListener("labstar:open-work-home", openHome);
+      window.removeEventListener("labstar:open-work-home", openDashboard);
     };
   }, []);
 
-  if (surface === "home") {
-    return (
-      <div className="work-home-mode">
-        <WorkHome
-          member={member}
-          onOpenChannel={(channelId) => {
-            setWorkspaceChannelId(channelId ?? null);
-            setSurface("workspace");
-          }}
-          onOpenDirect={() => setSurface("direct")}
-        />
-      </div>
-    );
-  }
-
   if (surface === "direct") {
     return (
-      <div className="work-direct-mode">
-        <nav className="work-surface-switcher" aria-label="Navegação da Central de trabalho">
-          <button type="button" onClick={() => setSurface("home")} title="Início do trabalho"><Home size={15} /></button>
-          <button type="button" onClick={() => setSurface("workspace")} title="Canais"><Hash size={15} /></button>
-          <button type="button" className="active" title="Mensagens diretas"><MessageSquareText size={15} /></button>
-        </nav>
-        <DirectMessagesHub
-          member={member}
-          onOpenWorkspace={(channelId) => {
-            setWorkspaceChannelId(channelId ?? null);
-            setSurface("workspace");
-          }}
-        />
-      </div>
+      <DirectMessagesHub
+        member={member}
+        onOpenWorkspace={(channelId) => {
+          setWorkspaceChannelId(channelId ?? null);
+          setSurface("workspace");
+        }}
+      />
     );
   }
 
   return (
     <div className="collaboration-server-mode">
-      <nav className="work-surface-switcher" aria-label="Navegação da Central de trabalho">
-        <button type="button" onClick={() => setSurface("home")} title="Início do trabalho"><Home size={15} /></button>
-        <button type="button" className="active" title="Canais"><Hash size={15} /></button>
-        <button type="button" onClick={() => setSurface("direct")} title="Mensagens diretas"><MessageSquareText size={15} /></button>
-      </nav>
+      <button
+        type="button"
+        className="workspace-dm-entry"
+        onClick={() => setSurface("direct")}
+        title="Mensagens diretas"
+        aria-label="Abrir mensagens diretas"
+      >
+        <img className="labstar-dm-logo" src="/labstar-dm.svg" alt="" aria-hidden="true" />
+        <i />
+      </button>
       <LegacyCollaborationHub
         member={member}
         initialChannelId={workspaceChannelId}
