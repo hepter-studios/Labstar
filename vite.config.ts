@@ -47,5 +47,16 @@ export default defineConfig({
   build: {
     target: "es2022",
     sourcemap: false,
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (!id.includes("node_modules")) return;
+          if (id.includes("@supabase")) return "supabase";
+          if (id.includes("lucide-react")) return "icons";
+          if (id.includes("react")) return "react";
+          return "vendor";
+        },
+      },
+    },
   },
 });

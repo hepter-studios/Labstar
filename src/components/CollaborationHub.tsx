@@ -1,4 +1,5 @@
 import {
+  AlertTriangle,
   AudioLines,
   BellRing,
   Camera,
@@ -451,6 +452,7 @@ function MessageRoom({ channel, space, member }: { channel: LabstarChannel; spac
   const [replying, setReplying] = useState<ChannelMessage | null>(null);
   const [editing, setEditing] = useState<ChannelMessage | null>(null);
   const [sending, setSending] = useState(false);
+  const [sendError, setSendError] = useState("");
   const [emojiOpen, setEmojiOpen] = useState(false);
   const [messageSearch, setMessageSearch] = useState("");
   const [pinnedOnly, setPinnedOnly] = useState(false);
@@ -477,6 +479,7 @@ function MessageRoom({ channel, space, member }: { channel: LabstarChannel; spac
     setFiles([]);
     setReplying(null);
     setEditing(null);
+    setSendError("");
     void refreshMessages(true);
     const messageSubscription = subscribeToTable("channel_messages", `channel_id=eq.${channel.id}`, () => void refreshMessages());
     const attachmentSubscription = subscribeToTable("channel_message_attachments", "", () => void refreshMessages());
@@ -507,7 +510,8 @@ function MessageRoom({ channel, space, member }: { channel: LabstarChannel; spac
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
-    if (!draft.trim() && !files.length) return;
+    if (editing ? !draft.trim() : (!draft.trim() && !files.length)) return;
+    setSendError("");
     setSending(true);
     try {
       if (editing) {
@@ -527,6 +531,11 @@ function MessageRoom({ channel, space, member }: { channel: LabstarChannel; spac
       setEditing(null);
       setReplying(null);
       await refreshMessages(true);
+    } catch (error) {
+      const code = error instanceof Error ? error.message : "";
+      setSendError(code === "file_too_large"
+        ? "Um dos arquivos ultrapassa 20 MB. Remova-o e tente novamente."
+        : "Não foi possível enviar. Sua mensagem e os anexos foram preservados para você tentar novamente.");
     } finally {
       setSending(false);
     }
@@ -535,8 +544,24 @@ function MessageRoom({ channel, space, member }: { channel: LabstarChannel; spac
   function beginEdit(message: ChannelMessage) {
     setEditing(message);
     setReplying(null);
+    setFiles([]);
+    setSendError("");
     setDraft(message.body);
     setContextMenu(null);
+  }
+
+  function addFiles(incoming: File[]) {
+    setSendError("");
+    const oversized = incoming.find((file) => file.size > 20 * 1024 * 1024);
+    if (oversized) {
+      setSendError(`${oversized.name} ultrapassa o limite de 20 MB.`);
+      return;
+    }
+    setFiles((current) => {
+      const next = [...current, ...incoming];
+      if (next.length > 8) setSendError("Você pode enviar no máximo 8 arquivos por mensagem.");
+      return next.slice(0, 8);
+    });
   }
 
   const filtered = messages.filter((message) =>
@@ -637,8 +662,9 @@ function MessageRoom({ channel, space, member }: { channel: LabstarChannel; spac
               {files.map((file, index) => <span key={`${file.name}-${index}`}>{file.type.startsWith("image/") ? <FileImage size={13} /> : <File size={13} />}<b>{file.name}</b><button type="button" onClick={() => setFiles((current) => current.filter((_, itemIndex) => itemIndex !== index))}><X size={12} /></button></span>)}
             </div>
           )}
+          {sendError && <div className="composer-error" role="alert"><AlertTriangle size={13} /> {sendError}</div>}
           <div className="composer-row">
-            <button type="button" onClick={() => fileRef.current?.click()} title="Anexar arquivo"><Paperclip size={18} /></button>
+            <button type="button" disabled={Boolean(editing)} onClick={() => fileRef.current?.click()} title={editing ? "Conclua a edição antes de anexar" : "Anexar arquivo"}><Paperclip size={18} /></button>
             <textarea
               rows={1}
               value={draft}
@@ -651,17 +677,20 @@ function MessageRoom({ channel, space, member }: { channel: LabstarChannel; spac
               }}
               placeholder={editing ? "Edite a mensagem…" : `Conversar em #${channel.name}`}
             />
-            <button type="button" onClick={() => stickerRef.current?.click()} title="Escolher figurinha ou imagem do dispositivo"><ImagePlus size={18} /></button>
+            <button type="button" disabled={Boolean(editing)} onClick={() => stickerRef.current?.click()} title={editing ? "Conclua a edição antes de anexar" : "Escolher figurinha ou imagem do dispositivo"}><ImagePlus size={18} /></button>
             <button type="button" className={emojiOpen ? "active" : ""} onClick={() => setEmojiOpen((value) => !value)} title="Emoji"><Smile size={18} /></button>
-            <button className="send-message" type="submit" disabled={sending || (!draft.trim() && !files.length)} title="Enviar">
+            <button className="send-message" type="submit" disabled={sending || (editing ? !draft.trim() : (!draft.trim() && !files.length))} title="Enviar">
               {sending ? <LoaderCircle className="spin" size={17} /> : editing ? <Save size={17} /> : <Send size={17} />}
             </button>
           </div>
           {emojiOpen && <div className="emoji-picker">{emojiSet.map((emoji) => <button key={emoji} type="button" onClick={() => { setDraft((current) => `${current}${emoji}`); setEmojiOpen(false); }}>{emoji}</button>)}</div>}
-          <input ref={fileRef} hidden multiple type="file" onChange={(event) => setFiles((current) => [...current, ...Array.from(event.target.files ?? [])].slice(0, 8))} />
+          <input ref={fileRef} hidden multiple type="file" onChange={(event) => {
+            addFiles(Array.from(event.target.files ?? []));
+            event.target.value = "";
+          }} />
           <input ref={stickerRef} hidden type="file" accept="image/*,.gif,.webp" onChange={(event) => {
             const file = event.target.files?.[0];
-            if (file) setFiles((current) => [...current, file].slice(0, 8));
+            if (file) addFiles([file]);
             event.target.value = "";
           }} />
         </form>
@@ -1288,13 +1317,20 @@ function CollaborationModal({
   const [channelType, setChannelType] = useState<LabstarChannel["type"]>("text");
   const [logo, setLogo] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
   const logoRef = useRef<HTMLInputElement>(null);
+  const logoPreview = useMemo(() => logo ? URL.createObjectURL(logo) : "", [logo]);
+
+  useEffect(() => () => {
+    if (logoPreview) URL.revokeObjectURL(logoPreview);
+  }, [logoPreview]);
 
   const title = modal.type === "space" ? "Criar espaço" : modal.type === "category" ? "Nova categoria" : modal.type === "channel" ? "Criar canal" : "Configurar espaço";
   const subtitle = modal.type === "space" ? "Empresa, produto, projeto ou equipe" : modal.type === "category" ? "Agrupe canais por assunto" : modal.type === "channel" ? "Conversa, aviso, regras, voz ou social" : "Identidade e organização";
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
+    setError("");
     setSaving(true);
     try {
       if (modal.type === "space") {
@@ -1309,7 +1345,26 @@ function CollaborationModal({
         if (logo) await uploadSpaceLogo(modal.spaceId, logo);
       }
       onCreated();
+    } catch {
+      setError("Não foi possível salvar. Confira os dados e tente novamente.");
     } finally { setSaving(false); }
+  }
+
+  function chooseLogo(file: File | null) {
+    setError("");
+    if (!file) {
+      setLogo(null);
+      return;
+    }
+    if (!file.type.startsWith("image/")) {
+      setError("Escolha uma imagem PNG, JPG, GIF ou WebP.");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setError("A imagem ultrapassa o limite de 5 MB.");
+      return;
+    }
+    setLogo(file);
   }
 
   return (
@@ -1321,16 +1376,20 @@ function CollaborationModal({
         </header>
         {(modal.type === "space" || modal.type === "space-settings") && (
           <button type="button" className="logo-upload" onClick={() => logoRef.current?.click()}>
-            <span style={{ "--space-color": color } as React.CSSProperties}>{logo ? <img src={URL.createObjectURL(logo)} alt="" /> : space?.logoUrl ? <img src={space.logoUrl} alt="" /> : <Star size={21} />}</span>
+            <span style={{ "--space-color": color } as React.CSSProperties}>{logoPreview ? <img src={logoPreview} alt="" /> : space?.logoUrl ? <img src={space.logoUrl} alt="" /> : <Star size={21} />}</span>
             <div><strong>{logo ? logo.name : "Logo do espaço"}</strong><small>PNG, JPG, GIF ou WebP · até 5 MB</small></div>
             <Upload size={16} />
-            <input ref={logoRef} hidden type="file" accept="image/*" onChange={(event) => setLogo(event.target.files?.[0] ?? null)} />
+            <input ref={logoRef} hidden type="file" accept="image/png,image/jpeg,image/gif,image/webp" onChange={(event) => {
+              chooseLogo(event.target.files?.[0] ?? null);
+              event.target.value = "";
+            }} />
           </button>
         )}
         <label>{modal.type === "channel" ? "Nome do canal" : modal.type === "category" ? "Nome da categoria" : "Nome"}<input required minLength={2} maxLength={60} value={name} onChange={(event) => setName(event.target.value)} placeholder={modal.type === "channel" ? "ex.: desenvolvimento" : "Nome"} /></label>
         {modal.type !== "category" && <label>Descrição<textarea rows={3} value={description} onChange={(event) => setDescription(event.target.value)} placeholder="Explique a finalidade deste espaço…" /></label>}
         {(modal.type === "space" || modal.type === "space-settings") && <div className="form-grid"><label>Tipo<select value={kind} onChange={(event) => setKind(event.target.value as CollaborationSpace["kind"])}><option value="company">Empresa</option><option value="product">Produto</option><option value="project">Projeto</option><option value="team">Equipe</option></select></label><label>Cor<input className="color-input" type="color" value={color} onChange={(event) => setColor(event.target.value)} /></label></div>}
         {modal.type === "channel" && <label>Tipo de canal<select value={channelType} onChange={(event) => setChannelType(event.target.value as LabstarChannel["type"])}><option value="text">Conversa</option><option value="announcement">Avisos</option><option value="rules">Regras</option><option value="voice">Reunião por voz</option><option value="social">Planejamento social</option></select></label>}
+        {error && <p className="work-modal-error" role="alert">{error}</p>}
         <footer><button type="button" onClick={onClose}>Cancelar</button><button className="primary" type="submit" disabled={saving}>{saving ? <LoaderCircle className="spin" size={14} /> : <Check size={14} />} {modal.type === "space-settings" ? "Salvar alterações" : "Criar"}</button></footer>
       </form>
     </div>
