@@ -559,10 +559,9 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 
 .security-card { width: min(460px,100%); }
 .security-card .security-question { padding: 12px; border: 1px solid var(--line-strong); border-radius: 9px; color: #cbd3e2; background: #090c12; font-size: 11px; line-height: 1.5; }
-.security-setup { grid-template-columns: 1fr 1fr; }
+.security-setup { grid-template-columns: 1fr; }
 .security-setup label { display: grid; gap: 6px; }
-.security-setup label:nth-child(odd) { grid-column: 1 / -1; }
-.security-setup button { grid-column: 1 / -1; }
+.security-setup label,.security-setup button { grid-column: 1; }
 
 .dm-backdrop { position: fixed; z-index: 120; inset: 0; display: flex; justify-content: flex-end; background: rgba(0,0,0,.55); backdrop-filter: blur(3px); }
 .dm-panel { width: min(440px,100vw); height: 100%; display: grid; grid-template-rows: 66px minmax(0,1fr) auto; border-left: 1px solid var(--line-strong); background: #080a0f; box-shadow: -24px 0 70px #000a; }
@@ -584,7 +583,6 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 
 @media (max-width: 560px) {
   .security-setup { grid-template-columns: 1fr; }
-  .security-setup label,.security-setup label:nth-child(odd),.security-setup button { grid-column: 1; }
 }
 
 /* Labstar v11 — central de trabalho, cargos, mídia, reuniões e mobile. */
