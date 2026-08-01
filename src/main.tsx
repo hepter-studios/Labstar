@@ -1,4 +1,11 @@
-import { StrictMode, useEffect, useState } from "react";
+import {
+  Component,
+  StrictMode,
+  useEffect,
+  useState,
+  type ErrorInfo,
+  type ReactNode,
+} from "react";
 import { createRoot } from "react-dom/client";
 import App from "./App";
 import { AccessControl } from "./components/AccessControl";
@@ -41,6 +48,68 @@ import "./command-palette.css";
 const BRAND_INTRO_DURATION_MS = 2350;
 const NATIVE_BRIDGE_TIMEOUT_MS = 4000;
 
+declare global {
+  interface Window {
+    __LABSTAR_BOOT_GUARD__?: {
+      ready(): void;
+      fail(title: string, details: string): void;
+    };
+  }
+}
+
+type SurfaceBoundaryProps = {
+  name: string;
+  critical?: boolean;
+  children: ReactNode;
+};
+
+type SurfaceBoundaryState = {
+  error: Error | null;
+};
+
+class SurfaceBoundary extends Component<SurfaceBoundaryProps, SurfaceBoundaryState> {
+  state: SurfaceBoundaryState = { error: null };
+
+  static getDerivedStateFromError(error: Error): SurfaceBoundaryState {
+    return { error };
+  }
+
+  componentDidCatch(error: Error, info: ErrorInfo) {
+    console.error(`[Labstar] Falha em ${this.props.name}`, error, info.componentStack);
+  }
+
+  render() {
+    const { error } = this.state;
+    if (!error) return this.props.children;
+    if (!this.props.critical) return null;
+
+    const details = `${error.message}\n\n${error.stack ?? "Stack indisponível"}`;
+    return (
+      <main style={{ minHeight: "100vh", display: "grid", placeItems: "center", padding: 28, background: "#030407", color: "#f5f7ff", fontFamily: "Inter, system-ui, sans-serif" }}>
+        <section style={{ width: "min(680px, 100%)", padding: 28, border: "1px solid rgba(255,255,255,.12)", borderRadius: 18, background: "#090c13", boxShadow: "0 30px 100px #000c" }}>
+          <strong style={{ display: "block", marginBottom: 18, fontSize: 20, letterSpacing: ".18em" }}>L★BSTAR</strong>
+          <small style={{ color: "#ffb16f", fontWeight: 750, letterSpacing: ".12em" }}>ERRO NA INTERFACE PRINCIPAL</small>
+          <h1 style={{ margin: "10px 0 8px", fontSize: 24 }}>O Labstar encontrou um erro ao montar a interface.</h1>
+          <p style={{ margin: "0 0 16px", color: "#9da7bd", lineHeight: 1.6 }}>A janela não ficará mais preta. Copie ou fotografe a mensagem abaixo para corrigirmos o ponto exato.</p>
+          <pre style={{ maxHeight: 320, overflow: "auto", whiteSpace: "pre-wrap", wordBreak: "break-word", padding: 14, borderRadius: 12, background: "#03050a", color: "#d9e1f5", font: "12px/1.55 Consolas, monospace" }}>{details}</pre>
+          <button type="button" onClick={() => window.location.reload()} style={{ height: 40, padding: "0 16px", border: 0, borderRadius: 10, background: "#edf2ff", color: "#080b12", fontWeight: 750, cursor: "pointer" }}>Tentar novamente</button>
+        </section>
+      </main>
+    );
+  }
+}
+
+function BootReadySignal() {
+  useEffect(() => {
+    window.__LABSTAR_BOOT_GUARD__?.ready();
+  }, []);
+  return null;
+}
+
+function OptionalSurface({ name, children }: { name: string; children: ReactNode }) {
+  return <SurfaceBoundary name={name}>{children}</SurfaceBoundary>;
+}
+
 function RootSurfaces() {
   const [introFinished, setIntroFinished] = useState(false);
 
@@ -52,21 +121,22 @@ function RootSurfaces() {
 
   return (
     <>
-      <App />
-      <SafetyGuards />
-      <LegacyActionBridge />
-      <RuntimeReliability />
-      <MediaPreferenceBridge />
-      <AppSessionRecovery />
-      {introFinished && <AccessControl />}
-      {introFinished && <GlobalSettingsPortal />}
-      {introFinished && <SystemDiagnosticsAddon />}
-      {introFinished && <WorkspaceSettingsPortal />}
-      {introFinished && <MemberQuickActions />}
-      {introFinished && <MemberPanelTools />}
-      {introFinished && <WorkspaceQuickMenus />}
-      {introFinished && <CommandPalette />}
-      {introFinished && <InstallApp />}
+      <BootReadySignal />
+      <SurfaceBoundary name="interface principal" critical><App /></SurfaceBoundary>
+      <OptionalSurface name="proteções de segurança"><SafetyGuards /></OptionalSurface>
+      <OptionalSurface name="ponte de ações legadas"><LegacyActionBridge /></OptionalSurface>
+      <OptionalSurface name="confiabilidade de runtime"><RuntimeReliability /></OptionalSurface>
+      <OptionalSurface name="preferências de mídia"><MediaPreferenceBridge /></OptionalSurface>
+      <OptionalSurface name="recuperação de sessão"><AppSessionRecovery /></OptionalSurface>
+      {introFinished && <OptionalSurface name="controle de acesso"><AccessControl /></OptionalSurface>}
+      {introFinished && <OptionalSurface name="configurações globais"><GlobalSettingsPortal /></OptionalSurface>}
+      {introFinished && <OptionalSurface name="diagnóstico do sistema"><SystemDiagnosticsAddon /></OptionalSurface>}
+      {introFinished && <OptionalSurface name="configurações do espaço"><WorkspaceSettingsPortal /></OptionalSurface>}
+      {introFinished && <OptionalSurface name="ações rápidas de membro"><MemberQuickActions /></OptionalSurface>}
+      {introFinished && <OptionalSurface name="ferramentas do painel de membros"><MemberPanelTools /></OptionalSurface>}
+      {introFinished && <OptionalSurface name="menus rápidos do espaço"><WorkspaceQuickMenus /></OptionalSurface>}
+      {introFinished && <OptionalSurface name="central de comandos"><CommandPalette /></OptionalSurface>}
+      {introFinished && <OptionalSurface name="instalação web"><InstallApp /></OptionalSurface>}
     </>
   );
 }
@@ -78,11 +148,18 @@ function mountReact() {
     return;
   }
 
-  createRoot(rootElement).render(
-    <StrictMode>
-      <RootSurfaces />
-    </StrictMode>,
-  );
+  try {
+    createRoot(rootElement).render(
+      <StrictMode>
+        <SurfaceBoundary name="raiz React" critical>
+          <RootSurfaces />
+        </SurfaceBoundary>
+      </StrictMode>,
+    );
+  } catch (error) {
+    const details = error instanceof Error ? `${error.message}\n${error.stack ?? ""}` : String(error);
+    window.__LABSTAR_BOOT_GUARD__?.fail("Falha ao iniciar o React", details);
+  }
 }
 
 async function initializeRuntime() {
