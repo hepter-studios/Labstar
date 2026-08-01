@@ -1,20 +1,32 @@
 .communication-home-overlay {
   position: absolute;
   z-index: 18;
-  inset: 0 0 0 72px;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 72px;
   min-width: 0;
   min-height: 0;
+  height: auto;
   overflow: hidden;
+  contain: layout paint;
   border-left: 1px solid rgba(255, 255, 255, .055);
   background: #05070b;
 }
 
 .communication-home {
+  position: relative;
   width: 100%;
   height: 100%;
+  max-height: 100%;
   min-width: 0;
   min-height: 0;
+  box-sizing: border-box;
+  overflow-x: hidden;
   overflow-y: auto;
+  overflow-anchor: none;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
   padding: 28px clamp(22px, 3vw, 44px) 42px;
   color: #eef3ff;
   background:
