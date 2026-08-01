@@ -163,3 +163,69 @@
   .access-v2-invite-modal > form,
   .access-v2-created-invite { padding: 16px; }
 }
+
+
+/* Verificação minimalista oficial */
+.access-v2-verification { overflow: hidden; }
+.access-v2-verification::before {
+  background:
+    radial-gradient(circle at 50% 46%, rgba(74, 104, 181, .13), transparent 25%),
+    linear-gradient(rgba(1, 2, 7, .12), rgba(1, 2, 7, .62));
+}
+.access-v2-verification-stage {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  justify-items: center;
+  gap: 30px;
+  padding: 32px;
+}
+.access-v2-verification-star {
+  position: relative;
+  width: 58px;
+  height: 58px;
+  display: grid;
+  place-items: center;
+  color: #e7edff;
+  filter: drop-shadow(0 0 9px rgba(170,195,255,.48)) drop-shadow(0 0 28px rgba(100,139,235,.2));
+  animation: access-v2-star-spin 2.15s cubic-bezier(.45,.08,.55,.92) infinite;
+  will-change: transform;
+}
+.access-v2-verification-star::before {
+  content: "";
+  position: absolute;
+  width: 106px;
+  height: 106px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(125,160,245,.12), transparent 67%);
+  animation: access-v2-star-breathe 1.8s ease-in-out infinite;
+}
+.access-v2-verification-star svg { width: 100%; height: 100%; }
+.access-v2-verification-stage p {
+  min-width: min(310px, calc(100vw - 48px));
+  margin: 0;
+  color: #8f98aa;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: .025em;
+  line-height: 1.5;
+  text-align: center;
+  animation: access-v2-message-in .32s ease both;
+}
+@keyframes access-v2-star-spin {
+  0% { transform: rotate(0deg) scale(.98); }
+  50% { transform: rotate(180deg) scale(1.025); }
+  100% { transform: rotate(360deg) scale(.98); }
+}
+@keyframes access-v2-star-breathe {
+  0%,100% { opacity: .42; transform: scale(.9); }
+  50% { opacity: 1; transform: scale(1.08); }
+}
+@keyframes access-v2-message-in {
+  from { opacity: 0; transform: translateY(4px); filter: blur(2px); }
+  to { opacity: 1; transform: translateY(0); filter: blur(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .access-v2-verification-star { animation: access-v2-star-breathe 2s ease-in-out infinite; }
+  .access-v2-verification-stage p { animation: none; }
+}

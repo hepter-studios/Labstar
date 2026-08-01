@@ -2,6 +2,18 @@ name: Gerar instalador Windows integrado
 run-name: Instalador Windows integrado — ${{ github.head_ref || github.ref_name }} @ ${{ github.event.pull_request.head.sha || github.sha }}
 
 on:
+  push:
+    branches:
+      - main
+    paths:
+      - "src/**"
+      - "src-tauri/**"
+      - "public/**"
+      - "package.json"
+      - "package-lock.json"
+      - "vite.config.ts"
+      - ".env.example"
+      - ".github/workflows/build-windows-integrated.yml"
   pull_request:
     branches:
       - "feat/tauri2-rust-foundation"
@@ -18,7 +30,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: labstar-windows-integrated-${{ github.event.pull_request.number || github.ref }}
@@ -27,7 +39,7 @@ concurrency:
 jobs:
   build-windows:
     name: Compilar EXE e MSI integrados
-    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.head.repo.full_name == github.repository
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: windows-latest
     timeout-minutes: 60
 
@@ -98,6 +110,11 @@ jobs:
           VITE_SUPABASE_ANON_KEY: ${{ env.VITE_SUPABASE_ANON_KEY }}
           VITE_LABSTAR_API_URL: ${{ env.VITE_LABSTAR_API_URL }}
         with:
+          tagName: ${{ github.event_name == 'push' && 'desktop-v11.2.0' || '' }}
+          releaseName: ${{ github.event_name == 'push' && 'Labstar 11.2.0' || '' }}
+          releaseBody: "Versão oficial consolidada do Labstar para Windows, com Central de Trabalho, DMs, busca, tarefas, backend Rust e identidade visual atualizada."
+          releaseDraft: false
+          prerelease: false
           uploadWorkflowArtifacts: true
           workflowArtifactNamePattern: labstar-windows-[arch]-[bundle]
           retryAttempts: 1
