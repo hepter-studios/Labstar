@@ -46,6 +46,7 @@ import {
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   getCurrentIdentity,
+  getSecurityChallenge,
   inviteMember as createMemberInvite,
   isSupabaseConfigured,
   listJobRoles,
@@ -55,12 +56,15 @@ import {
   requestMagicLink,
   saveWorkspace,
   setMemberJobRoles,
+  setSecurityQuestions,
   signOut,
   uploadOwnAvatar,
   updateOwnProfile,
   updateMember as updateRemoteMember,
+  verifySecurityAnswer,
   type Member,
   type JobRole,
+  type SecurityChallenge,
 } from "./lib/supabase";
 import { Avatar } from "./components/Avatar";
 import { CollaborationHub } from "./components/CollaborationHub";
@@ -73,7 +77,7 @@ type NodePriority = "baixa" | "media" | "alta";
 type ViewMode = "mapa" | "visao" | "colaboracao" | "equipe";
 type SyncState = "carregando" | "salvando" | "sincronizado" | "local";
 type ManualSaveState = "idle" | "saving" | "saved" | "error";
-type SessionState = "carregando" | "anonimo" | "nao_convidado" | "pendente" | "ativo" | "configuracao" | "erro";
+type SessionState = "carregando" | "anonimo" | "nao_convidado" | "pendente" | "seguranca" | "ativo" | "configuracao" | "erro";
 
 type SessionData = {
   user: { displayName: string; email: string; fullName: string | null };
@@ -145,6 +149,7 @@ export default function Home() {
   const [sessionState, setSessionState] = useState<SessionState>("carregando");
   const [session, setSession] = useState<SessionData | null>(null);
   const [blockedIdentity, setBlockedIdentity] = useState<{ email: string } | null>(null);
+  const [securityChallenge, setSecurityChallenge] = useState<SecurityChallenge | null>(null);
   const [nodes, setNodes] = useState<StructureNode[]>(initialNodes);
   const [selectedId, setSelectedId] = useState("labstar");
   const [view, setView] = useState<ViewMode>("mapa");
@@ -237,7 +242,14 @@ export default function Home() {
             },
             member,
           });
-          setSessionState(member.status === "active" ? "ativo" : "pendente");
+          if (member.status !== "active") {
+            setSessionState("pendente");
+          } else {
+            const challenge = await getSecurityChallenge();
+            if (cancelled) return;
+            setSecurityChallenge(challenge);
+            setSessionState(challenge.available && (!challenge.configured || !challenge.verified) ? "seguranca" : "ativo");
+          }
         }
       } catch {
         if (!cancelled) setSessionState("erro");
@@ -469,6 +481,7 @@ export default function Home() {
   if (sessionState === "anonimo") return <AccessGate />;
   if (sessionState === "nao_convidado" && blockedIdentity) return <InviteRequired identity={blockedIdentity} />;
   if (sessionState === "pendente" && session) return <PendingAccess session={session} />;
+  if (sessionState === "seguranca" && session && securityChallenge) return <SecurityGate challenge={securityChallenge} onComplete={() => setSessionState("ativo")} onChallenge={setSecurityChallenge} />;
   if (sessionState === "erro" || !session) return <AccessError />;
 
   return (
@@ -1175,6 +1188,43 @@ function InviteRequired({ identity }: { identity: { email: string } }) {
 
 function PendingAccess({ session }: { session: SessionData }) {
   return <main className="access-screen"><section className="access-card"><span className="access-logo amber"><LoaderCircle size={22} /></span><small>SOLICITAÇÃO RECEBIDA</small><h1>Aguardando aprovação.</h1><p>Olá, {session.member.name}. Sua conta foi identificada, mas um administrador ainda precisa definir seu cargo e área.</p><div className="pending-user"><span>{initials(session.member.name)}</span><div><b>{session.member.name}</b><small>{session.member.email}</small></div></div><button className="secondary-link" type="button" onClick={() => void signOut()}>Entrar com outra conta</button></section></main>;
+}
+
+function SecurityGate({ challenge, onComplete, onChallenge }: { challenge: SecurityChallenge; onComplete: () => void; onChallenge: (challenge: SecurityChallenge) => void }) {
+  const [question1, setQuestion1] = useState("");
+  const [answer1, setAnswer1] = useState("");
+  const [question2, setQuestion2] = useState("");
+  const [answer2, setAnswer2] = useState("");
+  const [answer, setAnswer] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const locked = Boolean(challenge.lockedUntil && new Date(challenge.lockedUntil).getTime() > Date.now());
+
+  async function configure(event: React.FormEvent) {
+    event.preventDefault();
+    if (question1.trim().toLocaleLowerCase() === question2.trim().toLocaleLowerCase()) { setError("Escolha duas perguntas diferentes."); return; }
+    setBusy(true); setError("");
+    try {
+      await setSecurityQuestions({ question1, answer1, question2, answer2 });
+      onComplete();
+    } catch { setError("Não foi possível proteger a conta. Revise os campos e tente novamente."); }
+    finally { setBusy(false); }
+  }
+
+  async function verify(event: React.FormEvent) {
+    event.preventDefault();
+    setBusy(true); setError("");
+    try {
+      const result = await verifySecurityAnswer(challenge.questionIndex, answer);
+      if (result.success) { onComplete(); return; }
+      onChallenge({ ...challenge, attemptsRemaining: result.attemptsRemaining, lockedUntil: result.lockedUntil });
+      setAnswer("");
+      setError(result.lockedUntil ? "Acesso bloqueado temporariamente por segurança." : `Resposta incorreta. Restam ${result.attemptsRemaining} tentativa(s).`);
+    } catch { setError("Não foi possível confirmar a resposta agora."); }
+    finally { setBusy(false); }
+  }
+
+  return <main className="access-screen"><section className="access-card security-card"><span className="access-logo"><ShieldCheck size={22} /></span><small>SEGURANÇA DA CONTA</small><h1>{challenge.configured ? "Confirme sua identidade." : "Proteja seu acesso."}</h1><p>{challenge.configured ? "Responda à pergunta cadastrada para entrar no ambiente privado." : "Cadastre duas perguntas pessoais. As respostas são protegidas e nunca aparecem para a equipe."}</p>{challenge.configured ? <form className="access-form" onSubmit={verify}><label>Pergunta de segurança</label><div className="security-question">{challenge.question}</div><label htmlFor="security-answer">Sua resposta</label><input id="security-answer" autoFocus required autoComplete="off" value={answer} disabled={locked} onChange={(event) => setAnswer(event.target.value)} /><button disabled={busy || locked}>{busy ? <LoaderCircle className="spin" size={15} /> : <ShieldCheck size={15} />} {locked ? "Acesso temporariamente bloqueado" : "Confirmar identidade"}</button></form> : <form className="access-form security-setup" onSubmit={configure}><label>Primeira pergunta<input required minLength={8} value={question1} onChange={(event) => setQuestion1(event.target.value)} placeholder="Ex.: Qual foi meu primeiro projeto?" /></label><label>Resposta<input required minLength={3} autoComplete="off" value={answer1} onChange={(event) => setAnswer1(event.target.value)} /></label><label>Segunda pergunta<input required minLength={8} value={question2} onChange={(event) => setQuestion2(event.target.value)} placeholder="Ex.: Qual cidade marcou minha infância?" /></label><label>Resposta<input required minLength={3} autoComplete="off" value={answer2} onChange={(event) => setAnswer2(event.target.value)} /></label><button disabled={busy}>{busy ? <LoaderCircle className="spin" size={15} /> : <LockKeyhole size={15} />} Salvar e entrar</button></form>}{error && <span className="access-error">{error}</span>}<button className="secondary-link" type="button" onClick={() => void signOut()}>Entrar com outra conta</button></section></main>;
 }
 
 function ConfigurationRequired() {
