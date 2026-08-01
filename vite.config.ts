@@ -2,8 +2,14 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import { VitePWA } from "vite-plugin-pwa";
 
-const isDesktopBuild = process.env.LABSTAR_DESKTOP_BUILD === "1"
-  || Boolean(process.env.TAURI_ENV_PLATFORM);
+const runtimeEnvironment = (
+  globalThis as typeof globalThis & {
+    process?: { env?: Record<string, string | undefined> };
+  }
+).process?.env ?? {};
+
+const isDesktopBuild = runtimeEnvironment.LABSTAR_DESKTOP_BUILD === "1"
+  || Boolean(runtimeEnvironment.TAURI_ENV_PLATFORM);
 
 export default defineConfig({
   plugins: [
