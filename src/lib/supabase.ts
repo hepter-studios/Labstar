@@ -97,6 +97,26 @@ export type ChannelMessage = {
   attachments: MessageAttachment[];
 };
 
+export type SecurityChallenge = {
+  available: boolean;
+  configured: boolean;
+  verified: boolean;
+  questionIndex: number;
+  question: string;
+  lockedUntil: string | null;
+  attemptsRemaining: number;
+};
+
+export type DirectMessage = {
+  id: string;
+  conversationId: string;
+  authorId: string;
+  body: string;
+  createdAt: string;
+  editedAt: string | null;
+  author: Pick<Member, "id" | "name" | "avatarUrl" | "jobTitle"> | null;
+};
+
 export type LabstarNotification = {
   id: string;
   title: string;
@@ -707,6 +727,78 @@ export async function deleteMessage(messageId: string) {
   if (error) throw error;
 }
 
+function isMissingFeature(error: { code?: string; message?: string } | null) {
+  return Boolean(error && (error.code === "PGRST202" || error.code === "42P01" || error.message?.includes("schema cache")));
+}
+
+export async function getSecurityChallenge(): Promise<SecurityChallenge> {
+  const { data, error } = await requireClient().rpc("get_own_security_challenge");
+  if (isMissingFeature(error)) return { available: false, configured: false, verified: true, questionIndex: 0, question: "", lockedUntil: null, attemptsRemaining: 5 };
+  if (error) throw error;
+  const row = Array.isArray(data) ? data[0] : data;
+  return {
+    available: true,
+    configured: Boolean(row?.configured),
+    verified: Boolean(row?.verified),
+    questionIndex: Number(row?.question_index ?? 0),
+    question: String(row?.question ?? ""),
+    lockedUntil: row?.locked_until ? String(row.locked_until) : null,
+    attemptsRemaining: Number(row?.attempts_remaining ?? 5),
+  };
+}
+
+export async function setSecurityQuestions(input: { question1: string; answer1: string; question2: string; answer2: string }) {
+  const { error } = await requireClient().rpc("set_own_security_questions", {
+    p_question_1: input.question1.trim(), p_answer_1: input.answer1.trim(),
+    p_question_2: input.question2.trim(), p_answer_2: input.answer2.trim(),
+  });
+  if (error) throw error;
+}
+
+export async function verifySecurityAnswer(questionIndex: number, answer: string) {
+  const { data, error } = await requireClient().rpc("verify_own_security_answer", { p_question_index: questionIndex, p_answer: answer.trim() });
+  if (error) throw error;
+  const row = Array.isArray(data) ? data[0] : data;
+  return { success: Boolean(row?.success), lockedUntil: row?.locked_until ? String(row.locked_until) : null, attemptsRemaining: Number(row?.attempts_remaining ?? 0) };
+}
+
+export async function getOrCreateDirectConversation(otherMemberId: string) {
+  const { data, error } = await requireClient().rpc("get_or_create_direct_conversation", { p_other_member_id: otherMemberId });
+  if (error) throw error;
+  return String(data);
+}
+
+export async function listDirectMessages(conversationId: string): Promise<DirectMessage[]> {
+  const { data, error } = await requireClient().from("direct_messages")
+    .select("*,author:members!direct_messages_author_id_fkey(id,name,avatar_path,job_title)")
+    .eq("conversation_id", conversationId).order("created_at", { ascending: true }).limit(200);
+  if (error) throw error;
+  return Promise.all((data ?? []).map(async (row) => {
+    const value = row.author as Record<string, unknown> | Record<string, unknown>[] | null;
+    const author = Array.isArray(value) ? value[0] : value;
+    return {
+      id: String(row.id), conversationId: String(row.conversation_id), authorId: String(row.author_id),
+      body: String(row.body), createdAt: String(row.created_at), editedAt: row.edited_at ? String(row.edited_at) : null,
+      author: author ? { id: String(author.id), name: String(author.name), avatarUrl: await signedAssetUrl(String(author.avatar_path ?? "")), jobTitle: String(author.job_title ?? "") } : null,
+    };
+  }));
+}
+
+export async function sendDirectMessage(conversationId: string, body: string) {
+  const { error } = await requireClient().from("direct_messages").insert({ conversation_id: conversationId, body: body.trim() });
+  if (error) throw error;
+}
+
+export async function editDirectMessage(id: string, body: string) {
+  const { error } = await requireClient().from("direct_messages").update({ body: body.trim(), edited_at: new Date().toISOString() }).eq("id", id);
+  if (error) throw error;
+}
+
+export async function deleteDirectMessage(id: string) {
+  const { error } = await requireClient().from("direct_messages").delete().eq("id", id);
+  if (error) throw error;
+}
+
 export async function listNotifications(memberId: string) {
   const { data, error } = await requireClient().from("notifications")
     .select("*")
@@ -734,7 +826,7 @@ export async function markAllNotificationsRead(memberId: string) {
   if (error) throw error;
 }
 
-export function subscribeToTable(table: "channel_messages" | "channel_message_attachments" | "notifications", filter: string, onChange: () => void): RealtimeChannel {
+export function subscribeToTable(table: "channel_messages" | "channel_message_attachments" | "notifications" | "direct_messages", filter: string, onChange: () => void): RealtimeChannel {
   const subscriptionId =
     typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
       ? crypto.randomUUID()
