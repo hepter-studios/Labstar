@@ -1,6 +1,6 @@
 [package]
 name = "labstar"
-version = "11.0.0"
+version = "11.0.1"
 description = "Ambiente privado para empresas, projetos e equipes."
 authors = ["Labstar"]
 license = "Proprietary"

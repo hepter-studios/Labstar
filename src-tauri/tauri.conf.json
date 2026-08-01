@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "Labstar",
-  "version": "11.0.0",
+  "version": "11.0.1",
   "identifier": "com.labstar.desktop",
   "build": {
     "frontendDist": "../dist",
@@ -40,6 +40,9 @@
     ],
     "android": {
       "debugApplicationIdSuffix": ".debug"
+    },
+    "macOS": {
+      "signingIdentity": "-"
     }
   }
 }

@@ -32,6 +32,9 @@ jobs:
             args: ""
 
     runs-on: ${{ matrix.platform }}
+    env:
+      VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+      VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
 
     steps:
       - uses: actions/checkout@v7
@@ -58,6 +61,12 @@ jobs:
       - name: Install frontend dependencies
         run: npm ci
 
+      - name: Validate application configuration
+        shell: bash
+        run: |
+          test -n "$VITE_SUPABASE_URL" || (echo "Missing VITE_SUPABASE_URL repository secret" && exit 1)
+          test -n "$VITE_SUPABASE_ANON_KEY" || (echo "Missing VITE_SUPABASE_ANON_KEY repository secret" && exit 1)
+
       - name: Build and publish installers
         uses: tauri-apps/tauri-action@v1
         env:
@@ -66,6 +75,7 @@ jobs:
           tagName: app-v__VERSION__
           releaseName: "Labstar v__VERSION__"
           releaseBody: "Instaladores oficiais do Labstar para Windows, macOS e Linux."
-          releaseDraft: true
+          releaseDraft: false
           prerelease: false
+          uploadWorkflowArtifacts: true
           args: ${{ matrix.args }}
