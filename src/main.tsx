@@ -39,6 +39,7 @@ import "./identity-assets-fix.css";
 import "./command-palette.css";
 
 const BRAND_INTRO_DURATION_MS = 2350;
+const NATIVE_BRIDGE_TIMEOUT_MS = 4000;
 
 function RootSurfaces() {
   const [introFinished, setIntroFinished] = useState(false);
@@ -70,11 +71,32 @@ function RootSurfaces() {
   );
 }
 
-async function bootstrap() {
+function mountReact() {
+  const rootElement = document.getElementById("root");
+  if (!rootElement) {
+    document.body.innerHTML = "<main style='min-height:100vh;display:grid;place-items:center;background:#030407;color:#fff;font:16px system-ui'>Falha ao localizar a raiz da interface do Labstar.</main>";
+    return;
+  }
+
+  createRoot(rootElement).render(
+    <StrictMode>
+      <RootSurfaces />
+    </StrictMode>,
+  );
+}
+
+async function initializeRuntime() {
+  const nativeTimeout = new Promise<never>((_, reject) => {
+    window.setTimeout(() => reject(new Error("native_bridge_timeout")), NATIVE_BRIDGE_TIMEOUT_MS);
+  });
+
   try {
-    await initializeNativeBridge();
-  } catch {
-    // A tela de acesso exibirá o estado correto caso o callback nativo falhe.
+    await Promise.race([initializeNativeBridge(), nativeTimeout]);
+    window.sessionStorage.removeItem("labstar-native-boot-warning");
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "native_bridge_failed";
+    window.sessionStorage.setItem("labstar-native-boot-warning", message);
+    window.dispatchEvent(new CustomEvent("labstar:native-boot-warning", { detail: message }));
   }
 
   try {
@@ -82,12 +104,9 @@ async function bootstrap() {
   } catch {
     // Preferências inválidas nunca impedem a inicialização do Labstar.
   }
-
-  createRoot(document.getElementById("root")!).render(
-    <StrictMode>
-      <RootSurfaces />
-    </StrictMode>,
-  );
 }
 
-void bootstrap();
+// A interface é montada primeiro. Nenhuma chamada Rust, deep link ou leitura de
+// preferências pode segurar a primeira pintura do aplicativo desktop.
+mountReact();
+void initializeRuntime();
