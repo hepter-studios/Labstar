@@ -229,3 +229,18 @@
   .access-v2-verification-star { animation: access-v2-star-breathe 2s ease-in-out infinite; }
   .access-v2-verification-stage p { animation: none; }
 }
+
+
+/* Entrada temporária: somente a identidade Labstar, sem textos auxiliares. */
+.access-v2-logo-screen {
+  place-items: center !important;
+  align-items: center !important;
+  overflow: hidden;
+}
+
+.access-v2-logo-only {
+  position: relative;
+  z-index: 1;
+  margin: 0;
+  font-size: clamp(30px, 5vw, 52px);
+}

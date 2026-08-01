@@ -88,7 +88,11 @@ export function CommunicationHome({ member, onOpenChannel, onOpenDirect }: Commu
         : { spaces: [], categories: [], channels: [] };
       const members = membersResult.status === "fulfilled" ? membersResult.value.members : [];
       const notifications = notificationsResult.status === "fulfilled" ? notificationsResult.value : [];
-      const readableChannels = collaboration.channels
+      const publicChannels = collaboration.channels.filter(
+        (channel) => channel.allowedRoles.length === 0 && channel.allowedAssignments.length === 0,
+      );
+      const publicChannelIds = new Set(publicChannels.map((channel) => channel.id));
+      const readableChannels = publicChannels
         .filter((channel) => channel.type === "text" || channel.type === "announcement" || channel.type === "rules")
         .slice(0, 30);
       const messageResults = await Promise.allSettled(readableChannels.map((channel) => listMessages(channel.id)));
@@ -98,10 +102,12 @@ export function CommunicationHome({ member, onOpenChannel, onOpenDirect }: Commu
 
       setData({
         spaces: collaboration.spaces,
-        channels: collaboration.channels,
+        channels: publicChannels,
         members,
         messages,
-        notifications,
+        notifications: notifications.filter(
+          (notification) => !notification.channelId || publicChannelIds.has(notification.channelId),
+        ),
       });
 
       if (collaborationResult.status === "rejected") {
@@ -133,6 +139,10 @@ export function CommunicationHome({ member, onOpenChannel, onOpenDirect }: Commu
       if (!home) return;
       home.scrollTop = 0;
       home.scrollLeft = 0;
+      if (home.parentElement) {
+        home.parentElement.scrollTop = 0;
+        home.parentElement.scrollLeft = 0;
+      }
     });
     return () => window.cancelAnimationFrame(frame);
   }, [loading, member.id]);

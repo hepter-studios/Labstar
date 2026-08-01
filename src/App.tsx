@@ -1118,7 +1118,7 @@ function QuickPanel({
 }
 
 function AccessLoading() {
-  return <main className="access-screen"><div className="access-card secure-loading"><Wordmark large /><span className="security-orbit"><ShieldCheck size={21} /><i /></span><h1>Verificando acesso</h1><p>Validando sua identidade e as permissões do ambiente.</p><div className="security-progress"><i /></div><small>CONEXÃO PROTEGIDA</small></div></main>;
+  return <main className="access-screen brand-intro" aria-label="Abrindo Labstar"><Wordmark large /></main>;
 }
 
 function AccessGate() {
@@ -1194,10 +1194,7 @@ function Wordmark({ large = false, animated = false }: { large?: boolean; animat
 function BrandIntro() {
   return (
     <main className="access-screen brand-intro" aria-label="Abrindo Labstar">
-      <div className="intro-mark">
-        <Wordmark large animated />
-        <span className="intro-progress" aria-hidden="true"><i /></span>
-      </div>
+      <Wordmark large />
     </main>
   );
 }

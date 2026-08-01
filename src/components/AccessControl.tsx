@@ -12,7 +12,6 @@ import {
   Mail,
   RotateCcw,
   ShieldCheck,
-  Star,
   UserPlus,
   X,
 } from "lucide-react";
@@ -178,29 +177,9 @@ export function AccessControl() {
 }
 
 function AccessLoading() {
-  const messages = [
-    "Verificando sua identidade…",
-    "Localizando seu perfil autorizado…",
-    "Confirmando suas permissões…",
-    "Protegendo seu acesso…",
-  ];
-  const [messageIndex, setMessageIndex] = useState(0);
-
-  useEffect(() => {
-    const timer = window.setInterval(() => {
-      setMessageIndex((current) => (current + 1) % messages.length);
-    }, 900);
-    return () => window.clearInterval(timer);
-  }, []);
-
   return (
-    <main className="access-v2-screen access-v2-verification" aria-live="polite" aria-busy="true">
-      <div className="access-v2-verification-stage">
-        <span className="access-v2-verification-star" aria-hidden="true">
-          <Star fill="currentColor" strokeWidth={1.2} />
-        </span>
-        <p key={messageIndex}>{messages[messageIndex]}</p>
-      </div>
+    <main className="access-v2-screen access-v2-logo-screen" aria-live="polite" aria-busy="true">
+      <strong className="access-v2-wordmark access-v2-logo-only" aria-label="Labstar">L<span>★</span>BSTAR</strong>
     </main>
   );
 }
