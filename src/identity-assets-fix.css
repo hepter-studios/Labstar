@@ -94,14 +94,21 @@
   display: none !important;
 }
 
+.dm-conversation-person small {
+  color: #78849a !important;
+  font-size: 0 !important;
+}
 .dm-conversation-person small > i {
   display: none !important;
 }
-.dm-conversation-person small {
-  color: #78849a !important;
+.dm-conversation-person small::before {
+  content: "Membro da equipe";
+  font-size: 10px;
 }
-.dm-conversation-person small::first-letter {
-  text-transform: uppercase;
+.dm-conversation-person small > b {
+  margin-left: 7px;
+  font-size: 10px;
+  color: #91a7d8;
 }
 
 /* Logos dos Espaços: sempre quadrados e inteiros, nunca esticados. */
