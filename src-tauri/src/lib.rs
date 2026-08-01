@@ -8,7 +8,7 @@ use backend_client::NativeBackendClient;
 use deep_links::PendingDeepLinks;
 use tauri::{Emitter, Manager};
 
-const WEBVIEW_CACHE_RESET_MARKER: &str = "webview-cache-reset-11.0.2";
+const WEBVIEW_CACHE_RESET_MARKER: &str = "webview-cache-reset-11.0.4";
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -50,7 +50,7 @@ pub fn run() {
                             Ok(()) => {
                                 std::fs::write(&marker, b"cleared")?;
                                 log::info!(
-                                    "Cache legado do WebView2 removido para a migração 11.0.2"
+                                    "Cache visual do WebView2 removido para a migração 11.0.4"
                                 );
                                 if let Err(error) = window.reload() {
                                     log::warn!(
@@ -59,7 +59,7 @@ pub fn run() {
                                 }
                             }
                             Err(error) => log::warn!(
-                                "Não foi possível limpar o cache legado do WebView2: {error}"
+                                "Não foi possível limpar o cache visual do WebView2: {error}"
                             ),
                         }
                     }
