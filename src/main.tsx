@@ -19,6 +19,7 @@ import { LegacyActionBridge } from "./components/LegacyActionBridge";
 import { MediaPreferenceBridge } from "./components/MediaPreferenceBridge";
 import { MemberPanelTools } from "./components/MemberPanelTools";
 import { MemberQuickActions } from "./components/MemberQuickActions";
+import { MessageWorkItemBridge } from "./components/MessageWorkItemBridge";
 import { RuntimeReliability } from "./components/RuntimeReliability";
 import { SafetyGuards } from "./components/SafetyGuards";
 import { SystemDiagnosticsAddon } from "./components/SystemDiagnostics";
@@ -53,6 +54,7 @@ import "./work-home.css";
 import "./work-surface-nav.css";
 import "./work-items-center.css";
 import "./dashboard-work-surface.css";
+import "./message-work-item.css";
 
 const BRAND_INTRO_DURATION_MS = 2350;
 const NATIVE_BRIDGE_TIMEOUT_MS = 4000;
@@ -147,6 +149,7 @@ function RootSurfaces() {
       {introFinished && <OptionalSurface name="central de comandos"><CommandPalette /></OptionalSurface>}
       {introFinished && <OptionalSurface name="dashboard operacional"><DashboardWorkSurface /></OptionalSurface>}
       {introFinished && <OptionalSurface name="tarefas e decisões"><WorkItemsCenter /></OptionalSurface>}
+      {introFinished && <OptionalSurface name="mensagens para trabalho"><MessageWorkItemBridge /></OptionalSurface>}
       {introFinished && <OptionalSurface name="busca global"><GlobalSearchBridge /></OptionalSurface>}
       {introFinished && <OptionalSurface name="instalação web"><InstallApp /></OptionalSurface>}
     </>
