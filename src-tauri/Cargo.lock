@@ -1908,7 +1908,7 @@ dependencies = [
 
 [[package]]
 name = "labstar"
-version = "11.2.3"
+version = "11.2.4"
 dependencies = [
  "log",
  "serde",

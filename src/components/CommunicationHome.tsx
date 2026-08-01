@@ -10,7 +10,7 @@ import {
   Search,
   Users,
 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
   listMembers,
   listMessages,
@@ -132,9 +132,9 @@ export function CommunicationHome({ member, onOpenChannel, onOpenDirect }: Commu
     };
   }, [refresh]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (loading) return;
-    const frame = window.requestAnimationFrame(() => {
+    const resetPosition = () => {
       const home = homeRef.current;
       if (!home) return;
       home.scrollTop = 0;
@@ -143,8 +143,14 @@ export function CommunicationHome({ member, onOpenChannel, onOpenDirect }: Commu
         home.parentElement.scrollTop = 0;
         home.parentElement.scrollLeft = 0;
       }
-    });
-    return () => window.cancelAnimationFrame(frame);
+    };
+    resetPosition();
+    const frame = window.requestAnimationFrame(resetPosition);
+    const timer = window.setTimeout(resetPosition, 160);
+    return () => {
+      window.cancelAnimationFrame(frame);
+      window.clearTimeout(timer);
+    };
   }, [loading, member.id]);
 
   const channelById = useMemo(() => new Map(data.channels.map((channel) => [channel.id, channel])), [data.channels]);
@@ -168,7 +174,7 @@ export function CommunicationHome({ member, onOpenChannel, onOpenDirect }: Commu
 
   if (loading) {
     return (
-      <section ref={homeRef} className="communication-home communication-home-loading">
+      <section key="loading" ref={homeRef} className="communication-home communication-home-loading">
         <LoaderCircle className="spin" size={24} />
         <strong>Preparando sua Home</strong>
         <span>Reunindo conversas, menções, arquivos e pessoas…</span>
@@ -177,7 +183,7 @@ export function CommunicationHome({ member, onOpenChannel, onOpenDirect }: Commu
   }
 
   return (
-    <section ref={homeRef} className="communication-home">
+    <section key="content" ref={homeRef} className="communication-home">
       <header className="communication-home-head">
         <div>
           <span className="communication-eyebrow"><MessageSquareText size={14} /> Central de trabalho</span>
