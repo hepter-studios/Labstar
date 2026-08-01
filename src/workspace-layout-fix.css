@@ -1,5 +1,11 @@
 .workspace.collaboration-workspace {
+  height: calc(100vh - 68px);
+  height: calc(100dvh - 68px);
+  min-height: 0;
   grid-template-columns: 64px minmax(0, 1fr) !important;
+  grid-template-rows: minmax(0, 1fr);
+  align-items: stretch;
+  overflow: hidden;
 }
 
 .workspace.collaboration-workspace > .collaboration-server-mode,
@@ -8,11 +14,41 @@
 .direct-hub {
   width: 100%;
   min-width: 0;
+  min-height: 0;
 }
 
-.collaboration-server-mode > .collaboration-shell,
-.direct-hub {
-  height: 100%;
+.workspace.collaboration-workspace > .collaboration-server-mode,
+.workspace.collaboration-workspace > .direct-hub {
+  height: auto !important;
+  align-self: stretch;
+  overflow: hidden;
+}
+
+.collaboration-server-mode {
+  position: relative;
+  display: block;
+}
+
+.collaboration-server-mode > .collaboration-shell {
+  position: absolute;
+  inset: 0;
+  width: auto;
+  height: auto;
+  overflow: hidden;
+}
+
+.collaboration-shell > .space-rail,
+.collaboration-shell > .channel-sidebar,
+.collaboration-shell > .channel-content,
+.collaboration-shell > .channel-members,
+.channel-content > .message-room,
+.message-room > .message-scroll {
+  min-height: 0;
+}
+
+.channel-content,
+.message-room {
+  overflow: hidden;
 }
 
 @media (max-width: 700px) {
