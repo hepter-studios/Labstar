@@ -10,6 +10,15 @@ type CollaborationHubProps = {
 };
 
 type WorkSurface = "workspace" | "direct";
+type OpenChannelDetail = { channelId?: string; query?: string };
+type OpenDirectDetail = { query?: string };
+
+function setNativeInputValue(input: HTMLInputElement, value: string) {
+  const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set;
+  setter?.call(input, value);
+  input.dispatchEvent(new Event("input", { bubbles: true }));
+  input.dispatchEvent(new Event("change", { bubbles: true }));
+}
 
 export function CollaborationHub({ member, initialChannelId, soundEnabled = true }: CollaborationHubProps) {
   const [surface, setSurface] = useState<WorkSurface>("workspace");
@@ -31,6 +40,37 @@ export function CollaborationHub({ member, initialChannelId, soundEnabled = true
     window.addEventListener("keydown", shortcuts);
     return () => window.removeEventListener("keydown", shortcuts);
   }, [surface]);
+
+  useEffect(() => {
+    const openChannel = (event: Event) => {
+      const detail = (event as CustomEvent<OpenChannelDetail>).detail ?? {};
+      if (detail.channelId) setWorkspaceChannelId(detail.channelId);
+      setSurface("workspace");
+      if (!detail.query) return;
+      window.setTimeout(() => {
+        const input = document.querySelector<HTMLInputElement>(".message-toolbar input");
+        if (input) {
+          setNativeInputValue(input, detail.query ?? "");
+          input.focus();
+        }
+      }, 180);
+    };
+    const openDirect = (event: Event) => {
+      const detail = (event as CustomEvent<OpenDirectDetail>).detail ?? {};
+      setSurface("direct");
+      window.setTimeout(() => {
+        const input = document.querySelector<HTMLInputElement>(".dm-search input");
+        if (input && detail.query) setNativeInputValue(input, detail.query);
+        input?.focus();
+      }, 160);
+    };
+    window.addEventListener("labstar:open-channel", openChannel);
+    window.addEventListener("labstar:open-direct", openDirect);
+    return () => {
+      window.removeEventListener("labstar:open-channel", openChannel);
+      window.removeEventListener("labstar:open-direct", openDirect);
+    };
+  }, []);
 
   if (surface === "direct") {
     return (
