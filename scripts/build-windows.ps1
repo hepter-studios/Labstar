@@ -4,6 +4,45 @@ Set-StrictMode -Version Latest
 $Root = Split-Path -Parent $PSScriptRoot
 Set-Location $Root
 
+$SupabaseUrl = 'https://pgzwyngxsxnheulvusdq.supabase.co'
+$ApiUrl = 'https://labstar-api-mackson.fly.dev'
+$WebPreview = 'https://feat-tauri-auth-rust-integra.labstar.pages.dev/'
+
+function Resolve-LabstarPublicKey {
+  $current = [string]$env:VITE_SUPABASE_PUBLISHABLE_KEY
+  if ($current.StartsWith('sb_publishable_') -or $current.Length -gt 40) {
+    return $current
+  }
+
+  Write-Host '[Labstar] Obtendo configuração pública do Web oficial...'
+  [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+  $page = (Invoke-WebRequest -UseBasicParsing -Uri $WebPreview -TimeoutSec 30).Content
+  $scriptMatches = [regex]::Matches($page, 'src=["'']([^"'']+\.js[^"'']*)["'']')
+
+  foreach ($scriptMatch in $scriptMatches) {
+    $assetUrl = [Uri]::new([Uri]$WebPreview, $scriptMatch.Groups[1].Value).AbsoluteUri
+    try {
+      $javascript = (Invoke-WebRequest -UseBasicParsing -Uri $assetUrl -TimeoutSec 45).Content
+      $publishable = [regex]::Match($javascript, 'sb_publishable_[A-Za-z0-9_-]{20,}')
+      if ($publishable.Success) { return $publishable.Value }
+
+      $legacyAnon = [regex]::Match($javascript, 'eyJ[A-Za-z0-9_-]{80,}\.[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}')
+      if ($legacyAnon.Success) { return $legacyAnon.Value }
+    } catch {
+      Write-Host "[Labstar] Não foi possível ler $assetUrl; tentando o próximo bundle."
+    }
+  }
+
+  throw 'Não foi possível localizar a chave pública do Supabase no Web oficial. O build foi interrompido para não gerar outro desktop sem login.'
+}
+
+$PublicKey = Resolve-LabstarPublicKey
+$env:VITE_SUPABASE_URL = $SupabaseUrl
+$env:VITE_SUPABASE_PUBLISHABLE_KEY = $PublicKey
+$env:VITE_SUPABASE_ANON_KEY = $PublicKey
+$env:VITE_LABSTAR_API_URL = $ApiUrl
+
+Write-Host '[Labstar] Configuração pública carregada.'
 Write-Host '[Labstar] Validando frontend...'
 npm ci
 npm run build
@@ -51,3 +90,4 @@ Write-Host "[Labstar] EXE: $ExeDest"
 Write-Host "[Labstar] MSI: $MsiDest"
 Write-Host "[Labstar] EXE SHA256: $ExeHash"
 Write-Host "[Labstar] MSI SHA256: $MsiHash"
+Start-Process explorer.exe $Artifacts
