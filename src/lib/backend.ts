@@ -65,6 +65,7 @@ type IdentityFallbackRow = {
 
 const DEFAULT_RUST_BACKEND_URL = "https://labstar-api-mackson.fly.dev";
 const REQUEST_TIMEOUT_MS = 30_000;
+const IDENTITY_BACKEND_BUDGET_MS = 6_000;
 const READ_RETRY_DELAY_MS = 900;
 const configuredUrl = (import.meta.env.VITE_LABSTAR_API_URL ?? DEFAULT_RUST_BACKEND_URL)
   .trim()
@@ -284,14 +285,16 @@ function memberAuthorizationError(status: IdentityFallbackRow["status"]) {
 }
 
 async function getBackendIdentityFromSupabase(
-  accessToken: string,
   originalError: unknown,
 ): Promise<BackendMeResponse> {
   const client = requireAuthClient();
   const { data: sessionData, error: sessionError } = await client.auth.getSession();
   const session = sessionData.session;
 
-  if (sessionError || !session?.user || session.access_token !== accessToken) {
+  // O Supabase pode renovar o JWT enquanto a API Rust está em timeout. A
+  // autorização do fallback depende da sessão atual e das políticas RLS, não
+  // da igualdade textual com o token que iniciou a tentativa anterior.
+  if (sessionError || !session?.user) {
     throw originalError;
   }
 
@@ -346,13 +349,27 @@ async function getBackendIdentityFromSupabase(
 }
 
 export async function getBackendIdentity(accessToken: string) {
+  let budgetTimer = 0;
+  const apiRequest = request<BackendMeResponse>("/v1/me", { method: "GET" }, accessToken);
+  const budget = new Promise<BackendMeResponse>((_, reject) => {
+    budgetTimer = window.setTimeout(() => {
+      reject(new BackendApiError(
+        "backend_timeout",
+        "A verificação central excedeu o orçamento de inicialização.",
+        408,
+      ));
+    }, IDENTITY_BACKEND_BUDGET_MS);
+  });
+
   try {
-    const identity = await request<BackendMeResponse>("/v1/me", { method: "GET" }, accessToken);
+    const identity = await Promise.race([apiRequest, budget]);
     window.sessionStorage.setItem("labstar-backend-mode", "rust-api");
     return identity;
   } catch (error) {
     if (!isRetryableReadError(error)) throw error;
-    return getBackendIdentityFromSupabase(accessToken, error);
+    return getBackendIdentityFromSupabase(error);
+  } finally {
+    window.clearTimeout(budgetTimer);
   }
 }
 
