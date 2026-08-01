@@ -68,8 +68,8 @@ $Msi = Get-ChildItem -Path 'src-tauri/target/x86_64-pc-windows-msvc/release/bund
 if (-not $Nsis) { throw 'Instalador NSIS não encontrado.' }
 if (-not $Msi) { throw 'Instalador MSI não encontrado.' }
 
-$ExeDest = Join-Path $Artifacts 'Labstar_11.0.0_x64-setup.exe'
-$MsiDest = Join-Path $Artifacts 'Labstar_11.0.0_x64.msi'
+$ExeDest = Join-Path $Artifacts 'Labstar_11.0.1_x64-setup.exe'
+$MsiDest = Join-Path $Artifacts 'Labstar_11.0.1_x64.msi'
 Copy-Item $Nsis.FullName $ExeDest -Force
 Copy-Item $Msi.FullName $MsiDest -Force
 
@@ -78,7 +78,7 @@ $MsiHash = (Get-FileHash $MsiDest -Algorithm SHA256).Hash.ToLowerInvariant()
 $GitSha = (git rev-parse HEAD).Trim()
 
 @"
-Labstar 11.0.0
+Labstar 11.0.1
 source_sha=$GitSha
 target=x86_64-pc-windows-msvc
 exe_sha256=$ExeHash
