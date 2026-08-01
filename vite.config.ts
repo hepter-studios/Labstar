@@ -2,10 +2,13 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import { VitePWA } from "vite-plugin-pwa";
 
+const isDesktopBuild = process.env.LABSTAR_DESKTOP_BUILD === "1"
+  || Boolean(process.env.TAURI_ENV_PLATFORM);
+
 export default defineConfig({
   plugins: [
     react(),
-    VitePWA({
+    ...(!isDesktopBuild ? [VitePWA({
       registerType: "autoUpdate",
       includeAssets: ["favicon.ico", "favicon.svg", "favicon-180.png"],
       manifest: {
@@ -38,7 +41,7 @@ export default defineConfig({
           },
         ],
       },
-    }),
+    })] : []),
   ],
   server: {
     host: "0.0.0.0",
