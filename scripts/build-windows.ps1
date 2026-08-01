@@ -8,6 +8,30 @@ $SupabaseUrl = 'https://pgzwyngxsxnheulvusdq.supabase.co'
 $ApiUrl = 'https://labstar-api-mackson.fly.dev'
 $WebPreview = 'https://feat-tauri-auth-rust-integra.labstar.pages.dev/'
 
+$TauriConfigPath = Join-Path $Root 'src-tauri/tauri.conf.json'
+$CargoPath = Join-Path $Root 'src-tauri/Cargo.toml'
+$PackagePath = Join-Path $Root 'package.json'
+
+$TauriConfig = Get-Content $TauriConfigPath -Raw | ConvertFrom-Json
+$PackageConfig = Get-Content $PackagePath -Raw | ConvertFrom-Json
+$CargoText = Get-Content $CargoPath -Raw
+$CargoVersionMatch = [regex]::Match($CargoText, '(?m)^version\s*=\s*"([^"]+)"')
+
+if (-not $CargoVersionMatch.Success) {
+  throw 'Não foi possível identificar a versão no Cargo.toml.'
+}
+
+$Version = [string]$TauriConfig.version
+$CargoVersion = $CargoVersionMatch.Groups[1].Value
+$PackageVersion = [string]$PackageConfig.version
+
+if (-not $Version -or $Version -ne $CargoVersion -or $Version -ne $PackageVersion) {
+  throw "Versões divergentes: Tauri=$Version Cargo=$CargoVersion package=$PackageVersion"
+}
+
+$ExeName = "Labstar_${Version}_x64-setup.exe"
+$MsiName = "Labstar_${Version}_x64.msi"
+
 function Resolve-LabstarPublicKey {
   $current = [string]$env:VITE_SUPABASE_PUBLISHABLE_KEY
   if ($current.StartsWith('sb_publishable_') -or $current.Length -gt 40) {
@@ -43,6 +67,7 @@ $env:VITE_SUPABASE_ANON_KEY = $PublicKey
 $env:VITE_LABSTAR_API_URL = $ApiUrl
 $env:LABSTAR_DESKTOP_BUILD = '1'
 
+Write-Host "[Labstar] Gerando versão $Version."
 Write-Host '[Labstar] Configuração pública carregada.'
 Write-Host '[Labstar] Build desktop sem PWA/service worker.'
 Write-Host '[Labstar] Validando frontend...'
@@ -59,22 +84,25 @@ rustup toolchain install stable --profile minimal
 rustup default stable
 rustup target add x86_64-pc-windows-msvc
 
+$BundleRoot = Join-Path $Root 'src-tauri/target/x86_64-pc-windows-msvc/release/bundle'
+Remove-Item -Recurse -Force $BundleRoot -ErrorAction SilentlyContinue
+
 Write-Host '[Labstar] Gerando NSIS + MSI com Tauri 2...'
 npx --yes @tauri-apps/cli@2 build --target x86_64-pc-windows-msvc --bundles nsis,msi
 
 $Artifacts = Join-Path $Root 'artifacts/windows'
 New-Item -ItemType Directory -Force -Path $Artifacts | Out-Null
-Remove-Item (Join-Path $Artifacts 'Labstar_11.0.2_x64-setup.exe') -Force -ErrorAction SilentlyContinue
-Remove-Item (Join-Path $Artifacts 'Labstar_11.0.2_x64.msi') -Force -ErrorAction SilentlyContinue
+Remove-Item (Join-Path $Artifacts $ExeName) -Force -ErrorAction SilentlyContinue
+Remove-Item (Join-Path $Artifacts $MsiName) -Force -ErrorAction SilentlyContinue
 
-$Nsis = Get-ChildItem -Path 'src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis' -Filter '*11.0.2*x64-setup.exe' -File | Select-Object -First 1
-$Msi = Get-ChildItem -Path 'src-tauri/target/x86_64-pc-windows-msvc/release/bundle/msi' -Filter '*11.0.2*.msi' -File | Select-Object -First 1
+$Nsis = Get-ChildItem -Path (Join-Path $BundleRoot 'nsis') -Filter "*${Version}*x64-setup.exe" -File | Select-Object -First 1
+$Msi = Get-ChildItem -Path (Join-Path $BundleRoot 'msi') -Filter "*${Version}*.msi" -File | Select-Object -First 1
 
-if (-not $Nsis) { throw 'Instalador NSIS 11.0.2 não encontrado.' }
-if (-not $Msi) { throw 'Instalador MSI 11.0.2 não encontrado.' }
+if (-not $Nsis) { throw "Instalador NSIS $Version não encontrado." }
+if (-not $Msi) { throw "Instalador MSI $Version não encontrado." }
 
-$ExeDest = Join-Path $Artifacts 'Labstar_11.0.2_x64-setup.exe'
-$MsiDest = Join-Path $Artifacts 'Labstar_11.0.2_x64.msi'
+$ExeDest = Join-Path $Artifacts $ExeName
+$MsiDest = Join-Path $Artifacts $MsiName
 Copy-Item $Nsis.FullName $ExeDest -Force
 Copy-Item $Msi.FullName $MsiDest -Force
 
@@ -83,10 +111,11 @@ $MsiHash = (Get-FileHash $MsiDest -Algorithm SHA256).Hash.ToLowerInvariant()
 $GitSha = (git rev-parse HEAD).Trim()
 
 @"
-Labstar 11.0.2
+Labstar $Version
 source_sha=$GitSha
 target=x86_64-pc-windows-msvc
 pwa_in_desktop=false
+identity_fallback=supabase-rls-read-only
 exe_sha256=$ExeHash
 msi_sha256=$MsiHash
 generated_at=$((Get-Date).ToUniversalTime().ToString('o'))
