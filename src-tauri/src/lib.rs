@@ -8,6 +8,8 @@ use backend_client::NativeBackendClient;
 use deep_links::PendingDeepLinks;
 use tauri::{Emitter, Manager};
 
+const WEBVIEW_CACHE_RESET_MARKER: &str = "webview-cache-reset-11.0.2";
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let builder = tauri::Builder::default();
@@ -36,6 +38,34 @@ pub fn run() {
         .setup(|app| {
             app.manage(PendingDeepLinks::default());
 
+            let app_data_directory = app.path().app_data_dir()?;
+            std::fs::create_dir_all(&app_data_directory)?;
+
+            #[cfg(windows)]
+            {
+                let marker = app_data_directory.join(WEBVIEW_CACHE_RESET_MARKER);
+                if !marker.exists() {
+                    if let Some(window) = app.get_webview_window("main") {
+                        match window.clear_all_browsing_data() {
+                            Ok(()) => {
+                                std::fs::write(&marker, b"cleared")?;
+                                log::info!(
+                                    "Cache legado do WebView2 removido para a migração 11.0.2"
+                                );
+                                if let Err(error) = window.reload() {
+                                    log::warn!(
+                                        "Cache removido, mas a recarga inicial falhou: {error}"
+                                    );
+                                }
+                            }
+                            Err(error) => log::warn!(
+                                "Não foi possível limpar o cache legado do WebView2: {error}"
+                            ),
+                        }
+                    }
+                }
+            }
+
             let backend_client = NativeBackendClient::new().map_err(std::io::Error::other)?;
             let backend_warmup = backend_client.clone();
             app.manage(backend_client);
@@ -49,9 +79,6 @@ pub fn run() {
                     ),
                 }
             });
-
-            let app_data_directory = app.path().app_data_dir()?;
-            std::fs::create_dir_all(&app_data_directory)?;
 
             use tauri_plugin_deep_link::DeepLinkExt;
 
