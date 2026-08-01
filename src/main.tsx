@@ -48,6 +48,8 @@ import "./identity-assets-fix.css";
 import "./command-palette.css";
 import "./workspace-intelligence.css";
 import "./global-search-v2.css";
+import "./work-home.css";
+import "./work-surface-nav.css";
 
 const BRAND_INTRO_DURATION_MS = 2350;
 const NATIVE_BRIDGE_TIMEOUT_MS = 4000;
