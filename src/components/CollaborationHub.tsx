@@ -1,3 +1,4 @@
+import { Hash, Home, MessageSquareText } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { Member } from "../lib/supabase";
 import { DirectMessagesHub } from "./DirectMessagesHubV5";
@@ -94,9 +95,13 @@ export function CollaborationHub({ member, initialChannelId, soundEnabled = true
   if (surface === "direct") {
     return (
       <div className="work-direct-mode">
+        <nav className="work-surface-switcher" aria-label="Navegação da Central de trabalho">
+          <button type="button" onClick={() => setSurface("home")} title="Início do trabalho"><Home size={15} /></button>
+          <button type="button" onClick={() => setSurface("workspace")} title="Canais"><Hash size={15} /></button>
+          <button type="button" className="active" title="Mensagens diretas"><MessageSquareText size={15} /></button>
+        </nav>
         <DirectMessagesHub
           member={member}
-          onOpenHome={() => setSurface("home")}
           onOpenWorkspace={(channelId) => {
             setWorkspaceChannelId(channelId ?? null);
             setSurface("workspace");
@@ -108,12 +113,15 @@ export function CollaborationHub({ member, initialChannelId, soundEnabled = true
 
   return (
     <div className="collaboration-server-mode">
+      <nav className="work-surface-switcher" aria-label="Navegação da Central de trabalho">
+        <button type="button" onClick={() => setSurface("home")} title="Início do trabalho"><Home size={15} /></button>
+        <button type="button" className="active" title="Canais"><Hash size={15} /></button>
+        <button type="button" onClick={() => setSurface("direct")} title="Mensagens diretas"><MessageSquareText size={15} /></button>
+      </nav>
       <LegacyCollaborationHub
         member={member}
         initialChannelId={workspaceChannelId}
         soundEnabled={soundEnabled}
-        onOpenHome={() => setSurface("home")}
-        onOpenDirect={() => setSurface("direct")}
       />
     </div>
   );
