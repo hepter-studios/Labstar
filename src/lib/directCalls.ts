@@ -4,6 +4,13 @@ import { supabaseClient } from "./supabase";
 export type DirectCallKind = "audio" | "video";
 export type DirectCallStatus = "ringing" | "accepted" | "rejected" | "ended" | "missed";
 export type DirectCallSignalType = "offer" | "answer" | "ice" | "hangup" | "reject";
+export type DirectCallListenerScope = "surface" | "global";
+
+declare global {
+  interface Window {
+    __LABSTAR_GLOBAL_CALL_BRIDGE__?: boolean;
+  }
+}
 
 export type DirectCallSession = {
   id: string;
@@ -30,6 +37,12 @@ export type DirectCallSignal = {
 function requireClient() {
   if (!supabaseClient) throw new Error("supabase_not_configured");
   return supabaseClient;
+}
+
+function globalBridgeOwnsIncomingCalls(scope: DirectCallListenerScope) {
+  return scope === "surface"
+    && typeof window !== "undefined"
+    && window.__LABSTAR_GLOBAL_CALL_BRIDGE__ === true;
 }
 
 function sessionFromRow(row: Record<string, unknown>): DirectCallSession {
@@ -85,12 +98,18 @@ export async function getDirectCall(callId: string) {
   return sessionFromRow(data as Record<string, unknown>);
 }
 
-export async function listPendingIncomingCalls(memberId: string) {
+export async function listPendingIncomingCalls(
+  memberId: string,
+  scope: DirectCallListenerScope = "surface",
+) {
+  if (globalBridgeOwnsIncomingCalls(scope)) return [];
+  const recentThreshold = new Date(Date.now() - 90_000).toISOString();
   const { data, error } = await requireClient()
     .from("direct_call_sessions")
     .select("*")
     .eq("recipient_id", memberId)
     .eq("status", "ringing")
+    .gte("created_at", recentThreshold)
     .order("created_at", { ascending: false })
     .limit(5);
   if (error) throw error;
@@ -133,9 +152,11 @@ export async function listDirectCallSignals(callId: string) {
 export function subscribeIncomingDirectCalls(
   recipientId: string,
   onCall: (session: DirectCallSession) => void,
-): RealtimeChannel {
+  scope: DirectCallListenerScope = "surface",
+): RealtimeChannel | null {
+  if (globalBridgeOwnsIncomingCalls(scope)) return null;
   return requireClient()
-    .channel(`labstar-incoming-call-${recipientId}`)
+    .channel(`labstar-incoming-call-${scope}-${recipientId}`)
     .on(
       "postgres_changes",
       {
