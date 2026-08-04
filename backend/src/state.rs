@@ -1,4 +1,7 @@
-use std::{sync::Arc, time::{Duration, Instant}};
+use std::{
+    sync::Arc,
+    time::{Duration, Instant},
+};
 
 use reqwest::Client;
 use sqlx::{PgPool, postgres::PgPoolOptions};
@@ -25,14 +28,18 @@ pub struct AppState {
 impl AppState {
     pub async fn build(config: Config) -> Result<Self, StateBuildError> {
         let config = Arc::new(config);
+
+        // O processo HTTP precisa continuar vivo mesmo quando o PostgreSQL passa
+        // por uma indisponibilidade curta. O pool abre conexões sob demanda e
+        // volta a tentar automaticamente nas próximas requisições; /health/ready
+        // continua indicando com precisão quando o banco ainda não respondeu.
         let database = PgPoolOptions::new()
-            .min_connections(1)
+            .min_connections(0)
             .max_connections(config.database_max_connections)
             .acquire_timeout(config.request_timeout)
             .idle_timeout(Some(Duration::from_secs(300)))
             .test_before_acquire(true)
-            .connect(&config.database_url)
-            .await?;
+            .connect_lazy(&config.database_url)?;
 
         let http = Client::builder()
             .https_only(true)
