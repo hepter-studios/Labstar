@@ -1,0 +1,5 @@
+Labstar Supabase RPC recovery confirmed
+migration=labstar-supabase-v12-direct-rpc-recovery.sql
+source_sha=5bb7002063ff78828f9565fe53c4a064c77b69db
+workflow_run=30947186526
+verified_at=2026-08-04T20:18:44Z
