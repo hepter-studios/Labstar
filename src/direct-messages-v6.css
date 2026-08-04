@@ -1,0 +1,690 @@
+/* Labstar 11.2.8 — conversas privadas funcionais e presença real. */
+
+.dm-v6 .dm-contact-list {
+  padding: 4px 9px 12px;
+}
+
+.dm-v6 .dm-contact-entry {
+  position: relative;
+  min-width: 0;
+  min-height: 58px;
+  margin-bottom: 3px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 30px;
+  align-items: center;
+  border: 1px solid transparent;
+  border-radius: 11px;
+  background: transparent;
+  overflow: hidden;
+}
+
+.dm-v6 .dm-contact-entry:hover {
+  background: rgba(255, 255, 255, .025);
+}
+
+.dm-v6 .dm-contact-entry.active {
+  border-color: rgba(77, 132, 255, .17);
+  background: linear-gradient(90deg, rgba(77, 132, 255, .14), rgba(77, 132, 255, .045));
+  box-shadow: inset 2px 0 #4d84ff;
+}
+
+.dm-v6 .dm-contact-main {
+  min-width: 0;
+  width: 100%;
+  min-height: 56px;
+  padding: 7px 4px 7px 9px;
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  border: 0;
+  color: inherit;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.dm-v6 .dm-contact-main:disabled {
+  opacity: .55;
+  cursor: not-allowed;
+}
+
+.dm-v6 .dm-contact-main > span {
+  min-width: 0;
+  display: block;
+  text-align: left;
+}
+
+.dm-v6 .dm-contact-main strong,
+.dm-v6 .dm-contact-main small {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: left;
+}
+
+.dm-v6 .dm-contact-main strong {
+  color: #e5ebf5;
+  font-size: 10.5px;
+  font-weight: 720;
+}
+
+.dm-v6 .dm-contact-main small {
+  margin-top: 4px;
+  color: #69768a;
+  font-size: 8px;
+}
+
+.dm-v6 .dm-contact-main time {
+  align-self: start;
+  margin-top: 5px;
+  color: #596579;
+  font-size: 7px;
+}
+
+.dm-v6 .dm-favorite-contact {
+  width: 28px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 8px;
+  color: #4f5b6e;
+  background: transparent;
+  cursor: pointer;
+}
+
+.dm-v6 .dm-favorite-contact:hover,
+.dm-v6 .dm-favorite-contact.active {
+  color: #89a9ff;
+  background: rgba(77, 132, 255, .055);
+}
+
+/* A presença agora vem de Supabase Realtime; estes indicadores deixam de ser simulados. */
+.dm-v6 .avatar-status,
+.dm-v6 .dm-own-profile .avatar-status,
+.dm-v6 .dm-contact-list .avatar-status,
+.dm-v6 .dm-home-contact-grid .avatar-status,
+.dm-v6 .dm-conversation .avatar-status,
+.dm-v6 .dm-profile-panel .avatar-status {
+  display: block !important;
+}
+
+.dm-v6 .avatar-status.offline {
+  background: #df5964 !important;
+  box-shadow: 0 0 7px rgba(223, 89, 100, .2) !important;
+}
+
+.dm-v6 .dm-own-profile > b {
+  display: block !important;
+  color: #5cc59d;
+}
+
+.dm-v6 .dm-conversation-person small {
+  color: #758196 !important;
+  font-size: 8px !important;
+}
+
+.dm-v6 .dm-conversation-person small::before {
+  content: none !important;
+}
+
+.dm-v6 .dm-conversation-person small > i {
+  display: block !important;
+  background: currentColor;
+}
+
+.dm-v6 .dm-conversation-person small > b {
+  margin-left: 4px;
+  font-size: 8px;
+}
+
+.dm-v6 .dm-profile-hero {
+  padding: 2px 0 16px;
+  display: grid;
+  grid-template-columns: 62px minmax(0, 1fr);
+  align-items: center;
+  gap: 13px;
+}
+
+.dm-v6 .dm-profile-hero > div {
+  min-width: 0;
+}
+
+.dm-v6 .dm-profile-hero h2 {
+  margin: 0 0 4px;
+  overflow: hidden;
+  color: #edf2fa;
+  font-size: 16px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dm-v6 .dm-profile-hero > div > span,
+.dm-v6 .dm-profile-hero > div > small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dm-v6 .dm-profile-hero > div > span {
+  color: #8290a7;
+  font-size: 9px;
+}
+
+.dm-v6 .dm-profile-hero > div > small {
+  margin-top: 6px;
+  color: #667389;
+  font-size: 8px;
+}
+
+.dm-v6 .dm-profile-actions {
+  grid-template-columns: repeat(4, 1fr);
+}
+
+.dm-v6 .dm-profile-actions button.active {
+  color: #9bb6ff;
+  background: rgba(77, 132, 255, .06);
+}
+
+.dm-v6 .dm-composer-notice.error {
+  border-color: rgba(223, 89, 100, .22);
+  color: #e89aa1;
+  background: rgba(136, 38, 48, .1);
+}
+
+.dm-v6 .dm-emoji-picker {
+  right: 52px;
+  bottom: 70px;
+  width: min(360px, calc(100vw - 28px));
+  max-height: 310px;
+  padding: 0;
+  display: grid;
+  grid-template-rows: 42px minmax(0, 1fr);
+  gap: 0;
+  overflow: hidden;
+  border-color: rgba(151, 173, 220, .2);
+  border-radius: 14px;
+  background: #0b1018;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, .82), inset 0 1px rgba(255, 255, 255, .035);
+}
+
+.dm-v6 .dm-emoji-picker > header {
+  padding: 0 9px 0 13px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid rgba(151, 173, 220, .09);
+  background: #0d131d;
+}
+
+.dm-v6 .dm-emoji-picker > header strong {
+  color: #d9e2f0;
+  font-size: 10px;
+}
+
+.dm-v6 .dm-emoji-picker > header button {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 7px;
+  color: #728095;
+  background: transparent;
+  cursor: pointer;
+}
+
+.dm-v6 .dm-emoji-picker > header button:hover {
+  color: #e7edf7;
+  background: rgba(255, 255, 255, .04);
+}
+
+.dm-v6 .dm-emoji-picker > div {
+  min-height: 0;
+  padding: 10px;
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 4px;
+  overflow-y: auto;
+}
+
+.dm-v6 .dm-emoji-picker > div > button {
+  width: 36px;
+  height: 36px;
+}
+
+.labstar-toast {
+  position: fixed;
+  z-index: 10050;
+  right: 22px;
+  bottom: 22px;
+  width: min(390px, calc(100vw - 32px));
+  min-height: 54px;
+  padding: 10px 10px 10px 12px;
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr) 28px;
+  align-items: center;
+  gap: 9px;
+  border: 1px solid rgba(151, 173, 220, .18);
+  border-radius: 13px;
+  color: #dce5f3;
+  background: rgba(10, 15, 23, .98);
+  box-shadow: 0 22px 70px rgba(0, 0, 0, .7), inset 0 1px rgba(255, 255, 255, .04);
+  backdrop-filter: blur(18px);
+  animation: labstar-toast-enter .18s ease-out;
+}
+
+.labstar-toast > span {
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border-radius: 9px;
+  color: #94adf0;
+  background: rgba(77, 132, 255, .09);
+}
+
+.labstar-toast.success > span {
+  color: #6ad2aa;
+  background: rgba(62, 188, 139, .09);
+}
+
+.labstar-toast.warning > span {
+  color: #e0b466;
+  background: rgba(199, 141, 47, .1);
+}
+
+.labstar-toast.error > span {
+  color: #ef8f98;
+  background: rgba(207, 67, 80, .1);
+}
+
+.labstar-toast p {
+  margin: 0;
+  color: #b8c3d4;
+  font-size: 10px;
+  line-height: 1.45;
+}
+
+.labstar-toast > button {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 7px;
+  color: #677489;
+  background: transparent;
+  cursor: pointer;
+}
+
+.labstar-toast > button:hover {
+  color: #edf2fa;
+  background: rgba(255, 255, 255, .035);
+}
+
+@keyframes labstar-toast-enter {
+  from { opacity: 0; transform: translateY(8px) scale(.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.private-call-backdrop {
+  position: fixed;
+  z-index: 11000;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(1, 3, 7, .8);
+  backdrop-filter: blur(16px);
+}
+
+.private-call-card {
+  position: relative;
+  width: min(430px, 100%);
+  min-height: 500px;
+  display: grid;
+  grid-template-rows: 52px minmax(220px, 1fr) auto auto 36px;
+  overflow: hidden;
+  border: 1px solid rgba(137, 165, 222, .18);
+  border-radius: 22px;
+  color: #eaf0fa;
+  background: linear-gradient(160deg, #101827, #070b12 58%, #05080d);
+  box-shadow: 0 40px 140px rgba(0, 0, 0, .9), inset 0 1px rgba(255, 255, 255, .05);
+}
+
+.private-call-card.video {
+  width: min(900px, 100%);
+  height: min(700px, calc(100vh - 48px));
+  grid-template-rows: 52px minmax(0, 1fr) auto auto 24px;
+}
+
+.private-call-card > header {
+  z-index: 4;
+  padding: 0 13px 0 17px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid rgba(137, 165, 222, .09);
+  background: rgba(7, 11, 18, .86);
+}
+
+.private-call-card > header > span {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: #8fa2c3;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+}
+
+.private-call-card > header > button {
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 9px;
+  color: #758299;
+  background: transparent;
+  cursor: pointer;
+}
+
+.private-call-card > header > button:hover {
+  color: #eef3fa;
+  background: rgba(255, 255, 255, .04);
+}
+
+.private-call-stage {
+  position: relative;
+  min-height: 0;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 50% 50%, rgba(65, 111, 207, .16), transparent 34%),
+    #05080d;
+}
+
+.private-call-audio-person {
+  position: relative;
+  z-index: 2;
+  width: 150px;
+  height: 150px;
+  display: grid;
+  place-items: center;
+}
+
+.private-call-audio-person .user-avatar-xl {
+  width: 92px !important;
+  height: 92px !important;
+}
+
+.private-call-rings,
+.private-call-rings::before,
+.private-call-rings::after {
+  position: absolute;
+  inset: 0;
+  border: 1px solid rgba(98, 145, 244, .2);
+  border-radius: 50%;
+  content: "";
+  animation: private-call-pulse 2.4s ease-out infinite;
+}
+
+.private-call-rings::before { inset: 18px; animation-delay: .45s; }
+.private-call-rings::after { inset: 36px; animation-delay: .9s; }
+
+@keyframes private-call-pulse {
+  0% { opacity: .8; transform: scale(.72); }
+  100% { opacity: 0; transform: scale(1.18); }
+}
+
+.private-call-remote-video {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+  background: #030508;
+}
+
+.private-call-local-video {
+  position: absolute;
+  z-index: 3;
+  right: 18px;
+  bottom: 18px;
+  width: min(220px, 28%);
+  aspect-ratio: 16 / 10;
+  object-fit: cover;
+  border: 1px solid rgba(255, 255, 255, .16);
+  border-radius: 13px;
+  background: #05080d;
+  box-shadow: 0 14px 42px rgba(0, 0, 0, .55);
+}
+
+.private-call-video-placeholder {
+  position: absolute;
+  z-index: 2;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: radial-gradient(circle at 50% 45%, rgba(69, 117, 218, .2), transparent 25%);
+}
+
+.private-call-video-placeholder .user-avatar-xl {
+  width: 92px !important;
+  height: 92px !important;
+}
+
+.private-call-copy {
+  padding: 17px 22px 10px;
+  text-align: center;
+}
+
+.private-call-kind {
+  width: 28px;
+  height: 28px;
+  margin: 0 auto 7px;
+  display: grid;
+  place-items: center;
+  border-radius: 9px;
+  color: #9bb7ff;
+  background: rgba(77, 132, 255, .09);
+}
+
+.private-call-copy h2 {
+  margin: 0;
+  overflow: hidden;
+  color: #f1f5fb;
+  font-size: 21px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.private-call-copy p {
+  margin: 7px 0 0;
+  color: #8b98ad;
+  font-size: 10px;
+}
+
+.private-call-copy small {
+  display: block;
+  margin-top: 8px;
+  color: #e08d96;
+  font-size: 9px;
+}
+
+.private-call-controls,
+.private-call-answer-actions {
+  min-height: 84px;
+  padding: 10px 22px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 15px;
+}
+
+.private-call-controls button,
+.private-call-answer-actions button {
+  width: 52px;
+  height: 52px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(151, 173, 220, .14);
+  border-radius: 50%;
+  color: #d6dfed;
+  background: #141c28;
+  box-shadow: inset 0 1px rgba(255, 255, 255, .05);
+  cursor: pointer;
+}
+
+.private-call-controls button:hover,
+.private-call-answer-actions button:hover {
+  transform: translateY(-1px);
+  background: #192434;
+}
+
+.private-call-controls button.off {
+  color: #e28a93;
+  background: rgba(132, 43, 53, .22);
+}
+
+.private-call-controls button.hangup,
+.private-call-answer-actions button.reject {
+  color: #fff;
+  border-color: rgba(235, 85, 96, .3);
+  background: #d84f5b;
+}
+
+.private-call-answer-actions button.accept {
+  color: #fff;
+  border-color: rgba(64, 202, 143, .28);
+  background: #35b97f;
+}
+
+.private-call-answer-actions button {
+  width: 72px;
+  height: 58px;
+  border-radius: 17px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.private-call-answer-actions button span {
+  font-size: 8px;
+  font-weight: 700;
+}
+
+.private-call-loader {
+  align-self: center;
+  justify-self: center;
+  color: #89a8f4;
+}
+
+.safety-confirm-backdrop {
+  position: fixed;
+  z-index: 12000;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(2, 4, 8, .76);
+  backdrop-filter: blur(14px);
+}
+
+.safety-confirm-dialog {
+  width: min(430px, 100%);
+  padding: 22px;
+  border: 1px solid rgba(151, 173, 220, .18);
+  border-radius: 17px;
+  color: #e8eef8;
+  background: linear-gradient(155deg, #111722, #090d14);
+  box-shadow: 0 32px 100px rgba(0, 0, 0, .82), inset 0 1px rgba(255, 255, 255, .04);
+}
+
+.safety-confirm-dialog > span {
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  color: #ee929b;
+  background: rgba(211, 69, 81, .1);
+}
+
+.safety-confirm-dialog h2 {
+  margin: 15px 0 7px;
+  font-size: 18px;
+}
+
+.safety-confirm-dialog p {
+  margin: 0;
+  color: #8d99ad;
+  font-size: 10px;
+  line-height: 1.6;
+}
+
+.safety-confirm-actions {
+  margin-top: 20px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.safety-confirm-actions button {
+  height: 38px;
+  padding: 0 15px;
+  border: 1px solid rgba(151, 173, 220, .14);
+  border-radius: 9px;
+  color: #aeb8c9;
+  background: #0a0f17;
+  font-size: 10px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.safety-confirm-actions button.confirm {
+  color: #fff;
+  border-color: rgba(224, 82, 94, .34);
+  background: #c94652;
+}
+
+@media (max-width: 760px) {
+  .dm-v6 .dm-emoji-picker {
+    right: 8px;
+    width: min(300px, calc(100vw - 20px));
+  }
+  .dm-v6 .dm-emoji-picker > div {
+    grid-template-columns: repeat(6, 1fr);
+  }
+  .private-call-backdrop {
+    padding: 10px;
+  }
+  .private-call-card.video {
+    height: calc(100vh - 20px);
+  }
+  .private-call-local-video {
+    width: 34%;
+    right: 10px;
+    bottom: 10px;
+  }
+  .labstar-toast {
+    right: 16px;
+    bottom: 16px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .labstar-toast,
+  .private-call-rings,
+  .private-call-rings::before,
+  .private-call-rings::after {
+    animation: none !important;
+  }
+}
