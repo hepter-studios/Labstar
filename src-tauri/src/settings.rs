@@ -1,5 +1,8 @@
 use serde::{Deserialize, Serialize};
-use std::{fs, path::{Path, PathBuf}};
+use std::{
+    fs,
+    path::{Path, PathBuf},
+};
 use tauri::{AppHandle, Manager};
 
 const SETTINGS_FILE: &str = "settings-v1.json";
@@ -45,13 +48,19 @@ impl Default for AppSettings {
 impl AppSettings {
     fn validated(mut self) -> Result<Self, String> {
         self.version = 1;
-        if !matches!(self.start_view.as_str(), "mapa" | "visao" | "colaboracao" | "equipe") {
+        if !matches!(
+            self.start_view.as_str(),
+            "mapa" | "visao" | "colaboracao" | "equipe"
+        ) {
             return Err("settings_invalid_start_view".to_string());
         }
         if !matches!(self.density.as_str(), "comfortable" | "compact") {
             return Err("settings_invalid_density".to_string());
         }
-        if !matches!(self.nebula_intensity.as_str(), "off" | "subtle" | "visible") {
+        if !matches!(
+            self.nebula_intensity.as_str(),
+            "off" | "subtle" | "visible"
+        ) {
             return Err("settings_invalid_nebula_intensity".to_string());
         }
         validate_device_id(&self.preferred_microphone)?;
@@ -77,7 +86,9 @@ pub fn load_app_settings(app: AppHandle) -> Result<AppSettings, String> {
 pub fn save_app_settings(app: AppHandle, settings: AppSettings) -> Result<AppSettings, String> {
     let settings = settings.validated()?;
     let path = settings_path(&app)?;
-    let parent = path.parent().ok_or_else(|| "settings_directory_invalid".to_string())?;
+    let parent = path
+        .parent()
+        .ok_or_else(|| "settings_directory_invalid".to_string())?;
     fs::create_dir_all(parent).map_err(|_| "settings_directory_create_failed".to_string())?;
 
     let temporary = parent.join(SETTINGS_TMP_FILE);
@@ -124,17 +135,32 @@ mod tests {
 
     #[test]
     fn rejects_invalid_enums_and_long_device_ids() {
-        let invalid_view = AppSettings { start_view: "unknown".into(), ..Default::default() };
-        assert_eq!(invalid_view.validated().unwrap_err(), "settings_invalid_start_view");
+        let invalid_view = AppSettings {
+            start_view: "unknown".into(),
+            ..Default::default()
+        };
+        assert_eq!(
+            invalid_view.validated().unwrap_err(),
+            "settings_invalid_start_view"
+        );
 
-        let invalid_density = AppSettings { density: "huge".into(), ..Default::default() };
-        assert_eq!(invalid_density.validated().unwrap_err(), "settings_invalid_density");
+        let invalid_density = AppSettings {
+            density: "huge".into(),
+            ..Default::default()
+        };
+        assert_eq!(
+            invalid_density.validated().unwrap_err(),
+            "settings_invalid_density"
+        );
 
         let invalid_device = AppSettings {
             preferred_microphone: "x".repeat(MAX_DEVICE_ID_LENGTH + 1),
             ..Default::default()
         };
-        assert_eq!(invalid_device.validated().unwrap_err(), "settings_invalid_device_id");
+        assert_eq!(
+            invalid_device.validated().unwrap_err(),
+            "settings_invalid_device_id"
+        );
     }
 
     #[test]
