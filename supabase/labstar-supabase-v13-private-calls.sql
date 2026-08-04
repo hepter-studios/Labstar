@@ -37,6 +37,9 @@ create table if not exists public.direct_call_signals (
 create index if not exists direct_call_signals_call_id_idx
   on public.direct_call_signals(call_id, id);
 
+create index if not exists direct_call_signals_created_at_idx
+  on public.direct_call_signals(created_at);
+
 create or replace function public.is_direct_call_participant(target_call_id uuid)
 returns boolean
 language sql
@@ -105,11 +108,21 @@ begin
     raise exception 'private_call_requires_two_members';
   end if;
 
+  -- Chamadas cujo navegador foi fechado não podem bloquear os participantes
+  -- para sempre. Ringing expira rápido; uma sessão aceita abandonada recebe um
+  -- limite conservador de oito horas.
   update public.direct_call_sessions
   set status = 'missed', ended_at = coalesce(ended_at, now())
   where status = 'ringing'
-    and created_at < now() - interval '60 seconds'
-    and (initiator_id = actor_id or recipient_id = actor_id);
+    and created_at < now() - interval '60 seconds';
+
+  update public.direct_call_sessions
+  set status = 'ended', ended_at = coalesce(ended_at, now())
+  where status = 'accepted'
+    and coalesce(answered_at, created_at) < now() - interval '8 hours';
+
+  delete from public.direct_call_signals
+  where created_at < now() - interval '48 hours';
 
   if exists (
     select 1
@@ -233,6 +246,10 @@ begin
 
   if target_signal_type not in ('offer', 'answer', 'ice', 'hangup', 'reject') then
     raise exception 'invalid_call_signal';
+  end if;
+
+  if pg_column_size(coalesce(target_payload, '{}'::jsonb)) > 65536 then
+    raise exception 'call_signal_payload_too_large';
   end if;
 
   select * into current_call
