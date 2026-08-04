@@ -57,10 +57,7 @@ impl AppSettings {
         if !matches!(self.density.as_str(), "comfortable" | "compact") {
             return Err("settings_invalid_density".to_string());
         }
-        if !matches!(
-            self.nebula_intensity.as_str(),
-            "off" | "subtle" | "visible"
-        ) {
+        if !matches!(self.nebula_intensity.as_str(), "off" | "subtle" | "visible") {
             return Err("settings_invalid_nebula_intensity".to_string());
         }
         validate_device_id(&self.preferred_microphone)?;
