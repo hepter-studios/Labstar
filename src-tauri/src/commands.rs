@@ -1,7 +1,4 @@
 use crate::{
-    backend_client::{
-        NativeBackendClient, NativeBackendFailure, NativeBackendRequest, NativeBackendResponse,
-    },
     deep_links::PendingDeepLinks,
     security::{self, ValidatedDeepLink},
 };
@@ -44,16 +41,8 @@ pub fn native_health(app: AppHandle) -> Result<NativeHealth, String> {
         },
         app_data_directory: app_data_directory.display().to_string(),
         deep_link_scheme: "labstar",
-        backend_transport: "rust-native-https",
+        backend_transport: "supabase-rpc",
     })
-}
-
-#[tauri::command]
-pub async fn native_backend_request(
-    client: State<'_, NativeBackendClient>,
-    input: NativeBackendRequest,
-) -> Result<NativeBackendResponse, NativeBackendFailure> {
-    client.inner().clone().execute(input).await
 }
 
 #[tauri::command]
