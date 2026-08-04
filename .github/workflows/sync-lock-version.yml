@@ -1,0 +1,52 @@
+name: Sincronizar lockfile da versão
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "package.json"
+      - ".github/workflows/sync-lock-version.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: labstar-sync-lock-version
+  cancel-in-progress: true
+
+jobs:
+  sync:
+    name: Atualizar package-lock.json
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Baixar código oficial
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Configurar Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Sincronizar lockfile sem executar scripts
+        run: npm install --package-lock-only --ignore-scripts
+
+      - name: Publicar lockfile quando necessário
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- package-lock.json; then
+            echo "package-lock.json já está sincronizado."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add package-lock.json
+          git commit -m "Sincroniza package-lock da versão 11.2.7"
+          git push
