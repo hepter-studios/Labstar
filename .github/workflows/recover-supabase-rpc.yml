@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: labstar-supabase-rpc-recovery
@@ -25,6 +25,8 @@ jobs:
     steps:
       - name: Baixar código oficial
         uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Validar conexão protegida
         shell: bash
@@ -103,6 +105,24 @@ jobs:
                 and not has_table_privilege('authenticated', 'public.member_invites', 'SELECT');
             " | tee permission-check.txt
           grep -qx 't' permission-check.txt
+
+      - name: Registrar recuperação confirmada
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p docs/runtime
+          cat > docs/runtime/supabase-rpc-recovered.txt <<EOF
+          Labstar Supabase RPC recovery confirmed
+          migration=labstar-supabase-v12-direct-rpc-recovery.sql
+          source_sha=${GITHUB_SHA}
+          workflow_run=${GITHUB_RUN_ID}
+          verified_at=$(date -u +'%Y-%m-%dT%H:%M:%SZ')
+          EOF
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/runtime/supabase-rpc-recovered.txt
+          git commit -m "Confirma recuperação dos convites no Supabase"
+          git push
 
       - name: Guardar backup privado
         if: always()
