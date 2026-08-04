@@ -1,6 +1,6 @@
 {
   "name": "labstar",
-  "version": "11.2.7",
+  "version": "11.2.8",
   "private": true,
   "type": "module",
   "scripts": {

@@ -12,6 +12,7 @@ import { AccessControl } from "./components/AccessControl";
 import { AppSessionRecovery } from "./components/AppSessionRecovery";
 import { CommandPalette } from "./components/CommandPalette";
 import { DashboardWorkSurface } from "./components/DashboardWorkSurface";
+import { GlobalDirectCallBridge } from "./components/GlobalDirectCallBridge";
 import { GlobalSearchBridge } from "./components/GlobalSearchBridge";
 import { GlobalSettingsPortal } from "./components/GlobalSettingsPortal";
 import { InstallApp } from "./components/InstallApp";
@@ -56,6 +57,7 @@ import "./communication-home.css";
 import "./work-items-center.css";
 import "./dashboard-work-surface.css";
 import "./message-work-item.css";
+import "./direct-messages-v6.css";
 
 const BRAND_INTRO_DURATION_MS = 2350;
 const NATIVE_BRIDGE_TIMEOUT_MS = 4000;
@@ -136,6 +138,7 @@ function RootSurfaces() {
       <BootReadySignal />
       <SurfaceBoundary name="interface principal" critical><App /></SurfaceBoundary>
       <OptionalSurface name="proteções de segurança"><SafetyGuards /></OptionalSurface>
+      <OptionalSurface name="chamadas privadas globais"><GlobalDirectCallBridge /></OptionalSurface>
       <OptionalSurface name="ponte de ações legadas"><LegacyActionBridge /></OptionalSurface>
       <OptionalSurface name="confiabilidade de runtime"><RuntimeReliability /></OptionalSurface>
       <OptionalSurface name="preferências de mídia"><MediaPreferenceBridge /></OptionalSurface>
