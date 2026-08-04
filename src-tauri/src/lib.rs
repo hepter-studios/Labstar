@@ -1,10 +1,8 @@
-mod backend_client;
 mod commands;
 mod deep_links;
 mod security;
 mod settings;
 
-use backend_client::NativeBackendClient;
 use deep_links::PendingDeepLinks;
 use tauri::{Emitter, Manager};
 
@@ -66,20 +64,6 @@ pub fn run() {
                 }
             }
 
-            let backend_client = NativeBackendClient::new().map_err(std::io::Error::other)?;
-            let backend_warmup = backend_client.clone();
-            app.manage(backend_client);
-
-            tauri::async_runtime::spawn(async move {
-                match backend_warmup.warm_up().await {
-                    Ok(()) => log::info!("Backend Rust disponível para a sessão desktop"),
-                    Err(error) => log::warn!(
-                        "Aquecimento do backend Rust não concluiu: {}",
-                        error.code
-                    ),
-                }
-            });
-
             use tauri_plugin_deep_link::DeepLinkExt;
 
             #[cfg(any(target_os = "linux", all(debug_assertions, windows)))]
@@ -117,7 +101,7 @@ pub fn run() {
             });
 
             log::info!(
-                "Labstar {} iniciado em {}-{}; dados nativos em {}; transporte do backend: rust-native-https",
+                "Labstar {} iniciado em {}-{}; dados nativos em {}; acesso: supabase-rpc",
                 app.package_info().version,
                 std::env::consts::OS,
                 std::env::consts::ARCH,
@@ -127,7 +111,6 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             commands::native_health,
-            commands::native_backend_request,
             commands::validate_deep_link,
             commands::build_invite_deep_link,
             commands::take_pending_deep_links,
