@@ -2,7 +2,7 @@ import { House } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { Member } from "../lib/supabase";
 import { CommunicationHome } from "./CommunicationHome";
-import { DirectMessagesHub } from "./DirectMessagesHubV5";
+import { DirectMessagesHub } from "./DirectMessagesHubV6";
 import { CollaborationHub as LegacyCollaborationHub } from "./LegacyCollaborationHub";
 
 type CollaborationHubProps = {
