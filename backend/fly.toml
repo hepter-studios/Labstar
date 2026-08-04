@@ -1,3 +1,4 @@
+# Redeploy operacional acionado em 2026-08-04 para recuperar a API usada pela Web e pelo Tauri.
 app = "labstar-api-mackson"
 primary_region = "gru"
 kill_signal = "SIGTERM"
