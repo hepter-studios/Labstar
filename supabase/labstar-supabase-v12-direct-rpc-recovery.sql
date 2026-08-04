@@ -112,6 +112,9 @@ grant execute on function public.accept_member_invite(text) to authenticated;
 grant execute on function public.list_member_invites() to authenticated;
 grant execute on function public.revoke_member_invite(uuid) to authenticated;
 
+-- Solicita ao PostgREST que enxergue imediatamente a nova função e os grants.
+notify pgrst, 'reload schema';
+
 commit;
 
 select 'Labstar v12: convites seguros recuperados sem dependência da Fly.io.' as status;
