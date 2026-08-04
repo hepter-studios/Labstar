@@ -5,6 +5,7 @@ on:
     branches:
       - main
     paths:
+      - "supabase/labstar-supabase-v9-compatibility.sql"
       - "supabase/labstar-supabase-v9-direct-messages.sql"
       - "supabase/labstar-supabase-v13-private-calls.sql"
       - ".github/workflows/recover-private-communications.yml"
@@ -71,6 +72,21 @@ jobs:
                 --file="/backup/labstar-before-private-communications-${BACKUP_TIMESTAMP}.dump"
             '
           sha256sum backup/*.dump > backup/SHA256SUMS.txt
+
+      - name: Preparar compatibilidade com mensagens antigas
+        shell: bash
+        env:
+          SUPABASE_DATABASE_URL: ${{ secrets.SUPABASE_DATABASE_URL }}
+        run: |
+          set -euo pipefail
+          docker run --rm \
+            -e SUPABASE_DATABASE_URL \
+            -e PGSSLMODE=require \
+            -v "${PWD}:/workspace:ro" \
+            postgres:17-bookworm \
+            psql "${SUPABASE_DATABASE_URL}" \
+              --set ON_ERROR_STOP=1 \
+              --file /workspace/supabase/labstar-supabase-v9-compatibility.sql
 
       - name: Ativar mensagens diretas privadas
         shell: bash
@@ -162,6 +178,7 @@ jobs:
           mkdir -p docs/runtime
           cat > docs/runtime/private-communications-recovered.txt <<EOF
           Labstar private communications confirmed
+          compatibility_migration=labstar-supabase-v9-compatibility.sql
           direct_messages_migration=labstar-supabase-v9-direct-messages.sql
           private_calls_migration=labstar-supabase-v13-private-calls.sql
           source_sha=${GITHUB_SHA}
