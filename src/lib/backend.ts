@@ -1,8 +1,3 @@
-import {
-  isTauriApp,
-  requestNativeBackend,
-  type NativeBackendFailure,
-} from "./native";
 import { requireAuthClient } from "./auth-client";
 
 export type BackendMember = {
@@ -45,14 +40,7 @@ export type BackendAcceptedInvite = {
   approvalRequired: boolean;
 };
 
-type BackendErrorBody = {
-  error?: {
-    code?: string;
-    message?: string;
-  };
-};
-
-type IdentityFallbackRow = {
+type IdentityRow = {
   id: string;
   auth_user_id?: string | null;
   email: string;
@@ -63,16 +51,31 @@ type IdentityFallbackRow = {
   area?: string | null;
 };
 
-const DEFAULT_RUST_BACKEND_URL = "https://labstar-api-mackson.fly.dev";
-const REQUEST_TIMEOUT_MS = 30_000;
-const IDENTITY_BACKEND_BUDGET_MS = 6_000;
-const READ_RETRY_DELAY_MS = 900;
-const configuredUrl = (import.meta.env.VITE_LABSTAR_API_URL ?? DEFAULT_RUST_BACKEND_URL)
-  .trim()
-  .replace(/\/+$/, "");
+type RpcFailure = {
+  code?: string;
+  message?: string;
+  details?: string;
+  hint?: string;
+};
 
-export const isRustBackendConfigured = /^https:\/\//.test(configuredUrl)
-  || /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(configuredUrl);
+type InviteInspectionRow = {
+  valid: boolean;
+  status: string;
+  kind: "quick" | "personal" | null;
+  email_hint: string | null;
+  expires_at: string | null;
+  approval_required: boolean | null;
+};
+
+type CreatedInviteRow = {
+  invite_id: string;
+  invite_token: string;
+  invite_path: string;
+  kind: "quick" | "personal";
+  email: string | null;
+  expires_at: string;
+  approval_required: boolean;
+};
 
 export class BackendApiError extends Error {
   readonly code: string;
@@ -86,195 +89,70 @@ export class BackendApiError extends Error {
   }
 }
 
-function requireBackendUrl() {
-  if (!isRustBackendConfigured) throw new BackendApiError(
-    "rust_backend_not_configured",
-    "O endereço seguro do backend Rust ainda não foi configurado.",
-    503,
-  );
-  return configuredUrl;
+function firstRow<T>(value: unknown): T | null {
+  if (Array.isArray(value)) return (value[0] as T | undefined) ?? null;
+  if (value && typeof value === "object") return value as T;
+  return null;
 }
 
-function wait(milliseconds: number) {
-  return new Promise<void>((resolve) => window.setTimeout(resolve, milliseconds));
-}
+function rpcError(error: unknown): BackendApiError {
+  const value = (error && typeof error === "object" ? error : {}) as RpcFailure;
+  const text = [value.message, value.details, value.hint]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
 
-function isRetryableReadError(error: unknown) {
-  if (!(error instanceof BackendApiError)) return false;
-  return [
-    "backend_timeout",
-    "backend_unreachable",
-    "backend_connect_failed",
-    "backend_transport_failed",
-    "authentication_service_unavailable",
-    "database_unavailable",
-    "backend_http_429",
-    "backend_http_502",
-    "backend_http_503",
-    "backend_http_504",
-  ].includes(error.code);
-}
+  const knownCodes = [
+    "invite_invalid_or_expired",
+    "invite_email_mismatch",
+    "member_already_linked",
+    "member_suspended",
+    "member_pending",
+    "member_not_authorized",
+    "verified_email_required",
+    "authentication_required",
+    "permission_denied",
+    "only_owner_can_grant_admin",
+    "personal_invite_requires_email",
+    "invalid_invite_kind",
+    "invalid_role",
+  ] as const;
 
-function isNativeTransportFailure(error: unknown) {
-  if (!(error instanceof BackendApiError)) return false;
-  return [
-    "backend_timeout",
-    "backend_connect_failed",
-    "backend_transport_failed",
-  ].includes(error.code);
-}
-
-function asBackendErrorBody(value: unknown): BackendErrorBody {
-  if (!value || typeof value !== "object") return {};
-  return value as BackendErrorBody;
-}
-
-function decodeResponse<T>(status: number, payload: unknown): T {
-  if (status >= 200 && status < 300) {
-    if (status === 204) return undefined as T;
-    return payload as T;
+  const known = knownCodes.find((candidate) => text.includes(candidate));
+  if (known) {
+    const status = known === "authentication_required" || known === "verified_email_required"
+      ? 401
+      : known.startsWith("invalid_") || known === "personal_invite_requires_email" || known === "invite_invalid_or_expired"
+        ? 400
+        : 403;
+    return new BackendApiError(known, value.message || known, status);
   }
 
-  const errorPayload = asBackendErrorBody(payload);
-  throw new BackendApiError(
-    errorPayload.error?.code || `backend_http_${status}`,
-    errorPayload.error?.message || "O backend Rust recusou a solicitação.",
-    status,
-  );
-}
-
-function requestJsonBody(body: BodyInit | null | undefined) {
-  if (body == null) return undefined;
-  if (typeof body !== "string") {
-    throw new BackendApiError(
-      "backend_unsupported_body",
-      "O núcleo do Labstar recebeu um corpo de requisição não suportado.",
-      400,
+  if (value.code === "42501") {
+    return new BackendApiError("permission_denied", value.message || "Permissão negada.", 403);
+  }
+  if (value.code === "28000") {
+    return new BackendApiError("authentication_failed", value.message || "Autenticação necessária.", 401);
+  }
+  if (value.code === "PGRST202" || text.includes("schema cache") || text.includes("could not find the function")) {
+    return new BackendApiError(
+      "access_rpc_unavailable",
+      "As funções seguras de acesso ainda não estão disponíveis no Supabase.",
+      503,
     );
   }
-
-  try {
-    return JSON.parse(body) as unknown;
-  } catch {
-    throw new BackendApiError(
-      "backend_invalid_json_body",
-      "O núcleo do Labstar recebeu JSON inválido.",
-      400,
-    );
-  }
-}
-
-function normalizeNativeFailure(error: unknown) {
-  const failure = (error && typeof error === "object" ? error : {}) as NativeBackendFailure;
-  const code = typeof failure.code === "string" && failure.code
-    ? failure.code
-    : "backend_transport_failed";
-  const message = typeof failure.message === "string" && failure.message
-    ? failure.message
-    : "A comunicação nativa com o backend Rust foi interrompida.";
-  const status = code === "backend_timeout" ? 408 : 503;
-  return new BackendApiError(code, message, status);
-}
-
-async function requestOnceNative<T>(
-  path: string,
-  options: RequestInit,
-  accessToken?: string,
-): Promise<T> {
-  try {
-    const response = await requestNativeBackend({
-      path,
-      method: (options.method ?? "GET").toUpperCase(),
-      accessToken,
-      body: requestJsonBody(options.body),
-    });
-    return decodeResponse<T>(response.status, response.body);
-  } catch (error) {
-    if (error instanceof BackendApiError) throw error;
-    throw normalizeNativeFailure(error);
-  }
-}
-
-async function requestOnceWeb<T>(
-  path: string,
-  options: RequestInit,
-  accessToken?: string,
-): Promise<T> {
-  const controller = new AbortController();
-  const timeout = window.setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
-
-  try {
-    const headers = new Headers(options.headers);
-    headers.set("Accept", "application/json");
-    if (options.body && !headers.has("Content-Type")) headers.set("Content-Type", "application/json");
-    if (accessToken) headers.set("Authorization", `Bearer ${accessToken}`);
-
-    const response = await fetch(`${requireBackendUrl()}${path}`, {
-      ...options,
-      headers,
-      signal: controller.signal,
-      credentials: "omit",
-      cache: "no-store",
-    });
-
-    if (response.status === 204) return undefined as T;
-
-    let payload: unknown = null;
-    try {
-      payload = await response.json() as unknown;
-    } catch {
-      payload = null;
-    }
-
-    return decodeResponse<T>(response.status, payload);
-  } catch (error) {
-    if (error instanceof BackendApiError) throw error;
-    if (error instanceof DOMException && error.name === "AbortError") {
-      throw new BackendApiError("backend_timeout", "O backend Rust demorou para responder.", 408);
-    }
-    throw new BackendApiError("backend_unreachable", "Não foi possível conectar ao backend Rust.", 503);
-  } finally {
-    window.clearTimeout(timeout);
-  }
-}
-
-async function requestOnce<T>(path: string, options: RequestInit, accessToken?: string): Promise<T> {
-  if (!isTauriApp()) return requestOnceWeb<T>(path, options, accessToken);
-
-  const method = (options.method ?? "GET").toUpperCase();
-  try {
-    // No desktop, o caminho primário é Rust nativo -> Rust/Fly.io.
-    return await requestOnceNative<T>(path, options, accessToken);
-  } catch (error) {
-    // GET é idempotente: se o transporte nativo falhar por rede/TLS, ainda há
-    // uma rota independente pelo WebView. Escritas nunca usam fallback para
-    // evitar duplicação de convite, aceite ou revogação.
-    if (method === "GET" && isNativeTransportFailure(error)) {
-      return requestOnceWeb<T>(path, options, accessToken);
-    }
-    throw error;
-  }
-}
-
-async function request<T>(path: string, options: RequestInit = {}, accessToken?: string): Promise<T> {
-  const method = (options.method ?? "GET").toUpperCase();
-  const attempts = method === "GET" ? 2 : 1;
-  let lastError: unknown;
-
-  for (let attempt = 1; attempt <= attempts; attempt += 1) {
-    try {
-      return await requestOnce<T>(path, options, accessToken);
-    } catch (error) {
-      lastError = error;
-      if (attempt === attempts || !isRetryableReadError(error)) throw error;
-      await wait(READ_RETRY_DELAY_MS);
-    }
+  if (text.includes("failed to fetch") || text.includes("network")) {
+    return new BackendApiError("database_unavailable", "Não foi possível conectar ao Supabase.", 503);
   }
 
-  throw lastError;
+  return new BackendApiError(
+    value.code || "database_request_failed",
+    value.message || "O Supabase recusou a solicitação.",
+    500,
+  );
 }
 
-function memberAuthorizationError(status: IdentityFallbackRow["status"]) {
+function memberAuthorizationError(status: IdentityRow["status"]) {
   if (status === "pending") {
     return new BackendApiError("member_pending", "O membro ainda aguarda aprovação.", 403);
   }
@@ -284,23 +162,27 @@ function memberAuthorizationError(status: IdentityFallbackRow["status"]) {
   return null;
 }
 
-async function getBackendIdentityFromSupabase(
-  originalError: unknown,
-): Promise<BackendMeResponse> {
+function mapMember(row: IdentityRow): BackendMember {
+  return {
+    id: row.id,
+    email: row.email,
+    name: row.name,
+    status: row.status,
+    role: row.role,
+    jobTitle: row.job_title ?? "",
+    area: row.area ?? "",
+  };
+}
+
+async function currentIdentityRow(): Promise<{ userId: string; row: IdentityRow }> {
   const client = requireAuthClient();
-  const { data: sessionData, error: sessionError } = await client.auth.getSession();
-  const session = sessionData.session;
+  const { data: userData, error: userError } = await client.auth.getUser();
+  if (userError) throw rpcError(userError);
+  const user = userData.user;
+  if (!user) throw new BackendApiError("authentication_failed", "Sua sessão expirou.", 401);
 
-  // O Supabase pode renovar o JWT enquanto a API Rust está em timeout. A
-  // autorização do fallback depende da sessão atual e das políticas RLS, não
-  // da igualdade textual com o token que iniciou a tentativa anterior.
-  if (sessionError || !session?.user) {
-    throw originalError;
-  }
-
-  const user = session.user;
   const email = user.email?.trim().toLowerCase() ?? "";
-  let row: IdentityFallbackRow | null = null;
+  let row: IdentityRow | null = null;
 
   const byIdentity = await client
     .from("members")
@@ -308,8 +190,8 @@ async function getBackendIdentityFromSupabase(
     .eq("auth_user_id", user.id)
     .maybeSingle();
 
-  if (byIdentity.error) throw originalError;
-  row = byIdentity.data as IdentityFallbackRow | null;
+  if (byIdentity.error) throw rpcError(byIdentity.error);
+  row = byIdentity.data as IdentityRow | null;
 
   if (!row && email) {
     const byEmail = await client
@@ -317,8 +199,8 @@ async function getBackendIdentityFromSupabase(
       .select("id,auth_user_id,email,name,status,role,job_title,area")
       .eq("email", email)
       .maybeSingle();
-    if (byEmail.error) throw originalError;
-    row = byEmail.data as IdentityFallbackRow | null;
+    if (byEmail.error) throw rpcError(byEmail.error);
+    row = byEmail.data as IdentityRow | null;
   }
 
   if (!row) {
@@ -332,57 +214,72 @@ async function getBackendIdentityFromSupabase(
   const authorizationError = memberAuthorizationError(row.status);
   if (authorizationError) throw authorizationError;
 
-  window.sessionStorage.setItem("labstar-backend-mode", "degraded-supabase-identity");
+  return { userId: user.id, row };
+}
+
+export async function getBackendIdentity(_accessToken: string): Promise<BackendMeResponse> {
+  const identity = await currentIdentityRow();
+  window.sessionStorage.setItem("labstar-backend-mode", "supabase-rpc");
 
   return {
-    userId: user.id,
-    email: row.email,
+    userId: identity.userId,
+    email: identity.row.email,
     member: {
-      id: row.id,
-      name: row.name,
-      status: row.status,
-      role: row.role,
-      jobTitle: row.job_title ?? "",
-      area: row.area ?? "",
+      id: identity.row.id,
+      name: identity.row.name,
+      status: identity.row.status,
+      role: identity.row.role,
+      jobTitle: identity.row.job_title ?? "",
+      area: identity.row.area ?? "",
     },
   };
 }
 
-export async function getBackendIdentity(accessToken: string) {
-  let budgetTimer = 0;
-  const apiRequest = request<BackendMeResponse>("/v1/me", { method: "GET" }, accessToken);
-  const budget = new Promise<BackendMeResponse>((_, reject) => {
-    budgetTimer = window.setTimeout(() => {
-      reject(new BackendApiError(
-        "backend_timeout",
-        "A verificação central excedeu o orçamento de inicialização.",
-        408,
-      ));
-    }, IDENTITY_BACKEND_BUDGET_MS);
-  });
+export async function inspectBackendInvite(token: string): Promise<BackendInviteInspection> {
+  const client = requireAuthClient();
+  const { data, error } = await client.rpc("inspect_member_invite", { invite_token: token });
+  if (error) throw rpcError(error);
 
-  try {
-    const identity = await Promise.race([apiRequest, budget]);
-    window.sessionStorage.setItem("labstar-backend-mode", "rust-api");
-    return identity;
-  } catch (error) {
-    if (!isRetryableReadError(error)) throw error;
-    return getBackendIdentityFromSupabase(error);
-  } finally {
-    window.clearTimeout(budgetTimer);
+  const row = firstRow<InviteInspectionRow>(data);
+  if (!row) {
+    return {
+      valid: false,
+      status: "invalid",
+      mode: null,
+      emailHint: null,
+      expiresAt: null,
+      approvalRequired: null,
+    };
   }
+
+  return {
+    valid: Boolean(row.valid),
+    status: row.status,
+    mode: row.kind,
+    emailHint: row.email_hint,
+    expiresAt: row.expires_at,
+    approvalRequired: row.approval_required,
+  };
 }
 
-export async function inspectBackendInvite(token: string) {
-  return request<BackendInviteInspection>(`/v1/invites/${encodeURIComponent(token)}`, { method: "GET" });
-}
+export async function acceptBackendInvite(
+  token: string,
+  _accessToken: string,
+): Promise<BackendAcceptedInvite> {
+  const client = requireAuthClient();
+  const { data, error } = await client.rpc("accept_member_invite", { invite_token: token });
+  if (error) throw rpcError(error);
 
-export async function acceptBackendInvite(token: string, accessToken: string) {
-  return request<BackendAcceptedInvite>(
-    `/v1/invites/${encodeURIComponent(token)}/accept`,
-    { method: "POST" },
-    accessToken,
-  );
+  const row = firstRow<IdentityRow>(data);
+  if (!row) {
+    throw new BackendApiError("invite_invalid_or_expired", "O convite não pôde ser aceito.", 400);
+  }
+
+  const member = mapMember(row);
+  return {
+    member,
+    approvalRequired: member.status === "pending",
+  };
 }
 
 export async function createBackendInvite(input: {
@@ -393,21 +290,40 @@ export async function createBackendInvite(input: {
   jobTitle?: string;
   area?: string;
   validForHours: number;
-}, accessToken: string) {
-  return request<BackendCreatedInvite>(
-    "/v1/invites",
-    {
-      method: "POST",
-      body: JSON.stringify(input),
-    },
-    accessToken,
-  );
+}, _accessToken: string): Promise<BackendCreatedInvite> {
+  const client = requireAuthClient();
+  const { data, error } = await client.rpc("create_member_invite_link_client", {
+    invitation_kind: input.mode,
+    invited_email: input.mode === "personal" ? input.email?.trim().toLowerCase() || null : null,
+    invited_name: input.name?.trim() ?? "",
+    invited_role: input.role,
+    invited_job_title: input.jobTitle?.trim() ?? "",
+    invited_area: input.area?.trim() ?? "",
+    valid_for_hours: input.validForHours,
+  });
+  if (error) throw rpcError(error);
+
+  const row = firstRow<CreatedInviteRow>(data);
+  if (!row) {
+    throw new BackendApiError("invite_creation_failed", "O convite não foi criado.", 500);
+  }
+
+  return {
+    id: row.invite_id,
+    token: row.invite_token,
+    urlPath: row.invite_path,
+    mode: row.kind,
+    email: row.email,
+    expiresAt: row.expires_at,
+    approvalRequired: row.approval_required,
+  };
 }
 
-export async function revokeBackendInvite(inviteId: string, accessToken: string) {
-  await request<void>(
-    `/v1/invites/${encodeURIComponent(inviteId)}`,
-    { method: "DELETE" },
-    accessToken,
-  );
+export async function revokeBackendInvite(
+  inviteId: string,
+  _accessToken: string,
+): Promise<void> {
+  const client = requireAuthClient();
+  const { error } = await client.rpc("revoke_member_invite", { target_invite_id: inviteId });
+  if (error) throw rpcError(error);
 }
