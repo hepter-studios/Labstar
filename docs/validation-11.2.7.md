@@ -7,3 +7,4 @@ Esta versão remove a dependência operacional da Fly.io para identidade e convi
 - A criação de convite administrativo permanece restrita ao proprietário.
 - O Tauri 2/Rust continua responsável por recursos nativos, deep links e configurações locais.
 - O instalador 11.2.7 deve substituir a versão 11.2.6 no Windows.
+- Segunda rodada de validação iniciada após a formatação completa do núcleo Rust.
