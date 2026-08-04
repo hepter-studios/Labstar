@@ -25,24 +25,6 @@ type TauriGlobal = {
   };
 };
 
-export type NativeBackendRequest = {
-  path: string;
-  method: string;
-  accessToken?: string;
-  body?: unknown;
-};
-
-export type NativeBackendResponse = {
-  status: number;
-  body: unknown;
-};
-
-export type NativeBackendFailure = {
-  code?: string;
-  message?: string;
-  retryable?: boolean;
-};
-
 declare global {
   interface Window {
     __TAURI__?: TauriGlobal;
@@ -51,12 +33,6 @@ declare global {
 
 export function isTauriApp() {
   return Boolean(window.__TAURI__?.core?.invoke);
-}
-
-export async function requestNativeBackend(input: NativeBackendRequest) {
-  const tauri = window.__TAURI__;
-  if (!tauri?.core?.invoke) throw new Error("tauri_bridge_unavailable");
-  return tauri.core.invoke<NativeBackendResponse>("native_backend_request", { input });
 }
 
 export function nativeOAuthReturnUrl() {
