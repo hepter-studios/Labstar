@@ -1,6 +1,6 @@
 use axum::{
-    Json,
     extract::{Multipart, State},
+    Json,
 };
 use bytes::Bytes;
 use reqwest::header::{AUTHORIZATION, CONTENT_TYPE};
@@ -85,6 +85,7 @@ pub async fn upload_direct_attachment(
     let thread_id = thread_id.ok_or(ApiError::invalid("threadId"))?;
     let message_id = message_id.ok_or(ApiError::invalid("messageId"))?;
     let bytes = bytes.ok_or(ApiError::invalid("file"))?;
+    let size_bytes = i64::try_from(bytes.len()).map_err(|_| ApiError::PayloadTooLarge)?;
     let file_name = file_name.unwrap_or_else(|| "arquivo".to_string());
 
     ensure_message_owner(&state, &member, thread_id, message_id).await?;
@@ -114,18 +115,14 @@ pub async fn upload_direct_attachment(
     .bind(&file_name)
     .bind(&path)
     .bind(&detected_mime)
-    .bind(bytes_len_i64(&state, &path).await.unwrap_or(0))
+    .bind(size_bytes)
     .bind(&sha256)
     .execute(&state.pool)
     .await?;
 
-    let size_bytes = sqlx::query_scalar::<_, i64>(
-        "select size_bytes from public.direct_message_attachments where id = $1",
-    )
-    .bind(id)
-    .fetch_one(&state.pool)
-    .await?;
-    let url = signed_asset_url(&state, &path, 3600).await.unwrap_or_default();
+    let url = signed_asset_url(&state, &path, 3600)
+        .await
+        .unwrap_or_default();
 
     Ok(Json(UploadedAttachment {
         id,
@@ -227,15 +224,20 @@ pub async fn signed_asset_url(
     }
     let payload = response.json::<SignResponse>().await?;
     if payload.signed_url.starts_with("http") {
-        Ok(payload.signed_url)
-    } else {
-        state
-            .config
-            .supabase_url
-            .join(payload.signed_url.trim_start_matches('/'))
-            .map(|url| url.to_string())
-            .map_err(|_| ApiError::Internal)
+        return Ok(payload.signed_url);
     }
+    let relative = payload.signed_url.trim_start_matches('/');
+    let path = if relative.starts_with("storage/v1/") {
+        relative.to_string()
+    } else {
+        format!("storage/v1/{relative}")
+    };
+    state
+        .config
+        .supabase_url
+        .join(&path)
+        .map(|url| url.to_string())
+        .map_err(|_| ApiError::Internal)
 }
 
 fn sanitize_file_name(value: &str) -> String {
@@ -258,8 +260,4 @@ fn sanitize_file_name(value: &str) -> String {
     } else {
         sanitized
     }
-}
-
-async fn bytes_len_i64(_state: &AppState, _path: &str) -> Option<i64> {
-    None
 }
