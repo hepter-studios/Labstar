@@ -44,13 +44,12 @@ pub async fn mark_read(
     member: AuthenticatedMember,
     Path(notification_id): Path<Uuid>,
 ) -> Result<Json<serde_json::Value>, ApiError> {
-    let result = sqlx::query(
-        "update public.notifications set is_read=true where id=$1 and recipient_id=$2",
-    )
-    .bind(notification_id)
-    .bind(member.member_id)
-    .execute(&state.pool)
-    .await?;
+    let result =
+        sqlx::query("update public.notifications set is_read=true where id=$1 and recipient_id=$2")
+            .bind(notification_id)
+            .bind(member.member_id)
+            .execute(&state.pool)
+            .await?;
     if result.rows_affected() == 0 {
         return Err(ApiError::NotFound("notification"));
     }

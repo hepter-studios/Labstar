@@ -87,7 +87,10 @@ pub fn router(state: AppState) -> Result<Router, Box<dyn std::error::Error + Sen
         .route("/v1/collaboration", get(collaboration::load))
         .route("/v1/spaces", post(collaboration::create_space))
         .route("/v1/spaces/{space_id}", patch(collaboration::update_space))
-        .route("/v1/spaces/{space_id}/logo", post(uploads::upload_space_logo))
+        .route(
+            "/v1/spaces/{space_id}/logo",
+            post(uploads::upload_space_logo),
+        )
         .route("/v1/categories", post(collaboration::create_category))
         .route("/v1/channels", post(collaboration::create_channel))
         .route(
@@ -135,10 +138,7 @@ pub fn router(state: AppState) -> Result<Router, Box<dyn std::error::Error + Sen
             "/v1/meetings",
             get(planning::list_meetings).post(planning::create_meeting),
         )
-        .route(
-            "/v1/meetings/{id}/cancel",
-            post(planning::cancel_meeting),
-        )
+        .route("/v1/meetings/{id}/cancel", post(planning::cancel_meeting))
         .route(
             "/v1/direct/threads",
             get(direct_messages::list_threads).post(direct_messages::create_thread),
@@ -184,7 +184,9 @@ pub fn router(state: AppState) -> Result<Router, Box<dyn std::error::Error + Sen
         .layer(ConcurrencyLimitLayer::new(512))
         .layer(CompressionLayer::new())
         .layer(cors)
-        .layer(SetSensitiveHeadersLayer::new(std::iter::once(AUTHORIZATION)))
+        .layer(SetSensitiveHeadersLayer::new(std::iter::once(
+            AUTHORIZATION,
+        )))
         .layer(PropagateRequestIdLayer::x_request_id())
         .layer(SetRequestIdLayer::x_request_id(MakeRequestUuid))
         .layer(TraceLayer::new_for_http()))

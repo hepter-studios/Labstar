@@ -56,15 +56,17 @@ pub async fn upload_space_logo(
 ) -> Result<Json<UploadedAsset>, ApiError> {
     actor.require_admin()?;
     let file = read_single_image(&state, multipart).await?;
-    let path = format!("spaces/{space_id}/logo-{}-{}", Uuid::new_v4(), file.file_name);
+    let path = format!(
+        "spaces/{space_id}/logo-{}-{}",
+        Uuid::new_v4(),
+        file.file_name
+    );
     let asset = persist_asset(&state, &actor, path, file).await?;
-    let result = sqlx::query(
-        "update public.collaboration_spaces set logo_path=$2 where id=$1",
-    )
-    .bind(space_id)
-    .bind(&asset.path)
-    .execute(&state.pool)
-    .await?;
+    let result = sqlx::query("update public.collaboration_spaces set logo_path=$2 where id=$1")
+        .bind(space_id)
+        .bind(&asset.path)
+        .execute(&state.pool)
+        .await?;
     if result.rows_affected() == 0 {
         return Err(ApiError::NotFound("space"));
     }
@@ -81,7 +83,11 @@ async fn read_single_image(
     state: &AppState,
     mut multipart: Multipart,
 ) -> Result<PendingFile, ApiError> {
-    while let Some(field) = multipart.next_field().await.map_err(|_| ApiError::invalid("multipart"))? {
+    while let Some(field) = multipart
+        .next_field()
+        .await
+        .map_err(|_| ApiError::invalid("multipart"))?
+    {
         if field.name() != Some("file") {
             continue;
         }
@@ -99,7 +105,11 @@ async fn read_single_image(
         if !mime_type.starts_with("image/") {
             return Err(ApiError::invalid("file"));
         }
-        return Ok(PendingFile { file_name, mime_type, bytes });
+        return Ok(PendingFile {
+            file_name,
+            mime_type,
+            bytes,
+        });
     }
     Err(ApiError::invalid("file"))
 }
@@ -124,6 +134,14 @@ async fn persist_asset(
         &sha256,
     )
     .await?;
-    let url = signed_asset_url(state, &path, 28_800).await.unwrap_or_default();
-    Ok(UploadedAsset { path, url, mime_type: file.mime_type, size_bytes, sha256 })
+    let url = signed_asset_url(state, &path, 28_800)
+        .await
+        .unwrap_or_default();
+    Ok(UploadedAsset {
+        path,
+        url,
+        mime_type: file.mime_type,
+        size_bytes,
+        sha256,
+    })
 }

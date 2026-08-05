@@ -251,14 +251,13 @@ pub async fn delete(
     Path(message_id): Path<Uuid>,
 ) -> Result<Json<serde_json::Value>, ApiError> {
     let can_moderate = matches!(member.role.as_str(), "owner" | "admin" | "manager");
-    let result = sqlx::query(
-        "delete from public.channel_messages where id=$1 and (author_id=$2 or $3)",
-    )
-    .bind(message_id)
-    .bind(member.member_id)
-    .bind(can_moderate)
-    .execute(&state.pool)
-    .await?;
+    let result =
+        sqlx::query("delete from public.channel_messages where id=$1 and (author_id=$2 or $3)")
+            .bind(message_id)
+            .bind(member.member_id)
+            .bind(can_moderate)
+            .execute(&state.pool)
+            .await?;
     if result.rows_affected() == 0 {
         return Err(ApiError::NotFound("message"));
     }
@@ -277,7 +276,11 @@ pub async fn upload_attachment(
     let mut declared_mime = None;
     let mut content: Option<Bytes> = None;
 
-    while let Some(field) = multipart.next_field().await.map_err(|_| ApiError::invalid("multipart"))? {
+    while let Some(field) = multipart
+        .next_field()
+        .await
+        .map_err(|_| ApiError::invalid("multipart"))?
+    {
         match field.name().unwrap_or_default() {
             "spaceId" => space_id = Some(parse_uuid(field.text().await, "spaceId")?),
             "channelId" => channel_id = Some(parse_uuid(field.text().await, "channelId")?),
@@ -337,7 +340,9 @@ pub async fn upload_attachment(
         &sha256,
     )
     .await?;
-    let url = signed_asset_url(&state, &file_path, 3600).await.unwrap_or_default();
+    let url = signed_asset_url(&state, &file_path, 3600)
+        .await
+        .unwrap_or_default();
     Ok(Json(UploadedChannelAttachment {
         id,
         message_id,
@@ -395,10 +400,17 @@ async fn ensure_message_owner(
 
 fn clean_body(value: &str) -> Result<String, ApiError> {
     let body = value.trim().chars().take(12_000).collect::<String>();
-    if body.is_empty() { Err(ApiError::invalid("body")) } else { Ok(body) }
+    if body.is_empty() {
+        Err(ApiError::invalid("body"))
+    } else {
+        Ok(body)
+    }
 }
 
-fn parse_uuid(value: Result<String, axum::extract::multipart::MultipartError>, field: &'static str) -> Result<Uuid, ApiError> {
+fn parse_uuid(
+    value: Result<String, axum::extract::multipart::MultipartError>,
+    field: &'static str,
+) -> Result<Uuid, ApiError> {
     value
         .map_err(|_| ApiError::invalid(field))?
         .parse::<Uuid>()

@@ -22,13 +22,11 @@ pub async fn load(
     State(state): State<AppState>,
     _member: AuthenticatedMember,
 ) -> Result<Json<WorkspaceResponse>, ApiError> {
-    let nodes = sqlx::query_scalar::<_, Value>(
-        "select nodes from public.workspaces where id = $1",
-    )
-    .bind(MAIN_WORKSPACE_ID)
-    .fetch_optional(&state.pool)
-    .await?
-    .unwrap_or_else(|| Value::Array(Vec::new()));
+    let nodes = sqlx::query_scalar::<_, Value>("select nodes from public.workspaces where id = $1")
+        .bind(MAIN_WORKSPACE_ID)
+        .fetch_optional(&state.pool)
+        .await?
+        .unwrap_or_else(|| Value::Array(Vec::new()));
 
     Ok(Json(WorkspaceResponse { nodes }))
 }

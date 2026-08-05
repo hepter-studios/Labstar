@@ -1,12 +1,7 @@
 use axum::{Json, extract::State};
 use serde::Deserialize;
 
-use crate::{
-    auth::AuthenticatedMember,
-    error::ApiError,
-    members::MemberView,
-    state::AppState,
-};
+use crate::{auth::AuthenticatedMember, error::ApiError, members::MemberView, state::AppState};
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -22,14 +17,18 @@ pub async fn update(
     member: AuthenticatedMember,
     Json(input): Json<UpdateProfileInput>,
 ) -> Result<Json<MemberView>, ApiError> {
-    let name = input.name.map(|value| value.trim().chars().take(120).collect::<String>());
+    let name = input
+        .name
+        .map(|value| value.trim().chars().take(120).collect::<String>());
     if name.as_ref().is_some_and(String::is_empty) {
         return Err(ApiError::invalid("name"));
     }
     let avatar_path = if input.clear_avatar {
         Some(String::new())
     } else {
-        input.avatar_path.map(|value| value.trim().chars().take(500).collect())
+        input
+            .avatar_path
+            .map(|value| value.trim().chars().take(500).collect())
     };
 
     let mut row = sqlx::query_as::<_, MemberView>(

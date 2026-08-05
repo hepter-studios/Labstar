@@ -1,4 +1,7 @@
-use axum::{Json, extract::{Path, State}};
+use axum::{
+    Json,
+    extract::{Path, State},
+};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -68,7 +71,10 @@ fn sanitize_roles(values: Vec<String>) -> Result<Vec<String>, ApiError> {
     let mut result = Vec::new();
     for value in values {
         let value = value.trim().to_ascii_lowercase();
-        if !matches!(value.as_str(), "owner" | "admin" | "manager" | "member" | "viewer") {
+        if !matches!(
+            value.as_str(),
+            "owner" | "admin" | "manager" | "member" | "viewer"
+        ) {
             return Err(ApiError::invalid("allowedRoles"));
         }
         result.push(value);
@@ -79,7 +85,8 @@ fn sanitize_roles(values: Vec<String>) -> Result<Vec<String>, ApiError> {
 }
 
 fn sanitize(values: Vec<String>, max_items: usize, max_chars: usize) -> Vec<String> {
-    let mut result = values.into_iter()
+    let mut result = values
+        .into_iter()
         .map(|value| value.trim().chars().take(max_chars).collect::<String>())
         .filter(|value| !value.is_empty())
         .take(max_items)

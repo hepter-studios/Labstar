@@ -202,7 +202,11 @@ fn clean(value: &str, limit: usize) -> String {
 
 fn clean_or(value: &str, limit: usize, fallback: &str) -> String {
     let value = clean(value, limit);
-    if value.is_empty() { fallback.to_string() } else { value }
+    if value.is_empty() {
+        fallback.to_string()
+    } else {
+        value
+    }
 }
 
 fn sanitize_permissions(values: Vec<String>) -> Vec<String> {

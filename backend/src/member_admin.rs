@@ -1,12 +1,7 @@
 use axum::{Json, extract::State};
 use serde::Deserialize;
 
-use crate::{
-    auth::AuthenticatedMember,
-    error::ApiError,
-    members::MemberView,
-    state::AppState,
-};
+use crate::{auth::AuthenticatedMember, error::ApiError, members::MemberView, state::AppState};
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -29,7 +24,10 @@ pub async fn create(
     if input.role == "owner" || (input.role == "admin" && actor.role != "owner") {
         return Err(ApiError::PermissionDenied);
     }
-    if !matches!(input.role.as_str(), "admin" | "manager" | "member" | "viewer") {
+    if !matches!(
+        input.role.as_str(),
+        "admin" | "manager" | "member" | "viewer"
+    ) {
         return Err(ApiError::invalid("role"));
     }
     let email = normalize_email(&input.email)?;

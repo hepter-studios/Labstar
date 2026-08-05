@@ -6,12 +6,7 @@ use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
 use uuid::Uuid;
 
-use crate::{
-    auth::AuthenticatedMember,
-    error::ApiError,
-    files::signed_asset_url,
-    state::AppState,
-};
+use crate::{auth::AuthenticatedMember, error::ApiError, files::signed_asset_url, state::AppState};
 
 #[derive(Debug, Clone, Serialize, FromRow)]
 #[serde(rename_all = "camelCase")]
@@ -149,7 +144,11 @@ pub async fn load(
     .fetch_all(&state.pool)
     .await?;
 
-    Ok(Json(CollaborationResponse { spaces, categories, channels }))
+    Ok(Json(CollaborationResponse {
+        spaces,
+        categories,
+        channels,
+    }))
 }
 
 pub async fn create_space(
@@ -191,7 +190,11 @@ pub async fn update_space(
     if let Some(kind) = input.kind.as_deref() {
         validate_space_kind(kind)?;
     }
-    if input.name.as_ref().is_some_and(|value| value.trim().is_empty()) {
+    if input
+        .name
+        .as_ref()
+        .is_some_and(|value| value.trim().is_empty())
+    {
         return Err(ApiError::invalid("name"));
     }
     let mut space = sqlx::query_as::<_, SpaceView>(
@@ -281,14 +284,21 @@ fn validate_space_kind(value: &str) -> Result<(), ApiError> {
 }
 
 fn validate_channel_type(value: &str) -> Result<(), ApiError> {
-    matches!(value, "text" | "announcement" | "rules" | "voice" | "social")
-        .then_some(())
-        .ok_or(ApiError::invalid("type"))
+    matches!(
+        value,
+        "text" | "announcement" | "rules" | "voice" | "social"
+    )
+    .then_some(())
+    .ok_or(ApiError::invalid("type"))
 }
 
 fn required(value: &str, limit: usize, field: &'static str) -> Result<String, ApiError> {
     let value = clean(value, limit);
-    if value.is_empty() { Err(ApiError::invalid(field)) } else { Ok(value) }
+    if value.is_empty() {
+        Err(ApiError::invalid(field))
+    } else {
+        Ok(value)
+    }
 }
 
 fn clean(value: &str, limit: usize) -> String {
@@ -297,7 +307,11 @@ fn clean(value: &str, limit: usize) -> String {
 
 fn clean_or(value: &str, limit: usize, fallback: &str) -> String {
     let value = clean(value, limit);
-    if value.is_empty() { fallback.to_string() } else { value }
+    if value.is_empty() {
+        fallback.to_string()
+    } else {
+        value
+    }
 }
 
 fn slug(value: &str) -> Result<String, ApiError> {
@@ -313,7 +327,11 @@ fn slug(value: &str) -> Result<String, ApiError> {
         }
     }
     let result = result.trim_matches('-').to_string();
-    if result.is_empty() { Err(ApiError::invalid("name")) } else { Ok(result) }
+    if result.is_empty() {
+        Err(ApiError::invalid("name"))
+    } else {
+        Ok(result)
+    }
 }
 
 fn sanitize_list(values: Vec<String>, max_items: usize, max_chars: usize) -> Vec<String> {

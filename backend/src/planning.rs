@@ -240,14 +240,12 @@ pub async fn delete_social_post(
     Path(id): Path<Uuid>,
 ) -> Result<StatusCode, ApiError> {
     let can_manage = matches!(member.role.as_str(), "owner" | "admin" | "manager");
-    let result = sqlx::query(
-        "delete from public.social_posts where id=$1 and (owner_id=$2 or $3)",
-    )
-    .bind(id)
-    .bind(member.member_id)
-    .bind(can_manage)
-    .execute(&state.pool)
-    .await?;
+    let result = sqlx::query("delete from public.social_posts where id=$1 and (owner_id=$2 or $3)")
+        .bind(id)
+        .bind(member.member_id)
+        .bind(can_manage)
+        .execute(&state.pool)
+        .await?;
     if result.rows_affected() == 0 {
         return Err(ApiError::NotFound("social_post"));
     }
@@ -338,20 +336,30 @@ async fn delete_by_id(state: &AppState, table: &str, id: Uuid) -> Result<(), Api
 }
 
 fn validate_provider(value: &str) -> Result<(), ApiError> {
-    matches!(value, "github" | "discord" | "monitoring" | "billing" | "support")
-        .then_some(())
-        .ok_or(ApiError::invalid("provider"))
+    matches!(
+        value,
+        "github" | "discord" | "monitoring" | "billing" | "support"
+    )
+    .then_some(())
+    .ok_or(ApiError::invalid("provider"))
 }
 
 fn validate_social_status(value: &str) -> Result<(), ApiError> {
-    matches!(value, "idea" | "draft" | "review" | "scheduled" | "published")
-        .then_some(())
-        .ok_or(ApiError::invalid("status"))
+    matches!(
+        value,
+        "idea" | "draft" | "review" | "scheduled" | "published"
+    )
+    .then_some(())
+    .ok_or(ApiError::invalid("status"))
 }
 
 fn required(value: &str, limit: usize, field: &'static str) -> Result<String, ApiError> {
     let value = clean(value, limit);
-    if value.is_empty() { Err(ApiError::invalid(field)) } else { Ok(value) }
+    if value.is_empty() {
+        Err(ApiError::invalid(field))
+    } else {
+        Ok(value)
+    }
 }
 
 fn clean(value: &str, limit: usize) -> String {
@@ -359,7 +367,8 @@ fn clean(value: &str, limit: usize) -> String {
 }
 
 fn sanitize_list(values: Vec<String>, max_items: usize, max_chars: usize) -> Vec<String> {
-    let mut values = values.into_iter()
+    let mut values = values
+        .into_iter()
         .map(|value| clean(&value, max_chars))
         .filter(|value| !value.is_empty())
         .take(max_items)
@@ -376,4 +385,6 @@ fn sanitize_uuid_list(mut values: Vec<Uuid>, max_items: usize) -> Vec<Uuid> {
     values
 }
 
-fn default_true() -> bool { true }
+fn default_true() -> bool {
+    true
+}
