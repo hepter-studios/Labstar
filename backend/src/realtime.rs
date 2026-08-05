@@ -139,7 +139,6 @@ fn connect_presence(state: &AppState, member_id: Uuid) {
             entry.active_at = now;
         })
         .or_insert(PresenceEntry {
-            connected_at: now,
             active_at: now,
             connections: 1,
         });
@@ -180,6 +179,27 @@ async fn event_visible(state: &AppState, member_id: Uuid, event: &BackendEvent) 
             sqlx::query_scalar::<_, bool>("select exists(select 1 from public.direct_thread_members where thread_id=$1 and member_id=$2)")
                 .bind(thread_id).bind(member_id).fetch_one(&state.pool).await.unwrap_or(false)
         }
+        BackendEvent::ChannelMessageChanged { channel_id, .. } => {
+            sqlx::query_scalar::<_, bool>(r#"
+                select exists(
+                  select 1
+                  from public.channels channel
+                  join public.members member on member.id=$2
+                  where channel.id=$1 and (
+                    coalesce(cardinality(channel.allowed_roles),0)=0
+                    or member.role::text=any(channel.allowed_roles)
+                    or coalesce(member.assignments,array[]::text[])
+                       && coalesce(channel.allowed_assignments,array[]::text[])
+                  )
+                )
+            "#)
+            .bind(channel_id)
+            .bind(member_id)
+            .fetch_one(&state.pool)
+            .await
+            .unwrap_or(false)
+        }
+        BackendEvent::NotificationChanged { member_id: recipient_id } => *recipient_id == member_id,
         BackendEvent::CallCreated { recipient_id, .. } => *recipient_id == member_id,
         BackendEvent::CallSignal { recipient_id, .. } => *recipient_id == member_id,
         BackendEvent::CallUpdated { call_id, .. } => {
