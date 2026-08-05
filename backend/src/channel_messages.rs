@@ -13,10 +13,10 @@ use crate::{
     auth::AuthenticatedMember,
     error::ApiError,
     files::{
-        detect_mime, record_file_receipt, sanitize_file_name, signed_asset_url,
+        FileReceipt, detect_mime, record_file_receipt, sanitize_file_name, signed_asset_url,
         upload_storage_object, validate_file_size,
     },
-    state::AppState,
+    state::{AppState, BackendEvent},
 };
 
 #[derive(Debug, FromRow)]
@@ -212,6 +212,10 @@ pub async fn send(
     .bind(input.reply_to)
     .execute(&state.pool)
     .await?;
+    state.publish(BackendEvent::ChannelMessageChanged {
+        channel_id,
+        message_id: id,
+    });
     Ok(Json(CreatedMessage { id, channel_id }))
 }
 
@@ -223,13 +227,14 @@ pub async fn update(
 ) -> Result<Json<serde_json::Value>, ApiError> {
     let body = input.body.as_deref().map(clean_body).transpose()?;
     let can_moderate = matches!(member.role.as_str(), "owner" | "admin" | "manager");
-    let result = sqlx::query(
+    let channel_id = sqlx::query_scalar::<_, Uuid>(
         r#"
         update public.channel_messages
         set body=coalesce($2,body),
             is_pinned=coalesce($3,is_pinned),
             edited_at=case when $2::text is null then edited_at else now() end
         where id=$1 and (author_id=$4 or $5)
+        returning channel_id
         "#,
     )
     .bind(message_id)
@@ -237,11 +242,13 @@ pub async fn update(
     .bind(input.is_pinned)
     .bind(member.member_id)
     .bind(can_moderate)
-    .execute(&state.pool)
-    .await?;
-    if result.rows_affected() == 0 {
-        return Err(ApiError::NotFound("message"));
-    }
+    .fetch_optional(&state.pool)
+    .await?
+    .ok_or(ApiError::NotFound("message"))?;
+    state.publish(BackendEvent::ChannelMessageChanged {
+        channel_id,
+        message_id,
+    });
     Ok(Json(serde_json::json!({"ok":true})))
 }
 
@@ -251,16 +258,19 @@ pub async fn delete(
     Path(message_id): Path<Uuid>,
 ) -> Result<Json<serde_json::Value>, ApiError> {
     let can_moderate = matches!(member.role.as_str(), "owner" | "admin" | "manager");
-    let result =
-        sqlx::query("delete from public.channel_messages where id=$1 and (author_id=$2 or $3)")
-            .bind(message_id)
-            .bind(member.member_id)
-            .bind(can_moderate)
-            .execute(&state.pool)
-            .await?;
-    if result.rows_affected() == 0 {
-        return Err(ApiError::NotFound("message"));
-    }
+    let channel_id = sqlx::query_scalar::<_, Uuid>(
+        "delete from public.channel_messages where id=$1 and (author_id=$2 or $3) returning channel_id",
+    )
+    .bind(message_id)
+    .bind(member.member_id)
+    .bind(can_moderate)
+    .fetch_optional(&state.pool)
+    .await?
+    .ok_or(ApiError::NotFound("message"))?;
+    state.publish(BackendEvent::ChannelMessageChanged {
+        channel_id,
+        message_id,
+    });
     Ok(Json(serde_json::json!({"ok":true})))
 }
 
@@ -331,15 +341,21 @@ pub async fn upload_attachment(
 
     record_file_receipt(
         &state,
-        member.member_id,
-        None,
-        &file_path,
-        &file_name,
-        &mime_type,
-        size_bytes,
-        &sha256,
+        FileReceipt {
+            actor_member_id: member.member_id,
+            attachment_id: None,
+            storage_path: &file_path,
+            original_name: &file_name,
+            detected_mime_type: &mime_type,
+            size_bytes,
+            sha256: &sha256,
+        },
     )
     .await?;
+    state.publish(BackendEvent::ChannelMessageChanged {
+        channel_id,
+        message_id,
+    });
     let url = signed_asset_url(&state, &file_path, 3600)
         .await
         .unwrap_or_default();
@@ -363,18 +379,20 @@ async fn ensure_channel_access(
     let allowed = sqlx::query_scalar::<_, bool>(
         r#"
         select exists(
-          select 1 from public.channels channel
+          select 1
+          from public.channels channel
+          join public.members stored_member on stored_member.id=$2
           where channel.id=$1 and (
             coalesce(cardinality(channel.allowed_roles),0)=0
-            or $2 = any(channel.allowed_roles)
-            or $3 && coalesce(channel.allowed_assignments,array[]::text[])
+            or stored_member.role::text = any(channel.allowed_roles)
+            or coalesce(stored_member.assignments,array[]::text[])
+               && coalesce(channel.allowed_assignments,array[]::text[])
           )
         )
         "#,
     )
     .bind(channel_id)
-    .bind(&member.role)
-    .bind(Vec::<String>::new())
+    .bind(member.member_id)
     .fetch_one(&state.pool)
     .await?;
     allowed.then_some(()).ok_or(ApiError::PermissionDenied)
