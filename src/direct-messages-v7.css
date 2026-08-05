@@ -246,6 +246,139 @@
   background: linear-gradient(180deg, #ef5b68, #c93e4b) !important;
 }
 
+.communication-permission-card,
+.communication-runtime-toast {
+  position: fixed;
+  z-index: 10850;
+  right: 22px;
+  width: min(430px, calc(100vw - 32px));
+  min-height: 74px;
+  padding: 12px 44px 12px 13px;
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 11px;
+  overflow: hidden;
+  border: 1px solid rgba(128, 160, 226, .22);
+  border-radius: 16px;
+  color: #e9eef8;
+  background: rgba(8, 13, 22, .98);
+  box-shadow: 0 26px 90px rgba(0, 0, 0, .76), inset 0 1px rgba(255, 255, 255, .045);
+  backdrop-filter: blur(20px);
+  animation: communication-toast-enter .2s ease-out;
+}
+
+.communication-permission-card {
+  bottom: 22px;
+}
+
+.communication-runtime-toast {
+  bottom: 22px;
+}
+
+.communication-permission-card > span,
+.communication-runtime-toast > span {
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  color: #9bb5f5;
+  background: rgba(75, 127, 239, .12);
+}
+
+.communication-runtime-toast.audio-call > span,
+.communication-runtime-toast.video-call > span {
+  color: #70d8ae;
+  background: rgba(52, 184, 131, .12);
+}
+
+.communication-permission-card > div,
+.communication-runtime-toast > div {
+  min-width: 0;
+}
+
+.communication-permission-card strong,
+.communication-permission-card small,
+.communication-runtime-toast strong,
+.communication-runtime-toast small {
+  display: block;
+}
+
+.communication-permission-card strong,
+.communication-runtime-toast strong {
+  color: #edf3fc;
+  font-size: 11px;
+}
+
+.communication-permission-card small,
+.communication-runtime-toast small {
+  margin-top: 4px;
+  overflow: hidden;
+  color: #8c99ad;
+  font-size: 9px;
+  line-height: 1.45;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.communication-permission-card > button:not(.close),
+.communication-runtime-toast > button:not(.close) {
+  min-width: 66px;
+  height: 34px;
+  padding: 0 12px;
+  border: 1px solid rgba(112, 154, 245, .28);
+  border-radius: 9px;
+  color: #eaf1ff;
+  background: linear-gradient(180deg, rgba(67, 121, 239, .34), rgba(43, 88, 188, .28));
+  font-size: 9px;
+  font-weight: 720;
+  cursor: pointer;
+}
+
+.communication-permission-card .close,
+.communication-runtime-toast .close {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 27px;
+  height: 27px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 8px;
+  color: #657389;
+  background: transparent;
+  cursor: pointer;
+}
+
+.communication-permission-card .close:hover,
+.communication-runtime-toast .close:hover {
+  color: #edf2fa;
+  background: rgba(255, 255, 255, .05);
+}
+
+.communication-runtime-ready {
+  position: fixed;
+  z-index: 2;
+  right: 12px;
+  bottom: 12px;
+  width: 16px;
+  height: 16px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  color: #65d1a6;
+  background: rgba(38, 133, 94, .18);
+  opacity: .36;
+  pointer-events: none;
+}
+
+@keyframes communication-toast-enter {
+  from { opacity: 0; transform: translateY(12px) scale(.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
 @media (max-width: 760px) {
   .direct-hub.dm-v6 .dm-composer .dm-emoji-picker {
     right: 0 !important;
@@ -260,5 +393,22 @@
   .private-call-card {
     min-height: calc(100vh - 24px) !important;
     border-radius: 22px !important;
+  }
+
+  .communication-permission-card,
+  .communication-runtime-toast {
+    right: 12px;
+    bottom: 12px;
+    width: calc(100vw - 24px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .communication-permission-card,
+  .communication-runtime-toast,
+  .private-call-rings,
+  .private-call-rings::before,
+  .private-call-rings::after {
+    animation: none !important;
   }
 }
