@@ -1,11 +1,11 @@
 use axum::{
     Json, Router,
-    extract::DefaultBodyLimit,
+    extract::{DefaultBodyLimit, State},
     http::{
-        HeaderValue, Method,
+        HeaderValue, Method, StatusCode,
         header::{ACCEPT, AUTHORIZATION, CONTENT_TYPE},
     },
-    routing::{delete, get, patch, post},
+    routing::{delete, get, patch, post, put},
 };
 use serde::Serialize;
 use tower::limit::ConcurrencyLimitLayer;
@@ -19,7 +19,9 @@ use tower_http::{
 };
 
 use crate::{
-    calls, direct_messages, files, invites, members, realtime, search, state::AppState, work_items,
+    calls, channel_messages, collaboration, direct_messages, files, invites, members,
+    notifications, planning, profile, realtime, roles, search, state::AppState, uploads,
+    work_items, workspace,
 };
 
 #[derive(Serialize)]
@@ -58,13 +60,78 @@ pub fn router(state: AppState) -> Result<Router, Box<dyn std::error::Error + Sen
 
     Ok(Router::new()
         .route("/health", get(health))
+        .route("/health/live", get(health))
+        .route("/health/ready", get(ready))
         .route("/v1/me", get(members::me))
+        .route("/v1/profile", patch(profile::update))
+        .route("/v1/profile/avatar", post(uploads::upload_own_avatar))
         .route("/v1/members", get(members::list_members))
         .route("/v1/members/{member_id}", patch(members::update_member))
+        .route("/v1/job-roles", get(roles::list).post(roles::create))
+        .route(
+            "/v1/job-roles/{role_id}",
+            put(roles::update).delete(roles::delete),
+        )
+        .route(
+            "/v1/members/{member_id}/job-roles",
+            get(roles::list_for_member).put(roles::set_for_member),
+        )
         .route("/v1/invites", get(invites::list).post(invites::create))
         .route("/v1/invites/inspect/{token}", get(invites::inspect))
         .route("/v1/invites/accept/{token}", post(invites::accept))
         .route("/v1/invites/{invite_id}", delete(invites::revoke))
+        .route("/v1/workspace", get(workspace::load).put(workspace::save))
+        .route("/v1/collaboration", get(collaboration::load))
+        .route("/v1/spaces", post(collaboration::create_space))
+        .route("/v1/spaces/{space_id}", patch(collaboration::update_space))
+        .route("/v1/spaces/{space_id}/logo", post(uploads::upload_space_logo))
+        .route("/v1/categories", post(collaboration::create_category))
+        .route("/v1/channels", post(collaboration::create_channel))
+        .route(
+            "/v1/channels/{channel_id}/messages",
+            get(channel_messages::list).post(channel_messages::send),
+        )
+        .route(
+            "/v1/channel-messages/{message_id}",
+            patch(channel_messages::update).delete(channel_messages::delete),
+        )
+        .route(
+            "/v1/channel-attachments",
+            post(channel_messages::upload_attachment),
+        )
+        .route("/v1/notifications", get(notifications::list))
+        .route(
+            "/v1/notifications/read-all",
+            post(notifications::mark_all_read),
+        )
+        .route(
+            "/v1/notifications/{notification_id}/read",
+            post(notifications::mark_read),
+        )
+        .route(
+            "/v1/integrations",
+            get(planning::list_integrations).put(planning::save_integration),
+        )
+        .route(
+            "/v1/integrations/{id}",
+            delete(planning::delete_integration),
+        )
+        .route(
+            "/v1/social-posts",
+            get(planning::list_social_posts).put(planning::save_social_post),
+        )
+        .route(
+            "/v1/social-posts/{id}",
+            delete(planning::delete_social_post),
+        )
+        .route(
+            "/v1/meetings",
+            get(planning::list_meetings).post(planning::create_meeting),
+        )
+        .route(
+            "/v1/meetings/{id}/cancel",
+            post(planning::cancel_meeting),
+        )
         .route(
             "/v1/direct/threads",
             get(direct_messages::list_threads).post(direct_messages::create_thread),
@@ -110,9 +177,7 @@ pub fn router(state: AppState) -> Result<Router, Box<dyn std::error::Error + Sen
         .layer(ConcurrencyLimitLayer::new(512))
         .layer(CompressionLayer::new())
         .layer(cors)
-        .layer(SetSensitiveHeadersLayer::new(std::iter::once(
-            AUTHORIZATION,
-        )))
+        .layer(SetSensitiveHeadersLayer::new(std::iter::once(AUTHORIZATION)))
         .layer(PropagateRequestIdLayer::x_request_id())
         .layer(SetRequestIdLayer::x_request_id(MakeRequestUuid))
         .layer(TraceLayer::new_for_http()))
@@ -127,4 +192,19 @@ async fn health() -> Json<HealthResponse> {
         database: "postgresql",
         realtime: "rust-websocket",
     })
+}
+
+async fn ready(State(state): State<AppState>) -> Result<Json<HealthResponse>, StatusCode> {
+    sqlx::query("select 1")
+        .execute(&state.pool)
+        .await
+        .map_err(|_| StatusCode::SERVICE_UNAVAILABLE)?;
+    Ok(Json(HealthResponse {
+        status: "ready",
+        service: "labstar-backend",
+        runtime: "rust",
+        version: env!("CARGO_PKG_VERSION"),
+        database: "postgresql",
+        realtime: "rust-websocket",
+    }))
 }
