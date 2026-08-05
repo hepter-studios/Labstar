@@ -1,0 +1,100 @@
+name: Lançar Labstar Rust 11.3.0
+
+on:
+  push:
+    tags:
+      - desktop-v11.3.0
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-labstar-rust-11-3-0
+  cancel-in-progress: false
+
+jobs:
+  windows:
+    name: Validar e publicar Windows 11.3.0
+    runs-on: windows-2025
+    timeout-minutes: 65
+    steps:
+      - name: Baixar código
+        uses: actions/checkout@v4
+
+      - name: Exigir confirmações Rust
+        shell: pwsh
+        run: |
+          if (-not (Test-Path "docs/runtime/rust-backend-deployed.txt")) { throw "Confirmação do backend ausente." }
+          if (-not (Test-Path "docs/runtime/rust-e2e-confirmed.txt")) { throw "Confirmação E2E ausente." }
+          Select-String -Path "docs/runtime/rust-backend-deployed.txt" -Pattern "runtime=rust" | Out-Null
+          Select-String -Path "docs/runtime/rust-e2e-confirmed.txt" -Pattern "direct_messages" | Out-Null
+          Select-String -Path "docs/runtime/rust-e2e-confirmed.txt" -Pattern "private_calls" | Out-Null
+
+      - name: Configurar Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Instalar dependências Web
+        run: npm ci
+
+      - name: Validar Web
+        run: npm run build
+
+      - name: Instalar Rust estável
+        shell: pwsh
+        run: |
+          rustup toolchain install stable --profile minimal --component rustfmt,clippy
+          rustup default stable
+
+      - name: Validar Tauri sem avisos
+        shell: pwsh
+        run: |
+          cargo fmt --manifest-path src-tauri/Cargo.toml -- --check
+          cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets --all-features -- -D warnings
+          cargo test --manifest-path src-tauri/Cargo.toml --all-targets
+
+      - name: Gerar instaladores oficiais
+        run: npm run desktop:build
+
+      - name: Preparar arquivos oficiais
+        shell: pwsh
+        run: |
+          $msi = Get-ChildItem -Path "src-tauri/target/release/bundle/msi" -Filter "*.msi" -Recurse
+          $exe = Get-ChildItem -Path "src-tauri/target/release/bundle/nsis" -Filter "*.exe" -Recurse
+          if ($msi.Count -lt 1) { throw "MSI ausente." }
+          if ($exe.Count -lt 1) { throw "EXE ausente." }
+          if ($msi.Name -notmatch "11.3.0") { throw "Versão incorreta no MSI." }
+          if ($exe.Name -notmatch "11.3.0") { throw "Versão incorreta no EXE." }
+          New-Item -ItemType Directory -Force -Path "release/windows" | Out-Null
+          Copy-Item $msi.FullName "release/windows/"
+          Copy-Item $exe.FullName "release/windows/"
+          Get-FileHash release/windows/* -Algorithm SHA256 | ForEach-Object {
+            "$($_.Hash.ToLower())  $([System.IO.Path]::GetFileName($_.Path))"
+          } | Set-Content release/windows/SHA256SUMS.txt
+
+      - name: Publicar artefato preservado
+        uses: actions/upload-artifact@v4
+        with:
+          name: Labstar-11.3.0-Windows-Rust-Official
+          path: release/windows/*
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Criar versão oficial no GitHub
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Labstar 11.3.0 — Backend Rust
+          body: |
+            Labstar 11.3.0 estabelece o backend central em Rust.
+
+            Inclui autenticação autorizada no servidor, PostgreSQL via SQLx, mensagens privadas e de canais, anexos, chamadas privadas, presença e eventos WebSocket, busca, tarefas, convites, permissões, notificações e rotinas de manutenção controladas pelo núcleo Rust.
+
+            O aplicativo Windows continua ativo na bandeja para receber mensagens, chamadas e notificações. O instalador contém a identidade visual do Labstar e oferece MSI e EXE/NSIS.
+          files: |
+            release/windows/*
+          fail_on_unmatched_files: true
+          draft: false
+          prerelease: false
