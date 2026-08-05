@@ -154,7 +154,7 @@ pub async fn create(
           id,email,name,role,job_title,area,status,invited_by,expires_at,
           token_hash,token_hint,kind,max_uses,use_count,approval_required
         ) values ($1,$2,$3,$4,$5,$6,'pending',$7,$8,$9,$10,$11,1,0,$12)
-    "#,
+        "#,
     )
     .bind(id)
     .bind(&email)
@@ -199,7 +199,7 @@ pub async fn inspect(
         select id,email,kind,status,name,role,coalesce(job_title,'') job_title,
                coalesce(area,'') area,expires_at,approval_required,use_count,max_uses
         from public.member_invites where token_hash=$1 limit 1
-    "#,
+        "#,
     )
     .bind(token_hash(&token))
     .fetch_optional(&state.pool)
@@ -253,33 +253,69 @@ pub async fn accept(
     };
     let member = match existing {
         Some(existing) => {
-            if existing.auth_user_id.is_some_and(|id| id != user.id) { return Err(ApiError::Conflict("member_already_linked")); }
-            if existing.status == "suspended" { return Err(ApiError::MemberSuspended); }
+            if existing.auth_user_id.is_some_and(|id| id != user.id) {
+                return Err(ApiError::Conflict("member_already_linked"));
+            }
+            if existing.status == "suspended" {
+                return Err(ApiError::MemberSuspended);
+            }
             let already_active = existing.status == "active";
-            sqlx::query_as::<_, AcceptedMember>(r#"
+            let target_email = if already_active {
+                existing.email.clone()
+            } else {
+                email.clone()
+            };
+            sqlx::query_as::<_, AcceptedMember>(
+                r#"
                 update public.members set auth_user_id=$2,email=$3,name=$4,status=$5,role=$6,
                 job_title=$7,area=$8,last_seen_at=now() where id=$1
                 returning id,email,name,status,role,coalesce(job_title,'') job_title,coalesce(area,'') area
-            "#)
+                "#,
+            )
             .bind(existing.id)
             .bind(user.id)
-            .bind(&email)
-            .bind(if existing.name.trim().is_empty() { choose_name(&invitation, &user.display_name) } else { existing.name })
+            .bind(target_email)
+            .bind(if existing.name.trim().is_empty() {
+                choose_name(&invitation, &user.display_name)
+            } else {
+                existing.name
+            })
             .bind(if already_active { "active" } else { desired_status })
-            .bind(if already_active || existing.role == "owner" { existing.role } else { invitation.role.clone() })
-            .bind(if already_active || invitation.job_title.is_empty() { existing.job_title } else { invitation.job_title.clone() })
-            .bind(if already_active || invitation.area.is_empty() { existing.area } else { invitation.area.clone() })
-            .fetch_one(&mut *tx).await?
+            .bind(if already_active || existing.role == "owner" {
+                existing.role
+            } else {
+                invitation.role.clone()
+            })
+            .bind(if already_active || invitation.job_title.is_empty() {
+                existing.job_title
+            } else {
+                invitation.job_title.clone()
+            })
+            .bind(if already_active || invitation.area.is_empty() {
+                existing.area
+            } else {
+                invitation.area.clone()
+            })
+            .fetch_one(&mut *tx)
+            .await?
         }
         None => {
-            sqlx::query_as::<_, AcceptedMember>(r#"
+            sqlx::query_as::<_, AcceptedMember>(
+                r#"
                 insert into public.members (auth_user_id,email,name,status,role,job_title,area,last_seen_at)
                 values ($1,$2,$3,$4,$5,$6,$7,now())
                 returning id,email,name,status,role,coalesce(job_title,'') job_title,coalesce(area,'') area
-            "#)
-            .bind(user.id).bind(&email).bind(choose_name(&invitation, &user.display_name))
-            .bind(desired_status).bind(&invitation.role).bind(&invitation.job_title).bind(&invitation.area)
-            .fetch_one(&mut *tx).await?
+                "#,
+            )
+            .bind(user.id)
+            .bind(&email)
+            .bind(choose_name(&invitation, &user.display_name))
+            .bind(desired_status)
+            .bind(&invitation.role)
+            .bind(&invitation.job_title)
+            .bind(&invitation.area)
+            .fetch_one(&mut *tx)
+            .await?
         }
     };
     sqlx::query("update public.member_invites set status='accepted',accepted_by=$2,accepted_at=now(),consumed_at=now(),use_count=use_count+1 where id=$1")
@@ -303,7 +339,7 @@ pub async fn list(
         select id,kind mode,email,status,role,coalesce(area,'') area,token_hint,
                approval_required,created_at,expires_at,accepted_at
         from public.member_invites order by created_at desc limit 200
-    "#,
+        "#,
     )
     .fetch_all(&state.pool)
     .await?;
@@ -330,7 +366,7 @@ async fn lock_invitation(
         select id,email,kind,status,name,role,coalesce(job_title,'') job_title,
                coalesce(area,'') area,expires_at,approval_required,use_count,max_uses
         from public.member_invites where token_hash=$1 for update
-    "#,
+        "#,
     )
     .bind(hash)
     .fetch_optional(&mut **tx)
@@ -343,11 +379,18 @@ async fn lock_member(
     user_id: Uuid,
     email: &str,
 ) -> Result<Option<ExistingMember>, ApiError> {
-    sqlx::query_as::<_, ExistingMember>(r#"
+    sqlx::query_as::<_, ExistingMember>(
+        r#"
         select id,auth_user_id,email,name,status,role,coalesce(job_title,'') job_title,coalesce(area,'') area
         from public.members where auth_user_id=$1 or lower(email)=$2
         order by (auth_user_id=$1) desc limit 1 for update
-    "#).bind(user_id).bind(email).fetch_optional(&mut **tx).await.map_err(ApiError::from)
+        "#,
+    )
+    .bind(user_id)
+    .bind(email)
+    .fetch_optional(&mut **tx)
+    .await
+    .map_err(ApiError::from)
 }
 
 fn create_token() -> (String, String) {
@@ -356,15 +399,18 @@ fn create_token() -> (String, String) {
     let hash = token_hash(&token);
     (token, hash)
 }
+
 fn token_hash(token: &str) -> String {
     hex::encode(Sha256::digest(token.as_bytes()))
 }
+
 fn normalize_token(value: &str) -> Result<String, ApiError> {
     let token = value.trim().to_ascii_lowercase();
     (token.len() == 64 && token.bytes().all(|byte| byte.is_ascii_hexdigit()))
         .then_some(token)
         .ok_or(ApiError::invalid("inviteToken"))
 }
+
 fn normalize_email(value: &str) -> Result<String, ApiError> {
     let email = value.trim().to_ascii_lowercase();
     let valid = email.len() <= 320
@@ -373,18 +419,21 @@ fn normalize_email(value: &str) -> Result<String, ApiError> {
             .is_some_and(|(local, domain)| !local.is_empty() && domain.contains('.'));
     valid.then_some(email).ok_or(ApiError::invalid("email"))
 }
+
 fn normalize_mode(value: &str) -> Result<String, ApiError> {
     let value = value.trim().to_ascii_lowercase();
     matches!(value.as_str(), "quick" | "personal")
         .then_some(value)
         .ok_or(ApiError::invalid("mode"))
 }
+
 fn normalize_role(value: &str) -> Result<String, ApiError> {
     let value = value.trim().to_ascii_lowercase();
     matches!(value.as_str(), "admin" | "manager" | "member" | "viewer")
         .then_some(value)
         .ok_or(ApiError::invalid("role"))
 }
+
 fn choose_name(invite: &InviteRow, fallback: &str) -> String {
     if invite.name.trim().len() >= 2 {
         invite.name.clone()
@@ -392,15 +441,18 @@ fn choose_name(invite: &InviteRow, fallback: &str) -> String {
         fallback.to_string()
     }
 }
+
 fn clean_text(value: &str, max: usize) -> String {
     value.trim().chars().take(max).collect()
 }
+
 fn email_hint(email: &str) -> String {
     email
         .split_once('@')
         .map(|(local, domain)| format!("{}***@{domain}", local.chars().next().unwrap_or('*')))
         .unwrap_or_else(|| "***".to_string())
 }
+
 fn invalid_inspection() -> InviteInspection {
     InviteInspection {
         valid: false,
@@ -411,12 +463,15 @@ fn invalid_inspection() -> InviteInspection {
         approval_required: None,
     }
 }
+
 fn default_mode() -> String {
     "quick".to_string()
 }
+
 fn default_role() -> String {
     "member".to_string()
 }
+
 const fn default_valid_hours() -> i32 {
     48
 }
