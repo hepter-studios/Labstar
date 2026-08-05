@@ -32,7 +32,7 @@ jobs:
       API_URL: https://labstar-api-mackson.fly.dev
       DATABASE_URL: ${{ secrets.DATABASE_URL || secrets.SUPABASE_DATABASE_URL }}
       SUPABASE_URL: ${{ secrets.SUPABASE_URL || 'https://pgzwyngxsxnheulvusdq.supabase.co' }}
-      SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY || secrets.SUPABASE_ANON_KEY }}
+      SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY || secrets.VITE_SUPABASE_PUBLISHABLE_KEY || secrets.SUPABASE_ANON_KEY || secrets.VITE_SUPABASE_ANON_KEY }}
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
 
     steps:
@@ -46,10 +46,15 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          test -n "$DATABASE_URL"
-          test -n "$SUPABASE_URL"
-          test -n "$SUPABASE_PUBLISHABLE_KEY"
-          test -n "$SUPABASE_SERVICE_ROLE_KEY"
+          missing=()
+          [ -n "$DATABASE_URL" ] || missing+=("SUPABASE_DATABASE_URL")
+          [ -n "$SUPABASE_PUBLISHABLE_KEY" ] || missing+=("SUPABASE_PUBLISHABLE_KEY ou VITE_SUPABASE_PUBLISHABLE_KEY")
+          [ -n "$SUPABASE_SERVICE_ROLE_KEY" ] || missing+=("SUPABASE_SERVICE_ROLE_KEY")
+          if [ ${#missing[@]} -gt 0 ]; then
+            printf 'Segredos ausentes no GitHub:\n'
+            printf ' - %s\n' "${missing[@]}"
+            exit 1
+          fi
 
       - name: Aguardar backend Rust publicado
         shell: bash
