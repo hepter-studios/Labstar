@@ -20,8 +20,8 @@ use tower_http::{
 
 use crate::{
     calls, channel_admin, channel_messages, collaboration, direct_messages, files, invites,
-    member_admin, members, notifications, planning, profile, realtime, roles, search,
-    state::AppState, uploads, work_items, workspace,
+    member_admin, members, notifications, planning, profile, realtime, request_limits, roles,
+    search, state::AppState, uploads, work_items, workspace,
 };
 
 #[derive(Serialize)]
@@ -57,6 +57,7 @@ pub fn router(state: AppState) -> Result<Router, Box<dyn std::error::Error + Sen
 
     let max_body = state.config.max_file_bytes.saturating_add(2 * 1024 * 1024);
     let timeout = state.config.request_timeout;
+    let middleware_state = state.clone();
 
     Ok(Router::new()
         .route("/health", get(health))
@@ -179,8 +180,15 @@ pub fn router(state: AppState) -> Result<Router, Box<dyn std::error::Error + Sen
         .route("/v1/realtime/ticket", post(realtime::create_ticket))
         .route("/v1/realtime", get(realtime::websocket))
         .with_state(state)
+        .layer(axum::middleware::from_fn_with_state(
+            middleware_state,
+            request_limits::enforce,
+        ))
         .layer(DefaultBodyLimit::max(max_body))
-        .layer(TimeoutLayer::new(timeout))
+        .layer(TimeoutLayer::with_status_code(
+            StatusCode::REQUEST_TIMEOUT,
+            timeout,
+        ))
         .layer(ConcurrencyLimitLayer::new(512))
         .layer(CompressionLayer::new())
         .layer(cors)
