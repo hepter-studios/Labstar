@@ -7,7 +7,11 @@ use serde::Serialize;
 use sqlx::FromRow;
 use uuid::Uuid;
 
-use crate::{auth::AuthenticatedMember, error::ApiError, state::AppState};
+use crate::{
+    auth::AuthenticatedMember,
+    error::ApiError,
+    state::{AppState, BackendEvent},
+};
 
 #[derive(Debug, Serialize, FromRow)]
 #[serde(rename_all = "camelCase")]
@@ -53,6 +57,9 @@ pub async fn mark_read(
     if result.rows_affected() == 0 {
         return Err(ApiError::NotFound("notification"));
     }
+    state.publish(BackendEvent::NotificationChanged {
+        member_id: member.member_id,
+    });
     Ok(Json(serde_json::json!({"ok":true})))
 }
 
@@ -66,5 +73,8 @@ pub async fn mark_all_read(
     .bind(member.member_id)
     .execute(&state.pool)
     .await?;
+    state.publish(BackendEvent::NotificationChanged {
+        member_id: member.member_id,
+    });
     Ok(Json(serde_json::json!({"ok":true})))
 }
