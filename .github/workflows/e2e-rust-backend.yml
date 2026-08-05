@@ -12,13 +12,24 @@ on:
       - "src/lib/directCalls.ts"
       - "src/lib/presence.ts"
       - ".github/workflows/e2e-rust-backend.yml"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "backend/**"
+      - "src/lib/rust-api.ts"
+      - "src/lib/backend.ts"
+      - "src/lib/directMessages.ts"
+      - "src/lib/directCalls.ts"
+      - "src/lib/presence.ts"
+      - ".github/workflows/e2e-rust-backend.yml"
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: e2e-labstar-rust-production
+  group: e2e-labstar-rust-production-${{ github.event_name }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
