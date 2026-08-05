@@ -1,16 +1,20 @@
 name: Preparar Labstar Rust 11.3.0
 
 on:
-  pull_request:
+  push:
     branches:
-      - main
+      - feat/backend-rust-complete
+    paths:
+      - "docs/runtime/rust-backend-deployed.txt"
+      - "docs/runtime/rust-e2e-confirmed.txt"
+      - ".github/workflows/rust-release-candidate.yml"
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: labstar-rust-11-3-0-${{ github.ref }}
+  group: labstar-rust-11-3-0
   cancel-in-progress: true
 
 jobs:
