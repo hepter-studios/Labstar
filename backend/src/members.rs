@@ -131,18 +131,18 @@ pub async fn update_member(
 }
 
 fn validate_member_input(input: &UpdateMemberInput) -> Result<(), ApiError> {
-    if let Some(status) = &input.status {
-        if !matches!(status.as_str(), "pending" | "active" | "suspended") {
-            return Err(ApiError::invalid("status"));
-        }
+    if let Some(status) = &input.status
+        && !matches!(status.as_str(), "pending" | "active" | "suspended")
+    {
+        return Err(ApiError::invalid("status"));
     }
-    if let Some(role) = &input.role {
-        if !matches!(
+    if let Some(role) = &input.role
+        && !matches!(
             role.as_str(),
             "owner" | "admin" | "manager" | "member" | "viewer"
-        ) {
-            return Err(ApiError::invalid("role"));
-        }
+        )
+    {
+        return Err(ApiError::invalid("role"));
     }
     if input
         .name
