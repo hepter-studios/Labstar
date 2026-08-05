@@ -1,0 +1,71 @@
+name: Validar backend Rust
+
+on:
+  push:
+    branches:
+      - feat/backend-rust-complete
+    paths:
+      - "backend/**"
+      - ".github/workflows/validate-rust-backend.yml"
+  pull_request:
+    paths:
+      - "backend/**"
+      - ".github/workflows/validate-rust-backend.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: rust-backend-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  rust:
+    name: Formatação, Clippy e testes
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Baixar código
+        uses: actions/checkout@v4
+
+      - name: Instalar Rust estável
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Cache Cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: backend
+
+      - name: Gerar lockfile
+        working-directory: backend
+        run: cargo generate-lockfile
+
+      - name: Verificar formatação
+        working-directory: backend
+        run: cargo fmt --all -- --check
+
+      - name: Compilar
+        working-directory: backend
+        run: cargo check --all-targets --locked
+
+      - name: Executar Clippy sem avisos
+        working-directory: backend
+        run: cargo clippy --all-targets --all-features --locked -- -D warnings
+
+      - name: Executar testes
+        working-directory: backend
+        run: cargo test --all-targets --locked
+
+  container:
+    name: Imagem de produção
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - name: Baixar código
+        uses: actions/checkout@v4
+
+      - name: Construir imagem do backend
+        run: docker build --file backend/Dockerfile --tag labstar-backend:${{ github.sha }} .
