@@ -30,7 +30,7 @@ jobs:
       FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
       DATABASE_URL_SECRET: ${{ secrets.SUPABASE_DATABASE_URL || secrets.DATABASE_URL }}
       SUPABASE_URL_SECRET: ${{ secrets.SUPABASE_URL || 'https://pgzwyngxsxnheulvusdq.supabase.co' }}
-      SUPABASE_PUBLISHABLE_KEY_SECRET: ${{ secrets.SUPABASE_PUBLISHABLE_KEY || secrets.SUPABASE_ANON_KEY || secrets.VITE_SUPABASE_ANON_KEY }}
+      SUPABASE_PUBLISHABLE_KEY_SECRET: ${{ secrets.SUPABASE_PUBLISHABLE_KEY || secrets.VITE_SUPABASE_PUBLISHABLE_KEY || secrets.SUPABASE_ANON_KEY || secrets.VITE_SUPABASE_ANON_KEY }}
       SUPABASE_SERVICE_ROLE_KEY_SECRET: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
       LABSTAR_STUN_URLS_SECRET: ${{ secrets.LABSTAR_STUN_URLS }}
       LABSTAR_TURN_URLS_SECRET: ${{ secrets.LABSTAR_TURN_URLS }}
@@ -48,7 +48,7 @@ jobs:
           missing=()
           [ -n "$FLY_API_TOKEN" ] || missing+=("FLY_API_TOKEN")
           [ -n "$DATABASE_URL_SECRET" ] || missing+=("SUPABASE_DATABASE_URL")
-          [ -n "$SUPABASE_PUBLISHABLE_KEY_SECRET" ] || missing+=("SUPABASE_PUBLISHABLE_KEY ou SUPABASE_ANON_KEY")
+          [ -n "$SUPABASE_PUBLISHABLE_KEY_SECRET" ] || missing+=("SUPABASE_PUBLISHABLE_KEY ou VITE_SUPABASE_PUBLISHABLE_KEY")
           [ -n "$SUPABASE_SERVICE_ROLE_KEY_SECRET" ] || missing+=("SUPABASE_SERVICE_ROLE_KEY")
           if [ ${#missing[@]} -gt 0 ]; then
             printf 'Segredos ausentes no GitHub:\n'
