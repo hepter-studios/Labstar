@@ -14,47 +14,13 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: rust-backend-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  format:
-    name: Normalizar código Rust
-    if: github.event_name == 'push' && github.ref == 'refs/heads/feat/backend-rust-complete'
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    steps:
-      - name: Baixar código
-        uses: actions/checkout@v4
-        with:
-          ref: feat/backend-rust-complete
-
-      - name: Instalar rustfmt
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          components: rustfmt
-
-      - name: Formatar backend
-        working-directory: backend
-        run: cargo fmt --all
-
-      - name: Registrar formatação necessária
-        shell: bash
-        run: |
-          set -euo pipefail
-          if git diff --quiet -- backend; then
-            echo "Código Rust já está formatado."
-            exit 0
-          fi
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add backend
-          git commit -m "Formata backend Rust automaticamente"
-          git push origin HEAD:feat/backend-rust-complete
-
   rust:
     name: Formatação, Clippy e testes
     runs-on: ubuntu-latest
