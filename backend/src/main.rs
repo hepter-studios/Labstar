@@ -1,5 +1,7 @@
 mod auth;
 mod calls;
+mod channel_messages;
+mod collaboration;
 mod config;
 mod direct_messages;
 mod error;
@@ -7,11 +9,17 @@ mod files;
 mod invites;
 mod jobs;
 mod members;
+mod notifications;
+mod planning;
+mod profile;
 mod realtime;
+mod roles;
 mod routes;
 mod search;
 mod state;
+mod uploads;
 mod work_items;
+mod workspace;
 
 use std::process::ExitCode;
 
