@@ -7,6 +7,7 @@ mod config;
 mod direct_messages;
 mod error;
 mod files;
+mod ice;
 mod invites;
 mod jobs;
 mod member_admin;
