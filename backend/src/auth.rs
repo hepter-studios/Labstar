@@ -15,6 +15,14 @@ use crate::{config::Config, error::ApiError, state::AppState};
 
 const AUTH_RETRY_DELAY: Duration = Duration::from_millis(250);
 
+#[derive(Debug, Clone)]
+pub struct AuthenticatedUser {
+    pub id: Uuid,
+    pub email: String,
+    pub email_confirmed: bool,
+    pub display_name: String,
+}
+
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AuthenticatedMember {
@@ -74,7 +82,10 @@ impl AuthService {
         Self { client, config }
     }
 
-    async fn user_from_token(&self, token: &str) -> Result<SupabaseUser, ApiError> {
+    pub async fn authenticate_user(&self, token: &str) -> Result<AuthenticatedUser, ApiError> {
+        if token.len() > 16_384 {
+            return Err(ApiError::InvalidSession);
+        }
         let request = || async {
             let url = self
                 .config
@@ -102,34 +113,37 @@ impl AuthService {
             }
         };
 
-        match request().await {
-            Ok(user) => Ok(user),
+        let user = match request().await {
+            Ok(user) => user,
             Err(ApiError::UpstreamUnavailable) => {
                 sleep(AUTH_RETRY_DELAY).await;
-                request().await
+                request().await?
             }
-            Err(error) => Err(error),
-        }
-    }
-
-    pub async fn authenticate(
-        &self,
-        token: &str,
-        pool: &sqlx::PgPool,
-    ) -> Result<AuthenticatedMember, ApiError> {
-        if token.len() > 16_384 {
-            return Err(ApiError::InvalidSession);
-        }
-        let user = self.user_from_token(token).await?;
-        if user.email_confirmed_at.is_none() {
-            return Err(ApiError::InvalidSession);
-        }
+            Err(error) => return Err(error),
+        };
         let email = user
             .email
             .unwrap_or_default()
             .trim()
             .to_ascii_lowercase();
         if email.is_empty() {
+            return Err(ApiError::InvalidSession);
+        }
+        Ok(AuthenticatedUser {
+            id: user.id,
+            display_name: preferred_display_name(&user.user_metadata, &email),
+            email,
+            email_confirmed: user.email_confirmed_at.is_some(),
+        })
+    }
+
+    pub async fn authenticate_member(
+        &self,
+        token: &str,
+        pool: &sqlx::PgPool,
+    ) -> Result<AuthenticatedMember, ApiError> {
+        let user = self.authenticate_user(token).await?;
+        if !user.email_confirmed {
             return Err(ApiError::InvalidSession);
         }
 
@@ -146,7 +160,7 @@ impl AuthService {
             "#,
         )
         .bind(user.id)
-        .bind(&email)
+        .bind(&user.email)
         .fetch_optional(pool)
         .await?;
 
@@ -168,13 +182,12 @@ impl AuthService {
             .await?;
         }
 
-        let fallback_name = preferred_display_name(&user.user_metadata, &email);
         Ok(AuthenticatedMember {
             user_id: user.id,
             member_id: row.id,
             email: row.email,
             name: if row.name.trim().is_empty() {
-                fallback_name
+                user.display_name
             } else {
                 row.name
             },
@@ -183,6 +196,22 @@ impl AuthService {
             job_title: row.job_title,
             area: row.area,
         })
+    }
+}
+
+impl FromRequestParts<AppState> for AuthenticatedUser {
+    type Rejection = ApiError;
+
+    fn from_request_parts(
+        parts: &mut Parts,
+        state: &AppState,
+    ) -> impl Future<Output = Result<Self, Self::Rejection>> + Send {
+        let token = bearer_token(parts).map(str::to_owned);
+        let auth = state.auth.clone();
+        async move {
+            let token = token?;
+            auth.authenticate_user(&token).await
+        }
     }
 }
 
@@ -198,7 +227,7 @@ impl FromRequestParts<AppState> for AuthenticatedMember {
         let pool = state.pool.clone();
         async move {
             let token = token?;
-            auth.authenticate(&token, &pool).await
+            auth.authenticate_member(&token, &pool).await
         }
     }
 }
