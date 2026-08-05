@@ -4,6 +4,7 @@ use axum::{
     http::{
         HeaderValue, Method, StatusCode,
         header::{ACCEPT, AUTHORIZATION, CONTENT_TYPE},
+        request::Parts,
     },
     routing::{delete, get, patch, post, put},
 };
@@ -17,6 +18,7 @@ use tower_http::{
     timeout::TimeoutLayer,
     trace::TraceLayer,
 };
+use url::Url;
 
 use crate::{
     calls, channel_admin, channel_messages, collaboration, direct_messages, files, ice, invites,
@@ -42,8 +44,13 @@ pub fn router(state: AppState) -> Result<Router, Box<dyn std::error::Error + Sen
         .iter()
         .map(|origin| origin.parse::<HeaderValue>())
         .collect::<Result<Vec<_>, _>>()?;
+    let cors_origins = allowed_origins.clone();
     let cors = CorsLayer::new()
-        .allow_origin(AllowOrigin::list(allowed_origins))
+        .allow_origin(AllowOrigin::predicate(
+            move |origin: &HeaderValue, _request: &Parts| {
+                origin_is_allowed(origin, &cors_origins)
+            },
+        ))
         .allow_credentials(true)
         .allow_methods([
             Method::GET,
@@ -201,6 +208,29 @@ pub fn router(state: AppState) -> Result<Router, Box<dyn std::error::Error + Sen
         .layer(TraceLayer::new_for_http()))
 }
 
+fn origin_is_allowed(origin: &HeaderValue, configured: &[HeaderValue]) -> bool {
+    if configured.iter().any(|allowed| allowed == origin) {
+        return true;
+    }
+
+    let Ok(value) = origin.to_str() else {
+        return false;
+    };
+    let Ok(url) = Url::parse(value) else {
+        return false;
+    };
+    if url.scheme() != "https" || url.port().is_some() {
+        return false;
+    }
+
+    matches!(
+        url.host_str(),
+        Some("labstar.pages.dev")
+    ) || url
+        .host_str()
+        .is_some_and(|host| host.ends_with(".labstar.pages.dev"))
+}
+
 async fn health() -> Json<HealthResponse> {
     Json(HealthResponse {
         status: "ok",
@@ -225,4 +255,35 @@ async fn ready(State(state): State<AppState>) -> Result<Json<HealthResponse>, St
         database: "postgresql",
         realtime: "rust-websocket",
     }))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn accepts_cloudflare_preview_origins() {
+        let configured = vec![HeaderValue::from_static("https://labstar.pages.dev")];
+        assert!(origin_is_allowed(
+            &HeaderValue::from_static("https://e381212.labstar.pages.dev"),
+            &configured,
+        ));
+        assert!(origin_is_allowed(
+            &HeaderValue::from_static("https://feat-backend-rust-complete.labstar.pages.dev"),
+            &configured,
+        ));
+    }
+
+    #[test]
+    fn rejects_unrelated_pages_domains() {
+        let configured = vec![HeaderValue::from_static("https://labstar.pages.dev")];
+        assert!(!origin_is_allowed(
+            &HeaderValue::from_static("https://evil-labstar.pages.dev"),
+            &configured,
+        ));
+        assert!(!origin_is_allowed(
+            &HeaderValue::from_static("https://labstar.pages.dev.evil.example"),
+            &configured,
+        ));
+    }
 }
