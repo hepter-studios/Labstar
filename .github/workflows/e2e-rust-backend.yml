@@ -87,6 +87,7 @@ jobs:
           email_a="labstar-e2e-a-${suffix}@example.com"
           email_b="labstar-e2e-b-${suffix}@example.com"
           password="LsE2e-${suffix}-A9!"
+          echo "::add-mask::$password"
 
           create_user() {
             local email="$1"
@@ -105,12 +106,16 @@ jobs:
           test "$auth_a" != "null"
           test "$auth_b" != "null"
 
-          member_a="$(psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -At \
+          member_a="$(psql "$DATABASE_URL" -X -qAt -v ON_ERROR_STOP=1 \
             -v auth_id="$auth_a" -v email="$email_a" \
             -c "insert into public.members (auth_user_id,email,name,status,role,job_title,area,last_seen_at) values (:'auth_id'::uuid,:'email','E2E Rust A','active','member','Teste Rust','E2E',now()) returning id;")"
-          member_b="$(psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -At \
+          member_b="$(psql "$DATABASE_URL" -X -qAt -v ON_ERROR_STOP=1 \
             -v auth_id="$auth_b" -v email="$email_b" \
             -c "insert into public.members (auth_user_id,email,name,status,role,job_title,area,last_seen_at) values (:'auth_id'::uuid,:'email','E2E Rust B','active','member','Teste Rust','E2E',now()) returning id;")"
+          member_a="$(head -n1 <<<"$member_a" | tr -d '[:space:]')"
+          member_b="$(head -n1 <<<"$member_b" | tr -d '[:space:]')"
+          test -n "$member_a"
+          test -n "$member_b"
 
           login() {
             local email="$1"
@@ -125,6 +130,8 @@ jobs:
           token_b="$(login "$email_b" | jq -r '.access_token')"
           test "$token_a" != "null"
           test "$token_b" != "null"
+          echo "::add-mask::$token_a"
+          echo "::add-mask::$token_b"
 
           {
             echo "AUTH_A=$auth_a"
@@ -136,10 +143,6 @@ jobs:
             echo "TOKEN_A=$token_a"
             echo "TOKEN_B=$token_b"
           } >> "$GITHUB_ENV"
-
-          echo "::add-mask::$token_a"
-          echo "::add-mask::$token_b"
-          echo "::add-mask::$password"
 
       - name: Executar fluxo real ponta a ponta
         shell: bash
@@ -170,26 +173,39 @@ jobs:
             return text ? JSON.parse(text) : undefined;
           }
 
-          function waitFor(register, timeoutMs = 15000) {
-            return new Promise((resolve, reject) => {
-              const timer = setTimeout(() => reject(new Error("Tempo esgotado aguardando evento Rust.")), timeoutMs);
-              register((value) => { clearTimeout(timer); resolve(value); });
-            });
-          }
-
           async function connect(token) {
             const { ticket } = await api("/v1/realtime/ticket", token, "POST");
             const socket = new WebSocket(`${wsUrl}/v1/realtime?ticket=${encodeURIComponent(ticket)}`);
             const listeners = new Set();
+            const history = [];
             socket.on("message", (data) => {
               const event = JSON.parse(String(data));
-              for (const listener of listeners) listener(event);
+              history.push(event);
+              for (const listener of [...listeners]) listener(event);
             });
             await new Promise((resolve, reject) => {
               socket.once("open", resolve);
               socket.once("error", reject);
             });
-            return { socket, listeners };
+            return { socket, listeners, history };
+          }
+
+          function waitEvent(connection, predicate, timeoutMs = 15000) {
+            const existing = connection.history.find(predicate);
+            if (existing) return Promise.resolve(existing);
+            return new Promise((resolve, reject) => {
+              const timer = setTimeout(() => {
+                connection.listeners.delete(listener);
+                reject(new Error("Tempo esgotado aguardando evento Rust."));
+              }, timeoutMs);
+              const listener = (event) => {
+                if (!predicate(event)) return;
+                clearTimeout(timer);
+                connection.listeners.delete(listener);
+                resolve(event);
+              };
+              connection.listeners.add(listener);
+            });
           }
 
           const meA = await api("/v1/me", tokenA);
@@ -197,22 +213,19 @@ jobs:
           if (meA.memberId !== memberA || meB.memberId !== memberB) throw new Error("Identidade Rust incorreta.");
 
           const realtimeA = await connect(tokenA);
-          const realtimeB = await connect(tokenB);
-          const presence = await waitFor((done) => {
-            const check = (event) => {
-              if (event.type !== "presenceSnapshot") return;
-              const ids = new Set(event.payload.memberIds);
-              if (ids.has(memberA) && ids.has(memberB)) done(event);
-            };
-            realtimeA.listeners.add(check);
-            realtimeB.listeners.add(check);
+          const presencePromise = waitEvent(realtimeA, (event) => {
+            if (event.type !== "presenceSnapshot") return false;
+            const ids = new Set(event.payload.memberIds);
+            return ids.has(memberA) && ids.has(memberB);
           });
-          if (!presence) throw new Error("Presença Rust não confirmou as duas contas.");
+          const realtimeB = await connect(tokenB);
+          await presencePromise;
 
           const { threadId } = await api("/v1/direct/threads", tokenA, "POST", { otherMemberId: memberB });
-          const messageEventPromise = waitFor((done) => realtimeB.listeners.add((event) => {
-            if (event.type === "directMessageCreated" && event.payload.threadId === threadId) done(event);
-          }));
+          const messageEventPromise = waitEvent(
+            realtimeB,
+            (event) => event.type === "directMessageCreated" && event.payload.threadId === threadId,
+          );
           const sent = await api(`/v1/direct/threads/${threadId}/messages`, tokenA, "POST", {
             body: "Mensagem real pelo backend Rust",
             replyTo: null,
@@ -224,9 +237,7 @@ jobs:
             throw new Error("A segunda conta não recebeu a mensagem persistida.");
           }
 
-          const callEventPromise = waitFor((done) => realtimeB.listeners.add((event) => {
-            if (event.type === "callCreated") done(event);
-          }));
+          const callEventPromise = waitEvent(realtimeB, (event) => event.type === "callCreated");
           const { callId } = await api("/v1/calls", tokenA, "POST", {
             threadId,
             recipientId: memberB,
@@ -239,9 +250,10 @@ jobs:
             throw new Error("A chamada não apareceu para a segunda conta.");
           }
 
-          const updatePromise = waitFor((done) => realtimeA.listeners.add((event) => {
-            if (event.type === "callUpdated" && event.payload.callId === callId) done(event);
-          }));
+          const updatePromise = waitEvent(
+            realtimeA,
+            (event) => event.type === "callUpdated" && event.payload.callId === callId,
+          );
           await api(`/v1/calls/${callId}/status`, tokenB, "POST", { status: "rejected" });
           const update = await updatePromise;
           if (update.payload.status !== "rejected") throw new Error("Rejeição de chamada não propagada.");
@@ -258,7 +270,7 @@ jobs:
         run: |
           set +e
           if [ -n "${MEMBER_A:-}" ] && [ -n "${MEMBER_B:-}" ]; then
-            psql "$DATABASE_URL" -v ON_ERROR_STOP=0 \
+            psql "$DATABASE_URL" -X -q -v ON_ERROR_STOP=0 \
               -v member_a="$MEMBER_A" -v member_b="$MEMBER_B" <<'SQL'
           delete from public.direct_call_sessions
           where initiator_id in (:'member_a'::uuid, :'member_b'::uuid)
