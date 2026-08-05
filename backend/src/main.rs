@@ -15,6 +15,7 @@ mod notifications;
 mod planning;
 mod profile;
 mod realtime;
+mod request_limits;
 mod roles;
 mod routes;
 mod search;
