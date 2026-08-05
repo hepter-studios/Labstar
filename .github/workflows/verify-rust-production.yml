@@ -1,0 +1,90 @@
+name: Auditar backend Rust publicado
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "backend/**"
+      - "src/lib/rust-api.ts"
+      - "src/lib/backend.ts"
+      - ".github/workflows/verify-rust-production.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: verify-labstar-rust-production-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  production:
+    name: Saúde, runtime e CORS
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      API_URL: https://labstar-api-mackson.fly.dev
+      WEB_ORIGIN: https://labstar.pages.dev
+      TAURI_ORIGIN: http://tauri.localhost
+      UNTRUSTED_ORIGIN: http://example.com
+
+    steps:
+      - name: Aguardar versão Rust publicada
+        shell: bash
+        run: |
+          set -euo pipefail
+          for attempt in $(seq 1 60); do
+            if curl --fail --silent --show-error --connect-timeout 15 --max-time 45 \
+              "$API_URL/health/ready" > ready.json; then
+              if grep -q '"status":"ready"' ready.json \
+                && grep -q '"runtime":"rust"' ready.json \
+                && grep -q '"database":"postgresql"' ready.json \
+                && grep -q '"realtime":"rust-websocket"' ready.json; then
+                cat ready.json
+                exit 0
+              fi
+            fi
+            echo "API ainda não está pronta (tentativa $attempt/60)."
+            sleep 15
+          done
+          exit 1
+
+      - name: Auditar CORS permitido
+        shell: bash
+        run: |
+          set -euo pipefail
+          check_origin() {
+            local origin="$1"
+            local output="$2"
+            curl --fail --silent --show-error \
+              --connect-timeout 15 --max-time 45 \
+              --dump-header "$output" --output /dev/null \
+              --request OPTIONS \
+              --header "Origin: $origin" \
+              --header "Access-Control-Request-Method: GET" \
+              --header "Access-Control-Request-Headers: authorization,content-type" \
+              "$API_URL/v1/me"
+            tr -d '\r' < "$output" > "$output.normalized"
+            grep -Fqi "access-control-allow-origin: $origin" "$output.normalized"
+            grep -Eiq '^access-control-allow-headers:.*authorization' "$output.normalized"
+          }
+          check_origin "$WEB_ORIGIN" web.txt
+          check_origin "$TAURI_ORIGIN" tauri.txt
+
+      - name: Auditar origem bloqueada
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --silent --show-error \
+            --connect-timeout 15 --max-time 45 \
+            --dump-header untrusted.txt --output /dev/null \
+            --request OPTIONS \
+            --header "Origin: $UNTRUSTED_ORIGIN" \
+            --header "Access-Control-Request-Method: GET" \
+            --header "Access-Control-Request-Headers: authorization,content-type" \
+            "$API_URL/v1/me"
+          tr -d '\r' < untrusted.txt > untrusted.normalized
+          if grep -Fqi "access-control-allow-origin: $UNTRUSTED_ORIGIN" untrusted.normalized; then
+            exit 1
+          fi
