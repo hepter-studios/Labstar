@@ -16,11 +16,7 @@ use crate::{
 const AUTHENTICATED_REQUESTS_PER_MINUTE: u32 = 360;
 const PUBLIC_REQUESTS_PER_MINUTE: u32 = 2_000;
 
-pub async fn enforce(
-    State(state): State<AppState>,
-    request: Request,
-    next: Next,
-) -> Response {
+pub async fn enforce(State(state): State<AppState>, request: Request, next: Next) -> Response {
     if request.method() == Method::OPTIONS || request.uri().path().starts_with("/health") {
         return next.run(request).await;
     }
