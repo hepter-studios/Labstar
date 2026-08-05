@@ -24,7 +24,6 @@ pub struct Config {
     pub database_max_connections: u32,
     pub max_file_bytes: usize,
     pub storage_bucket: String,
-    pub public_base_url: Url,
 }
 
 #[derive(Debug, Error, PartialEq, Eq)]
@@ -44,7 +43,6 @@ impl Config {
         let bind_addr = parse_or_default("LABSTAR_BIND_ADDR", "0.0.0.0:8080")?;
         let database_url = required("DATABASE_URL")?;
         let supabase_url = parse_secure_url("SUPABASE_URL")?;
-        let public_base_url = parse_secure_url("LABSTAR_PUBLIC_BASE_URL")?;
         let supabase_publishable_key = required("SUPABASE_PUBLISHABLE_KEY")?;
         let supabase_service_role_key = required("SUPABASE_SERVICE_ROLE_KEY")?;
         let storage_bucket = env::var("LABSTAR_STORAGE_BUCKET")
@@ -97,7 +95,6 @@ impl Config {
             database_max_connections,
             max_file_bytes,
             storage_bucket,
-            public_base_url,
         })
     }
 
