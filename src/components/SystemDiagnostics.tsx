@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { requireAuthClient } from "../lib/auth-client";
 import { isTauriApp } from "../lib/native";
+import { rustApi, rustPublicApi } from "../lib/rust-api";
 
 type CheckState = "idle" | "running" | "ok" | "error";
 type DiagnosticCheck = { id: string; label: string; state: CheckState; detail: string };
@@ -15,6 +16,20 @@ type NativeHealth = {
   appDataDirectory: string;
   deepLinkScheme: string;
   backendTransport: string;
+};
+type RustHealth = {
+  status: string;
+  service: string;
+  runtime: string;
+  version: string;
+  database: string;
+  realtime: string;
+};
+
+type RustIdentity = {
+  memberId: string;
+  status: string;
+  role: string;
 };
 
 async function nativeRuntimeHealth() {
@@ -84,17 +99,15 @@ function SystemDiagnostics() {
         patch("runtime", { state: "error", detail: "A interface abriu, mas o núcleo Tauri não respondeu" });
       }
     } else {
-      patch("runtime", { state: "ok", detail: "Web · Cloudflare Pages · acesso seguro pelo Supabase" });
+      patch("runtime", { state: "ok", detail: "Web · Cloudflare Pages · backend Rust" });
     }
 
-    const client = requireAuthClient();
-
     try {
-      const { data, error } = await client.auth.getSession();
+      const { data, error } = await requireAuthClient().auth.getSession();
       if (error) {
         patch("session", { state: "error", detail: "Supabase Auth retornou erro de sessão" });
       } else if (data.session) {
-        patch("session", { state: "ok", detail: "Sessão local presente e renovável" });
+        patch("session", { state: "ok", detail: "Sessão OAuth local presente e renovável" });
       } else {
         patch("session", { state: "error", detail: "Nenhuma sessão autenticada neste dispositivo" });
       }
@@ -103,40 +116,25 @@ function SystemDiagnostics() {
     }
 
     try {
-      const { data, error } = await client.rpc("inspect_member_invite", {
-        invite_token: "0".repeat(64),
-      });
+      const health = await rustPublicApi<RustHealth>("/health/ready");
       patch(
-        "rpc",
-        error
-          ? { state: "error", detail: `Função segura indisponível · ${error.code || "erro"}` }
-          : { state: "ok", detail: Array.isArray(data) ? "RPC de convites respondeu" : "RPC respondeu" },
+        "backend",
+        health.status === "ready" && health.runtime === "rust"
+          ? { state: "ok", detail: `Rust ${health.version} · PostgreSQL · WebSocket Rust` }
+          : { state: "error", detail: "A API respondeu, mas não declarou prontidão" },
       );
     } catch {
-      patch("rpc", { state: "error", detail: "Não foi possível chamar as funções seguras" });
+      patch("backend", { state: "error", detail: "O backend Rust publicado não respondeu" });
     }
 
     try {
-      const { data: sessionData } = await client.auth.getSession();
-      const userId = sessionData.session?.user.id;
-      if (!userId) {
-        patch("database", { state: "error", detail: "Entre novamente para verificar o vínculo do membro" });
-      } else {
-        const { data, error } = await client
-          .from("members")
-          .select("id,status,role")
-          .eq("auth_user_id", userId)
-          .maybeSingle();
-        if (error) {
-          patch("database", { state: "error", detail: `Banco respondeu com ${error.code || "erro"}` });
-        } else if (data) {
-          patch("database", { state: "ok", detail: `Vínculo encontrado · ${data.status} · ${data.role}` });
-        } else {
-          patch("database", { state: "error", detail: "Sessão válida, mas vínculo de membro não encontrado" });
-        }
-      }
+      const identity = await rustApi<RustIdentity>("/v1/me");
+      patch("database", {
+        state: "ok",
+        detail: `Vínculo validado pelo Rust · ${identity.status} · ${identity.role}`,
+      });
     } catch {
-      patch("database", { state: "error", detail: "A consulta protegida ao banco não respondeu" });
+      patch("database", { state: "error", detail: "O Rust não confirmou o vínculo com o banco" });
     }
 
     setRunning(false);
@@ -146,7 +144,7 @@ function SystemDiagnostics() {
     const header = [
       "Labstar diagnostics",
       `runtime=${isTauriApp() ? "tauri" : "web"}`,
-      "access=supabase-rpc",
+      "backend=rust-api",
       `online=${navigator.onLine}`,
       `time=${new Date().toISOString()}`,
     ].join("\n");
@@ -204,8 +202,8 @@ function baseChecks(): DiagnosticCheck[] {
   return [
     { id: "runtime", label: "Versão e núcleo do aplicativo", state: "idle", detail: "" },
     { id: "network", label: "Rede do dispositivo", state: "idle", detail: "" },
-    { id: "rpc", label: "Funções seguras do Supabase", state: "idle", detail: "" },
-    { id: "database", label: "Banco e vínculo do membro", state: "idle", detail: "" },
-    { id: "session", label: "Sessão de identidade", state: "idle", detail: "" },
+    { id: "backend", label: "Backend central em Rust", state: "idle", detail: "" },
+    { id: "database", label: "PostgreSQL e vínculo do membro", state: "idle", detail: "" },
+    { id: "session", label: "Sessão OAuth", state: "idle", detail: "" },
   ];
 }
