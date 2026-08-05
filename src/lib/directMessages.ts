@@ -41,6 +41,14 @@ export type DirectMessage = {
   attachments: DirectAttachment[];
 };
 
+export type DirectMessageRealtimeEvent = {
+  id: string;
+  threadId: string;
+  authorId: string;
+  body: string;
+  createdAt: string;
+};
+
 function requireClient() {
   if (!supabaseClient) throw new Error("supabase_not_configured");
   return supabaseClient;
@@ -248,6 +256,29 @@ export function subscribeToDirectThread(threadId: string, onChange: () => void):
     .on("postgres_changes", { event: "*", schema: "public", table: "direct_messages", filter: `thread_id=eq.${threadId}` }, onChange)
     .on("postgres_changes", { event: "*", schema: "public", table: "direct_message_attachments" }, onChange)
     .subscribe();
+}
+
+export function subscribeToAllDirectMessages(
+  onInsert: (event: DirectMessageRealtimeEvent) => void,
+  onStatus?: (status: string) => void,
+): RealtimeChannel {
+  const id = typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+    ? crypto.randomUUID()
+    : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+
+  return requireClient()
+    .channel(`labstar-direct-global-${id}`)
+    .on("postgres_changes", { event: "INSERT", schema: "public", table: "direct_messages" }, (payload) => {
+      const row = payload.new as Record<string, unknown>;
+      onInsert({
+        id: String(row.id),
+        threadId: String(row.thread_id),
+        authorId: String(row.author_id),
+        body: String(row.body ?? "Nova mensagem"),
+        createdAt: String(row.created_at ?? new Date().toISOString()),
+      });
+    })
+    .subscribe((status) => onStatus?.(status));
 }
 
 export function unsubscribeDirect(channel: RealtimeChannel | null) {
