@@ -21,16 +21,16 @@ jobs:
     name: Validar, publicar e auditar API Rust
     runs-on: ubuntu-latest
     timeout-minutes: 55
-    environment: production
     env:
+      FLY_APP: labstar-api-mackson
       API_URL: https://labstar-api-mackson.fly.dev
       WEB_ORIGIN: https://labstar.pages.dev
       TAURI_ORIGIN: http://tauri.localhost
       UNTRUSTED_ORIGIN: http://example.com
       FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
-      DATABASE_URL_SECRET: ${{ secrets.DATABASE_URL }}
-      SUPABASE_URL_SECRET: ${{ secrets.SUPABASE_URL }}
-      SUPABASE_PUBLISHABLE_KEY_SECRET: ${{ secrets.SUPABASE_PUBLISHABLE_KEY }}
+      DATABASE_URL_SECRET: ${{ secrets.SUPABASE_DATABASE_URL || secrets.DATABASE_URL }}
+      SUPABASE_URL_SECRET: ${{ secrets.SUPABASE_URL || 'https://pgzwyngxsxnheulvusdq.supabase.co' }}
+      SUPABASE_PUBLISHABLE_KEY_SECRET: ${{ secrets.SUPABASE_PUBLISHABLE_KEY || secrets.SUPABASE_ANON_KEY || secrets.VITE_SUPABASE_ANON_KEY }}
       SUPABASE_SERVICE_ROLE_KEY_SECRET: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
       LABSTAR_STUN_URLS_SECRET: ${{ secrets.LABSTAR_STUN_URLS }}
       LABSTAR_TURN_URLS_SECRET: ${{ secrets.LABSTAR_TURN_URLS }}
@@ -40,6 +40,33 @@ jobs:
     steps:
       - name: Baixar código
         uses: actions/checkout@v4
+
+      - name: Confirmar credenciais obrigatórias
+        shell: bash
+        run: |
+          set -euo pipefail
+          missing=()
+          [ -n "$FLY_API_TOKEN" ] || missing+=("FLY_API_TOKEN")
+          [ -n "$DATABASE_URL_SECRET" ] || missing+=("SUPABASE_DATABASE_URL")
+          [ -n "$SUPABASE_PUBLISHABLE_KEY_SECRET" ] || missing+=("SUPABASE_PUBLISHABLE_KEY ou SUPABASE_ANON_KEY")
+          [ -n "$SUPABASE_SERVICE_ROLE_KEY_SECRET" ] || missing+=("SUPABASE_SERVICE_ROLE_KEY")
+          if [ ${#missing[@]} -gt 0 ]; then
+            printf 'Segredos ausentes no GitHub:\n'
+            printf ' - %s\n' "${missing[@]}"
+            exit 1
+          fi
+
+      - name: Validar configuração TURN opcional
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -n "$LABSTAR_TURN_URLS_SECRET" ]; then
+            [ -n "$LABSTAR_TURN_USERNAME_SECRET" ]
+            [ -n "$LABSTAR_TURN_CREDENTIAL_SECRET" ]
+          elif [ -n "$LABSTAR_TURN_USERNAME_SECRET" ] || [ -n "$LABSTAR_TURN_CREDENTIAL_SECRET" ]; then
+            echo "TURN está parcialmente configurado."
+            exit 1
+          fi
 
       - name: Instalar Rust estável
         uses: dtolnay/rust-toolchain@stable
@@ -64,50 +91,42 @@ jobs:
       - name: Instalar flyctl
         uses: superfly/flyctl-actions/setup-flyctl@master
 
-      - name: Confirmar credencial da Fly.io
+      - name: Confirmar conta e aplicativo Fly.io
         shell: bash
         run: |
           set -euo pipefail
-          test -n "$FLY_API_TOKEN"
-          flyctl auth whoami >/dev/null
-
-      - name: Validar configuração TURN opcional
-        shell: bash
-        run: |
-          set -euo pipefail
-          if [ -n "$LABSTAR_TURN_URLS_SECRET" ]; then
-            test -n "$LABSTAR_TURN_USERNAME_SECRET"
-            test -n "$LABSTAR_TURN_CREDENTIAL_SECRET"
-          elif [ -n "$LABSTAR_TURN_USERNAME_SECRET" ] || [ -n "$LABSTAR_TURN_CREDENTIAL_SECRET" ]; then
-            echo "TURN está parcialmente configurado."
-            exit 1
+          flyctl auth whoami
+          if ! flyctl status --app "$FLY_APP" >/dev/null 2>&1; then
+            echo "Criando aplicativo $FLY_APP na Fly.io..."
+            flyctl apps create "$FLY_APP"
           fi
 
-      - name: Sincronizar segredos disponíveis
+      - name: Sincronizar segredos do servidor
         shell: bash
         run: |
           set -euo pipefail
-          args=()
-          if [ -n "$DATABASE_URL_SECRET" ]; then args+=("DATABASE_URL=$DATABASE_URL_SECRET"); fi
-          if [ -n "$SUPABASE_URL_SECRET" ]; then args+=("SUPABASE_URL=$SUPABASE_URL_SECRET"); fi
-          if [ -n "$SUPABASE_PUBLISHABLE_KEY_SECRET" ]; then args+=("SUPABASE_PUBLISHABLE_KEY=$SUPABASE_PUBLISHABLE_KEY_SECRET"); fi
-          if [ -n "$SUPABASE_SERVICE_ROLE_KEY_SECRET" ]; then args+=("SUPABASE_SERVICE_ROLE_KEY=$SUPABASE_SERVICE_ROLE_KEY_SECRET"); fi
-          if [ -n "$LABSTAR_STUN_URLS_SECRET" ]; then args+=("LABSTAR_STUN_URLS=$LABSTAR_STUN_URLS_SECRET"); fi
+          args=(
+            "DATABASE_URL=$DATABASE_URL_SECRET"
+            "SUPABASE_URL=$SUPABASE_URL_SECRET"
+            "SUPABASE_PUBLISHABLE_KEY=$SUPABASE_PUBLISHABLE_KEY_SECRET"
+            "SUPABASE_SERVICE_ROLE_KEY=$SUPABASE_SERVICE_ROLE_KEY_SECRET"
+          )
+          if [ -n "$LABSTAR_STUN_URLS_SECRET" ]; then
+            args+=("LABSTAR_STUN_URLS=$LABSTAR_STUN_URLS_SECRET")
+          fi
           if [ -n "$LABSTAR_TURN_URLS_SECRET" ]; then
             args+=("LABSTAR_TURN_URLS=$LABSTAR_TURN_URLS_SECRET")
             args+=("LABSTAR_TURN_USERNAME=$LABSTAR_TURN_USERNAME_SECRET")
             args+=("LABSTAR_TURN_CREDENTIAL=$LABSTAR_TURN_CREDENTIAL_SECRET")
           fi
-          if [ ${#args[@]} -gt 0 ]; then
-            flyctl secrets set --app labstar-api-mackson --stage "${args[@]}"
-          fi
+          flyctl secrets set --app "$FLY_APP" --stage "${args[@]}"
 
       - name: Publicar contêiner Rust
         shell: bash
         run: |
           set -euo pipefail
           flyctl deploy . \
-            --app labstar-api-mackson \
+            --app "$FLY_APP" \
             --config backend/fly.toml \
             --dockerfile backend/Dockerfile \
             --remote-only \
@@ -119,21 +138,21 @@ jobs:
         run: |
           set -euo pipefail
           curl --fail --silent --show-error \
-            --retry 12 --retry-all-errors --retry-delay 5 \
+            --retry 20 --retry-all-errors --retry-delay 5 \
             --connect-timeout 20 --max-time 60 \
             "$API_URL/health/live" | tee live.json
           grep -q '"status":"ok"' live.json
           grep -q '"runtime":"rust"' live.json
 
           curl --fail --silent --show-error \
-            --retry 12 --retry-all-errors --retry-delay 5 \
+            --retry 20 --retry-all-errors --retry-delay 5 \
             --connect-timeout 20 --max-time 60 \
             "$API_URL/health/ready" | tee ready.json
           grep -q '"status":"ready"' ready.json
           grep -q '"database":"postgresql"' ready.json
           grep -q '"realtime":"rust-websocket"' ready.json
 
-      - name: Auditar CORS da Web e do desktop
+      - name: Auditar CORS permitido
         shell: bash
         run: |
           set -euo pipefail
@@ -178,6 +197,6 @@ jobs:
         if: always()
         shell: bash
         run: |
-          flyctl status --app labstar-api-mackson --all || true
-          flyctl checks list --app labstar-api-mackson || true
-          flyctl logs --app labstar-api-mackson --no-tail || true
+          flyctl status --app "$FLY_APP" --all || true
+          flyctl checks list --app "$FLY_APP" || true
+          flyctl logs --app "$FLY_APP" --no-tail || true
