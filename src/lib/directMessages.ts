@@ -41,6 +41,14 @@ export type DirectMessage = {
   attachments: DirectAttachment[];
 };
 
+export type DirectMessageRealtimeEvent = {
+  id: string;
+  threadId: string;
+  authorId: string;
+  body: string;
+  createdAt: string;
+};
+
 function requireClient() {
   if (!supabaseClient) throw new Error("supabase_not_configured");
   return supabaseClient;
@@ -48,19 +56,23 @@ function requireClient() {
 
 async function signedAssetUrl(path?: string | null, expiresIn = 60 * 60 * 8) {
   if (!path) return "";
-  const { data, error } = await requireClient().storage.from("labstar-files").createSignedUrl(path, expiresIn);
-  return error ? "" : data.signedUrl;
+  try {
+    const { data, error } = await requireClient().storage.from("labstar-files").createSignedUrl(path, expiresIn);
+    return error ? "" : data.signedUrl;
+  } catch {
+    return "";
+  }
 }
 
 function safeFileName(name: string) {
   const parts = name.split(".");
-  const extension = parts.length > 1 ? `.${parts.pop()!.toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 8)}` : "";
+  const extension = parts.length > 1 ? `.${parts.pop()!.toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 12)}` : "";
   const stem = parts.join(".")
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
     .replace(/[^a-zA-Z0-9_-]/g, "-")
     .replace(/-+/g, "-")
-    .slice(0, 70) || "arquivo";
+    .slice(0, 90) || "arquivo";
   return `${stem}${extension}`;
 }
 
@@ -89,23 +101,59 @@ export async function markDirectThreadRead(threadId: string) {
 }
 
 export async function listDirectMessages(threadId: string): Promise<DirectMessage[]> {
-  const { data, error } = await requireClient()
+  const client = requireClient();
+  const { data: messageRows, error: messageError } = await client
     .from("direct_messages")
-    .select("*,author:members!direct_messages_author_id_fkey(id,name,email,avatar_path,job_title),attachments:direct_message_attachments(*)")
+    .select("id,thread_id,author_id,body,created_at,edited_at,reply_to,is_pinned")
     .eq("thread_id", threadId)
     .order("created_at", { ascending: true })
     .limit(300);
-  if (error) throw error;
+  if (messageError) throw messageError;
+  if (!messageRows?.length) return [];
 
-  const authorIds = [...new Set((data ?? []).map((row) => String(row.author_id)))];
+  const authorIds = [...new Set(messageRows.map((row) => String(row.author_id)))];
+  const messageIds = messageRows.map((row) => String(row.id));
+
+  const [memberResult, attachmentResult] = await Promise.all([
+    client
+      .from("members")
+      .select("id,name,email,avatar_path,job_title")
+      .in("id", authorIds),
+    client
+      .from("direct_message_attachments")
+      .select("id,message_id,file_name,file_path,mime_type,size_bytes")
+      .in("message_id", messageIds)
+      .order("created_at", { ascending: true }),
+  ]);
+
+  const authorsById = new Map<string, Record<string, unknown>>();
+  if (!memberResult.error) {
+    for (const row of memberResult.data ?? []) authorsById.set(String(row.id), row as Record<string, unknown>);
+  }
+
   const rolesByAuthor = new Map<string, JobRole[]>();
-  await Promise.all(authorIds.map(async (id) => rolesByAuthor.set(id, await listRolesForMember(id))));
+  await Promise.all(authorIds.map(async (id) => {
+    try {
+      rolesByAuthor.set(id, await listRolesForMember(id));
+    } catch {
+      rolesByAuthor.set(id, []);
+    }
+  }));
 
-  return Promise.all((data ?? []).map(async (row) => {
-    const authorValue = row.author as Record<string, unknown> | Record<string, unknown>[] | null;
-    const authorRow = Array.isArray(authorValue) ? authorValue[0] : authorValue;
+  const attachmentsByMessage = new Map<string, Record<string, unknown>[]>();
+  if (!attachmentResult.error) {
+    for (const row of attachmentResult.data ?? []) {
+      const messageId = String(row.message_id);
+      attachmentsByMessage.set(messageId, [...(attachmentsByMessage.get(messageId) ?? []), row as Record<string, unknown>]);
+    }
+  }
+
+  return Promise.all(messageRows.map(async (row) => {
+    const authorId = String(row.author_id);
+    const authorRow = authorsById.get(authorId) ?? null;
     const avatarPath = String(authorRow?.avatar_path ?? "");
-    const attachments = await Promise.all(((row.attachments ?? []) as Record<string, unknown>[]).map(async (file) => ({
+    const attachmentRows = attachmentsByMessage.get(String(row.id)) ?? [];
+    const attachments = await Promise.all(attachmentRows.map(async (file) => ({
       id: String(file.id),
       messageId: String(file.message_id),
       fileName: String(file.file_name),
@@ -118,20 +166,20 @@ export async function listDirectMessages(threadId: string): Promise<DirectMessag
     return {
       id: String(row.id),
       threadId: String(row.thread_id),
-      authorId: String(row.author_id),
+      authorId,
       body: String(row.body ?? ""),
       createdAt: String(row.created_at),
       editedAt: row.edited_at ? String(row.edited_at) : null,
       replyTo: row.reply_to ? String(row.reply_to) : null,
       isPinned: Boolean(row.is_pinned),
       author: authorRow ? {
-        id: String(authorRow.id),
-        name: String(authorRow.name),
-        email: String(authorRow.email),
+        id: authorId,
+        name: String(authorRow.name ?? "Membro"),
+        email: String(authorRow.email ?? ""),
         avatarPath,
         avatarUrl: await signedAssetUrl(avatarPath),
         jobTitle: String(authorRow.job_title ?? ""),
-        jobRoles: rolesByAuthor.get(String(authorRow.id)) ?? [],
+        jobRoles: rolesByAuthor.get(authorId) ?? [],
       } : null,
       attachments,
     } satisfies DirectMessage;
@@ -159,7 +207,7 @@ export async function sendDirectMessage(input: {
   if (error) throw error;
 
   for (const file of files.slice(0, 8)) {
-    if (file.size > 20 * 1024 * 1024) throw new Error("file_too_large");
+    if (file.size > 50 * 1024 * 1024) throw new Error("file_too_large");
     const path = `direct/${input.threadId}/${message.id}/${Date.now()}-${safeFileName(file.name)}`;
     const { error: uploadError } = await requireClient().storage.from("labstar-files").upload(path, file, {
       cacheControl: "3600",
@@ -208,6 +256,29 @@ export function subscribeToDirectThread(threadId: string, onChange: () => void):
     .on("postgres_changes", { event: "*", schema: "public", table: "direct_messages", filter: `thread_id=eq.${threadId}` }, onChange)
     .on("postgres_changes", { event: "*", schema: "public", table: "direct_message_attachments" }, onChange)
     .subscribe();
+}
+
+export function subscribeToAllDirectMessages(
+  onInsert: (event: DirectMessageRealtimeEvent) => void,
+  onStatus?: (status: string) => void,
+): RealtimeChannel {
+  const id = typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+    ? crypto.randomUUID()
+    : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+
+  return requireClient()
+    .channel(`labstar-direct-global-${id}`)
+    .on("postgres_changes", { event: "INSERT", schema: "public", table: "direct_messages" }, (payload) => {
+      const row = payload.new as Record<string, unknown>;
+      onInsert({
+        id: String(row.id),
+        threadId: String(row.thread_id),
+        authorId: String(row.author_id),
+        body: String(row.body ?? "Nova mensagem"),
+        createdAt: String(row.created_at ?? new Date().toISOString()),
+      });
+    })
+    .subscribe((status) => onStatus?.(status));
 }
 
 export function unsubscribeDirect(channel: RealtimeChannel | null) {

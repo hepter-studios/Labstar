@@ -34,7 +34,7 @@ export function subscribeToMemberPresence(
   onError?: (message: string) => void,
 ): PresenceSubscription {
   const client = requireClient();
-  const channel = client.channel("labstar-presence-v1", {
+  const channel = client.channel("labstar-presence-v2", {
     config: {
       presence: { key: memberId },
     },
@@ -42,18 +42,31 @@ export function subscribeToMemberPresence(
 
   let closed = false;
   let heartbeat = 0;
+  let tracked = false;
 
   const publishSnapshot = () => {
-    if (!closed) onChange(readOnlineMembers(channel));
+    if (closed) return;
+    const online = readOnlineMembers(channel);
+    if (tracked && document.visibilityState === "visible") online.add(memberId);
+    onChange(online);
   };
 
   const track = async () => {
-    if (closed) return;
+    if (closed || document.visibilityState !== "visible") return;
     const result = await channel.track({
       memberId,
       activeAt: new Date().toISOString(),
     } satisfies PresencePayload);
-    if (result !== "ok") onError?.("Não foi possível atualizar a presença agora.");
+    tracked = result === "ok";
+    if (!tracked) onError?.("Não foi possível atualizar a presença agora.");
+    publishSnapshot();
+  };
+
+  const untrack = async () => {
+    if (closed || !tracked) return;
+    tracked = false;
+    await channel.untrack().catch(() => undefined);
+    publishSnapshot();
   };
 
   channel
@@ -64,17 +77,19 @@ export function subscribeToMemberPresence(
       if (status === "SUBSCRIBED") {
         void track();
         heartbeat = window.setInterval(() => void track(), 25_000);
-        publishSnapshot();
       } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+        tracked = false;
+        publishSnapshot();
         onError?.("A presença em tempo real foi interrompida.");
       }
     });
 
   const handleVisibility = () => {
     if (document.visibilityState === "visible") void track();
+    else void untrack();
   };
   const handlePageHide = () => {
-    void channel.untrack();
+    void untrack();
   };
 
   document.addEventListener("visibilitychange", handleVisibility);
@@ -85,6 +100,7 @@ export function subscribeToMemberPresence(
     close: () => {
       if (closed) return;
       closed = true;
+      tracked = false;
       window.clearInterval(heartbeat);
       document.removeEventListener("visibilitychange", handleVisibility);
       window.removeEventListener("pagehide", handlePageHide);

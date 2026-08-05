@@ -29,6 +29,7 @@ pub fn run() {
 
     let builder = builder
         .plugin(tauri_plugin_deep_link::init())
+        .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_log::Builder::new().build());
 
@@ -115,6 +116,8 @@ pub fn run() {
             commands::build_invite_deep_link,
             commands::take_pending_deep_links,
             commands::focus_main_window,
+            commands::request_main_window_attention,
+            commands::show_native_notification,
             commands::open_auth_url,
             settings::load_app_settings,
             settings::save_app_settings,

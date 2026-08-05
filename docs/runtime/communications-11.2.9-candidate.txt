@@ -1,0 +1,5 @@
+Labstar communications candidate
+version=11.2.9
+branch=fix/private-communications-11.2.9
+scope=direct-messages,presence,notifications,private-calls,windows-installer
+status=awaiting-ci-and-manual-validation

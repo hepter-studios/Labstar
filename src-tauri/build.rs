@@ -5,6 +5,8 @@ fn main() {
         "build_invite_deep_link",
         "take_pending_deep_links",
         "focus_main_window",
+        "request_main_window_attention",
+        "show_native_notification",
         "open_auth_url",
     ];
 
