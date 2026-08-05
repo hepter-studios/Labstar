@@ -8,9 +8,9 @@ use tauri::{Emitter, Manager};
 
 #[cfg(desktop)]
 use tauri::{
+    WindowEvent,
     menu::{Menu, MenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
-    WindowEvent,
 };
 #[cfg(desktop)]
 use tauri_plugin_notification::NotificationExt;
@@ -75,20 +75,10 @@ pub fn run() {
 
             #[cfg(desktop)]
             {
-                let open_item = MenuItem::with_id(
-                    app,
-                    "open-labstar",
-                    "Abrir Labstar",
-                    true,
-                    None::<&str>,
-                )?;
-                let quit_item = MenuItem::with_id(
-                    app,
-                    "quit-labstar",
-                    "Sair do Labstar",
-                    true,
-                    None::<&str>,
-                )?;
+                let open_item =
+                    MenuItem::with_id(app, "open-labstar", "Abrir Labstar", true, None::<&str>)?;
+                let quit_item =
+                    MenuItem::with_id(app, "quit-labstar", "Sair do Labstar", true, None::<&str>)?;
                 let menu = Menu::with_items(app, &[&open_item, &quit_item])?;
 
                 let mut tray_builder = TrayIconBuilder::with_id("labstar-tray")
