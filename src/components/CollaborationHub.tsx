@@ -90,7 +90,7 @@ export function CollaborationHub({ member, initialChannelId, soundEnabled = true
         member={member}
         onOpenWorkspace={(channelId) => {
           setWorkspaceChannelId(channelId ?? null);
-          setSurface(channelId ? "workspace" : "home");
+          setSurface("workspace");
         }}
       />
     );
