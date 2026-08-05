@@ -104,11 +104,7 @@ impl Config {
         }
 
         let turn_urls_raw = env::var("LABSTAR_TURN_URLS").unwrap_or_default();
-        let turn_urls = parse_ice_urls(
-            &turn_urls_raw,
-            &["turn:", "turns:"],
-            "LABSTAR_TURN_URLS",
-        )?;
+        let turn_urls = parse_ice_urls(&turn_urls_raw, &["turn:", "turns:"], "LABSTAR_TURN_URLS")?;
         let turn = if turn_urls.is_empty() {
             None
         } else {
@@ -201,7 +197,9 @@ fn parse_ice_urls(
     if urls.iter().any(|entry| {
         entry.len() > 500
             || entry.chars().any(char::is_whitespace)
-            || !allowed_prefixes.iter().any(|prefix| entry.starts_with(prefix))
+            || !allowed_prefixes
+                .iter()
+                .any(|prefix| entry.starts_with(prefix))
     }) {
         return Err(ConfigError::Invalid(name));
     }
