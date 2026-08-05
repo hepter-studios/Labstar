@@ -3,7 +3,8 @@ use crate::{
     security::{self, ValidatedDeepLink},
 };
 use serde::Serialize;
-use tauri::{AppHandle, Manager, State};
+use tauri::{AppHandle, Manager, State, UserAttentionType};
+use tauri_plugin_notification::NotificationExt;
 use tauri_plugin_opener::OpenerExt;
 
 #[derive(Debug, Serialize)]
@@ -72,9 +73,51 @@ pub fn focus_main_window(app: AppHandle) -> Result<(), String> {
         .show()
         .map_err(|error| format!("main_window_show_failed: {error}"))?;
     window
+        .unminimize()
+        .map_err(|error| format!("main_window_restore_failed: {error}"))?;
+    window
         .set_focus()
         .map_err(|error| format!("main_window_focus_failed: {error}"))?;
     Ok(())
+}
+
+#[tauri::command]
+pub fn request_main_window_attention(app: AppHandle, critical: bool) -> Result<(), String> {
+    let window = app
+        .get_webview_window("main")
+        .ok_or_else(|| "main_window_not_found".to_string())?;
+
+    window
+        .show()
+        .map_err(|error| format!("main_window_show_failed: {error}"))?;
+    window
+        .request_user_attention(Some(if critical {
+            UserAttentionType::Critical
+        } else {
+            UserAttentionType::Informational
+        }))
+        .map_err(|error| format!("main_window_attention_failed: {error}"))?;
+    Ok(())
+}
+
+#[tauri::command]
+pub fn show_native_notification(
+    app: AppHandle,
+    title: String,
+    body: String,
+) -> Result<(), String> {
+    let safe_title = title.trim().chars().take(90).collect::<String>();
+    let safe_body = body.trim().chars().take(280).collect::<String>();
+    if safe_title.is_empty() {
+        return Err("notification_title_required".to_string());
+    }
+
+    app.notification()
+        .builder()
+        .title(safe_title)
+        .body(safe_body)
+        .show()
+        .map_err(|error| format!("native_notification_failed: {error}"))
 }
 
 #[tauri::command]
