@@ -109,13 +109,19 @@ impl Config {
 
     pub fn storage_object_url(&self, path: &str) -> Result<Url, ConfigError> {
         self.supabase_url
-            .join(&format!("storage/v1/object/{}/{}", self.storage_bucket, path))
+            .join(&format!(
+                "storage/v1/object/{}/{}",
+                self.storage_bucket, path
+            ))
             .map_err(|_| ConfigError::Invalid("SUPABASE_URL"))
     }
 
     pub fn storage_sign_url(&self, path: &str) -> Result<Url, ConfigError> {
         self.supabase_url
-            .join(&format!("storage/v1/object/sign/{}/{}", self.storage_bucket, path))
+            .join(&format!(
+                "storage/v1/object/sign/{}/{}",
+                self.storage_bucket, path
+            ))
             .map_err(|_| ConfigError::Invalid("SUPABASE_URL"))
     }
 }

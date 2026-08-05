@@ -1,15 +1,13 @@
-use axum::{Json, extract::{Path, State}};
+use axum::{
+    Json,
+    extract::{Path, State},
+};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
 use uuid::Uuid;
 
-use crate::{
-    auth::AuthenticatedMember,
-    error::ApiError,
-    files::signed_asset_url,
-    state::AppState,
-};
+use crate::{auth::AuthenticatedMember, error::ApiError, files::signed_asset_url, state::AppState};
 
 #[derive(Debug, Clone, Serialize, FromRow)]
 #[serde(rename_all = "camelCase")]
@@ -104,11 +102,23 @@ pub async fn update_member(
         "#,
     )
     .bind(member_id)
-    .bind(input.name.map(|value| value.trim().chars().take(120).collect::<String>()))
+    .bind(
+        input
+            .name
+            .map(|value| value.trim().chars().take(120).collect::<String>()),
+    )
     .bind(input.status)
     .bind(input.role)
-    .bind(input.job_title.map(|value| value.trim().chars().take(120).collect::<String>()))
-    .bind(input.area.map(|value| value.trim().chars().take(120).collect::<String>()))
+    .bind(
+        input
+            .job_title
+            .map(|value| value.trim().chars().take(120).collect::<String>()),
+    )
+    .bind(
+        input
+            .area
+            .map(|value| value.trim().chars().take(120).collect::<String>()),
+    )
     .bind(input.assignments)
     .fetch_optional(&state.pool)
     .await?
@@ -127,11 +137,18 @@ fn validate_member_input(input: &UpdateMemberInput) -> Result<(), ApiError> {
         }
     }
     if let Some(role) = &input.role {
-        if !matches!(role.as_str(), "owner" | "admin" | "manager" | "member" | "viewer") {
+        if !matches!(
+            role.as_str(),
+            "owner" | "admin" | "manager" | "member" | "viewer"
+        ) {
             return Err(ApiError::invalid("role"));
         }
     }
-    if input.name.as_ref().is_some_and(|value| value.trim().is_empty()) {
+    if input
+        .name
+        .as_ref()
+        .is_some_and(|value| value.trim().is_empty())
+    {
         return Err(ApiError::invalid("name"));
     }
     Ok(())

@@ -1,4 +1,7 @@
-use axum::{extract::{Query, State}, Json};
+use axum::{
+    Json,
+    extract::{Query, State},
+};
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
 use uuid::Uuid;
@@ -6,7 +9,9 @@ use uuid::Uuid;
 use crate::{auth::AuthenticatedMember, error::ApiError, state::AppState};
 
 #[derive(Debug, Deserialize)]
-pub struct SearchQuery { pub q: String }
+pub struct SearchQuery {
+    pub q: String,
+}
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -70,41 +75,68 @@ pub async fn global_search(
     "#).bind(&pattern).bind(member.member_id).fetch_all(&state.pool).await?;
     candidates.extend(messages);
 
-    let mut results = candidates.into_iter().map(|candidate| {
-        let score = rank(&normalized, &candidate.title, &candidate.subtitle);
-        SearchResult {
-            id: format!("{}:{}", candidate.kind, candidate.id),
-            kind: candidate.kind,
-            title: candidate.title,
-            subtitle: candidate.subtitle,
-            target_id: candidate.target_id.to_string(),
-            score,
-        }
-    }).collect::<Vec<_>>();
-    results.sort_by(|left,right| right.score.cmp(&left.score).then_with(|| left.title.cmp(&right.title)));
+    let mut results = candidates
+        .into_iter()
+        .map(|candidate| {
+            let score = rank(&normalized, &candidate.title, &candidate.subtitle);
+            SearchResult {
+                id: format!("{}:{}", candidate.kind, candidate.id),
+                kind: candidate.kind,
+                title: candidate.title,
+                subtitle: candidate.subtitle,
+                target_id: candidate.target_id.to_string(),
+                score,
+            }
+        })
+        .collect::<Vec<_>>();
+    results.sort_by(|left, right| {
+        right
+            .score
+            .cmp(&left.score)
+            .then_with(|| left.title.cmp(&right.title))
+    });
     results.truncate(60);
     Ok(Json(results))
 }
 
 fn normalize(value: &str) -> String {
-    value.split_whitespace().collect::<Vec<_>>().join(" ").to_lowercase()
+    value
+        .split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ")
+        .to_lowercase()
 }
 
 fn escape_like(value: &str) -> String {
-    value.replace('\\', "\\\\").replace('%', "\\%").replace('_', "\\_")
+    value
+        .replace('\\', "\\\\")
+        .replace('%', "\\%")
+        .replace('_', "\\_")
 }
 
 fn rank(query: &str, title: &str, subtitle: &str) -> i32 {
     let title = title.to_lowercase();
     let subtitle = subtitle.to_lowercase();
     let mut score = 0;
-    if title == query { score += 1000; }
-    if title.starts_with(query) { score += 600; }
-    if title.contains(query) { score += 350; }
-    if subtitle.contains(query) { score += 120; }
+    if title == query {
+        score += 1000;
+    }
+    if title.starts_with(query) {
+        score += 600;
+    }
+    if title.contains(query) {
+        score += 350;
+    }
+    if subtitle.contains(query) {
+        score += 120;
+    }
     for token in query.split_whitespace() {
-        if title.split_whitespace().any(|word| word.starts_with(token)) { score += 80; }
-        if subtitle.contains(token) { score += 25; }
+        if title.split_whitespace().any(|word| word.starts_with(token)) {
+            score += 80;
+        }
+        if subtitle.contains(token) {
+            score += 25;
+        }
     }
     score - i32::try_from(title.chars().count().min(120)).unwrap_or(120)
 }

@@ -46,15 +46,22 @@ async fn cleanup_database(state: &AppState) -> Result<(), sqlx::Error> {
     .rows_affected();
 
     if missed + ended + signals + invites > 0 {
-        info!(missed, ended, signals, invites, "rust_background_cleanup_completed");
+        info!(
+            missed,
+            ended, signals, invites, "rust_background_cleanup_completed"
+        );
     }
     Ok(())
 }
 
 fn cleanup_memory(state: &AppState) {
     let now = Instant::now();
-    state.realtime_tickets.retain(|_, ticket| ticket.expires_at > now);
-    state.rate_limits.retain(|_, window| now.duration_since(window.started_at) < Duration::from_secs(120));
+    state
+        .realtime_tickets
+        .retain(|_, ticket| ticket.expires_at > now);
+    state
+        .rate_limits
+        .retain(|_, window| now.duration_since(window.started_at) < Duration::from_secs(120));
 
     let stale_before = Utc::now() - ChronoDuration::seconds(75);
     let stale = state
@@ -66,6 +73,8 @@ fn cleanup_memory(state: &AppState) {
         for member_id in stale {
             state.presence.remove(&member_id);
         }
-        state.publish(BackendEvent::PresenceSnapshot { member_ids: state.presence_snapshot() });
+        state.publish(BackendEvent::PresenceSnapshot {
+            member_ids: state.presence_snapshot(),
+        });
     }
 }

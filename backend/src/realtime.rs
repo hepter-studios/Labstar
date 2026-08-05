@@ -2,7 +2,10 @@ use std::time::{Duration, Instant};
 
 use axum::{
     Json,
-    extract::{Query, State, WebSocketUpgrade, ws::{Message, WebSocket}},
+    extract::{
+        Query, State, WebSocketUpgrade,
+        ws::{Message, WebSocket},
+    },
     response::Response,
 };
 use chrono::Utc;
@@ -26,7 +29,9 @@ pub struct TicketResponse {
 }
 
 #[derive(Debug, Deserialize)]
-pub struct RealtimeQuery { pub ticket: String }
+pub struct RealtimeQuery {
+    pub ticket: String,
+}
 
 pub async fn create_ticket(
     State(state): State<AppState>,
@@ -35,11 +40,17 @@ pub async fn create_ticket(
     let mut bytes = [0_u8; 32];
     rand::rng().fill_bytes(&mut bytes);
     let ticket = hex::encode(bytes);
-    state.realtime_tickets.insert(ticket.clone(), RealtimeTicket {
-        member,
-        expires_at: Instant::now() + Duration::from_secs(30),
-    });
-    Json(TicketResponse { ticket, expires_in_seconds: 30 })
+    state.realtime_tickets.insert(
+        ticket.clone(),
+        RealtimeTicket {
+            member,
+            expires_at: Instant::now() + Duration::from_secs(30),
+        },
+    );
+    Json(TicketResponse {
+        ticket,
+        expires_in_seconds: 30,
+    })
 }
 
 pub async fn websocket(
@@ -63,7 +74,9 @@ async fn handle_socket(state: AppState, member: AuthenticatedMember, socket: Web
     let (mut sender, mut receiver) = socket.split();
     let mut heartbeat = interval(Duration::from_secs(20));
 
-    let initial = BackendEvent::PresenceSnapshot { member_ids: state.presence_snapshot() };
+    let initial = BackendEvent::PresenceSnapshot {
+        member_ids: state.presence_snapshot(),
+    };
     if send_event(&mut sender, &initial).await.is_err() {
         disconnect_presence(&state, member.member_id);
         return;
@@ -110,14 +123,26 @@ async fn send_event(
     event: &BackendEvent,
 ) -> Result<(), ()> {
     let text = serde_json::to_string(event).map_err(|_| ())?;
-    sender.send(Message::Text(text.into())).await.map_err(|_| ())
+    sender
+        .send(Message::Text(text.into()))
+        .await
+        .map_err(|_| ())
 }
 
 fn connect_presence(state: &AppState, member_id: Uuid) {
     let now = Utc::now();
-    state.presence.entry(member_id)
-        .and_modify(|entry| { entry.connections += 1; entry.active_at = now; })
-        .or_insert(PresenceEntry { connected_at: now, active_at: now, connections: 1 });
+    state
+        .presence
+        .entry(member_id)
+        .and_modify(|entry| {
+            entry.connections += 1;
+            entry.active_at = now;
+        })
+        .or_insert(PresenceEntry {
+            connected_at: now,
+            active_at: now,
+            connections: 1,
+        });
     publish_presence(state);
 }
 
@@ -141,7 +166,9 @@ fn disconnect_presence(state: &AppState, member_id: Uuid) {
 }
 
 fn publish_presence(state: &AppState) {
-    state.publish(BackendEvent::PresenceSnapshot { member_ids: state.presence_snapshot() });
+    state.publish(BackendEvent::PresenceSnapshot {
+        member_ids: state.presence_snapshot(),
+    });
 }
 
 async fn event_visible(state: &AppState, member_id: Uuid, event: &BackendEvent) -> bool {

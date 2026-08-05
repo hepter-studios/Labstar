@@ -1,4 +1,8 @@
-use axum::{extract::{Path, State}, http::StatusCode, Json};
+use axum::{
+    Json,
+    extract::{Path, State},
+    http::StatusCode,
+};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
@@ -124,7 +128,9 @@ pub async fn create(
         return Err(ApiError::PermissionDenied);
     }
     let email = if mode == "personal" {
-        Some(normalize_email(input.email.as_deref().ok_or(ApiError::invalid("email"))?)?)
+        Some(normalize_email(
+            input.email.as_deref().ok_or(ApiError::invalid("email"))?,
+        )?)
     } else {
         None
     };
@@ -142,17 +148,22 @@ pub async fn create(
     }
     let id = Uuid::new_v4();
     let expires_at = Utc::now() + chrono::Duration::hours(i64::from(valid_for_hours));
-    sqlx::query(r#"
+    sqlx::query(
+        r#"
         insert into public.member_invites (
           id,email,name,role,job_title,area,status,invited_by,expires_at,
           token_hash,token_hint,kind,max_uses,use_count,approval_required
         ) values ($1,$2,$3,$4,$5,$6,'pending',$7,$8,$9,$10,$11,1,0,$12)
-    "#)
+    "#,
+    )
     .bind(id)
     .bind(&email)
     .bind(clean_text(input.name.as_deref().unwrap_or_default(), 100))
     .bind(&role)
-    .bind(clean_text(input.job_title.as_deref().unwrap_or_default(), 120))
+    .bind(clean_text(
+        input.job_title.as_deref().unwrap_or_default(),
+        120,
+    ))
     .bind(clean_text(input.area.as_deref().unwrap_or_default(), 120))
     .bind(actor.member_id)
     .bind(expires_at)
@@ -160,7 +171,8 @@ pub async fn create(
     .bind(token_hint)
     .bind(&mode)
     .bind(approval_required)
-    .execute(&mut *tx).await?;
+    .execute(&mut *tx)
+    .await?;
     tx.commit().await?;
 
     Ok(Json(CreatedInvite {
@@ -182,17 +194,29 @@ pub async fn inspect(
         Ok(value) => value,
         Err(_) => return Ok(Json(invalid_inspection())),
     };
-    let invitation = sqlx::query_as::<_, InviteRow>(r#"
+    let invitation = sqlx::query_as::<_, InviteRow>(
+        r#"
         select id,email,kind,status,name,role,coalesce(job_title,'') job_title,
                coalesce(area,'') area,expires_at,approval_required,use_count,max_uses
         from public.member_invites where token_hash=$1 limit 1
-    "#).bind(token_hash(&token)).fetch_optional(&state.pool).await?;
-    let Some(invitation) = invitation else { return Ok(Json(invalid_inspection())); };
+    "#,
+    )
+    .bind(token_hash(&token))
+    .fetch_optional(&state.pool)
+    .await?;
+    let Some(invitation) = invitation else {
+        return Ok(Json(invalid_inspection()));
+    };
     let expired = invitation.status == "pending" && invitation.expires_at <= Utc::now();
-    let valid = invitation.status == "pending" && !expired && invitation.use_count < invitation.max_uses;
+    let valid =
+        invitation.status == "pending" && !expired && invitation.use_count < invitation.max_uses;
     Ok(Json(InviteInspection {
         valid,
-        status: if expired { "expired".to_string() } else { invitation.status },
+        status: if expired {
+            "expired".to_string()
+        } else {
+            invitation.status
+        },
         mode: Some(invitation.kind),
         email_hint: invitation.email.as_deref().map(email_hint),
         expires_at: Some(invitation.expires_at),
@@ -205,19 +229,28 @@ pub async fn accept(
     user: AuthenticatedUser,
     Path(raw_token): Path<String>,
 ) -> Result<Json<AcceptedInvite>, ApiError> {
-    if !user.email_confirmed { return Err(ApiError::InvalidSession); }
+    if !user.email_confirmed {
+        return Err(ApiError::InvalidSession);
+    }
     let email = normalize_email(&user.email)?;
     let token = normalize_token(&raw_token)?;
     let mut tx = state.pool.begin().await?;
     let invitation = lock_invitation(&mut tx, &token_hash(&token)).await?;
-    if invitation.status != "pending" || invitation.expires_at <= Utc::now() || invitation.use_count >= invitation.max_uses {
+    if invitation.status != "pending"
+        || invitation.expires_at <= Utc::now()
+        || invitation.use_count >= invitation.max_uses
+    {
         return Err(ApiError::Conflict("invite_invalid_or_expired"));
     }
     if invitation.kind == "personal" && invitation.email.as_deref() != Some(&email) {
         return Err(ApiError::PermissionDenied);
     }
     let existing = lock_member(&mut tx, user.id, &email).await?;
-    let desired_status = if invitation.approval_required { "pending" } else { "active" };
+    let desired_status = if invitation.approval_required {
+        "pending"
+    } else {
+        "active"
+    };
     let member = match existing {
         Some(existing) => {
             if existing.auth_user_id.is_some_and(|id| id != user.id) { return Err(ApiError::Conflict("member_already_linked")); }
@@ -252,7 +285,10 @@ pub async fn accept(
     sqlx::query("update public.member_invites set status='accepted',accepted_by=$2,accepted_at=now(),consumed_at=now(),use_count=use_count+1 where id=$1")
         .bind(invitation.id).bind(user.id).execute(&mut *tx).await?;
     tx.commit().await?;
-    Ok(Json(AcceptedInvite { member, approval_required: invitation.approval_required }))
+    Ok(Json(AcceptedInvite {
+        member,
+        approval_required: invitation.approval_required,
+    }))
 }
 
 pub async fn list(
@@ -262,11 +298,15 @@ pub async fn list(
     actor.require_admin()?;
     sqlx::query("update public.member_invites set status='expired' where status='pending' and expires_at<=now()")
         .execute(&state.pool).await?;
-    let rows = sqlx::query_as::<_, InviteListItem>(r#"
+    let rows = sqlx::query_as::<_, InviteListItem>(
+        r#"
         select id,kind mode,email,status,role,coalesce(area,'') area,token_hint,
                approval_required,created_at,expires_at,accepted_at
         from public.member_invites order by created_at desc limit 200
-    "#).fetch_all(&state.pool).await?;
+    "#,
+    )
+    .fetch_all(&state.pool)
+    .await?;
     Ok(Json(rows))
 }
 
@@ -281,15 +321,28 @@ pub async fn revoke(
     Ok(StatusCode::NO_CONTENT)
 }
 
-async fn lock_invitation(tx: &mut Transaction<'_, Postgres>, hash: &str) -> Result<InviteRow, ApiError> {
-    sqlx::query_as::<_, InviteRow>(r#"
+async fn lock_invitation(
+    tx: &mut Transaction<'_, Postgres>,
+    hash: &str,
+) -> Result<InviteRow, ApiError> {
+    sqlx::query_as::<_, InviteRow>(
+        r#"
         select id,email,kind,status,name,role,coalesce(job_title,'') job_title,
                coalesce(area,'') area,expires_at,approval_required,use_count,max_uses
         from public.member_invites where token_hash=$1 for update
-    "#).bind(hash).fetch_optional(&mut **tx).await?.ok_or(ApiError::NotFound("invite"))
+    "#,
+    )
+    .bind(hash)
+    .fetch_optional(&mut **tx)
+    .await?
+    .ok_or(ApiError::NotFound("invite"))
 }
 
-async fn lock_member(tx: &mut Transaction<'_, Postgres>, user_id: Uuid, email: &str) -> Result<Option<ExistingMember>, ApiError> {
+async fn lock_member(
+    tx: &mut Transaction<'_, Postgres>,
+    user_id: Uuid,
+    email: &str,
+) -> Result<Option<ExistingMember>, ApiError> {
     sqlx::query_as::<_, ExistingMember>(r#"
         select id,auth_user_id,email,name,status,role,coalesce(job_title,'') job_title,coalesce(area,'') area
         from public.members where auth_user_id=$1 or lower(email)=$2
@@ -303,35 +356,67 @@ fn create_token() -> (String, String) {
     let hash = token_hash(&token);
     (token, hash)
 }
-fn token_hash(token: &str) -> String { hex::encode(Sha256::digest(token.as_bytes())) }
+fn token_hash(token: &str) -> String {
+    hex::encode(Sha256::digest(token.as_bytes()))
+}
 fn normalize_token(value: &str) -> Result<String, ApiError> {
     let token = value.trim().to_ascii_lowercase();
     (token.len() == 64 && token.bytes().all(|byte| byte.is_ascii_hexdigit()))
-        .then_some(token).ok_or(ApiError::invalid("inviteToken"))
+        .then_some(token)
+        .ok_or(ApiError::invalid("inviteToken"))
 }
 fn normalize_email(value: &str) -> Result<String, ApiError> {
     let email = value.trim().to_ascii_lowercase();
-    let valid = email.len() <= 320 && email.split_once('@').is_some_and(|(local,domain)| !local.is_empty() && domain.contains('.'));
+    let valid = email.len() <= 320
+        && email
+            .split_once('@')
+            .is_some_and(|(local, domain)| !local.is_empty() && domain.contains('.'));
     valid.then_some(email).ok_or(ApiError::invalid("email"))
 }
 fn normalize_mode(value: &str) -> Result<String, ApiError> {
     let value = value.trim().to_ascii_lowercase();
-    matches!(value.as_str(), "quick" | "personal").then_some(value).ok_or(ApiError::invalid("mode"))
+    matches!(value.as_str(), "quick" | "personal")
+        .then_some(value)
+        .ok_or(ApiError::invalid("mode"))
 }
 fn normalize_role(value: &str) -> Result<String, ApiError> {
     let value = value.trim().to_ascii_lowercase();
-    matches!(value.as_str(), "admin" | "manager" | "member" | "viewer").then_some(value).ok_or(ApiError::invalid("role"))
+    matches!(value.as_str(), "admin" | "manager" | "member" | "viewer")
+        .then_some(value)
+        .ok_or(ApiError::invalid("role"))
 }
 fn choose_name(invite: &InviteRow, fallback: &str) -> String {
-    if invite.name.trim().len() >= 2 { invite.name.clone() } else { fallback.to_string() }
+    if invite.name.trim().len() >= 2 {
+        invite.name.clone()
+    } else {
+        fallback.to_string()
+    }
 }
-fn clean_text(value: &str, max: usize) -> String { value.trim().chars().take(max).collect() }
+fn clean_text(value: &str, max: usize) -> String {
+    value.trim().chars().take(max).collect()
+}
 fn email_hint(email: &str) -> String {
-    email.split_once('@').map(|(local,domain)| format!("{}***@{domain}", local.chars().next().unwrap_or('*'))).unwrap_or_else(|| "***".to_string())
+    email
+        .split_once('@')
+        .map(|(local, domain)| format!("{}***@{domain}", local.chars().next().unwrap_or('*')))
+        .unwrap_or_else(|| "***".to_string())
 }
 fn invalid_inspection() -> InviteInspection {
-    InviteInspection { valid:false,status:"invalid".to_string(),mode:None,email_hint:None,expires_at:None,approval_required:None }
+    InviteInspection {
+        valid: false,
+        status: "invalid".to_string(),
+        mode: None,
+        email_hint: None,
+        expires_at: None,
+        approval_required: None,
+    }
 }
-fn default_mode() -> String { "quick".to_string() }
-fn default_role() -> String { "member".to_string() }
-const fn default_valid_hours() -> i32 { 48 }
+fn default_mode() -> String {
+    "quick".to_string()
+}
+fn default_role() -> String {
+    "member".to_string()
+}
+const fn default_valid_hours() -> i32 {
+    48
+}

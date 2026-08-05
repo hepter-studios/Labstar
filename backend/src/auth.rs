@@ -121,11 +121,7 @@ impl AuthService {
             }
             Err(error) => return Err(error),
         };
-        let email = user
-            .email
-            .unwrap_or_default()
-            .trim()
-            .to_ascii_lowercase();
+        let email = user.email.unwrap_or_default().trim().to_ascii_lowercase();
         if email.is_empty() {
             return Err(ApiError::InvalidSession);
         }

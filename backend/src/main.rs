@@ -18,7 +18,7 @@ use std::process::ExitCode;
 use config::Config;
 use state::AppState;
 use tracing::{error, info};
-use tracing_subscriber::{fmt, EnvFilter};
+use tracing_subscriber::{EnvFilter, fmt};
 
 #[tokio::main]
 async fn main() -> ExitCode {
@@ -70,7 +70,9 @@ async fn shutdown_signal() {
     #[cfg(unix)]
     let terminate = async {
         match tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate()) {
-            Ok(mut signal) => { signal.recv().await; }
+            Ok(mut signal) => {
+                signal.recv().await;
+            }
             Err(error) => {
                 error!(error = %error, "terminate_handler_failed");
                 std::future::pending::<()>().await;
