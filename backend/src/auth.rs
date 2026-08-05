@@ -7,6 +7,7 @@ use axum::{
 use reqwest::{Client, StatusCode};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use sqlx::FromRow;
 use tokio::time::sleep;
 use uuid::Uuid;
 
@@ -54,6 +55,18 @@ struct SupabaseUser {
     email_confirmed_at: Option<String>,
     #[serde(default)]
     user_metadata: Value,
+}
+
+#[derive(Debug, FromRow)]
+struct MemberRow {
+    id: Uuid,
+    email: String,
+    name: String,
+    status: String,
+    role: String,
+    job_title: String,
+    area: String,
+    auth_user_id: Option<Uuid>,
 }
 
 impl AuthService {
@@ -120,18 +133,20 @@ impl AuthService {
             return Err(ApiError::InvalidSession);
         }
 
-        let row = sqlx::query!(
+        let row = sqlx::query_as::<_, MemberRow>(
             r#"
-            select id, email, name, status, role, coalesce(job_title, '') as "job_title!",
-                   coalesce(area, '') as "area!", auth_user_id
+            select id, email, name, status, role,
+                   coalesce(job_title, '') as job_title,
+                   coalesce(area, '') as area,
+                   auth_user_id
             from public.members
             where auth_user_id = $1 or lower(email) = $2
             order by (auth_user_id = $1) desc
             limit 1
             "#,
-            user.id,
-            email,
         )
+        .bind(user.id)
+        .bind(&email)
         .fetch_optional(pool)
         .await?;
 
@@ -144,11 +159,11 @@ impl AuthService {
         }
 
         if row.auth_user_id.is_none() {
-            let _ = sqlx::query!(
+            sqlx::query(
                 "update public.members set auth_user_id = $1 where id = $2 and auth_user_id is null",
-                user.id,
-                row.id,
             )
+            .bind(user.id)
+            .bind(row.id)
             .execute(pool)
             .await?;
         }
