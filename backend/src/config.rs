@@ -11,6 +11,14 @@ const DEFAULT_ALLOWED_ORIGINS: &str = concat!(
     "http://localhost:5173,",
     "http://127.0.0.1:5173"
 );
+const DEFAULT_STUN_URLS: &str = "stun:stun.l.google.com:19302,stun:stun1.l.google.com:19302";
+
+#[derive(Clone, Debug)]
+pub struct TurnConfig {
+    pub urls: Vec<String>,
+    pub username: String,
+    pub credential: String,
+}
 
 #[derive(Clone, Debug)]
 pub struct Config {
@@ -24,6 +32,8 @@ pub struct Config {
     pub database_max_connections: u32,
     pub max_file_bytes: usize,
     pub storage_bucket: String,
+    pub stun_urls: Vec<String>,
+    pub turn: Option<TurnConfig>,
 }
 
 #[derive(Debug, Error, PartialEq, Eq)]
@@ -84,6 +94,31 @@ impl Config {
             return Err(ConfigError::Invalid("LABSTAR_MAX_FILE_BYTES"));
         }
 
+        let stun_urls = parse_ice_urls(
+            &env::var("LABSTAR_STUN_URLS").unwrap_or_else(|_| DEFAULT_STUN_URLS.to_string()),
+            &["stun:", "stuns:"],
+            "LABSTAR_STUN_URLS",
+        )?;
+        if stun_urls.is_empty() {
+            return Err(ConfigError::Invalid("LABSTAR_STUN_URLS"));
+        }
+
+        let turn_urls_raw = env::var("LABSTAR_TURN_URLS").unwrap_or_default();
+        let turn_urls = parse_ice_urls(
+            &turn_urls_raw,
+            &["turn:", "turns:"],
+            "LABSTAR_TURN_URLS",
+        )?;
+        let turn = if turn_urls.is_empty() {
+            None
+        } else {
+            Some(TurnConfig {
+                urls: turn_urls,
+                username: required("LABSTAR_TURN_USERNAME")?,
+                credential: required("LABSTAR_TURN_CREDENTIAL")?,
+            })
+        };
+
         Ok(Self {
             bind_addr,
             database_url,
@@ -95,6 +130,8 @@ impl Config {
             database_max_connections,
             max_file_bytes,
             storage_bucket,
+            stun_urls,
+            turn,
         })
     }
 
@@ -150,6 +187,27 @@ where
         .map_err(|_| ConfigError::Invalid(name))
 }
 
+fn parse_ice_urls(
+    value: &str,
+    allowed_prefixes: &[&str],
+    name: &'static str,
+) -> Result<Vec<String>, ConfigError> {
+    let urls = value
+        .split(',')
+        .map(str::trim)
+        .filter(|entry| !entry.is_empty())
+        .map(ToOwned::to_owned)
+        .collect::<Vec<_>>();
+    if urls.iter().any(|entry| {
+        entry.len() > 500
+            || entry.chars().any(char::is_whitespace)
+            || !allowed_prefixes.iter().any(|prefix| entry.starts_with(prefix))
+    }) {
+        return Err(ConfigError::Invalid(name));
+    }
+    Ok(urls)
+}
+
 fn validate_allowed_origin(origin: &str) -> Result<(), ConfigError> {
     let parsed = Url::parse(origin).map_err(|_| ConfigError::Invalid("LABSTAR_ALLOWED_ORIGINS"))?;
     let valid = match parsed.scheme() {
@@ -183,6 +241,28 @@ mod tests {
         assert_eq!(
             validate_allowed_origin("http://example.com"),
             Err(ConfigError::Invalid("LABSTAR_ALLOWED_ORIGINS"))
+        );
+    }
+
+    #[test]
+    fn validates_ice_server_schemes() {
+        assert_eq!(
+            parse_ice_urls(
+                "stun:stun.example.com:3478,stuns:stun.example.com:5349",
+                &["stun:", "stuns:"],
+                "LABSTAR_STUN_URLS",
+            )
+            .unwrap()
+            .len(),
+            2
+        );
+        assert_eq!(
+            parse_ice_urls(
+                "https://example.com",
+                &["stun:", "stuns:"],
+                "LABSTAR_STUN_URLS",
+            ),
+            Err(ConfigError::Invalid("LABSTAR_STUN_URLS"))
         );
     }
 }
