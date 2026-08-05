@@ -23,6 +23,16 @@ pub struct UploadedAttachment {
     pub url: String,
 }
 
+pub(crate) struct FileReceipt<'a> {
+    pub actor_member_id: Uuid,
+    pub attachment_id: Option<Uuid>,
+    pub storage_path: &'a str,
+    pub original_name: &'a str,
+    pub detected_mime_type: &'a str,
+    pub size_bytes: i64,
+    pub sha256: &'a str,
+}
+
 #[derive(Debug, Deserialize)]
 struct SignResponse {
     #[serde(alias = "signedURL", alias = "signedUrl")]
@@ -117,13 +127,15 @@ pub async fn upload_direct_attachment(
 
     record_file_receipt(
         &state,
-        member.member_id,
-        Some(id),
-        &path,
-        &file_name,
-        &detected_mime,
-        size_bytes,
-        &sha256,
+        FileReceipt {
+            actor_member_id: member.member_id,
+            attachment_id: Some(id),
+            storage_path: &path,
+            original_name: &file_name,
+            detected_mime_type: &detected_mime,
+            size_bytes,
+            sha256: &sha256,
+        },
     )
     .await?;
 
@@ -222,13 +234,7 @@ pub(crate) async fn upload_storage_object(
 
 pub(crate) async fn record_file_receipt(
     state: &AppState,
-    actor_member_id: Uuid,
-    attachment_id: Option<Uuid>,
-    storage_path: &str,
-    original_name: &str,
-    detected_mime_type: &str,
-    size_bytes: i64,
-    sha256: &str,
+    receipt: FileReceipt<'_>,
 ) -> Result<(), ApiError> {
     sqlx::query(
         r#"
@@ -237,13 +243,13 @@ pub(crate) async fn record_file_receipt(
         values ($1,$2,$3,$4,$5,$6,$7)
         "#,
     )
-    .bind(actor_member_id)
-    .bind(attachment_id)
-    .bind(storage_path)
-    .bind(original_name)
-    .bind(detected_mime_type)
-    .bind(size_bytes)
-    .bind(sha256)
+    .bind(receipt.actor_member_id)
+    .bind(receipt.attachment_id)
+    .bind(receipt.storage_path)
+    .bind(receipt.original_name)
+    .bind(receipt.detected_mime_type)
+    .bind(receipt.size_bytes)
+    .bind(receipt.sha256)
     .execute(&state.pool)
     .await?;
     Ok(())
