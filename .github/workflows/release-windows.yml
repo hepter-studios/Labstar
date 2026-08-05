@@ -1,4 +1,4 @@
-name: Publicar Labstar Windows 11.2.8
+name: Publicar Labstar Windows 11.2.9
 
 on:
   workflow_dispatch:
@@ -18,7 +18,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: labstar-windows-release-11-2-8
+  group: labstar-windows-release-11-2-9
   cancel-in-progress: true
 
 jobs:
@@ -75,12 +75,13 @@ jobs:
           $msi = Get-ChildItem 'src-tauri/target/x86_64-pc-windows-msvc/release/bundle/msi' -Filter '*.msi' -File | Select-Object -First 1
           if (-not $nsis) { throw 'Instalador EXE não encontrado.' }
           if (-not $msi) { throw 'Instalador MSI não encontrado.' }
-          Copy-Item $nsis.FullName 'artifacts/Labstar_11.2.8_x64-setup.exe' -Force
-          Copy-Item $msi.FullName 'artifacts/Labstar_11.2.8_x64.msi' -Force
-          $exeHash = (Get-FileHash 'artifacts/Labstar_11.2.8_x64-setup.exe' -Algorithm SHA256).Hash.ToLowerInvariant()
-          $msiHash = (Get-FileHash 'artifacts/Labstar_11.2.8_x64.msi' -Algorithm SHA256).Hash.ToLowerInvariant()
+          Copy-Item $nsis.FullName 'artifacts/Labstar_11.2.9_x64-setup.exe' -Force
+          Copy-Item $msi.FullName 'artifacts/Labstar_11.2.9_x64.msi' -Force
+          $exeHash = (Get-FileHash 'artifacts/Labstar_11.2.9_x64-setup.exe' -Algorithm SHA256).Hash.ToLowerInvariant()
+          $msiHash = (Get-FileHash 'artifacts/Labstar_11.2.9_x64.msi' -Algorithm SHA256).Hash.ToLowerInvariant()
           @"
-          Labstar 11.2.8
+          Labstar 11.2.9
+          publisher=Hepter Studios
           source_sha=${{ github.sha }}
           exe_sha256=$exeHash
           msi_sha256=$msiHash
@@ -90,7 +91,7 @@ jobs:
       - name: Guardar artefatos da execução
         uses: actions/upload-artifact@v4
         with:
-          name: labstar-windows-11.2.8-${{ github.sha }}
+          name: labstar-windows-11.2.9-${{ github.sha }}
           path: artifacts/*
           if-no-files-found: error
           retention-days: 30
@@ -98,19 +99,19 @@ jobs:
       - name: Publicar download oficial
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: desktop-v11.2.8
-          name: Labstar 11.2.8
+          tag_name: desktop-v11.2.9
+          name: Labstar 11.2.9
           body: |
-            Versão oficial do Labstar para Windows com mensagens diretas,
-            presença real e chamadas privadas de voz e vídeo.
+            Versão oficial do Labstar para Windows com conversas privadas
+            recuperadas, seletor de emojis corrigido, presença real, chamadas
+            privadas redesenhadas e notificações nativas do sistema.
 
-            Identidade, convites, mensagens e sinalização de chamadas usam
-            funções e políticas protegidas do Supabase. O núcleo Tauri 2/Rust
-            continua responsável pelos recursos nativos e pela segurança da
-            aplicação instalada.
+            O instalador EXE oferece escolha entre instalação por usuário ou
+            para todos os usuários, usa a identidade Labstar/Hepter Studios e
+            publica EXE e MSI com hashes SHA-256 no build-info.txt.
           draft: false
           prerelease: false
           files: |
-            artifacts/Labstar_11.2.8_x64-setup.exe
-            artifacts/Labstar_11.2.8_x64.msi
+            artifacts/Labstar_11.2.9_x64-setup.exe
+            artifacts/Labstar_11.2.9_x64.msi
             artifacts/build-info.txt
