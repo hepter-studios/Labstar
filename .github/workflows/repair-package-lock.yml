@@ -1,0 +1,51 @@
+name: Regenerar package-lock 11.3.0
+
+on:
+  push:
+    branches:
+      - feat/backend-rust-complete
+    paths:
+      - package.json
+      - package-lock.json
+      - .github/workflows/repair-package-lock.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: repair-package-lock-rust-11-3-0
+  cancel-in-progress: true
+
+jobs:
+  repair:
+    name: Gerar lockfile completo
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Baixar branch
+        uses: actions/checkout@v4
+        with:
+          ref: feat/backend-rust-complete
+          fetch-depth: 0
+
+      - name: Configurar Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Regenerar package-lock
+        run: npm install --package-lock-only --ignore-scripts
+
+      - name: Registrar lockfile
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add package-lock.json
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+          git commit -m "Regenera package-lock completo da versão 11.3.0"
+          git push origin HEAD:feat/backend-rust-complete
