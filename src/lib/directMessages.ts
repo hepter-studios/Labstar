@@ -60,29 +60,6 @@ export type DirectSubscription = {
   close: () => void;
 };
 
-function lazyRealtime(
-  onReady: (subscription: RustRealtimeSubscription) => void,
-  onError?: () => void,
-): DirectSubscription {
-  let closed = false;
-  let current: RustRealtimeSubscription | null = null;
-  void subscribeRustRealtime(() => undefined)
-    .then((subscription) => {
-      if (closed) subscription.close();
-      else {
-        current = subscription;
-        onReady(subscription);
-      }
-    })
-    .catch(() => onError?.());
-  return {
-    close: () => {
-      closed = true;
-      current?.close();
-    },
-  };
-}
-
 export async function listDirectThreads(): Promise<DirectThreadSummary[]> {
   return rustApi<DirectThreadSummary[]>("/v1/direct/threads");
 }
