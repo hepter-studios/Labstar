@@ -101,11 +101,7 @@ pub fn request_main_window_attention(app: AppHandle, critical: bool) -> Result<(
 }
 
 #[tauri::command]
-pub fn show_native_notification(
-    app: AppHandle,
-    title: String,
-    body: String,
-) -> Result<(), String> {
+pub fn show_native_notification(app: AppHandle, title: String, body: String) -> Result<(), String> {
     let safe_title = title.trim().chars().take(90).collect::<String>();
     let safe_body = body.trim().chars().take(280).collect::<String>();
     if safe_title.is_empty() {
