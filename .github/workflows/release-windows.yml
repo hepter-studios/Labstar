@@ -36,6 +36,9 @@ jobs:
     steps:
       - name: Baixar código oficial
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Configurar Node.js 22
         uses: actions/setup-node@v4
@@ -106,12 +109,31 @@ jobs:
             recuperadas, seletor de emojis corrigido, presença real, chamadas
             privadas redesenhadas e notificações nativas do sistema.
 
-            O instalador EXE oferece escolha entre instalação por usuário ou
-            para todos os usuários, usa a identidade Labstar/Hepter Studios e
-            publica EXE e MSI com hashes SHA-256 no build-info.txt.
+            O instalador EXE oferece escolha de instalação, usa a identidade
+            Labstar/Hepter Studios e publica EXE e MSI com hashes SHA-256.
           draft: false
           prerelease: false
           files: |
             artifacts/Labstar_11.2.9_x64-setup.exe
             artifacts/Labstar_11.2.9_x64.msi
             artifacts/build-info.txt
+
+      - name: Registrar publicação confirmada
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git pull --rebase origin main
+          New-Item -ItemType Directory -Force -Path 'docs/runtime' | Out-Null
+          @"
+          Labstar Windows release confirmed
+          version=11.2.9
+          tag=desktop-v11.2.9
+          source_sha=${{ github.sha }}
+          workflow_run=${{ github.run_id }}
+          verified_at=$(Get-Date -AsUTC -Format o)
+          "@ | Set-Content -Encoding utf8 'docs/runtime/windows-11.2.9-released.txt'
+          git add 'docs/runtime/windows-11.2.9-released.txt'
+          git commit -m 'Confirma publicação do Labstar Windows 11.2.9'
+          git push origin HEAD:main
