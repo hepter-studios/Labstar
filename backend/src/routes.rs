@@ -19,9 +19,9 @@ use tower_http::{
 };
 
 use crate::{
-    calls, channel_admin, channel_messages, collaboration, direct_messages, files, invites,
-    member_admin, members, notifications, planning, profile, realtime, request_limits, roles,
-    search, state::AppState, uploads, work_items, workspace,
+    calls, channel_admin, channel_messages, collaboration, direct_messages, files, ice,
+    invites, member_admin, members, notifications, planning, profile, realtime,
+    request_limits, roles, search, state::AppState, uploads, work_items, workspace,
 };
 
 #[derive(Serialize)]
@@ -160,6 +160,7 @@ pub fn router(state: AppState) -> Result<Router, Box<dyn std::error::Error + Sen
             "/v1/direct/attachments",
             post(files::upload_direct_attachment),
         )
+        .route("/v1/calls/ice-config", get(ice::configuration))
         .route("/v1/calls", post(calls::create_call))
         .route("/v1/calls/pending", get(calls::pending_calls))
         .route("/v1/calls/{call_id}", get(calls::get_call))
