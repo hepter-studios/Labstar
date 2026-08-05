@@ -1,10 +1,18 @@
 import { requireAuthClient } from "./auth-client";
 
 const configuredBaseUrl = String(import.meta.env.VITE_LABSTAR_API_URL ?? "").trim();
-
-export const rustApiBaseUrl = (
+const directRustApiBaseUrl = (
   configuredBaseUrl || "https://labstar-api-mackson.fly.dev"
 ).replace(/\/+$/, "");
+const isCloudflarePages = typeof window !== "undefined"
+  && (window.location.hostname === "labstar.pages.dev"
+    || window.location.hostname.endsWith(".labstar.pages.dev"));
+
+// Em previews e na produção web, o navegador conversa com uma Pages Function
+// da mesma origem. Isso evita que uma nova URL de preview seja bloqueada por
+// CORS antes de o backend Rust receber a solicitação.
+export const rustApiBaseUrl = isCloudflarePages ? "/api" : directRustApiBaseUrl;
+const rustRealtimeBaseUrl = directRustApiBaseUrl;
 
 export class RustApiError extends Error {
   readonly code: string;
@@ -63,6 +71,7 @@ function readableMessage(code: string, status: number) {
     payload_too_large: "O conteúdo enviado ultrapassa o limite permitido.",
     upstream_unavailable: "Um serviço necessário está temporariamente indisponível.",
     database_unavailable: "O banco de dados está temporariamente indisponível.",
+    backend_proxy_unavailable: "A ponte segura do site não alcançou o backend Rust.",
   };
   return messages[code] || (status >= 500
     ? "O backend Rust do Labstar não respondeu corretamente."
@@ -142,7 +151,7 @@ export async function subscribeRustRealtime(
 ): Promise<RustRealtimeSubscription> {
   onStatus?.("connecting");
   const { ticket } = await rustApi<RealtimeTicket>("/v1/realtime/ticket", { method: "POST" });
-  const websocketBase = rustApiBaseUrl.replace(/^http:/, "ws:").replace(/^https:/, "wss:");
+  const websocketBase = rustRealtimeBaseUrl.replace(/^http:/, "ws:").replace(/^https:/, "wss:");
   const socket = new WebSocket(`${websocketBase}/v1/realtime?ticket=${encodeURIComponent(ticket)}`);
   let closed = false;
   let heartbeat = 0;
