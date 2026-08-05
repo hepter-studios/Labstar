@@ -8,6 +8,7 @@ mod error;
 mod files;
 mod invites;
 mod jobs;
+mod member_admin;
 mod members;
 mod notifications;
 mod planning;
