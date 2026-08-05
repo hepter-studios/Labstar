@@ -19,9 +19,9 @@ use tower_http::{
 };
 
 use crate::{
-    calls, channel_messages, collaboration, direct_messages, files, invites, members,
-    notifications, planning, profile, realtime, roles, search, state::AppState, uploads,
-    work_items, workspace,
+    calls, channel_messages, collaboration, direct_messages, files, invites, member_admin,
+    members, notifications, planning, profile, realtime, roles, search, state::AppState,
+    uploads, work_items, workspace,
 };
 
 #[derive(Serialize)]
@@ -65,7 +65,10 @@ pub fn router(state: AppState) -> Result<Router, Box<dyn std::error::Error + Sen
         .route("/v1/me", get(members::me))
         .route("/v1/profile", patch(profile::update))
         .route("/v1/profile/avatar", post(uploads::upload_own_avatar))
-        .route("/v1/members", get(members::list_members))
+        .route(
+            "/v1/members",
+            get(members::list_members).post(member_admin::create),
+        )
         .route("/v1/members/{member_id}", patch(members::update_member))
         .route("/v1/job-roles", get(roles::list).post(roles::create))
         .route(
