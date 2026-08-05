@@ -35,6 +35,13 @@ pub enum BackendEvent {
         thread_id: Uuid,
         message_id: Uuid,
     },
+    ChannelMessageChanged {
+        channel_id: Uuid,
+        message_id: Uuid,
+    },
+    NotificationChanged {
+        member_id: Uuid,
+    },
     CallCreated {
         call_id: Uuid,
         recipient_id: Uuid,
@@ -53,7 +60,6 @@ pub enum BackendEvent {
 
 #[derive(Debug, Clone)]
 pub struct PresenceEntry {
-    pub connected_at: DateTime<Utc>,
     pub active_at: DateTime<Utc>,
     pub connections: usize,
 }
