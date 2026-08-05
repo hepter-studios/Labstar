@@ -1,0 +1,358 @@
+/* Labstar 11.3.0 — acabamento final das mensagens privadas.
+   Carregado por último para neutralizar regras antigas e manter desktop,
+   navegador móvel e PWA com a mesma hierarquia de layout. */
+
+/* A pessoa já sabe que está usando a própria conta. O rodapé mostra somente
+   identidade e cargo; presença continua visível apenas para os outros membros. */
+.direct-hub .dm-own-profile > b,
+.direct-hub .dm-own-profile > .avatar-wrap .avatar-status,
+.direct-hub .dm-own-profile .avatar-status {
+  display: none !important;
+}
+
+.direct-hub .dm-own-profile {
+  grid-template-columns: 39px minmax(0, 1fr) !important;
+}
+
+/* Impede o chat de encolher para a altura do conteúdo quando uma conversa é
+   aberta depois da primeira pintura. */
+.app,
+.app > .workspace,
+.workspace.collaboration-workspace,
+.workspace.collaboration-workspace > .direct-hub,
+.workspace.collaboration-workspace > .collaboration-server-mode,
+.direct-hub,
+.direct-hub .dm-conversation,
+.direct-hub .dm-sidebar,
+.direct-hub .dm-home-main,
+.direct-hub .dm-inbox,
+.direct-hub .dm-profile-panel {
+  min-height: 0 !important;
+}
+
+.app {
+  height: 100dvh !important;
+  max-height: 100dvh !important;
+  grid-template-rows: 68px minmax(0, 1fr) !important;
+}
+
+.app > .workspace,
+.workspace.collaboration-workspace {
+  height: auto !important;
+  max-height: none !important;
+  align-self: stretch !important;
+  overflow: hidden !important;
+}
+
+.workspace.collaboration-workspace > .direct-hub,
+.workspace.collaboration-workspace > .collaboration-server-mode,
+.direct-hub {
+  height: 100% !important;
+  max-height: 100% !important;
+  align-self: stretch !important;
+  overflow: hidden !important;
+}
+
+.direct-hub .dm-conversation {
+  height: 100% !important;
+  grid-template-rows: 65px minmax(0, 1fr) auto !important;
+  overflow: hidden !important;
+}
+
+.direct-hub .dm-message-scroll {
+  min-height: 0 !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
+
+.direct-hub .dm-composer {
+  position: relative;
+  z-index: 20;
+  min-width: 0;
+  align-self: end;
+  background: linear-gradient(180deg, rgba(6, 9, 14, 0), #06090e 18%, #06090e) !important;
+}
+
+/* Controles que dependem de clique ficam acima de superfícies decorativas. */
+.direct-hub button,
+.direct-hub input,
+.direct-hub textarea,
+.direct-hub label,
+.direct-hub a {
+  position: relative;
+  z-index: 1;
+}
+
+.direct-hub button:not(:disabled) {
+  pointer-events: auto;
+  touch-action: manipulation;
+}
+
+.direct-hub button:disabled {
+  cursor: not-allowed !important;
+  opacity: .42 !important;
+}
+
+.dm-v6 .dm-contact-entry,
+.dm-v6 .dm-contact-main,
+.dm-conversation-actions > button,
+.dm-profile-actions button,
+.dm-composer > div:last-of-type > button,
+.dm-inbox button,
+.dm-home-header button {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Em telas sem hover, as ações de mensagem não podem ficar invisíveis. */
+@media (hover: none), (pointer: coarse) {
+  .dm-v5 .dm-message-actions,
+  .dm-message .dm-message-actions {
+    display: flex !important;
+    opacity: .78 !important;
+  }
+
+  .dm-message-actions button {
+    min-width: 34px;
+    min-height: 34px;
+  }
+}
+
+@media (max-width: 1120px) {
+  .direct-hub,
+  .direct-hub.conversation-open {
+    grid-template-columns: 66px 260px minmax(0, 1fr) !important;
+  }
+
+  .direct-hub .dm-inbox,
+  .direct-hub .dm-profile-panel {
+    display: none !important;
+  }
+}
+
+@media (max-width: 760px) {
+  :root {
+    --dm-mobile-header: 54px;
+    --dm-mobile-rail: 54px;
+  }
+
+  .app {
+    height: 100dvh !important;
+    max-height: 100dvh !important;
+    grid-template-rows: var(--dm-mobile-header) minmax(0, 1fr) !important;
+  }
+
+  .app > .header {
+    height: var(--dm-mobile-header) !important;
+    min-height: var(--dm-mobile-header) !important;
+  }
+
+  .workspace.collaboration-workspace,
+  .workspace.collaboration-workspace > .direct-hub {
+    width: 100% !important;
+    height: 100% !important;
+  }
+
+  /* No celular a lista e a conversa são páginas diferentes. */
+  .direct-hub,
+  .direct-hub.conversation-open {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    grid-template-rows: var(--dm-mobile-rail) minmax(0, 1fr) !important;
+  }
+
+  .direct-hub .dm-space-rail {
+    grid-column: 1 !important;
+    grid-row: 1 !important;
+    height: var(--dm-mobile-rail) !important;
+    min-height: var(--dm-mobile-rail) !important;
+    padding: 6px 8px !important;
+    display: flex !important;
+    flex-direction: row !important;
+    gap: 7px !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    border-right: 0 !important;
+    border-bottom: 1px solid rgba(151, 173, 220, .1) !important;
+  }
+
+  .direct-hub:not(.conversation-open) .dm-sidebar {
+    grid-column: 1 !important;
+    grid-row: 2 !important;
+    width: 100% !important;
+    height: 100% !important;
+    display: grid !important;
+    grid-template-rows: 50px auto 1px 31px minmax(0, 1fr) !important;
+    overflow: hidden !important;
+    border: 0 !important;
+  }
+
+  .direct-hub:not(.conversation-open) .dm-home-main,
+  .direct-hub:not(.conversation-open) .dm-inbox,
+  .direct-hub:not(.conversation-open) .dm-profile-panel,
+  .direct-hub:not(.conversation-open) .dm-conversation {
+    display: none !important;
+  }
+
+  .direct-hub.conversation-open .dm-sidebar,
+  .direct-hub.conversation-open .dm-home-main,
+  .direct-hub.conversation-open .dm-inbox,
+  .direct-hub.conversation-open .dm-profile-panel {
+    display: none !important;
+  }
+
+  .direct-hub.conversation-open .dm-conversation {
+    grid-column: 1 !important;
+    grid-row: 2 !important;
+    width: 100% !important;
+    height: 100% !important;
+    display: grid !important;
+    grid-template-rows: 58px minmax(0, 1fr) auto !important;
+    overflow: hidden !important;
+    border: 0 !important;
+  }
+
+  .dm-contact-list,
+  .dm-v6 .dm-contact-list {
+    min-height: 0 !important;
+    padding: 5px 7px calc(12px + env(safe-area-inset-bottom)) !important;
+    display: block !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+  }
+
+  .dm-v6 .dm-contact-entry {
+    width: 100% !important;
+    min-height: 66px !important;
+    margin: 0 0 5px !important;
+  }
+
+  .dm-v6 .dm-contact-main {
+    min-height: 64px !important;
+    padding: 8px 5px 8px 9px !important;
+    grid-template-columns: 42px minmax(0, 1fr) auto !important;
+    gap: 10px !important;
+  }
+
+  .dm-v6 .dm-contact-main strong {
+    font-size: 13px !important;
+  }
+
+  .dm-v6 .dm-contact-main small {
+    font-size: 10px !important;
+  }
+
+  .dm-conversation-header {
+    height: 58px !important;
+    min-height: 58px !important;
+    padding: 0 8px 0 10px !important;
+  }
+
+  .dm-conversation-person strong {
+    max-width: 42vw !important;
+    font-size: 12px !important;
+  }
+
+  .dm-conversation-actions {
+    gap: 4px !important;
+  }
+
+  .dm-conversation-actions > button {
+    width: 40px !important;
+    height: 40px !important;
+    min-width: 40px !important;
+  }
+
+  .dm-conversation-actions > button:nth-of-type(1),
+  .dm-conversation-actions > button:nth-of-type(4),
+  .dm-conversation-actions label {
+    display: none !important;
+  }
+
+  .dm-message-scroll {
+    padding-bottom: 8px !important;
+  }
+
+  .dm-thread-intro {
+    padding: 20px 14px 17px !important;
+  }
+
+  .dm-message {
+    padding: 9px 9px !important;
+    grid-template-columns: 36px minmax(0, 1fr) !important;
+    gap: 8px !important;
+  }
+
+  .dm-message-body > p {
+    font-size: 12px !important;
+    line-height: 1.55 !important;
+  }
+
+  .dm-composer {
+    padding: 5px 7px calc(7px + env(safe-area-inset-bottom)) !important;
+  }
+
+  .dm-composer > div:last-of-type {
+    min-height: 52px !important;
+    grid-template-columns: 44px minmax(0, 1fr) 42px 46px !important;
+  }
+
+  .dm-composer textarea {
+    min-height: 50px !important;
+    max-height: 120px !important;
+    padding: 14px 7px !important;
+    font-size: 16px !important;
+  }
+
+  .dm-composer > div:last-of-type > button {
+    min-height: 50px !important;
+  }
+
+  .direct-hub.dm-v6 .dm-composer .dm-emoji-picker {
+    position: fixed !important;
+    left: 8px !important;
+    right: 8px !important;
+    bottom: calc(70px + env(safe-area-inset-bottom)) !important;
+    width: auto !important;
+    max-width: none !important;
+    height: min(330px, 48dvh) !important;
+  }
+
+  .private-call-backdrop {
+    padding: 0 !important;
+    align-items: end !important;
+  }
+
+  .private-call-card,
+  .private-call-card.video {
+    width: 100% !important;
+    height: min(92dvh, 760px) !important;
+    min-height: 0 !important;
+    border-radius: 24px 24px 0 0 !important;
+  }
+
+  .labstar-toast,
+  .communication-permission-card,
+  .communication-runtime-toast {
+    left: 8px !important;
+    right: 8px !important;
+    bottom: calc(8px + env(safe-area-inset-bottom)) !important;
+    width: auto !important;
+  }
+}
+
+@media (max-width: 390px) {
+  .dm-navigation button span {
+    font-size: 8px !important;
+  }
+
+  .dm-conversation-actions > button {
+    width: 38px !important;
+    min-width: 38px !important;
+  }
+
+  .dm-composer > div:last-of-type {
+    grid-template-columns: 40px minmax(0, 1fr) 40px 43px !important;
+  }
+}
