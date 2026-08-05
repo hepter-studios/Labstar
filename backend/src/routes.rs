@@ -19,9 +19,9 @@ use tower_http::{
 };
 
 use crate::{
-    calls, channel_messages, collaboration, direct_messages, files, invites, member_admin,
-    members, notifications, planning, profile, realtime, roles, search, state::AppState,
-    uploads, work_items, workspace,
+    calls, channel_admin, channel_messages, collaboration, direct_messages, files, invites,
+    member_admin, members, notifications, planning, profile, realtime, roles, search,
+    state::AppState, uploads, work_items, workspace,
 };
 
 #[derive(Serialize)]
@@ -90,6 +90,10 @@ pub fn router(state: AppState) -> Result<Router, Box<dyn std::error::Error + Sen
         .route("/v1/spaces/{space_id}/logo", post(uploads::upload_space_logo))
         .route("/v1/categories", post(collaboration::create_category))
         .route("/v1/channels", post(collaboration::create_channel))
+        .route(
+            "/v1/channels/{channel_id}/permissions",
+            put(channel_admin::update_permissions),
+        )
         .route(
             "/v1/channels/{channel_id}/messages",
             get(channel_messages::list).post(channel_messages::send),
