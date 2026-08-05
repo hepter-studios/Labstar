@@ -20,11 +20,14 @@ export class RustApiError extends Error {
   }
 }
 
-type ApiFailure = {
+type ApiFailurePayload = {
   code?: string;
-  error?: string;
   message?: string;
   details?: unknown;
+};
+
+type ApiFailure = ApiFailurePayload & {
+  error?: string | ApiFailurePayload;
 };
 
 async function accessToken() {
@@ -42,9 +45,11 @@ async function decodeFailure(response: Response) {
   } catch {
     // A API pode responder sem corpo em falhas de infraestrutura.
   }
-  const code = payload?.code || payload?.error || `http_${response.status}`;
-  const message = payload?.message || readableMessage(code, response.status);
-  return new RustApiError(code, message, response.status, payload?.details);
+  const nested = payload?.error && typeof payload.error === "object" ? payload.error : null;
+  const flatError = typeof payload?.error === "string" ? payload.error : undefined;
+  const code = nested?.code || payload?.code || flatError || `http_${response.status}`;
+  const message = nested?.message || payload?.message || readableMessage(code, response.status);
+  return new RustApiError(code, message, response.status, nested?.details ?? payload?.details);
 }
 
 function readableMessage(code: string, status: number) {
@@ -62,6 +67,22 @@ function readableMessage(code: string, status: number) {
   return messages[code] || (status >= 500
     ? "O backend Rust do Labstar não respondeu corretamente."
     : "A solicitação não pôde ser concluída.");
+}
+
+async function decodeSuccess<T>(response: Response): Promise<T> {
+  if (response.status === 204) return undefined as T;
+  const text = await response.text();
+  return (text ? JSON.parse(text) : undefined) as T;
+}
+
+export async function rustPublicApi<T>(path: string, init: RequestInit = {}): Promise<T> {
+  const response = await fetch(`${rustApiBaseUrl}${path}`, {
+    ...init,
+    headers: new Headers({ Accept: "application/json", ...Object.fromEntries(new Headers(init.headers)) }),
+    credentials: "omit",
+  });
+  if (!response.ok) throw await decodeFailure(response);
+  return decodeSuccess<T>(response);
 }
 
 export async function rustApi<T>(
@@ -82,9 +103,7 @@ export async function rustApi<T>(
     credentials: "omit",
   });
   if (!response.ok) throw await decodeFailure(response);
-  if (response.status === 204) return undefined as T;
-  const text = await response.text();
-  return (text ? JSON.parse(text) : undefined) as T;
+  return decodeSuccess<T>(response);
 }
 
 export function jsonBody(value: unknown) {
@@ -100,6 +119,8 @@ export type RustRealtimeEvent =
   | { type: "directMessageCreated"; payload: { threadId: string; messageId: string; authorId: string } }
   | { type: "directMessageUpdated"; payload: { threadId: string; messageId: string } }
   | { type: "directMessageDeleted"; payload: { threadId: string; messageId: string } }
+  | { type: "channelMessageChanged"; payload: { channelId: string; messageId: string } }
+  | { type: "notificationChanged"; payload: { memberId: string } }
   | { type: "callCreated"; payload: { callId: string; recipientId: string } }
   | { type: "callUpdated"; payload: { callId: string; status: string } }
   | { type: "callSignal"; payload: { callId: string; signalId: number; recipientId: string } }
