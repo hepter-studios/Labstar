@@ -122,13 +122,14 @@ jobs:
           flyctl secrets set --app "$FLY_APP" --stage "${args[@]}"
 
       - name: Publicar contêiner Rust
+        working-directory: backend
         shell: bash
         run: |
           set -euo pipefail
           flyctl deploy . \
             --app "$FLY_APP" \
-            --config backend/fly.toml \
-            --dockerfile backend/Dockerfile \
+            --config fly.toml \
+            --dockerfile Dockerfile \
             --remote-only \
             --ha=false \
             --wait-timeout 12m
