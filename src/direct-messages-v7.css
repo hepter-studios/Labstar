@@ -1,0 +1,264 @@
+/* Labstar 11.2.9 — acabamento das comunicações privadas. */
+
+/* O seletor antigo herdava oito colunas no próprio popover. Isso espremia o
+   cabeçalho e criava barras nativas com setas. O popover tem uma coluna; só a
+   grade interna possui as colunas de emojis. */
+.direct-hub.dm-v6 .dm-composer {
+  position: relative;
+  isolation: isolate;
+  overflow: visible;
+}
+
+.direct-hub.dm-v6 .dm-composer .dm-emoji-picker {
+  position: absolute !important;
+  z-index: 120 !important;
+  right: 48px !important;
+  bottom: calc(100% + 10px) !important;
+  width: min(360px, calc(100vw - 32px)) !important;
+  max-width: 100% !important;
+  height: 304px !important;
+  max-height: min(304px, calc(100vh - 120px)) !important;
+  padding: 0 !important;
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) !important;
+  grid-template-rows: 42px minmax(0, 1fr) !important;
+  gap: 0 !important;
+  overflow: clip !important;
+  scrollbar-width: none !important;
+  overscroll-behavior: contain;
+  border: 1px solid rgba(140, 166, 224, .22) !important;
+  border-radius: 15px !important;
+  background: linear-gradient(180deg, #0d1420, #080d15) !important;
+  box-shadow: 0 26px 90px rgba(0, 0, 0, .88), inset 0 1px rgba(255, 255, 255, .045) !important;
+}
+
+.direct-hub.dm-v6 .dm-composer .dm-emoji-picker::-webkit-scrollbar {
+  display: none !important;
+}
+
+.direct-hub.dm-v6 .dm-composer .dm-emoji-picker > header {
+  min-width: 0;
+  padding: 0 9px 0 14px;
+  display: flex !important;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid rgba(140, 166, 224, .1);
+  background: rgba(15, 22, 34, .96);
+}
+
+.direct-hub.dm-v6 .dm-composer .dm-emoji-picker > header strong {
+  color: #e4ebf7;
+  font-size: 11px;
+  font-weight: 760;
+}
+
+.direct-hub.dm-v6 .dm-composer .dm-emoji-picker > header button {
+  width: 30px !important;
+  height: 30px !important;
+  flex: 0 0 30px;
+  display: grid !important;
+  place-items: center;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 8px !important;
+  color: #7b889d !important;
+  background: transparent !important;
+  font-size: 14px !important;
+}
+
+.direct-hub.dm-v6 .dm-composer .dm-emoji-picker > header button:hover {
+  color: #f1f5fb !important;
+  background: rgba(255, 255, 255, .055) !important;
+}
+
+.direct-hub.dm-v6 .dm-composer .dm-emoji-picker > div {
+  min-width: 0;
+  min-height: 0;
+  padding: 10px 11px 12px !important;
+  display: grid !important;
+  grid-template-columns: repeat(8, minmax(32px, 1fr)) !important;
+  grid-auto-rows: 38px;
+  align-content: start;
+  gap: 4px !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: #26344a transparent;
+}
+
+.direct-hub.dm-v6 .dm-composer .dm-emoji-picker > div::-webkit-scrollbar {
+  width: 7px;
+}
+
+.direct-hub.dm-v6 .dm-composer .dm-emoji-picker > div::-webkit-scrollbar-thumb {
+  border: 2px solid transparent;
+  border-radius: 8px;
+  background: #26344a;
+  background-clip: padding-box;
+}
+
+.direct-hub.dm-v6 .dm-composer .dm-emoji-picker > div > button {
+  width: 100% !important;
+  height: 38px !important;
+  min-width: 0;
+  padding: 0 !important;
+  display: grid !important;
+  place-items: center;
+  border: 0 !important;
+  border-radius: 9px !important;
+  background: transparent !important;
+  font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif !important;
+  font-size: 21px !important;
+  line-height: 1 !important;
+}
+
+.direct-hub.dm-v6 .dm-composer .dm-emoji-picker > div > button:hover {
+  background: rgba(110, 151, 244, .11) !important;
+  transform: translateY(-1px);
+}
+
+/* O texto agora sempre acompanha a cor real da presença. */
+.dm-v6 .dm-own-profile:has(.avatar-status.online) > b {
+  color: #5cc59d !important;
+  font-size: 0 !important;
+}
+
+.dm-v6 .dm-own-profile:has(.avatar-status.online) > b::after {
+  content: "Online";
+  font-size: 8px;
+}
+
+.dm-v6 .dm-own-profile:has(.avatar-status.offline) > b {
+  color: #df727d !important;
+  font-size: 0 !important;
+}
+
+.dm-v6 .dm-own-profile:has(.avatar-status.offline) > b::after {
+  content: "Offline";
+  font-size: 8px;
+}
+
+.dm-v6 .dm-conversation-person:has(.avatar-status.online) small > i {
+  color: #55c795 !important;
+}
+
+.dm-v6 .dm-conversation-person:has(.avatar-status.offline) small > i {
+  color: #d85f6b !important;
+}
+
+/* Chamada privada com hierarquia visual clara e comportamento responsivo. */
+.private-call-backdrop {
+  padding: clamp(12px, 3vw, 30px) !important;
+  background:
+    radial-gradient(circle at 50% 24%, rgba(56, 104, 210, .18), transparent 34%),
+    rgba(2, 4, 8, .9) !important;
+  backdrop-filter: blur(22px) saturate(1.12) !important;
+}
+
+.private-call-card {
+  width: min(460px, 100%) !important;
+  min-height: min(610px, calc(100vh - 28px)) !important;
+  grid-template-rows: 56px minmax(250px, 1fr) auto auto 24px !important;
+  border-color: rgba(131, 164, 232, .24) !important;
+  border-radius: 26px !important;
+  background:
+    radial-gradient(circle at 50% 32%, rgba(63, 112, 221, .16), transparent 31%),
+    linear-gradient(160deg, #111b2c, #080d16 56%, #05080d) !important;
+  box-shadow: 0 42px 160px rgba(0, 0, 0, .92), inset 0 1px rgba(255, 255, 255, .065) !important;
+}
+
+.private-call-card.video {
+  width: min(980px, 100%) !important;
+  height: min(760px, calc(100vh - 28px)) !important;
+  min-height: 520px !important;
+}
+
+.private-call-card > header {
+  padding-inline: 20px 14px !important;
+  background: rgba(6, 10, 17, .78) !important;
+  backdrop-filter: blur(18px);
+}
+
+.private-call-card > header > span {
+  color: #a9b9d7 !important;
+  font-size: 10px !important;
+  letter-spacing: .08em !important;
+}
+
+.private-call-stage {
+  background:
+    radial-gradient(circle at 50% 48%, rgba(75, 126, 238, .23), transparent 31%),
+    radial-gradient(circle at 50% 50%, rgba(255, 255, 255, .025), transparent 56%),
+    #04070c !important;
+}
+
+.private-call-audio-person {
+  width: 190px !important;
+  height: 190px !important;
+}
+
+.private-call-audio-person .user-avatar-xl,
+.private-call-video-placeholder .user-avatar-xl {
+  width: 112px !important;
+  height: 112px !important;
+  box-shadow: 0 18px 70px rgba(0, 0, 0, .56), 0 0 0 6px rgba(92, 139, 239, .07) !important;
+}
+
+.private-call-copy {
+  padding: 20px 26px 10px !important;
+  text-align: center;
+}
+
+.private-call-copy h2 {
+  margin: 6px 0 6px !important;
+  color: #f3f6fb !important;
+  font-size: clamp(24px, 4vw, 32px) !important;
+  letter-spacing: -.025em;
+}
+
+.private-call-copy p {
+  margin: 0 !important;
+  color: #9caac0 !important;
+  font-size: 12px !important;
+}
+
+.private-call-answer-actions,
+.private-call-controls {
+  padding: 18px 24px 24px !important;
+  gap: 18px !important;
+}
+
+.private-call-answer-actions button,
+.private-call-controls button {
+  min-width: 68px;
+  min-height: 58px;
+  border-radius: 18px !important;
+  box-shadow: 0 14px 34px rgba(0, 0, 0, .3);
+}
+
+.private-call-answer-actions .accept {
+  background: linear-gradient(180deg, #35c887, #219d68) !important;
+}
+
+.private-call-answer-actions .reject,
+.private-call-controls .hangup {
+  background: linear-gradient(180deg, #ef5b68, #c93e4b) !important;
+}
+
+@media (max-width: 760px) {
+  .direct-hub.dm-v6 .dm-composer .dm-emoji-picker {
+    right: 0 !important;
+    width: min(330px, calc(100vw - 24px)) !important;
+    height: 280px !important;
+  }
+
+  .direct-hub.dm-v6 .dm-composer .dm-emoji-picker > div {
+    grid-template-columns: repeat(6, minmax(34px, 1fr)) !important;
+  }
+
+  .private-call-card {
+    min-height: calc(100vh - 24px) !important;
+    border-radius: 22px !important;
+  }
+}
