@@ -1,5 +1,6 @@
 mod auth;
 mod calls;
+mod channel_admin;
 mod channel_messages;
 mod collaboration;
 mod config;
