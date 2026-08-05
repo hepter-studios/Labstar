@@ -42,10 +42,31 @@ export type DirectCallSubscription = {
   close: () => void;
 };
 
+let iceConfigurationPromise: Promise<RTCConfiguration> | null = null;
+
 function globalBridgeOwnsIncomingCalls(scope: DirectCallListenerScope) {
   return scope === "surface"
     && typeof window !== "undefined"
     && window.__LABSTAR_GLOBAL_CALL_BRIDGE__ === true;
+}
+
+export function getDirectCallIceConfiguration() {
+  if (!iceConfigurationPromise) {
+    iceConfigurationPromise = rustApi<{
+      iceServers: RTCIceServer[];
+      iceTransportPolicy: RTCIceTransportPolicy;
+    }>("/v1/calls/ice-config")
+      .then((configuration) => ({
+        iceServers: configuration.iceServers,
+        iceTransportPolicy: configuration.iceTransportPolicy,
+        bundlePolicy: "max-bundle",
+      } satisfies RTCConfiguration))
+      .catch((error) => {
+        iceConfigurationPromise = null;
+        throw error;
+      });
+  }
+  return iceConfigurationPromise;
 }
 
 export async function createDirectCall(
