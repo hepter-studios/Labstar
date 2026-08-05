@@ -6,7 +6,25 @@ mod settings;
 use deep_links::PendingDeepLinks;
 use tauri::{Emitter, Manager};
 
+#[cfg(desktop)]
+use tauri::{
+    menu::{Menu, MenuItem},
+    tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
+    WindowEvent,
+};
+#[cfg(desktop)]
+use tauri_plugin_notification::NotificationExt;
+
 const WEBVIEW_CACHE_RESET_MARKER: &str = "webview-cache-reset-11.0.4";
+
+#[cfg(desktop)]
+fn show_main_window(app: &tauri::AppHandle) {
+    if let Some(window) = app.get_webview_window("main") {
+        let _ = window.show();
+        let _ = window.unminimize();
+        let _ = window.set_focus();
+    }
+}
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -19,11 +37,7 @@ pub fn run() {
                 "Solicitação de segunda instância recebida com {} argumento(s)",
                 arguments.len()
             );
-
-            if let Some(window) = app.get_webview_window("main") {
-                let _ = window.show();
-                let _ = window.set_focus();
-            }
+            show_main_window(app);
         },
     ));
 
@@ -33,12 +47,76 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_log::Builder::new().build());
 
+    #[cfg(desktop)]
+    let builder = builder.on_window_event(|window, event| {
+        if window.label() != "main" {
+            return;
+        }
+
+        if let WindowEvent::CloseRequested { api, .. } = event {
+            api.prevent_close();
+            let _ = window.hide();
+            let _ = window
+                .app_handle()
+                .notification()
+                .builder()
+                .title("Labstar continua ativo")
+                .body("Mensagens e chamadas privadas continuarão chegando pela bandeja do sistema.")
+                .show();
+        }
+    });
+
     builder
         .setup(|app| {
             app.manage(PendingDeepLinks::default());
 
             let app_data_directory = app.path().app_data_dir()?;
             std::fs::create_dir_all(&app_data_directory)?;
+
+            #[cfg(desktop)]
+            {
+                let open_item = MenuItem::with_id(
+                    app,
+                    "open-labstar",
+                    "Abrir Labstar",
+                    true,
+                    None::<&str>,
+                )?;
+                let quit_item = MenuItem::with_id(
+                    app,
+                    "quit-labstar",
+                    "Sair do Labstar",
+                    true,
+                    None::<&str>,
+                )?;
+                let menu = Menu::with_items(app, &[&open_item, &quit_item])?;
+
+                let mut tray_builder = TrayIconBuilder::with_id("labstar-tray")
+                    .tooltip("Labstar — mensagens e chamadas em segundo plano")
+                    .menu(&menu)
+                    .show_menu_on_left_click(false)
+                    .on_menu_event(|app, event| match event.id.as_ref() {
+                        "open-labstar" => show_main_window(app),
+                        "quit-labstar" => app.exit(0),
+                        _ => {}
+                    })
+                    .on_tray_icon_event(|tray, event| {
+                        if let TrayIconEvent::Click {
+                            button: MouseButton::Left,
+                            button_state: MouseButtonState::Up,
+                            ..
+                        } = event
+                        {
+                            show_main_window(tray.app_handle());
+                        }
+                    });
+
+                if let Some(icon) = app.default_window_icon().cloned() {
+                    tray_builder = tray_builder.icon(icon);
+                }
+
+                tray_builder.build(app)?;
+            }
 
             #[cfg(windows)]
             {
@@ -95,10 +173,8 @@ pub fn run() {
                     }
                 }
 
-                if let Some(window) = handle.get_webview_window("main") {
-                    let _ = window.show();
-                    let _ = window.set_focus();
-                }
+                #[cfg(desktop)]
+                show_main_window(&handle);
             });
 
             log::info!(
