@@ -32,6 +32,10 @@ jobs:
       SUPABASE_URL_SECRET: ${{ secrets.SUPABASE_URL }}
       SUPABASE_PUBLISHABLE_KEY_SECRET: ${{ secrets.SUPABASE_PUBLISHABLE_KEY }}
       SUPABASE_SERVICE_ROLE_KEY_SECRET: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      LABSTAR_STUN_URLS_SECRET: ${{ secrets.LABSTAR_STUN_URLS }}
+      LABSTAR_TURN_URLS_SECRET: ${{ secrets.LABSTAR_TURN_URLS }}
+      LABSTAR_TURN_USERNAME_SECRET: ${{ secrets.LABSTAR_TURN_USERNAME }}
+      LABSTAR_TURN_CREDENTIAL_SECRET: ${{ secrets.LABSTAR_TURN_CREDENTIAL }}
 
     steps:
       - name: Baixar código
@@ -67,6 +71,18 @@ jobs:
           test -n "$FLY_API_TOKEN"
           flyctl auth whoami >/dev/null
 
+      - name: Validar configuração TURN opcional
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -n "$LABSTAR_TURN_URLS_SECRET" ]; then
+            test -n "$LABSTAR_TURN_USERNAME_SECRET"
+            test -n "$LABSTAR_TURN_CREDENTIAL_SECRET"
+          elif [ -n "$LABSTAR_TURN_USERNAME_SECRET" ] || [ -n "$LABSTAR_TURN_CREDENTIAL_SECRET" ]; then
+            echo "TURN está parcialmente configurado."
+            exit 1
+          fi
+
       - name: Sincronizar segredos disponíveis
         shell: bash
         run: |
@@ -76,6 +92,12 @@ jobs:
           if [ -n "$SUPABASE_URL_SECRET" ]; then args+=("SUPABASE_URL=$SUPABASE_URL_SECRET"); fi
           if [ -n "$SUPABASE_PUBLISHABLE_KEY_SECRET" ]; then args+=("SUPABASE_PUBLISHABLE_KEY=$SUPABASE_PUBLISHABLE_KEY_SECRET"); fi
           if [ -n "$SUPABASE_SERVICE_ROLE_KEY_SECRET" ]; then args+=("SUPABASE_SERVICE_ROLE_KEY=$SUPABASE_SERVICE_ROLE_KEY_SECRET"); fi
+          if [ -n "$LABSTAR_STUN_URLS_SECRET" ]; then args+=("LABSTAR_STUN_URLS=$LABSTAR_STUN_URLS_SECRET"); fi
+          if [ -n "$LABSTAR_TURN_URLS_SECRET" ]; then
+            args+=("LABSTAR_TURN_URLS=$LABSTAR_TURN_URLS_SECRET")
+            args+=("LABSTAR_TURN_USERNAME=$LABSTAR_TURN_USERNAME_SECRET")
+            args+=("LABSTAR_TURN_CREDENTIAL=$LABSTAR_TURN_CREDENTIAL_SECRET")
+          fi
           if [ ${#args[@]} -gt 0 ]; then
             flyctl secrets set --app labstar-api-mackson --stage "${args[@]}"
           fi
