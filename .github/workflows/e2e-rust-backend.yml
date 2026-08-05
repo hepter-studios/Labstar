@@ -1,0 +1,281 @@
+name: Testar backend Rust com duas contas
+
+on:
+  push:
+    branches:
+      - feat/backend-rust-complete
+    paths:
+      - "backend/**"
+      - "src/lib/rust-api.ts"
+      - "src/lib/backend.ts"
+      - "src/lib/directMessages.ts"
+      - "src/lib/directCalls.ts"
+      - "src/lib/presence.ts"
+      - ".github/workflows/e2e-rust-backend.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: e2e-labstar-rust-production
+  cancel-in-progress: true
+
+jobs:
+  two-accounts:
+    name: Mensagens, presença e chamadas reais
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: production
+    env:
+      API_URL: https://labstar-api-mackson.fly.dev
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+
+    steps:
+      - name: Baixar código
+        uses: actions/checkout@v4
+
+      - name: Confirmar segredos de teste
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$DATABASE_URL"
+          test -n "$SUPABASE_URL"
+          test -n "$SUPABASE_PUBLISHABLE_KEY"
+          test -n "$SUPABASE_SERVICE_ROLE_KEY"
+
+      - name: Aguardar backend Rust publicado
+        shell: bash
+        run: |
+          set -euo pipefail
+          for attempt in $(seq 1 60); do
+            if curl --fail --silent --show-error --connect-timeout 10 --max-time 30 \
+              "$API_URL/health/ready" > ready.json; then
+              if grep -q '"status":"ready"' ready.json \
+                && grep -q '"runtime":"rust"' ready.json \
+                && grep -q '"realtime":"rust-websocket"' ready.json; then
+                cat ready.json
+                exit 0
+              fi
+            fi
+            echo "Backend ainda não está pronto (tentativa $attempt/60)."
+            sleep 15
+          done
+          echo "O backend Rust não ficou pronto dentro do prazo."
+          exit 1
+
+      - name: Preparar PostgreSQL e cliente WebSocket
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq postgresql-client
+          mkdir -p .e2e
+          cd .e2e
+          npm init -y >/dev/null
+          npm install --silent ws@8
+
+      - name: Criar identidades temporárias
+        id: identities
+        shell: bash
+        run: |
+          set -euo pipefail
+          suffix="$(date +%s)-${GITHUB_RUN_ID}"
+          email_a="labstar-e2e-a-${suffix}@example.com"
+          email_b="labstar-e2e-b-${suffix}@example.com"
+          password="LsE2e-${suffix}-A9!"
+
+          create_user() {
+            local email="$1"
+            curl --fail --silent --show-error \
+              --request POST "$SUPABASE_URL/auth/v1/admin/users" \
+              --header "apikey: $SUPABASE_SERVICE_ROLE_KEY" \
+              --header "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
+              --header "Content-Type: application/json" \
+              --data "$(jq -cn --arg email "$email" --arg password "$password" '{email:$email,password:$password,email_confirm:true}')"
+          }
+
+          user_a="$(create_user "$email_a")"
+          user_b="$(create_user "$email_b")"
+          auth_a="$(jq -r '.id' <<<"$user_a")"
+          auth_b="$(jq -r '.id' <<<"$user_b")"
+          test "$auth_a" != "null"
+          test "$auth_b" != "null"
+
+          member_a="$(psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -At \
+            -v auth_id="$auth_a" -v email="$email_a" \
+            -c "insert into public.members (auth_user_id,email,name,status,role,job_title,area,last_seen_at) values (:'auth_id'::uuid,:'email','E2E Rust A','active','member','Teste Rust','E2E',now()) returning id;")"
+          member_b="$(psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -At \
+            -v auth_id="$auth_b" -v email="$email_b" \
+            -c "insert into public.members (auth_user_id,email,name,status,role,job_title,area,last_seen_at) values (:'auth_id'::uuid,:'email','E2E Rust B','active','member','Teste Rust','E2E',now()) returning id;")"
+
+          login() {
+            local email="$1"
+            curl --fail --silent --show-error \
+              --request POST "$SUPABASE_URL/auth/v1/token?grant_type=password" \
+              --header "apikey: $SUPABASE_PUBLISHABLE_KEY" \
+              --header "Content-Type: application/json" \
+              --data "$(jq -cn --arg email "$email" --arg password "$password" '{email:$email,password:$password}')"
+          }
+
+          token_a="$(login "$email_a" | jq -r '.access_token')"
+          token_b="$(login "$email_b" | jq -r '.access_token')"
+          test "$token_a" != "null"
+          test "$token_b" != "null"
+
+          {
+            echo "AUTH_A=$auth_a"
+            echo "AUTH_B=$auth_b"
+            echo "MEMBER_A=$member_a"
+            echo "MEMBER_B=$member_b"
+            echo "EMAIL_A=$email_a"
+            echo "EMAIL_B=$email_b"
+            echo "TOKEN_A=$token_a"
+            echo "TOKEN_B=$token_b"
+          } >> "$GITHUB_ENV"
+
+          echo "::add-mask::$token_a"
+          echo "::add-mask::$token_b"
+          echo "::add-mask::$password"
+
+      - name: Executar fluxo real ponta a ponta
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > .e2e/run.mjs <<'NODE'
+          import WebSocket from "ws";
+
+          const apiUrl = process.env.API_URL;
+          const wsUrl = apiUrl.replace(/^http:/, "ws:").replace(/^https:/, "wss:");
+          const tokenA = process.env.TOKEN_A;
+          const tokenB = process.env.TOKEN_B;
+          const memberA = process.env.MEMBER_A;
+          const memberB = process.env.MEMBER_B;
+
+          async function api(path, token, method = "GET", body) {
+            const response = await fetch(`${apiUrl}${path}`, {
+              method,
+              headers: {
+                Accept: "application/json",
+                Authorization: `Bearer ${token}`,
+                ...(body ? { "Content-Type": "application/json" } : {}),
+              },
+              body: body ? JSON.stringify(body) : undefined,
+            });
+            const text = await response.text();
+            if (!response.ok) throw new Error(`${method} ${path} -> ${response.status}: ${text}`);
+            return text ? JSON.parse(text) : undefined;
+          }
+
+          function waitFor(register, timeoutMs = 15000) {
+            return new Promise((resolve, reject) => {
+              const timer = setTimeout(() => reject(new Error("Tempo esgotado aguardando evento Rust.")), timeoutMs);
+              register((value) => { clearTimeout(timer); resolve(value); });
+            });
+          }
+
+          async function connect(token) {
+            const { ticket } = await api("/v1/realtime/ticket", token, "POST");
+            const socket = new WebSocket(`${wsUrl}/v1/realtime?ticket=${encodeURIComponent(ticket)}`);
+            const listeners = new Set();
+            socket.on("message", (data) => {
+              const event = JSON.parse(String(data));
+              for (const listener of listeners) listener(event);
+            });
+            await new Promise((resolve, reject) => {
+              socket.once("open", resolve);
+              socket.once("error", reject);
+            });
+            return { socket, listeners };
+          }
+
+          const meA = await api("/v1/me", tokenA);
+          const meB = await api("/v1/me", tokenB);
+          if (meA.memberId !== memberA || meB.memberId !== memberB) throw new Error("Identidade Rust incorreta.");
+
+          const realtimeA = await connect(tokenA);
+          const realtimeB = await connect(tokenB);
+          const presence = await waitFor((done) => {
+            const check = (event) => {
+              if (event.type !== "presenceSnapshot") return;
+              const ids = new Set(event.payload.memberIds);
+              if (ids.has(memberA) && ids.has(memberB)) done(event);
+            };
+            realtimeA.listeners.add(check);
+            realtimeB.listeners.add(check);
+          });
+          if (!presence) throw new Error("Presença Rust não confirmou as duas contas.");
+
+          const { threadId } = await api("/v1/direct/threads", tokenA, "POST", { otherMemberId: memberB });
+          const messageEventPromise = waitFor((done) => realtimeB.listeners.add((event) => {
+            if (event.type === "directMessageCreated" && event.payload.threadId === threadId) done(event);
+          }));
+          const sent = await api(`/v1/direct/threads/${threadId}/messages`, tokenA, "POST", {
+            body: "Mensagem real pelo backend Rust",
+            replyTo: null,
+          });
+          const messageEvent = await messageEventPromise;
+          if (messageEvent.payload.messageId !== sent.id) throw new Error("Evento de mensagem divergente.");
+          const messages = await api(`/v1/direct/threads/${threadId}/messages`, tokenB);
+          if (!messages.some((message) => message.id === sent.id && message.body === "Mensagem real pelo backend Rust")) {
+            throw new Error("A segunda conta não recebeu a mensagem persistida.");
+          }
+
+          const callEventPromise = waitFor((done) => realtimeB.listeners.add((event) => {
+            if (event.type === "callCreated") done(event);
+          }));
+          const { callId } = await api("/v1/calls", tokenA, "POST", {
+            threadId,
+            recipientId: memberB,
+            kind: "audio",
+          });
+          const callEvent = await callEventPromise;
+          if (callEvent.payload.callId !== callId) throw new Error("Evento de chamada divergente.");
+          const pending = await api("/v1/calls/pending", tokenB);
+          if (!pending.some((call) => call.id === callId && call.status === "ringing")) {
+            throw new Error("A chamada não apareceu para a segunda conta.");
+          }
+
+          const updatePromise = waitFor((done) => realtimeA.listeners.add((event) => {
+            if (event.type === "callUpdated" && event.payload.callId === callId) done(event);
+          }));
+          await api(`/v1/calls/${callId}/status`, tokenB, "POST", { status: "rejected" });
+          const update = await updatePromise;
+          if (update.payload.status !== "rejected") throw new Error("Rejeição de chamada não propagada.");
+
+          realtimeA.socket.close(1000, "e2e_complete");
+          realtimeB.socket.close(1000, "e2e_complete");
+          console.log("E2E real aprovado: OAuth, PostgreSQL, presença, DM e chamada Rust.");
+          NODE
+          node .e2e/run.mjs
+
+      - name: Limpar dados temporários
+        if: always()
+        shell: bash
+        run: |
+          set +e
+          if [ -n "${MEMBER_A:-}" ] && [ -n "${MEMBER_B:-}" ]; then
+            psql "$DATABASE_URL" -v ON_ERROR_STOP=0 \
+              -v member_a="$MEMBER_A" -v member_b="$MEMBER_B" <<'SQL'
+          delete from public.direct_call_sessions
+          where initiator_id in (:'member_a'::uuid, :'member_b'::uuid)
+             or recipient_id in (:'member_a'::uuid, :'member_b'::uuid);
+          delete from public.direct_threads
+          where id in (
+            select thread_id from public.direct_thread_members
+            where member_id in (:'member_a'::uuid, :'member_b'::uuid)
+          );
+          delete from public.members where id in (:'member_a'::uuid, :'member_b'::uuid);
+          SQL
+          fi
+          for auth_id in "${AUTH_A:-}" "${AUTH_B:-}"; do
+            if [ -n "$auth_id" ]; then
+              curl --silent --show-error --request DELETE \
+                "$SUPABASE_URL/auth/v1/admin/users/$auth_id" \
+                --header "apikey: $SUPABASE_SERVICE_ROLE_KEY" \
+                --header "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" >/dev/null || true
+            fi
+          done
