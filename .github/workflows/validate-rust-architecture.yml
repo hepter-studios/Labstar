@@ -67,8 +67,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          if grep -R --line-number --include='*.ts' --include='*.tsx' \
-            -E '\.(from|rpc)\(' src/lib src/components \
+          if grep -R --line-number --include='*.ts' --include='*.tsx' -P \
+            '(?<!Array)\.(?:from|rpc)\s*\(' src/lib src/components \
             | grep -v 'src/lib/auth-client.ts'; then
             echo "A interface ainda contém acesso direto ao banco/RPC."
             exit 1
