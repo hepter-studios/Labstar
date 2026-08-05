@@ -95,28 +95,6 @@ export async function listDirectCallSignals(callId: string) {
   return rustApi<DirectCallSignal[]>(`/v1/calls/${encodeURIComponent(callId)}/signals`);
 }
 
-function createSubscription(
-  start: (subscription: RustRealtimeSubscription) => void,
-): DirectCallSubscription {
-  let closed = false;
-  let current: RustRealtimeSubscription | null = null;
-  void subscribeRustRealtime(() => undefined)
-    .then((subscription) => {
-      if (closed) subscription.close();
-      else {
-        current = subscription;
-        start(subscription);
-      }
-    })
-    .catch(() => undefined);
-  return {
-    close: () => {
-      closed = true;
-      current?.close();
-    },
-  };
-}
-
 export function subscribeIncomingDirectCalls(
   _recipientId: string,
   onCall: (session: DirectCallSession) => void,
