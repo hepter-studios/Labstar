@@ -4,12 +4,12 @@ use axum::{
 };
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use sqlx::FromRow;
+use sqlx::{FromRow, types::Json as SqlJson};
 use uuid::Uuid;
 
 use crate::{auth::AuthenticatedMember, error::ApiError, files::signed_asset_url, state::AppState};
 
-#[derive(Debug, Clone, Serialize, FromRow)]
+#[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct MemberView {
     pub id: Uuid,
@@ -23,8 +23,41 @@ pub struct MemberView {
     pub created_at: DateTime<Utc>,
     pub last_seen_at: DateTime<Utc>,
     pub avatar_path: String,
-    #[sqlx(skip)]
     pub avatar_url: String,
+}
+
+#[derive(Debug, FromRow)]
+pub(crate) struct MemberRow {
+    id: Uuid,
+    email: String,
+    name: String,
+    status: String,
+    role: String,
+    job_title: String,
+    area: String,
+    assignments_json: String,
+    created_at: DateTime<Utc>,
+    last_seen_at: DateTime<Utc>,
+    avatar_path: String,
+}
+
+impl MemberRow {
+    pub(crate) fn into_view(self) -> MemberView {
+        MemberView {
+            id: self.id,
+            email: self.email,
+            name: self.name,
+            status: self.status,
+            role: self.role,
+            job_title: self.job_title,
+            area: self.area,
+            assignments: serde_json::from_str(&self.assignments_json).unwrap_or_default(),
+            created_at: self.created_at,
+            last_seen_at: self.last_seen_at,
+            avatar_path: self.avatar_path,
+            avatar_url: String::new(),
+        }
+    }
 }
 
 #[derive(Debug, Deserialize)]
@@ -46,22 +79,23 @@ pub async fn list_members(
     State(state): State<AppState>,
     _member: AuthenticatedMember,
 ) -> Result<Json<Vec<MemberView>>, ApiError> {
-    let mut members = sqlx::query_as::<_, MemberView>(
+    let rows = sqlx::query_as::<_, MemberRow>(
         r#"
-        select id, email, name, status, role,
+        select id, email, name, status::text as status, role::text as role,
                coalesce(job_title, '') as job_title,
                coalesce(area, '') as area,
-               coalesce(assignments, array[]::text[]) as assignments,
+               coalesce(assignments, '[]'::jsonb)::text as assignments_json,
                created_at, last_seen_at,
                coalesce(avatar_path, '') as avatar_path
         from public.members
-        order by case status when 'active' then 0 when 'pending' then 1 else 2 end,
+        order by case status::text when 'active' then 0 when 'pending' then 1 else 2 end,
                  lower(name), lower(email)
         "#,
     )
     .fetch_all(&state.pool)
     .await?;
 
+    let mut members = rows.into_iter().map(MemberRow::into_view).collect::<Vec<_>>();
     for item in &mut members {
         item.avatar_url = signed_asset_url(&state, &item.avatar_path, 28_800)
             .await
@@ -82,21 +116,22 @@ pub async fn update_member(
     }
     validate_member_input(&input)?;
 
-    let mut member = sqlx::query_as::<_, MemberView>(
+    let assignments = input.assignments.map(SqlJson);
+    let row = sqlx::query_as::<_, MemberRow>(
         r#"
         update public.members
         set name = coalesce($2, name),
-            status = coalesce($3, status),
-            role = coalesce($4, role),
+            status = coalesce($3, status::text),
+            role = coalesce($4, role::text),
             job_title = coalesce($5, job_title),
             area = coalesce($6, area),
-            assignments = coalesce($7, assignments),
+            assignments = coalesce($7::jsonb, assignments),
             updated_at = now()
         where id = $1
-        returning id, email, name, status, role,
+        returning id, email, name, status::text as status, role::text as role,
                   coalesce(job_title, '') as job_title,
                   coalesce(area, '') as area,
-                  coalesce(assignments, array[]::text[]) as assignments,
+                  coalesce(assignments, '[]'::jsonb)::text as assignments_json,
                   created_at, last_seen_at,
                   coalesce(avatar_path, '') as avatar_path
         "#,
@@ -119,11 +154,12 @@ pub async fn update_member(
             .area
             .map(|value| value.trim().chars().take(120).collect::<String>()),
     )
-    .bind(input.assignments)
+    .bind(assignments)
     .fetch_optional(&state.pool)
     .await?
     .ok_or(ApiError::NotFound("member"))?;
 
+    let mut member = row.into_view();
     member.avatar_url = signed_asset_url(&state, &member.avatar_path, 28_800)
         .await
         .unwrap_or_default();
