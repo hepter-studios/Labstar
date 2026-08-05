@@ -1,14 +1,14 @@
 FROM rust:1.88-bookworm AS builder
 WORKDIR /app
 
-COPY backend/Cargo.toml backend/Cargo.lock* ./
+COPY backend/Cargo.toml ./Cargo.toml
 RUN mkdir -p src && printf 'fn main() {}\n' > src/main.rs
-RUN cargo build --release || true
+RUN cargo build --release
 RUN rm -rf src
 
 COPY backend/src ./src
 COPY backend/migrations ./migrations
-RUN touch src/main.rs && cargo build --release --locked
+RUN touch src/main.rs && cargo build --release
 
 FROM debian:bookworm-slim AS runtime
 RUN apt-get update \
