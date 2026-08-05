@@ -1,4 +1,5 @@
 const API_ORIGIN = "https://labstar-api-mackson.fly.dev";
+const SUPABASE_ORIGIN = "https://pgzwyngxsxnheulvusdq.supabase.co";
 
 const ALLOWED_PATHS = [
   /^\/health(?:\/live|\/ready)?$/,
@@ -32,10 +33,91 @@ function requestedPath(value) {
   return `/${parts.filter(Boolean).join("/")}`;
 }
 
-export async function onRequest({ request, params }) {
+function jsonResponse(value, status = 200, extraHeaders = {}) {
+  return Response.json(value, {
+    status,
+    headers: {
+      "cache-control": "no-store",
+      ...extraHeaders,
+    },
+  });
+}
+
+function memberFromRow(row) {
+  return {
+    id: String(row.id ?? ""),
+    email: String(row.email ?? ""),
+    name: String(row.name ?? ""),
+    status: String(row.status ?? "active"),
+    role: String(row.role ?? "member"),
+    jobTitle: String(row.job_title ?? ""),
+    area: String(row.area ?? ""),
+    assignments: Array.isArray(row.assignments) ? row.assignments.map(String) : [],
+    createdAt: String(row.created_at ?? ""),
+    lastSeenAt: String(row.last_seen_at ?? row.created_at ?? ""),
+    avatarPath: String(row.avatar_path ?? ""),
+    avatarUrl: "",
+    jobRoles: [],
+  };
+}
+
+function roleFromRow(row) {
+  return {
+    id: String(row.id ?? ""),
+    name: String(row.name ?? ""),
+    department: String(row.department ?? "Outros"),
+    color: String(row.color ?? "#8baeff"),
+    icon: String(row.icon ?? "star"),
+    position: Number(row.position ?? 100),
+    permissions: Array.isArray(row.permissions) ? row.permissions.map(String) : [],
+  };
+}
+
+async function supabaseReadFallback(path, request, env) {
+  if (request.method !== "GET") return null;
+  const authorization = request.headers.get("authorization");
+  const apiKey = env.VITE_SUPABASE_PUBLISHABLE_KEY
+    || env.VITE_SUPABASE_ANON_KEY
+    || env.SUPABASE_PUBLISHABLE_KEY
+    || env.SUPABASE_ANON_KEY;
+  if (!authorization || !apiKey) return null;
+
+  let restPath = "";
+  let transform = (value) => value;
+
+  if (path === "/v1/members") {
+    restPath = "/rest/v1/members?select=*&order=created_at.asc";
+    transform = (value) => Array.isArray(value) ? value.map(memberFromRow) : [];
+  } else if (path === "/v1/job-roles") {
+    restPath = "/rest/v1/job_roles?select=*&order=position.asc";
+    transform = (value) => Array.isArray(value) ? value.map(roleFromRow) : [];
+  } else {
+    const match = path.match(/^\/v1\/members\/([0-9a-f-]+)\/job-roles$/);
+    if (!match) return null;
+    restPath = `/rest/v1/member_job_roles?member_id=eq.${encodeURIComponent(match[1])}&select=job_role:job_roles(*)`;
+    transform = (value) => Array.isArray(value)
+      ? value.map((entry) => entry?.job_role).filter(Boolean).map(roleFromRow)
+      : [];
+  }
+
+  const response = await fetch(`${SUPABASE_ORIGIN}${restPath}`, {
+    headers: {
+      accept: "application/json",
+      apikey: apiKey,
+      authorization,
+    },
+  });
+  if (!response.ok) return null;
+  const payload = await response.json();
+  return jsonResponse(transform(payload), 200, {
+    "x-labstar-proxy": "supabase-read-fallback",
+  });
+}
+
+export async function onRequest({ request, params, env }) {
   const path = requestedPath(params.path);
   if (!ALLOWED_PATHS.some((pattern) => pattern.test(path))) {
-    return Response.json({ code: "route_not_allowed" }, { status: 404 });
+    return jsonResponse({ code: "route_not_allowed" }, 404);
   }
 
   const incomingUrl = new URL(request.url);
@@ -52,6 +134,16 @@ export async function onRequest({ request, params }) {
 
   try {
     const upstream = await fetch(target, init);
+    const teamReturnedEmpty = path === "/v1/members"
+      && upstream.ok
+      && Array.isArray(await upstream.clone().json().catch(() => null))
+      && (await upstream.clone().json().catch(() => null))?.length === 0;
+
+    if (!upstream.ok || teamReturnedEmpty) {
+      const fallback = await supabaseReadFallback(path, request, env);
+      if (fallback) return fallback;
+    }
+
     const responseHeaders = new Headers(upstream.headers);
     responseHeaders.set("cache-control", "no-store");
     responseHeaders.set("x-labstar-proxy", "rust-api");
@@ -61,9 +153,11 @@ export async function onRequest({ request, params }) {
       headers: responseHeaders,
     });
   } catch {
-    return Response.json(
+    const fallback = await supabaseReadFallback(path, request, env);
+    if (fallback) return fallback;
+    return jsonResponse(
       { code: "backend_proxy_unavailable", message: "Backend Rust indisponível." },
-      { status: 502, headers: { "cache-control": "no-store" } },
+      502,
     );
   }
 }
