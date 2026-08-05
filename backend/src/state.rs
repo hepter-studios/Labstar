@@ -1,14 +1,14 @@
-use std::{sync::Arc, time::Duration};
+use std::{sync::Arc, time::{Duration, Instant}};
 
 use chrono::{DateTime, Utc};
 use dashmap::DashMap;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
-use sqlx::{PgPool, postgres::PgPoolOptions};
+use sqlx::{postgres::PgPoolOptions, PgPool};
 use tokio::sync::broadcast;
 use uuid::Uuid;
 
-use crate::{auth::AuthService, config::Config};
+use crate::{auth::{AuthService, AuthenticatedMember}, config::Config};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", tag = "type", content = "payload")]
@@ -30,6 +30,12 @@ pub struct PresenceEntry {
     pub connections: usize,
 }
 
+#[derive(Debug, Clone)]
+pub struct RealtimeTicket {
+    pub member: AuthenticatedMember,
+    pub expires_at: Instant,
+}
+
 #[derive(Clone)]
 pub struct AppState {
     pub config: Arc<Config>,
@@ -39,11 +45,12 @@ pub struct AppState {
     pub events: broadcast::Sender<BackendEvent>,
     pub presence: Arc<DashMap<Uuid, PresenceEntry>>,
     pub rate_limits: Arc<DashMap<String, RateWindow>>,
+    pub realtime_tickets: Arc<DashMap<String, RealtimeTicket>>,
 }
 
 #[derive(Debug, Clone)]
 pub struct RateWindow {
-    pub started_at: std::time::Instant,
+    pub started_at: Instant,
     pub count: u32,
 }
 
@@ -57,7 +64,6 @@ impl AppState {
             .idle_timeout(Some(Duration::from_secs(300)))
             .connect(&config.database_url)
             .await?;
-
         sqlx::query("select 1").execute(&pool).await?;
 
         let http = Client::builder()
@@ -76,6 +82,7 @@ impl AppState {
             events,
             presence: Arc::new(DashMap::new()),
             rate_limits: Arc::new(DashMap::new()),
+            realtime_tickets: Arc::new(DashMap::new()),
         })
     }
 
