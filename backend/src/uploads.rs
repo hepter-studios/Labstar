@@ -11,7 +11,7 @@ use crate::{
     auth::AuthenticatedMember,
     error::ApiError,
     files::{
-        detect_mime, record_file_receipt, sanitize_file_name, signed_asset_url,
+        FileReceipt, detect_mime, record_file_receipt, sanitize_file_name, signed_asset_url,
         upload_storage_object, validate_file_size,
     },
     state::AppState,
@@ -125,13 +125,15 @@ async fn persist_asset(
     upload_storage_object(state, &path, &file.mime_type, file.bytes).await?;
     record_file_receipt(
         state,
-        member.member_id,
-        None,
-        &path,
-        &file.file_name,
-        &file.mime_type,
-        size_bytes,
-        &sha256,
+        FileReceipt {
+            actor_member_id: member.member_id,
+            attachment_id: None,
+            storage_path: &path,
+            original_name: &file.file_name,
+            detected_mime_type: &file.mime_type,
+            size_bytes,
+            sha256: &sha256,
+        },
     )
     .await?;
     let url = signed_asset_url(state, &path, 28_800)
