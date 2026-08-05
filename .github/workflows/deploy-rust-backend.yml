@@ -91,14 +91,16 @@ jobs:
       - name: Instalar flyctl
         uses: superfly/flyctl-actions/setup-flyctl@master
 
-      - name: Confirmar conta e aplicativo Fly.io
+      - name: Confirmar acesso ao aplicativo Fly.io existente
         shell: bash
         run: |
           set -euo pipefail
           flyctl auth whoami
-          if ! flyctl status --app "$FLY_APP" >/dev/null 2>&1; then
-            echo "Criando aplicativo $FLY_APP na Fly.io..."
-            flyctl apps create "$FLY_APP"
+          if ! flyctl status --app "$FLY_APP"; then
+            echo "Não foi possível acessar o aplicativo existente $FLY_APP."
+            echo "Se o log informar que o trial terminou, configure o billing da Fly.io e execute novamente."
+            echo "O workflow não tentará recriar o aplicativo nem mudar sua organização."
+            exit 1
           fi
 
       - name: Sincronizar segredos do servidor
@@ -198,6 +200,6 @@ jobs:
         if: always()
         shell: bash
         run: |
-          flyctl status --app "$FLY_APP" --all || true
-          flyctl checks list --app "$FLY_APP" || true
-          flyctl logs --app "$FLY_APP" --no-tail || true
+          timeout 30s flyctl status --app "$FLY_APP" --all || true
+          timeout 30s flyctl checks list --app "$FLY_APP" || true
+          timeout 30s flyctl logs --app "$FLY_APP" --no-tail || true
