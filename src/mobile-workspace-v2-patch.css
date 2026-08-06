@@ -94,6 +94,12 @@
     border-radius: 14px !important;
   }
 
+  body.mobile-workspace-active .modal-backdrop,
+  body.mobile-workspace-active .integrations-backdrop,
+  body.mobile-workspace-active .image-preview-backdrop {
+    z-index: 1400 !important;
+  }
+
   body.mobile-workspace-active .image-preview-backdrop {
     padding: 8px !important;
   }
