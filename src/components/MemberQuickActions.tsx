@@ -1,4 +1,4 @@
-import { Copy, ExternalLink, Github, Instagram, MessageSquare, Users, X } from "lucide-react";
+import { CheckCircle2, Copy, ExternalLink, Github, MessageSquare, Users, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { getMemberProfileConnections, type PublicProfileConnections } from "../lib/profile-connections";
 import { listMembers, type Member } from "../lib/supabase";
@@ -6,7 +6,7 @@ import { Avatar } from "./Avatar";
 
 type MenuState = { x: number; y: number; member: Member } | null;
 
-const emptyConnections: PublicProfileConnections = { github: null, instagramUsername: "" };
+const emptyConnections: PublicProfileConnections = { github: null };
 
 function setInputValue(input: HTMLInputElement, value: string) {
   const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set;
@@ -15,7 +15,7 @@ function setInputValue(input: HTMLInputElement, value: string) {
 }
 
 function openDirectMessage(member: Member) {
-  document.querySelector<HTMLButtonElement>('.workspace-dm-entry')?.click();
+  document.querySelector<HTMLButtonElement>(".workspace-dm-entry")?.click();
   window.setTimeout(() => {
     const input = document.querySelector<HTMLInputElement>(".dm-search input");
     if (input) {
@@ -100,17 +100,18 @@ export function MemberQuickActions() {
 
   if (!menu) return null;
   const role = menu.member.jobRoles[0];
-  const hasConnections = Boolean(connections.github || connections.instagramUsername);
+  const github = connections.github;
 
   return (
     <aside ref={menuRef} className="member-quick-card" style={{ left: menu.x, top: menu.y }} role="dialog" aria-label={`Ações para ${menu.member.name}`} onClick={(event) => event.stopPropagation()}>
       <button className="member-quick-close" type="button" onClick={() => setMenu(null)} aria-label="Fechar"><X size={13} /></button>
       <div className="member-quick-profile"><Avatar name={menu.member.name} url={menu.member.avatarUrl} size="lg" status={menu.member.status === "active" ? "online" : "offline"}/><div><strong>{menu.member.name}</strong><span>{role?.name || menu.member.jobTitle || menu.member.role}</span><small>{menu.member.area || menu.member.email}</small></div></div>
-      {hasConnections && (
+      {github && (
         <div className="member-quick-connections">
-          <small>CONTAS CONECTADAS</small>
-          {connections.github && <a href={connections.github.profileUrl} target="_blank" rel="noreferrer"><Github size={13}/><span>@{connections.github.username}</span><ExternalLink size={10}/></a>}
-          {connections.instagramUsername && <a href={`https://www.instagram.com/${connections.instagramUsername}/`} target="_blank" rel="noreferrer"><Instagram size={13}/><span>@{connections.instagramUsername}</span><ExternalLink size={10}/></a>}
+          <small>GITHUB VERIFICADO</small>
+          <a href={github.profileUrl} target="_blank" rel="noreferrer">
+            <Github size={13}/><span>@{github.username}</span><CheckCircle2 size={10}/><ExternalLink size={10}/>
+          </a>
         </div>
       )}
       <div className="member-quick-actions">
