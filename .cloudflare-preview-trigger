@@ -1,3 +1,4 @@
 Cloudflare Pages preview trigger
 Branch: feat/backend-rust-complete
-Triggered: 2026-08-05T17:58:00-03:00
+Triggered: 2026-08-05T21:03:00-03:00
+Purpose: validar carregamento da equipe após restaurar schema text[]
