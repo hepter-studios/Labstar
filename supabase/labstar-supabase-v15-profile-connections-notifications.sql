@@ -1,122 +1,14 @@
--- Labstar v15 — contas públicas conectadas e central abrangente de notificações.
+-- Labstar v15 — perfil GitHub e central abrangente de notificações.
 -- Seguro para executar novamente. Não remove perfis, mensagens ou notificações existentes.
 
 begin;
 
 alter table public.members
-  add column if not exists github_profile jsonb not null default '{}'::jsonb,
-  add column if not exists instagram_username text;
+  add column if not exists github_profile jsonb not null default '{}'::jsonb;
 
 alter table public.members drop constraint if exists members_github_profile_object_check;
 alter table public.members add constraint members_github_profile_object_check
   check (jsonb_typeof(github_profile) = 'object');
-
-alter table public.members drop constraint if exists members_instagram_username_check;
-alter table public.members add constraint members_instagram_username_check
-  check (
-    instagram_username is null
-    or instagram_username ~ '^[A-Za-z0-9._]{1,30}$'
-  );
-
-create or replace function public.set_own_github_profile(new_github_profile jsonb)
-returns setof public.members
-language plpgsql
-security definer
-set search_path = public, pg_temp
-as $$
-declare
-  actor_id uuid := public.current_member_id();
-  username text;
-begin
-  if actor_id is null then
-    raise exception 'active_member_required';
-  end if;
-
-  if new_github_profile is null or jsonb_typeof(new_github_profile) <> 'object' then
-    raise exception 'invalid_github_profile';
-  end if;
-
-  username := trim(coalesce(new_github_profile ->> 'username', ''));
-  if username !~ '^[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?$' then
-    raise exception 'invalid_github_username';
-  end if;
-
-  return query
-  update public.members
-  set
-    github_profile = jsonb_build_object(
-      'username', username,
-      'name', left(coalesce(new_github_profile ->> 'name', ''), 120),
-      'avatarUrl', left(coalesce(new_github_profile ->> 'avatarUrl', ''), 500),
-      'profileUrl', 'https://github.com/' || username,
-      'bio', left(coalesce(new_github_profile ->> 'bio', ''), 300),
-      'company', left(coalesce(new_github_profile ->> 'company', ''), 120),
-      'location', left(coalesce(new_github_profile ->> 'location', ''), 120),
-      'publicRepos', greatest(0, least(1000000, coalesce((new_github_profile ->> 'publicRepos')::integer, 0))),
-      'followers', greatest(0, least(100000000, coalesce((new_github_profile ->> 'followers')::integer, 0))),
-      'following', greatest(0, least(100000000, coalesce((new_github_profile ->> 'following')::integer, 0))),
-      'connectedAt', now(),
-      'verified', true
-    ),
-    last_seen_at = now()
-  where id = actor_id
-  returning *;
-end;
-$$;
-
-create or replace function public.clear_own_github_profile()
-returns setof public.members
-language plpgsql
-security definer
-set search_path = public, pg_temp
-as $$
-declare
-  actor_id uuid := public.current_member_id();
-begin
-  if actor_id is null then
-    raise exception 'active_member_required';
-  end if;
-
-  return query
-  update public.members
-  set github_profile = '{}'::jsonb, last_seen_at = now()
-  where id = actor_id
-  returning *;
-end;
-$$;
-
-create or replace function public.set_own_instagram_username(new_instagram_username text)
-returns setof public.members
-language plpgsql
-security definer
-set search_path = public, pg_temp
-as $$
-declare
-  actor_id uuid := public.current_member_id();
-  normalized text := nullif(trim(leading '@' from trim(coalesce(new_instagram_username, ''))), '');
-begin
-  if actor_id is null then
-    raise exception 'active_member_required';
-  end if;
-
-  if normalized is not null and normalized !~ '^[A-Za-z0-9._]{1,30}$' then
-    raise exception 'invalid_instagram_username';
-  end if;
-
-  return query
-  update public.members
-  set instagram_username = normalized, last_seen_at = now()
-  where id = actor_id
-  returning *;
-end;
-$$;
-
-revoke all on function public.set_own_github_profile(jsonb) from public;
-revoke all on function public.clear_own_github_profile() from public;
-revoke all on function public.set_own_instagram_username(text) from public;
-grant execute on function public.set_own_github_profile(jsonb) to authenticated;
-grant execute on function public.clear_own_github_profile() to authenticated;
-grant execute on function public.set_own_instagram_username(text) to authenticated;
 
 create table if not exists public.notifications (
   id uuid primary key default gen_random_uuid(),
@@ -552,8 +444,14 @@ declare
   target_member uuid;
   target_role uuid;
 begin
-  target_member := coalesce(new.member_id, old.member_id);
-  target_role := coalesce(new.job_role_id, old.job_role_id);
+  if tg_op = 'DELETE' then
+    target_member := old.member_id;
+    target_role := old.job_role_id;
+  else
+    target_member := new.member_id;
+    target_role := new.job_role_id;
+  end if;
+
   select name into role_name from public.job_roles where id = target_role;
 
   perform public.push_labstar_notification(
@@ -564,7 +462,9 @@ begin
     case when tg_op = 'DELETE' then 'job_role_removed' else 'job_role_added' end,
     target_role
   );
-  return coalesce(new, old);
+
+  if tg_op = 'DELETE' then return old; end if;
+  return new;
 end;
 $$;
 
@@ -635,4 +535,4 @@ end $$;
 
 commit;
 
-select 'Labstar v15 instalada: perfis conectados e notificações abrangentes prontas.' as status;
+select 'Labstar v15 instalada: GitHub e notificações abrangentes prontos.' as status;
