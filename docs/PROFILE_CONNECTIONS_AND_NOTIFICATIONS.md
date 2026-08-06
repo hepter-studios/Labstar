@@ -2,32 +2,37 @@
 
 ## Objetivo
 
-Esta entrega separa a forma de entrada da identidade profissional pública.
+Esta entrega adiciona contas públicas ao perfil interno sem tocar no sistema de login.
 
-Uma pessoa pode continuar entrando com o e-mail autorizado e, dentro do próprio perfil, conectar uma conta GitHub separadamente. O GitHub conectado é verificado pelo OAuth do Supabase e exibido para a equipe com usuário, nome, avatar, biografia, repositórios públicos, seguidores e link oficial. O Instagram é um link público opcional configurado pelo próprio membro.
+A pessoa continua entrando exatamente como já entra hoje. Dentro do próprio perfil do Labstar, ela pode informar o usuário ou colar o link do GitHub. O aplicativo busca os dados públicos e exibe usuário, nome, avatar, biografia, repositórios, seguidores, localização e link oficial para a equipe. O Instagram também pode ser adicionado como link público.
 
-A conexão GitHub não concede acesso ao Labstar, não altera cargo, não transforma o membro em administrador e não substitui as regras do backend Rust.
+A conexão do GitHub:
+
+- não usa `auth.linkIdentity`;
+- não adiciona provedor de login;
+- não troca a sessão existente;
+- não altera convite, cargo ou permissão;
+- não modifica o backend Rust de autorização.
 
 ## Arquivos principais
 
-- `src/lib/profile-connections.ts`: OAuth, sincronização do perfil público e Instagram;
+- `src/lib/profile-connections.ts`: importação do perfil público do GitHub e Instagram;
 - `src/components/ProfileConnectionsBridge.tsx`: configuração dentro do perfil e exibição no diretório;
-- `src/components/MemberQuickActions.tsx`: contas públicas no cartão rápido de membros;
+- `src/components/MemberQuickActions.tsx`: contas públicas no cartão rápido dos membros;
 - `src/components/NotificationsPanel.tsx`: filtros, categorias, alertas do dispositivo e atualização em tempo real;
 - `supabase/labstar-supabase-v15-profile-connections-notifications.sql`: colunas, RPCs, políticas e gatilhos;
+- `supabase/labstar-supabase-v15b-profile-connections-no-auth.sql`: garantia explícita de que o GitHub é somente perfil público;
 - `src/member-panel-tools.css`: acabamento responsivo e mobile.
 
-## Configuração obrigatória no Supabase
+## Funcionamento do GitHub
 
-Em `Authentication → Settings`, habilite **Manual Identity Linking**.
+1. o membro abre o próprio perfil dentro do Labstar;
+2. informa `@usuario` ou cola `https://github.com/usuario`;
+3. o Labstar consulta a API pública do GitHub;
+4. os dados públicos são gravados somente no perfil interno do membro;
+5. outros membros podem abrir o perfil oficial no GitHub.
 
-O provedor GitHub precisa continuar configurado com Client ID e Client Secret válidos. Adicione aos Redirect URLs:
-
-- a origem web de produção do Labstar;
-- as origens de desenvolvimento usadas pela equipe;
-- `labstar://auth/callback` para o aplicativo Tauri.
-
-O fluxo desktop usa a ponte nativa existente e retorna pelo deep link `labstar://auth/callback`.
+Nenhuma configuração de provedor OAuth, Client ID, Client Secret, Redirect URL ou Manual Identity Linking é necessária para este recurso.
 
 ## Migração do banco
 
@@ -35,11 +40,12 @@ Antes de aplicar:
 
 1. confirme o projeto Supabase correto;
 2. gere e baixe um backup;
-3. revise o commit e o arquivo SQL completo;
-4. execute somente `supabase/labstar-supabase-v15-profile-connections-notifications.sql`;
-5. valide os RPCs e o Realtime de `notifications`.
+3. revise o commit e os arquivos SQL completos;
+4. execute `supabase/labstar-supabase-v15-profile-connections-notifications.sql`;
+5. execute `supabase/labstar-supabase-v15b-profile-connections-no-auth.sql`;
+6. valide os RPCs e o Realtime de `notifications`.
 
-A migração é idempotente e não remove dados existentes.
+Também existe o workflow manual `.github/workflows/apply-profile-connections-v15.yml`, que cria um backup antes de executar as duas migrações.
 
 ## Eventos cobertos pela central de notificações
 
@@ -56,12 +62,12 @@ Notificações normais de canais não são enviadas para todos indiscriminadamen
 
 ## Matriz mínima de teste
 
-- entrar por magic link e conectar um GitHub com o mesmo e com outro e-mail;
-- reiniciar o app desktop durante o retorno OAuth;
-- atualizar e desconectar o GitHub;
+- confirmar que o login atual continua igual antes e depois de adicionar o GitHub;
+- adicionar GitHub por usuário e por link completo;
+- atualizar e remover o GitHub do perfil;
 - adicionar, alterar e remover o Instagram;
 - abrir o cartão de outro membro e conferir os links públicos;
 - gerar DM, menção, resposta, reunião, chamada perdida e mudança de cargo;
 - marcar uma e todas as notificações como lidas;
 - validar 320 px, 375 px, 430 px, tablet e desktop;
-- confirmar que usuário suspenso continua bloqueado mesmo com GitHub conectado.
+- confirmar que usuário suspenso continua bloqueado independentemente das contas públicas do perfil.
