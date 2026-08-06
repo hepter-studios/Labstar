@@ -2,6 +2,7 @@ import { Search, UserPlus, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { getCurrentAccessIdentity } from "../lib/access";
+import { LabstarEnhancementStyles } from "./LabstarEnhancementStyles";
 import { ProfileConnectionsBridge } from "./ProfileConnectionsBridge";
 
 export function MemberPanelTools() {
@@ -52,5 +53,5 @@ export function MemberPanelTools() {
     target,
   ) : null;
 
-  return <>{tools}<ProfileConnectionsBridge /></>;
+  return <><LabstarEnhancementStyles />{tools}<ProfileConnectionsBridge /></>;
 }
