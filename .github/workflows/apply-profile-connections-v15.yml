@@ -33,6 +33,7 @@ jobs:
           test -n "${DATABASE_URL:-}" || { echo "SUPABASE_DATABASE_URL não configurada"; exit 1; }
           test -f supabase/labstar-supabase-v15-profile-connections-notifications.sql
           test -f supabase/labstar-supabase-v15b-profile-connections-no-auth.sql
+          test -f supabase/labstar-supabase-v15d-notification-hardening.sql
 
       - name: Instalar cliente PostgreSQL
         shell: bash
@@ -62,6 +63,7 @@ jobs:
           set -euo pipefail
           psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f supabase/labstar-supabase-v15-profile-connections-notifications.sql
           psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f supabase/labstar-supabase-v15b-profile-connections-no-auth.sql
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f supabase/labstar-supabase-v15d-notification-hardening.sql
 
       - name: Auditar instalação
         shell: bash
@@ -75,5 +77,6 @@ jobs:
             to_regprocedure('public.set_own_instagram_username(text)') is not null as instagram_rpc,
             exists(select 1 from pg_trigger where tgname='direct_message_notification' and not tgisinternal) as dm_notifications,
             exists(select 1 from pg_trigger where tgname='channel_message_notification' and not tgisinternal) as channel_notifications,
+            exists(select 1 from pg_trigger where tgname='member_job_role_notification' and not tgisinternal) as role_notifications,
             exists(select 1 from pg_publication_tables where pubname='supabase_realtime' and schemaname='public' and tablename='notifications') as notifications_realtime;
           SQL
