@@ -12,13 +12,12 @@ import {
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
-  connectGithubIdentity,
-  disconnectGithubIdentity,
+  connectGithubProfile,
+  disconnectGithubProfile,
   getCurrentProfileConnections,
   listMemberProfileConnections,
+  refreshGithubProfile,
   saveInstagramConnection,
-  syncConnectedGithubProfile,
-  takePendingProfileConnection,
   type GithubPublicProfile,
   type PublicProfileConnections,
 } from "../lib/profile-connections";
@@ -34,10 +33,10 @@ function ConnectionLinks({ connections, compact = false }: { connections: Public
   return (
     <div className={`public-connections ${compact ? "compact" : ""}`}>
       {connections.github && (
-        <a href={connections.github.profileUrl} target="_blank" rel="noreferrer" title="Abrir perfil verificado no GitHub">
+        <a href={connections.github.profileUrl} target="_blank" rel="noreferrer" title="Abrir perfil no GitHub">
           <Github size={compact ? 13 : 15} />
           <span>{compact ? `@${connections.github.username}` : githubLabel(connections.github)}</span>
-          {connections.github.verified && <CheckCircle2 size={11} />}
+          <ExternalLink size={10} />
         </a>
       )}
       {connections.instagramUsername && (
@@ -102,22 +101,16 @@ function MemberDirectoryConnections() {
 export function ProfileConnectionsBridge() {
   const [target, setTarget] = useState<HTMLElement | null>(null);
   const [connections, setConnections] = useState(emptyConnections);
-  const [githubLinked, setGithubLinked] = useState(false);
+  const [githubInput, setGithubInput] = useState("");
   const [instagram, setInstagram] = useState("");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
-  const oauthSyncRef = useRef(false);
 
   useEffect(() => {
-    const pending = takePendingProfileConnection() === "github";
-    const linkedByQuery = new URLSearchParams(window.location.search).get("linked") === "github";
-    oauthSyncRef.current = pending || linkedByQuery;
-
     const findProfilePanel = () => {
       const panel = document.querySelector<HTMLElement>(".quick-panel.profile");
       if (!panel) {
         setTarget(null);
-        if (oauthSyncRef.current) document.querySelector<HTMLButtonElement>(".avatar-button")?.click();
         return;
       }
       let mount = panel.querySelector<HTMLElement>(":scope > .profile-connections-mount");
@@ -137,63 +130,58 @@ export function ProfileConnectionsBridge() {
     return () => observer.disconnect();
   }, []);
 
-  async function loadConnections(syncGithub = false) {
+  async function loadConnections() {
     setLoading(true);
-    setMessage(syncGithub ? "Confirmando o perfil do GitHub..." : "");
     try {
-      if (syncGithub) await syncConnectedGithubProfile();
       const current = await getCurrentProfileConnections();
-      setConnections({ github: current.github, instagramUsername: current.instagramUsername });
-      setGithubLinked(current.githubIdentityLinked);
+      setConnections(current);
+      setGithubInput(current.github?.username ?? "");
       setInstagram(current.instagramUsername);
-      if (syncGithub) setMessage("GitHub conectado e perfil verificado.");
-      if (syncGithub) {
-        const url = new URL(window.location.href);
-        url.searchParams.delete("linked");
-        window.history.replaceState({}, "", `${url.pathname}${url.search}${url.hash}`);
-      }
-    } catch (error) {
-      const code = error instanceof Error ? error.message : "connection_failed";
-      setMessage(code.includes("manual")
-        ? "A conexão manual de identidades precisa estar ativa no Supabase."
-        : syncGithub
-          ? "O GitHub autorizou a conta, mas não foi possível sincronizar o perfil. Tente atualizar."
-          : "Não foi possível carregar as contas conectadas agora.");
+      setMessage("");
+    } catch {
+      setMessage("Não foi possível carregar as contas conectadas agora.");
     } finally {
       setLoading(false);
-      oauthSyncRef.current = false;
     }
   }
 
   useEffect(() => {
     if (!target) return;
-    void loadConnections(oauthSyncRef.current);
+    void loadConnections();
   }, [target]);
 
   async function connectGithub() {
     setLoading(true);
-    setMessage("Abrindo a autorização segura do GitHub...");
+    setMessage("Buscando seu perfil público no GitHub...");
     try {
-      await connectGithubIdentity();
+      const github = await connectGithubProfile(githubInput);
+      setConnections((current) => ({ ...current, github }));
+      setGithubInput(github.username);
+      setMessage("GitHub adicionado ao perfil do Labstar. O login não foi alterado.");
     } catch (error) {
-      const text = error instanceof Error ? error.message : "";
-      setMessage(text.toLocaleLowerCase().includes("manual")
-        ? "Ative Manual Linking nas configurações de autenticação do Supabase."
-        : "Não foi possível iniciar a conexão com o GitHub.");
+      const code = error instanceof Error ? error.message : "";
+      setMessage(code === "github_profile_not_found"
+        ? "Esse usuário não foi encontrado no GitHub."
+        : code === "invalid_github_username"
+          ? "Use o @usuário ou o link completo do perfil no GitHub."
+          : "Não foi possível importar o perfil do GitHub agora.");
+    } finally {
       setLoading(false);
     }
   }
 
   async function refreshGithub() {
+    const username = connections.github?.username || githubInput;
+    if (!username) return;
     setLoading(true);
     setMessage("Atualizando dados públicos do GitHub...");
     try {
-      const github = await syncConnectedGithubProfile();
+      const github = await refreshGithubProfile(username);
       setConnections((current) => ({ ...current, github }));
-      setGithubLinked(true);
+      setGithubInput(github.username);
       setMessage("Perfil do GitHub atualizado.");
     } catch {
-      setMessage("Não foi possível atualizar o GitHub. Reconecte a conta se necessário.");
+      setMessage("Não foi possível atualizar o GitHub agora.");
     } finally {
       setLoading(false);
     }
@@ -201,14 +189,14 @@ export function ProfileConnectionsBridge() {
 
   async function disconnectGithub() {
     setLoading(true);
-    setMessage("Desconectando GitHub...");
+    setMessage("Removendo GitHub do perfil...");
     try {
-      await disconnectGithubIdentity();
+      await disconnectGithubProfile();
       setConnections((current) => ({ ...current, github: null }));
-      setGithubLinked(false);
-      setMessage("GitHub desconectado do perfil público.");
+      setGithubInput("");
+      setMessage("GitHub removido do perfil. Seu login continua igual.");
     } catch {
-      setMessage("Não foi possível desconectar. A conta precisa manter pelo menos uma forma de entrada.");
+      setMessage("Não foi possível remover o GitHub do perfil.");
     } finally {
       setLoading(false);
     }
@@ -237,14 +225,14 @@ export function ProfileConnectionsBridge() {
   const portal = target ? createPortal(
     <section className="profile-connections" aria-label="Contas conectadas">
       <div className="profile-connections-head">
-        <div><strong>Contas conectadas</strong><small>Perfis públicos exibidos para a equipe.</small></div>
+        <div><strong>Contas conectadas</strong><small>Somente perfis públicos dentro do Labstar. O login não muda.</small></div>
         {loading && <LoaderCircle className="spin" size={15} />}
       </div>
 
-      <article className={`connection-card github ${githubLinked ? "connected" : ""}`}>
+      <article className={`connection-card github ${connections.github ? "connected" : ""}`}>
         <span className="connection-icon"><Github size={18} /></span>
         <div className="connection-copy">
-          <b>GitHub {githubLinked && <em><CheckCircle2 size={10} /> Verificado</em>}</b>
+          <b>GitHub {connections.github && <em><CheckCircle2 size={10} /> Importado</em>}</b>
           {connections.github ? (
             <>
               <a href={connections.github.profileUrl} target="_blank" rel="noreferrer">@{connections.github.username}<ExternalLink size={10} /></a>
@@ -255,15 +243,20 @@ export function ProfileConnectionsBridge() {
                 {connections.github.location && <span><MapPin size={10} />{connections.github.location}</span>}
               </div>
             </>
-          ) : <small>Conecte sua conta para trazer o perfil de desenvolvedor ao Labstar.</small>}
+          ) : (
+            <>
+              <small>Digite o usuário ou cole o link do GitHub para trazer o perfil ao Labstar.</small>
+              <label><span>@</span><input value={githubInput} onChange={(event) => setGithubInput(event.target.value)} placeholder="usuario-do-github" maxLength={120} /></label>
+            </>
+          )}
         </div>
         <div className="connection-actions">
-          {!githubLinked ? (
-            <button type="button" disabled={loading} onClick={() => void connectGithub()}><Github size={13} /> Conectar</button>
+          {!connections.github ? (
+            <button type="button" disabled={loading || !githubInput.trim()} onClick={() => void connectGithub()}><Github size={13} /> Adicionar</button>
           ) : (
             <>
               <button type="button" disabled={loading} onClick={() => void refreshGithub()} title="Atualizar perfil"><RefreshCw size={12} /></button>
-              <button className="danger" type="button" disabled={loading} onClick={() => void disconnectGithub()} title="Desconectar GitHub"><Unlink size={12} /></button>
+              <button className="danger" type="button" disabled={loading} onClick={() => void disconnectGithub()} title="Remover GitHub do perfil"><Unlink size={12} /></button>
             </>
           )}
         </div>
