@@ -8,6 +8,7 @@ fn main() {
         "request_main_window_attention",
         "show_native_notification",
         "open_auth_url",
+        "open_profile_connection_url",
     ];
 
     tauri_build::try_build(
