@@ -1,0 +1,76 @@
+name: Auditar backend Rust publicado
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: verify-labstar-rust-production
+  cancel-in-progress: true
+
+jobs:
+  production:
+    name: Saúde, runtime e CORS
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      API_URL: https://labstar-api-mackson.fly.dev
+      WEB_ORIGIN: https://labstar.pages.dev
+      TAURI_ORIGIN: http://tauri.localhost
+      UNTRUSTED_ORIGIN: http://example.com
+
+    steps:
+      - name: Confirmar versão Rust publicada
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error \
+            --retry 20 --retry-all-errors --retry-delay 5 \
+            --connect-timeout 15 --max-time 45 \
+            "$API_URL/health/ready" | tee ready.json
+          grep -q '"status":"ready"' ready.json
+          grep -q '"runtime":"rust"' ready.json
+          grep -q '"database":"postgresql"' ready.json
+          grep -q '"realtime":"rust-websocket"' ready.json
+
+      - name: Auditar CORS permitido
+        shell: bash
+        run: |
+          set -euo pipefail
+          check_origin() {
+            local origin="$1"
+            local output="$2"
+            curl --fail --silent --show-error \
+              --connect-timeout 15 --max-time 45 \
+              --dump-header "$output" --output /dev/null \
+              --request OPTIONS \
+              --header "Origin: $origin" \
+              --header "Access-Control-Request-Method: GET" \
+              --header "Access-Control-Request-Headers: authorization,content-type" \
+              "$API_URL/v1/me"
+            tr -d '\r' < "$output" > "$output.normalized"
+            grep -Fqi "access-control-allow-origin: $origin" "$output.normalized"
+            grep -Eiq '^access-control-allow-headers:.*authorization' "$output.normalized"
+          }
+          check_origin "$WEB_ORIGIN" web.txt
+          check_origin "$TAURI_ORIGIN" tauri.txt
+
+      - name: Auditar origem bloqueada
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --silent --show-error \
+            --connect-timeout 15 --max-time 45 \
+            --dump-header untrusted.txt --output /dev/null \
+            --request OPTIONS \
+            --header "Origin: $UNTRUSTED_ORIGIN" \
+            --header "Access-Control-Request-Method: GET" \
+            --header "Access-Control-Request-Headers: authorization,content-type" \
+            "$API_URL/v1/me"
+          tr -d '\r' < untrusted.txt > untrusted.normalized
+          if grep -Fqi "access-control-allow-origin: $UNTRUSTED_ORIGIN" untrusted.normalized; then
+            echo "Origem não confiável foi autorizada."
+            exit 1
+          fi

@@ -1,0 +1,143 @@
+name: Preparar Labstar Rust 11.3.0
+
+on:
+  push:
+    branches:
+      - feat/backend-rust-complete
+    paths:
+      - "docs/runtime/rust-backend-deployed.txt"
+      - "docs/runtime/rust-e2e-confirmed.txt"
+      - ".github/workflows/rust-release-candidate.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: labstar-rust-11-3-0
+  cancel-in-progress: true
+
+jobs:
+  gate:
+    name: Gate completo Web e backend Rust
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - name: Baixar código
+        uses: actions/checkout@v4
+
+      - name: Exigir confirmações de produção
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s docs/runtime/rust-backend-deployed.txt
+          test -s docs/runtime/rust-e2e-confirmed.txt
+          grep -q '^runtime=rust$' docs/runtime/rust-backend-deployed.txt
+          grep -q 'direct_messages' docs/runtime/rust-e2e-confirmed.txt
+          grep -q 'private_calls' docs/runtime/rust-e2e-confirmed.txt
+
+      - name: Configurar Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Validar versões 11.3.0
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(node -p 'require("./package.json").version')" = "11.3.0"
+          test "$(node -p 'require("./package-lock.json").version')" = "11.3.0"
+          test "$(node -p 'require("./package-lock.json").packages[""].version')" = "11.3.0"
+          test "$(node -p 'require("./src-tauri/tauri.conf.json").version')" = "11.3.0"
+          grep -q '^version = "11.3.0"' src-tauri/Cargo.toml
+          grep -q '^version = "1.0.0"' backend/Cargo.toml
+
+      - name: Instalar e compilar Web
+        run: |
+          npm ci
+          npm run build
+
+      - name: Instalar Rust estável
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Validar backend Rust
+        working-directory: backend
+        shell: bash
+        run: |
+          set -euo pipefail
+          cargo fmt --all -- --check
+          cargo clippy --all-targets --all-features -- -D warnings
+          cargo test --all-targets
+
+      - name: Confirmar produção externa
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error \
+            --retry 8 --retry-all-errors --retry-delay 5 \
+            --connect-timeout 15 --max-time 45 \
+            https://labstar-api-mackson.fly.dev/health/ready | tee ready.json
+          grep -q '"status":"ready"' ready.json
+          grep -q '"runtime":"rust"' ready.json
+          grep -q '"database":"postgresql"' ready.json
+          grep -q '"realtime":"rust-websocket"' ready.json
+
+  windows:
+    name: Compilar e validar instaladores Windows
+    needs: gate
+    runs-on: windows-2025
+    timeout-minutes: 55
+    steps:
+      - name: Baixar código
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Instalar dependências Web
+        run: npm ci
+
+      - name: Instalar Rust estável
+        shell: pwsh
+        run: |
+          rustup toolchain install stable --profile minimal --component rustfmt,clippy
+          rustup default stable
+
+      - name: Validar núcleo Tauri
+        shell: pwsh
+        run: |
+          cargo fmt --manifest-path src-tauri/Cargo.toml -- --check
+          cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets --all-features -- -D warnings
+          cargo test --manifest-path src-tauri/Cargo.toml --all-targets
+
+      - name: Gerar MSI e instalador EXE
+        run: npm run desktop:build
+
+      - name: Auditar identidade e arquivos
+        shell: pwsh
+        run: |
+          $msi = Get-ChildItem -Path "src-tauri/target/release/bundle/msi" -Filter "*.msi" -Recurse
+          $exe = Get-ChildItem -Path "src-tauri/target/release/bundle/nsis" -Filter "*.exe" -Recurse
+          if ($msi.Count -lt 1) { throw "O instalador MSI não foi gerado." }
+          if ($exe.Count -lt 1) { throw "O instalador NSIS/EXE não foi gerado." }
+          if ($msi.Name -notmatch "11.3.0") { throw "O MSI não contém a versão 11.3.0 no nome." }
+          if ($exe.Name -notmatch "11.3.0") { throw "O EXE não contém a versão 11.3.0 no nome." }
+          Get-Item "public/favicon.ico" | ForEach-Object { if ($_.Length -lt 1000) { throw "Ícone do Labstar inválido." } }
+          New-Item -ItemType Directory -Force -Path "release/windows" | Out-Null
+          Copy-Item $msi.FullName "release/windows/"
+          Copy-Item $exe.FullName "release/windows/"
+          Get-FileHash release/windows/* -Algorithm SHA256 | Format-Table -AutoSize | Out-File release/windows/SHA256SUMS.txt
+
+      - name: Publicar candidato Windows
+        uses: actions/upload-artifact@v4
+        with:
+          name: Labstar-11.3.0-Windows-Rust
+          path: release/windows/*
+          if-no-files-found: error
+          retention-days: 30

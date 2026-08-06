@@ -1,0 +1,591 @@
+/* Labstar 11.3.0 — altura estável e experiência mobile.
+   Este arquivo é carregado por último para neutralizar regras legadas de
+   viewport e transformar as mensagens diretas em uma navegação realmente
+   utilizável em telas pequenas. */
+
+html,
+body,
+#root {
+  width: 100%;
+  height: 100%;
+  min-height: 100%;
+  overflow: hidden;
+}
+
+.app {
+  width: 100%;
+  height: 100vh !important;
+  height: 100dvh !important;
+  min-height: 0 !important;
+  display: grid;
+  grid-template-rows: 68px minmax(0, 1fr);
+  overflow: hidden;
+}
+
+.app > .header {
+  grid-row: 1;
+}
+
+.app > .workspace {
+  grid-row: 2;
+  height: auto !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  align-self: stretch;
+  overflow: hidden;
+}
+
+.workspace.collaboration-workspace {
+  height: auto !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  grid-template-rows: minmax(0, 1fr) !important;
+  align-items: stretch !important;
+  align-content: stretch !important;
+}
+
+.workspace.collaboration-workspace > .collaboration-server-mode,
+.workspace.collaboration-workspace > .direct-hub {
+  height: 100% !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  align-self: stretch !important;
+}
+
+.collaboration-server-mode,
+.collaboration-server-mode > .collaboration-shell,
+.direct-hub,
+.direct-hub > *,
+.dm-conversation,
+.dm-message-scroll,
+.dm-sidebar,
+.dm-contact-list {
+  min-height: 0;
+}
+
+.direct-hub {
+  height: 100% !important;
+  max-height: none !important;
+}
+
+/* Garante que a área de conversa e o composer alcancem o rodapé mesmo quando
+   uma conversa é aberta depois do primeiro layout do navegador. */
+.direct-hub.conversation-open .dm-conversation {
+  height: 100%;
+  min-height: 0;
+  align-self: stretch;
+}
+
+.direct-hub .dm-message-scroll {
+  overscroll-behavior: contain;
+}
+
+@supports (height: 100svh) {
+  .app {
+    height: 100svh !important;
+  }
+}
+
+@media (max-width: 760px) {
+  :root {
+    --labstar-mobile-header: 56px;
+    --labstar-mobile-rail: 54px;
+  }
+
+  body {
+    overscroll-behavior: none;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  .app {
+    grid-template-rows: var(--labstar-mobile-header) minmax(0, 1fr);
+  }
+
+  .header {
+    height: var(--labstar-mobile-header) !important;
+    min-height: var(--labstar-mobile-header);
+    padding: 0 9px;
+    grid-template-columns: minmax(106px, auto) minmax(0, 1fr);
+    gap: 8px;
+  }
+
+  .header .brand strong,
+  .header .wordmark {
+    font-size: 15px;
+  }
+
+  .header .global-search,
+  .header .sync-state,
+  .header-actions > .create-button {
+    display: none !important;
+  }
+
+  .header-actions {
+    min-width: 0;
+    gap: 5px;
+  }
+
+  .header-actions .icon-button,
+  .header-actions .avatar,
+  .header-actions .avatar-button {
+    width: 38px;
+    height: 38px;
+    min-width: 38px;
+    border-radius: 11px;
+  }
+
+  .workspace,
+  .workspace.editor-open,
+  .workspace.team-workspace {
+    height: auto !important;
+    min-height: 0 !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .workspace.collaboration-workspace {
+    grid-template-columns: minmax(0, 1fr) !important;
+    grid-template-rows: minmax(0, 1fr) !important;
+  }
+
+  .workspace.collaboration-workspace > .rail {
+    display: none !important;
+  }
+
+  .workspace.collaboration-workspace > .collaboration-server-mode,
+  .workspace.collaboration-workspace > .direct-hub {
+    grid-column: 1;
+    grid-row: 1;
+    width: 100%;
+    height: 100% !important;
+  }
+
+  /* Mensagens no celular funcionam como duas telas: contatos e conversa. */
+  .direct-hub,
+  .direct-hub.conversation-open {
+    width: 100%;
+    height: 100% !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    grid-template-rows: var(--labstar-mobile-rail) minmax(0, 1fr) !important;
+    overflow: hidden;
+  }
+
+  .direct-hub .dm-space-rail {
+    grid-column: 1;
+    grid-row: 1;
+    min-width: 0;
+    height: var(--labstar-mobile-rail);
+    padding: 6px 8px;
+    flex-direction: row;
+    gap: 7px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    border-right: 0;
+    border-bottom: 1px solid rgba(151, 173, 220, .1);
+    background: rgba(3, 5, 9, .98);
+    scrollbar-width: none;
+  }
+
+  .direct-hub .dm-space-rail::-webkit-scrollbar,
+  .direct-hub .dm-space-list::-webkit-scrollbar {
+    display: none;
+  }
+
+  .direct-hub .dm-home-mark,
+  .direct-hub .dm-space-list button,
+  .direct-hub .dm-add-space,
+  .direct-hub .dm-rail-settings {
+    width: 42px;
+    height: 42px;
+    min-width: 42px;
+    flex: 0 0 42px;
+    border-radius: 13px;
+  }
+
+  .direct-hub .dm-home-mark i {
+    left: 50%;
+    top: auto;
+    bottom: -7px;
+    width: 24px;
+    height: 3px;
+    transform: translateX(-50%);
+  }
+
+  .direct-hub .dm-space-list {
+    width: auto;
+    min-width: 0;
+    flex: 1 1 auto;
+    flex-direction: row;
+    gap: 7px;
+    overflow-x: auto;
+    overflow-y: hidden;
+  }
+
+  .direct-hub .dm-add-space,
+  .direct-hub .dm-rail-settings {
+    margin: 0;
+  }
+
+  .direct-hub:not(.conversation-open) .dm-sidebar {
+    grid-column: 1;
+    grid-row: 2;
+    height: 100%;
+    display: grid !important;
+    grid-template-rows: 50px auto 1px 30px minmax(0, 1fr) !important;
+    overflow: hidden;
+    border-right: 0;
+    border-bottom: 0;
+  }
+
+  .direct-hub:not(.conversation-open) .dm-home-main,
+  .direct-hub:not(.conversation-open) .dm-inbox,
+  .direct-hub:not(.conversation-open) .dm-profile-panel,
+  .direct-hub:not(.conversation-open) .dm-conversation {
+    display: none !important;
+  }
+
+  .direct-hub.conversation-open .dm-sidebar,
+  .direct-hub.conversation-open .dm-profile-panel,
+  .direct-hub.conversation-open .dm-home-main,
+  .direct-hub.conversation-open .dm-inbox {
+    display: none !important;
+  }
+
+  .direct-hub.conversation-open .dm-conversation {
+    grid-column: 1;
+    grid-row: 2;
+    width: 100%;
+    height: 100% !important;
+    min-height: 0;
+    display: grid !important;
+    grid-template-rows: 58px minmax(0, 1fr) auto !important;
+    overflow: hidden;
+    border-right: 0;
+  }
+
+  .dm-search {
+    height: 40px;
+    margin: 6px 8px 4px;
+    padding-inline: 11px;
+    border-radius: 10px;
+  }
+
+  .dm-search input {
+    font-size: 12px;
+  }
+
+  .dm-search-hint {
+    display: none;
+  }
+
+  .dm-navigation {
+    padding: 3px 7px 5px;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 4px;
+  }
+
+  .dm-navigation button {
+    min-height: 42px;
+    padding: 0 4px;
+    grid-template-columns: 17px minmax(0, 1fr);
+    gap: 5px;
+    justify-items: center;
+  }
+
+  .dm-navigation button span {
+    text-align: center;
+    font-size: 9px;
+  }
+
+  .dm-navigation button b,
+  .dm-divider,
+  .dm-own-profile {
+    display: none !important;
+  }
+
+  .dm-list-heading {
+    height: 30px;
+    padding-inline: 11px;
+  }
+
+  .dm-contact-list,
+  .dm-v6 .dm-contact-list {
+    min-height: 0;
+    padding: 4px 7px calc(10px + env(safe-area-inset-bottom));
+    display: block !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    overscroll-behavior: contain;
+  }
+
+  .dm-v6 .dm-contact-entry,
+  .dm-contact-list > button {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: none;
+    min-height: 64px;
+    margin-bottom: 4px;
+    flex: none !important;
+    border-radius: 12px;
+  }
+
+  .dm-v6 .dm-contact-main {
+    min-height: 62px;
+    padding: 8px 5px 8px 9px;
+    grid-template-columns: 40px minmax(0, 1fr) auto;
+    gap: 10px;
+  }
+
+  .dm-v6 .dm-contact-main strong {
+    font-size: 12px;
+  }
+
+  .dm-v6 .dm-contact-main small {
+    margin-top: 4px;
+    font-size: 10px;
+  }
+
+  .dm-conversation-header {
+    min-width: 0;
+    height: 58px;
+    min-height: 58px;
+    padding: 0 8px 0 10px;
+    gap: 7px;
+  }
+
+  .dm-conversation-person {
+    min-width: 0;
+    flex: 1 1 auto;
+    gap: 8px;
+  }
+
+  .dm-conversation-person strong {
+    max-width: min(44vw, 210px);
+    font-size: 12px;
+  }
+
+  .dm-conversation-person small,
+  .dm-v6 .dm-conversation-person small {
+    font-size: 9px !important;
+  }
+
+  .dm-conversation-actions {
+    flex: 0 0 auto;
+    gap: 4px;
+  }
+
+  .dm-conversation-actions label,
+  .dm-conversation-actions > button:first-child,
+  .dm-conversation-actions > button:nth-child(4) {
+    display: none !important;
+  }
+
+  .dm-conversation-actions > button:nth-child(2),
+  .dm-conversation-actions > button:nth-child(3) {
+    width: 40px;
+    height: 40px;
+    display: grid !important;
+    border-radius: 11px;
+  }
+
+  .dm-message-scroll {
+    min-height: 0;
+    padding: 6px 0 12px;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    scroll-padding-bottom: 84px;
+  }
+
+  .dm-thread-intro {
+    padding: 22px 14px 18px;
+  }
+
+  .dm-thread-intro h2 {
+    margin-top: 10px;
+    font-size: 18px;
+  }
+
+  .dm-message,
+  .dm-v5 .dm-message {
+    padding: 9px 9px;
+    grid-template-columns: 36px minmax(0, 1fr) auto;
+    gap: 8px;
+  }
+
+  .dm-message-body > p {
+    font-size: 12px;
+    line-height: 1.55;
+  }
+
+  .dm-message-body header strong {
+    font-size: 11px;
+  }
+
+  .dm-message-actions,
+  .dm-v5 .dm-message-actions {
+    position: static;
+    align-self: start;
+    display: flex;
+    opacity: .58;
+    border: 0;
+    background: transparent;
+  }
+
+  .dm-message-actions button {
+    width: 27px;
+    height: 30px;
+  }
+
+  .dm-message-actions button:not(:first-child) {
+    display: none;
+  }
+
+  .dm-composer {
+    z-index: 30;
+    padding: 6px 7px calc(7px + env(safe-area-inset-bottom));
+    background: #06090e;
+  }
+
+  .dm-composer > div:last-of-type {
+    min-height: 52px;
+    grid-template-columns: 42px minmax(0, 1fr) 42px 44px;
+    align-items: end;
+    border-radius: 14px;
+  }
+
+  .dm-composer textarea {
+    min-height: 50px;
+    max-height: 116px;
+    padding: 15px 6px 12px;
+    font-size: 16px;
+    line-height: 1.35;
+  }
+
+  .dm-composer > div:last-of-type > button {
+    min-width: 42px;
+    height: 50px;
+  }
+
+  .dm-composer .dm-send {
+    width: 38px;
+    height: 40px;
+    margin: 5px 4px;
+  }
+
+  .direct-hub.dm-v6 .dm-composer .dm-emoji-picker {
+    position: fixed !important;
+    z-index: 11200 !important;
+    left: 8px !important;
+    right: 8px !important;
+    bottom: calc(72px + env(safe-area-inset-bottom)) !important;
+    width: auto !important;
+    max-width: none !important;
+    height: min(330px, 48dvh) !important;
+    max-height: 48dvh !important;
+  }
+
+  .direct-hub.dm-v6 .dm-composer .dm-emoji-picker > div {
+    grid-template-columns: repeat(6, minmax(38px, 1fr)) !important;
+    grid-auto-rows: 42px;
+  }
+
+  .dm-attachments,
+  .dm-image-attachment,
+  .dm-file-attachment {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .dm-image-attachment img {
+    max-height: 46dvh;
+  }
+
+  .labstar-toast,
+  .communication-permission-card,
+  .communication-runtime-toast {
+    left: 8px;
+    right: 8px;
+    bottom: calc(8px + env(safe-area-inset-bottom));
+    width: auto;
+    max-width: none;
+  }
+
+  .private-call-backdrop {
+    padding: 0 !important;
+  }
+
+  .private-call-card,
+  .private-call-card.video {
+    width: 100% !important;
+    height: 100dvh !important;
+    min-height: 100dvh !important;
+    max-height: 100dvh !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+  }
+}
+
+@media (max-width: 420px) {
+  .header-actions .icon-button:nth-of-type(n + 3) {
+    display: none;
+  }
+
+  .dm-navigation button span {
+    font-size: 8px;
+  }
+
+  .dm-conversation-person strong {
+    max-width: 35vw;
+  }
+
+  .dm-conversation-actions > button:nth-child(3) {
+    display: none !important;
+  }
+
+  .dm-message,
+  .dm-v5 .dm-message {
+    grid-template-columns: 32px minmax(0, 1fr) auto;
+  }
+
+  .direct-hub.dm-v6 .dm-composer .dm-emoji-picker > div {
+    grid-template-columns: repeat(5, minmax(38px, 1fr)) !important;
+  }
+}
+
+@media (orientation: landscape) and (max-height: 560px) and (max-width: 960px) {
+  .app {
+    grid-template-rows: 48px minmax(0, 1fr);
+  }
+
+  .header {
+    height: 48px !important;
+    min-height: 48px;
+  }
+
+  .direct-hub,
+  .direct-hub.conversation-open {
+    grid-template-rows: 48px minmax(0, 1fr) !important;
+  }
+
+  .direct-hub .dm-space-rail {
+    height: 48px;
+    padding-block: 4px;
+  }
+
+  .direct-hub .dm-home-mark,
+  .direct-hub .dm-space-list button,
+  .direct-hub .dm-add-space,
+  .direct-hub .dm-rail-settings {
+    width: 40px;
+    height: 40px;
+    min-width: 40px;
+    flex-basis: 40px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .direct-hub *,
+  .workspace *,
+  .header * {
+    scroll-behavior: auto !important;
+  }
+}

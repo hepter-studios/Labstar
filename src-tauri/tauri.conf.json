@@ -2,7 +2,7 @@
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "Labstar",
   "mainBinaryName": "Labstar",
-  "version": "11.2.9",
+  "version": "11.3.0",
   "identifier": "co.labstar.app",
   "build": {
     "beforeDevCommand": "npm run dev",
@@ -30,20 +30,28 @@
       }
     ],
     "security": {
-      "capabilities": ["desktop-main", "desktop-communications"],
-      "csp": "default-src 'self'; connect-src 'self' ipc: http://ipc.localhost https://pgzwyngxsxnheulvusdq.supabase.co wss://pgzwyngxsxnheulvusdq.supabase.co; img-src 'self' asset: http://asset.localhost blob: data: https://pgzwyngxsxnheulvusdq.supabase.co; media-src 'self' blob:; style-src 'self' 'unsafe-inline'; font-src 'self' data:; script-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'"
+      "capabilities": [
+        "desktop-main",
+        "desktop-communications"
+      ],
+      "csp": "default-src 'self'; connect-src 'self' ipc: http://ipc.localhost https://pgzwyngxsxnheulvusdq.supabase.co https://labstar-api-mackson.fly.dev wss://labstar-api-mackson.fly.dev; img-src 'self' asset: http://asset.localhost blob: data: https://pgzwyngxsxnheulvusdq.supabase.co; media-src 'self' blob:; style-src 'self' 'unsafe-inline'; font-src 'self' data:; script-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'"
     }
   },
   "plugins": {
     "deep-link": {
       "desktop": {
-        "schemes": ["labstar"]
+        "schemes": [
+          "labstar"
+        ]
       }
     }
   },
   "bundle": {
     "active": true,
-    "targets": ["nsis", "msi"],
+    "targets": [
+      "nsis",
+      "msi"
+    ],
     "publisher": "Hepter Studios",
     "copyright": "Copyright © 2026 Hepter Studios. Todos os direitos reservados.",
     "homepage": "https://labstar.pages.dev",
@@ -60,7 +68,10 @@
         "installerIcon": "../public/favicon.ico",
         "uninstallerIcon": "../public/favicon.ico",
         "installMode": "both",
-        "languages": ["PortugueseBR", "English"],
+        "languages": [
+          "PortugueseBR",
+          "English"
+        ],
         "displayLanguageSelector": false,
         "startMenuFolder": "Labstar"
       },

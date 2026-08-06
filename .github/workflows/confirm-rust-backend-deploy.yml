@@ -1,0 +1,72 @@
+name: Confirmar backend Rust publicado
+
+on:
+  workflow_run:
+    workflows:
+      - Publicar backend Rust
+    types:
+      - completed
+
+permissions:
+  contents: write
+
+concurrency:
+  group: confirm-labstar-rust-deploy
+  cancel-in-progress: true
+
+jobs:
+  confirm:
+    name: Registrar publicação aprovada
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.head_branch == 'feat/backend-rust-complete'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      API_URL: https://labstar-api-mackson.fly.dev
+    steps:
+      - name: Baixar branch publicada
+        uses: actions/checkout@v4
+        with:
+          ref: feat/backend-rust-complete
+          fetch-depth: 0
+
+      - name: Confirmar saúde externa
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error \
+            --retry 6 --retry-all-errors --retry-delay 5 \
+            --connect-timeout 15 --max-time 45 \
+            "$API_URL/health/ready" | tee ready.json
+          grep -q '"status":"ready"' ready.json
+          grep -q '"runtime":"rust"' ready.json
+          grep -q '"database":"postgresql"' ready.json
+          grep -q '"realtime":"rust-websocket"' ready.json
+
+      - name: Registrar confirmação
+        shell: bash
+        env:
+          SOURCE_SHA: ${{ github.event.workflow_run.head_sha }}
+          SOURCE_RUN: ${{ github.event.workflow_run.id }}
+        run: |
+          set -euo pipefail
+          mkdir -p docs/runtime
+          cat > docs/runtime/rust-backend-deployed.txt <<EOF
+          Labstar Rust backend deployment confirmed
+          source_sha=$SOURCE_SHA
+          workflow_run=$SOURCE_RUN
+          api_url=$API_URL
+          runtime=rust
+          database=postgresql
+          realtime=rust-websocket
+          verified_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          EOF
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/runtime/rust-backend-deployed.txt
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+          git commit -m "Confirma backend Rust publicado"
+          git push origin HEAD:feat/backend-rust-complete

@@ -1,0 +1,280 @@
+name: Aprovar produção Rust do Labstar
+
+on:
+  push:
+    branches:
+      - feat/backend-rust-complete
+    paths:
+      - "backend/**"
+      - "src/lib/rust-api.ts"
+      - "src/lib/backend.ts"
+      - "src/lib/directMessages.ts"
+      - "src/lib/directCalls.ts"
+      - "src/lib/presence.ts"
+      - ".github/workflows/deploy-rust-backend.yml"
+      - ".github/workflows/branch-rust-production-gates.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: approve-labstar-rust-production
+  cancel-in-progress: true
+
+jobs:
+  gates:
+    name: Saúde externa e teste com duas contas
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    environment: production
+    env:
+      API_URL: https://labstar-api-mackson.fly.dev
+      DATABASE_URL: ${{ secrets.DATABASE_URL || secrets.SUPABASE_DATABASE_URL }}
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL || 'https://pgzwyngxsxnheulvusdq.supabase.co' }}
+      SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY || secrets.VITE_SUPABASE_PUBLISHABLE_KEY || secrets.SUPABASE_ANON_KEY || secrets.VITE_SUPABASE_ANON_KEY }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+
+    steps:
+      - name: Baixar branch
+        uses: actions/checkout@v4
+        with:
+          ref: feat/backend-rust-complete
+          fetch-depth: 0
+
+      - name: Confirmar segredos
+        shell: bash
+        run: |
+          set -euo pipefail
+          missing=()
+          [ -n "$DATABASE_URL" ] || missing+=("SUPABASE_DATABASE_URL")
+          [ -n "$SUPABASE_PUBLISHABLE_KEY" ] || missing+=("SUPABASE_PUBLISHABLE_KEY ou VITE_SUPABASE_PUBLISHABLE_KEY")
+          [ -n "$SUPABASE_SERVICE_ROLE_KEY" ] || missing+=("SUPABASE_SERVICE_ROLE_KEY")
+          if [ ${#missing[@]} -gt 0 ]; then
+            printf 'Segredos ausentes no GitHub:\n'
+            printf ' - %s\n' "${missing[@]}"
+            exit 1
+          fi
+
+      - name: Aguardar backend Rust publicado
+        shell: bash
+        run: |
+          set -euo pipefail
+          for attempt in $(seq 1 80); do
+            if curl --fail --silent --show-error --connect-timeout 10 --max-time 30 \
+              "$API_URL/health/ready" > ready.json; then
+              if grep -q '"status":"ready"' ready.json \
+                && grep -q '"runtime":"rust"' ready.json \
+                && grep -q '"database":"postgresql"' ready.json \
+                && grep -q '"realtime":"rust-websocket"' ready.json; then
+                cat ready.json
+                exit 0
+              fi
+            fi
+            echo "Backend ainda não está pronto (tentativa $attempt/80)."
+            sleep 15
+          done
+          exit 1
+
+      - name: Preparar ferramentas
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq postgresql-client
+          mkdir -p .e2e
+          cd .e2e
+          npm init -y >/dev/null
+          npm install --silent ws@8
+
+      - name: Criar duas contas temporárias
+        shell: bash
+        run: |
+          set -euo pipefail
+          suffix="$(date +%s)-${GITHUB_RUN_ID}"
+          email_a="labstar-gate-a-${suffix}@example.com"
+          email_b="labstar-gate-b-${suffix}@example.com"
+          password="LsGate-${suffix}-B7!"
+          echo "::add-mask::$password"
+
+          create_user() {
+            local email="$1"
+            curl --fail --silent --show-error \
+              --request POST "$SUPABASE_URL/auth/v1/admin/users" \
+              --header "apikey: $SUPABASE_SERVICE_ROLE_KEY" \
+              --header "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
+              --header "Content-Type: application/json" \
+              --data "$(jq -cn --arg email "$email" --arg password "$password" '{email:$email,password:$password,email_confirm:true}')"
+          }
+
+          auth_a="$(create_user "$email_a" | jq -r '.id')"
+          auth_b="$(create_user "$email_b" | jq -r '.id')"
+          test -n "$auth_a"; test "$auth_a" != "null"
+          test -n "$auth_b"; test "$auth_b" != "null"
+
+          member_a="$(psql "$DATABASE_URL" -X -qAt -v ON_ERROR_STOP=1 \
+            -v auth_id="$auth_a" -v email="$email_a" \
+            -c "insert into public.members (auth_user_id,email,name,status,role,job_title,area,last_seen_at) values (:'auth_id'::uuid,:'email','Gate Rust A','active','member','Teste Rust','Gate',now()) returning id;")"
+          member_b="$(psql "$DATABASE_URL" -X -qAt -v ON_ERROR_STOP=1 \
+            -v auth_id="$auth_b" -v email="$email_b" \
+            -c "insert into public.members (auth_user_id,email,name,status,role,job_title,area,last_seen_at) values (:'auth_id'::uuid,:'email','Gate Rust B','active','member','Teste Rust','Gate',now()) returning id;")"
+          member_a="$(head -n1 <<<"$member_a" | tr -d '[:space:]')"
+          member_b="$(head -n1 <<<"$member_b" | tr -d '[:space:]')"
+
+          login() {
+            local email="$1"
+            curl --fail --silent --show-error \
+              --request POST "$SUPABASE_URL/auth/v1/token?grant_type=password" \
+              --header "apikey: $SUPABASE_PUBLISHABLE_KEY" \
+              --header "Content-Type: application/json" \
+              --data "$(jq -cn --arg email "$email" --arg password "$password" '{email:$email,password:$password}')"
+          }
+          token_a="$(login "$email_a" | jq -r '.access_token')"
+          token_b="$(login "$email_b" | jq -r '.access_token')"
+          test "$token_a" != "null"; test "$token_b" != "null"
+          echo "::add-mask::$token_a"; echo "::add-mask::$token_b"
+
+          {
+            echo "AUTH_A=$auth_a"
+            echo "AUTH_B=$auth_b"
+            echo "MEMBER_A=$member_a"
+            echo "MEMBER_B=$member_b"
+            echo "TOKEN_A=$token_a"
+            echo "TOKEN_B=$token_b"
+          } >> "$GITHUB_ENV"
+
+      - name: Executar E2E Rust
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > .e2e/gate.mjs <<'NODE'
+          import WebSocket from "ws";
+          const apiUrl = process.env.API_URL;
+          const wsUrl = apiUrl.replace(/^http:/, "ws:").replace(/^https:/, "wss:");
+          const A = { token: process.env.TOKEN_A, member: process.env.MEMBER_A };
+          const B = { token: process.env.TOKEN_B, member: process.env.MEMBER_B };
+
+          async function api(path, token, method = "GET", body) {
+            const response = await fetch(`${apiUrl}${path}`, {
+              method,
+              headers: { Accept: "application/json", Authorization: `Bearer ${token}`,
+                ...(body ? { "Content-Type": "application/json" } : {}) },
+              body: body ? JSON.stringify(body) : undefined,
+            });
+            const text = await response.text();
+            if (!response.ok) throw new Error(`${method} ${path}: ${response.status} ${text}`);
+            return text ? JSON.parse(text) : undefined;
+          }
+
+          async function connect(token) {
+            const { ticket } = await api("/v1/realtime/ticket", token, "POST");
+            const socket = new WebSocket(`${wsUrl}/v1/realtime?ticket=${encodeURIComponent(ticket)}`);
+            const history = [];
+            const listeners = new Set();
+            socket.on("message", (data) => {
+              const event = JSON.parse(String(data));
+              history.push(event);
+              for (const listener of [...listeners]) listener(event);
+            });
+            await new Promise((resolve, reject) => { socket.once("open", resolve); socket.once("error", reject); });
+            return { socket, history, listeners };
+          }
+
+          function wait(connection, predicate, ms = 18000) {
+            const found = connection.history.find(predicate);
+            if (found) return Promise.resolve(found);
+            return new Promise((resolve, reject) => {
+              const listener = (event) => {
+                if (!predicate(event)) return;
+                clearTimeout(timer); connection.listeners.delete(listener); resolve(event);
+              };
+              const timer = setTimeout(() => { connection.listeners.delete(listener); reject(new Error("Evento Rust não chegou.")); }, ms);
+              connection.listeners.add(listener);
+            });
+          }
+
+          const meA = await api("/v1/me", A.token);
+          const meB = await api("/v1/me", B.token);
+          if (meA.memberId !== A.member || meB.memberId !== B.member) throw new Error("Identidade incorreta.");
+
+          const rtA = await connect(A.token);
+          const bothOnline = wait(rtA, (event) => event.type === "presenceSnapshot" &&
+            event.payload.memberIds.includes(A.member) && event.payload.memberIds.includes(B.member));
+          const rtB = await connect(B.token);
+          await bothOnline;
+
+          const { threadId } = await api("/v1/direct/threads", A.token, "POST", { otherMemberId: B.member });
+          const messageArrived = wait(rtB, (event) => event.type === "directMessageCreated" && event.payload.threadId === threadId);
+          const sent = await api(`/v1/direct/threads/${threadId}/messages`, A.token, "POST", { body: "Gate Rust real", replyTo: null });
+          if ((await messageArrived).payload.messageId !== sent.id) throw new Error("Evento de mensagem divergente.");
+          const messages = await api(`/v1/direct/threads/${threadId}/messages`, B.token);
+          if (!messages.some((message) => message.id === sent.id)) throw new Error("Mensagem não persistiu.");
+
+          const incomingCall = wait(rtB, (event) => event.type === "callCreated");
+          const { callId } = await api("/v1/calls", A.token, "POST", { threadId, recipientId: B.member, kind: "audio" });
+          if ((await incomingCall).payload.callId !== callId) throw new Error("Evento de chamada divergente.");
+          const pending = await api("/v1/calls/pending", B.token);
+          if (!pending.some((call) => call.id === callId)) throw new Error("Chamada recebida não apareceu.");
+
+          const rejected = wait(rtA, (event) => event.type === "callUpdated" && event.payload.callId === callId);
+          await api(`/v1/calls/${callId}/status`, B.token, "POST", { status: "rejected" });
+          if ((await rejected).payload.status !== "rejected") throw new Error("Rejeição não propagou.");
+          rtA.socket.close(); rtB.socket.close();
+          console.log("Gate real aprovado.");
+          NODE
+          node .e2e/gate.mjs
+
+      - name: Registrar gates aprovados
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p docs/runtime
+          verified_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          cat > docs/runtime/rust-backend-deployed.txt <<EOF
+          Labstar Rust backend deployment confirmed
+          source_sha=$GITHUB_SHA
+          workflow_run=$GITHUB_RUN_ID
+          api_url=$API_URL
+          runtime=rust
+          database=postgresql
+          realtime=rust-websocket
+          verified_at=$verified_at
+          EOF
+          cat > docs/runtime/rust-e2e-confirmed.txt <<EOF
+          Labstar Rust end-to-end test confirmed
+          source_sha=$GITHUB_SHA
+          workflow_run=$GITHUB_RUN_ID
+          tested=oauth,postgresql,presence,direct_messages,private_calls
+          verified_at=$verified_at
+          EOF
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/runtime/rust-backend-deployed.txt docs/runtime/rust-e2e-confirmed.txt
+          git commit -m "Confirma produção e E2E do backend Rust"
+          git push origin HEAD:feat/backend-rust-complete
+
+      - name: Limpar dados temporários
+        if: always()
+        shell: bash
+        run: |
+          set +e
+          if [ -n "${MEMBER_A:-}" ] && [ -n "${MEMBER_B:-}" ]; then
+            psql "$DATABASE_URL" -X -q -v ON_ERROR_STOP=0 \
+              -v member_a="$MEMBER_A" -v member_b="$MEMBER_B" <<'SQL'
+          delete from public.direct_call_sessions
+          where initiator_id in (:'member_a'::uuid, :'member_b'::uuid)
+             or recipient_id in (:'member_a'::uuid, :'member_b'::uuid);
+          delete from public.direct_threads where id in (
+            select thread_id from public.direct_thread_members
+            where member_id in (:'member_a'::uuid, :'member_b'::uuid)
+          );
+          delete from public.members where id in (:'member_a'::uuid, :'member_b'::uuid);
+          SQL
+          fi
+          for auth_id in "${AUTH_A:-}" "${AUTH_B:-}"; do
+            if [ -n "$auth_id" ]; then
+              curl --silent --request DELETE "$SUPABASE_URL/auth/v1/admin/users/$auth_id" \
+                --header "apikey: $SUPABASE_SERVICE_ROLE_KEY" \
+                --header "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" >/dev/null || true
+            fi
+          done

@@ -29,6 +29,7 @@ import { WorkspaceQuickMenus } from "./components/WorkspaceQuickMenus";
 import { WorkspaceSettingsPortal } from "./components/WorkspaceSettingsPortal";
 import { applyAppSettings, loadAppSettings } from "./lib/app-settings";
 import { prewarmRustBackend } from "./lib/backend-prewarm";
+import "./lib/contained-scroll-guard";
 import { initializeNativeBridge } from "./lib/native";
 import "./styles.css";
 import "./access-control.css";
@@ -59,6 +60,9 @@ import "./dashboard-work-surface.css";
 import "./message-work-item.css";
 import "./direct-messages-v6.css";
 import "./direct-messages-v7.css";
+import "./mobile-responsive.css";
+import "./private-messages-final.css";
+import "./viewport-layout-hotfix.css";
 
 const BRAND_INTRO_DURATION_MS = 2350;
 const NATIVE_BRIDGE_TIMEOUT_MS = 4000;

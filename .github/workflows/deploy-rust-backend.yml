@@ -1,0 +1,205 @@
+name: Publicar backend Rust
+
+on:
+  push:
+    branches:
+      - feat/backend-rust-complete
+    paths:
+      - "backend/**"
+      - ".github/workflows/deploy-rust-backend.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-labstar-rust-production
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    name: Validar, publicar e auditar API Rust
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    env:
+      FLY_APP: labstar-api-mackson
+      API_URL: https://labstar-api-mackson.fly.dev
+      WEB_ORIGIN: https://labstar.pages.dev
+      TAURI_ORIGIN: http://tauri.localhost
+      UNTRUSTED_ORIGIN: http://example.com
+      FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+      DATABASE_URL_SECRET: ${{ secrets.SUPABASE_DATABASE_URL || secrets.DATABASE_URL }}
+      SUPABASE_URL_SECRET: ${{ secrets.SUPABASE_URL || 'https://pgzwyngxsxnheulvusdq.supabase.co' }}
+      SUPABASE_PUBLISHABLE_KEY_SECRET: ${{ secrets.SUPABASE_PUBLISHABLE_KEY || secrets.VITE_SUPABASE_PUBLISHABLE_KEY || secrets.SUPABASE_ANON_KEY || secrets.VITE_SUPABASE_ANON_KEY }}
+      SUPABASE_SERVICE_ROLE_KEY_SECRET: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      LABSTAR_STUN_URLS_SECRET: ${{ secrets.LABSTAR_STUN_URLS }}
+      LABSTAR_TURN_URLS_SECRET: ${{ secrets.LABSTAR_TURN_URLS }}
+      LABSTAR_TURN_USERNAME_SECRET: ${{ secrets.LABSTAR_TURN_USERNAME }}
+      LABSTAR_TURN_CREDENTIAL_SECRET: ${{ secrets.LABSTAR_TURN_CREDENTIAL }}
+
+    steps:
+      - name: Baixar código
+        uses: actions/checkout@v4
+
+      - name: Confirmar credenciais obrigatórias
+        shell: bash
+        run: |
+          set -euo pipefail
+          missing=()
+          [ -n "$FLY_API_TOKEN" ] || missing+=("FLY_API_TOKEN")
+          [ -n "$DATABASE_URL_SECRET" ] || missing+=("SUPABASE_DATABASE_URL")
+          [ -n "$SUPABASE_PUBLISHABLE_KEY_SECRET" ] || missing+=("SUPABASE_PUBLISHABLE_KEY ou VITE_SUPABASE_PUBLISHABLE_KEY")
+          [ -n "$SUPABASE_SERVICE_ROLE_KEY_SECRET" ] || missing+=("SUPABASE_SERVICE_ROLE_KEY")
+          if [ ${#missing[@]} -gt 0 ]; then
+            printf 'Segredos ausentes no GitHub:\n'
+            printf ' - %s\n' "${missing[@]}"
+            exit 1
+          fi
+
+      - name: Validar configuração TURN opcional
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -n "$LABSTAR_TURN_URLS_SECRET" ]; then
+            [ -n "$LABSTAR_TURN_USERNAME_SECRET" ]
+            [ -n "$LABSTAR_TURN_CREDENTIAL_SECRET" ]
+          elif [ -n "$LABSTAR_TURN_USERNAME_SECRET" ] || [ -n "$LABSTAR_TURN_CREDENTIAL_SECRET" ]; then
+            echo "TURN está parcialmente configurado."
+            exit 1
+          fi
+
+      - name: Instalar Rust estável
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Cache Cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: backend
+
+      - name: Validar backend sem avisos
+        working-directory: backend
+        shell: bash
+        run: |
+          set -euo pipefail
+          cargo generate-lockfile
+          cargo fmt --all -- --check
+          cargo clippy --all-targets --all-features --locked -- -D warnings
+          cargo test --all-targets --locked
+
+      - name: Instalar flyctl
+        uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Confirmar acesso ao aplicativo Fly.io existente
+        shell: bash
+        run: |
+          set -euo pipefail
+          flyctl auth whoami
+          if ! flyctl status --app "$FLY_APP"; then
+            echo "Não foi possível acessar o aplicativo existente $FLY_APP."
+            echo "Se o log informar que o trial terminou, configure o billing da Fly.io e execute novamente."
+            echo "O workflow não tentará recriar o aplicativo nem mudar sua organização."
+            exit 1
+          fi
+
+      - name: Sincronizar segredos do servidor
+        shell: bash
+        run: |
+          set -euo pipefail
+          args=(
+            "DATABASE_URL=$DATABASE_URL_SECRET"
+            "SUPABASE_URL=$SUPABASE_URL_SECRET"
+            "SUPABASE_PUBLISHABLE_KEY=$SUPABASE_PUBLISHABLE_KEY_SECRET"
+            "SUPABASE_SERVICE_ROLE_KEY=$SUPABASE_SERVICE_ROLE_KEY_SECRET"
+          )
+          if [ -n "$LABSTAR_STUN_URLS_SECRET" ]; then
+            args+=("LABSTAR_STUN_URLS=$LABSTAR_STUN_URLS_SECRET")
+          fi
+          if [ -n "$LABSTAR_TURN_URLS_SECRET" ]; then
+            args+=("LABSTAR_TURN_URLS=$LABSTAR_TURN_URLS_SECRET")
+            args+=("LABSTAR_TURN_USERNAME=$LABSTAR_TURN_USERNAME_SECRET")
+            args+=("LABSTAR_TURN_CREDENTIAL=$LABSTAR_TURN_CREDENTIAL_SECRET")
+          fi
+          flyctl secrets set --app "$FLY_APP" --stage "${args[@]}"
+
+      - name: Publicar contêiner Rust
+        working-directory: backend
+        shell: bash
+        run: |
+          set -euo pipefail
+          flyctl deploy . \
+            --app "$FLY_APP" \
+            --config fly.toml \
+            --dockerfile Dockerfile \
+            --remote-only \
+            --ha=false \
+            --wait-timeout 12m
+
+      - name: Confirmar saúde e runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error \
+            --retry 20 --retry-all-errors --retry-delay 5 \
+            --connect-timeout 20 --max-time 60 \
+            "$API_URL/health/live" | tee live.json
+          grep -q '"status":"ok"' live.json
+          grep -q '"runtime":"rust"' live.json
+
+          curl --fail --silent --show-error \
+            --retry 20 --retry-all-errors --retry-delay 5 \
+            --connect-timeout 20 --max-time 60 \
+            "$API_URL/health/ready" | tee ready.json
+          grep -q '"status":"ready"' ready.json
+          grep -q '"database":"postgresql"' ready.json
+          grep -q '"realtime":"rust-websocket"' ready.json
+
+      - name: Auditar CORS permitido
+        shell: bash
+        run: |
+          set -euo pipefail
+          check_origin() {
+            local origin="$1"
+            local file="$2"
+            curl --fail --silent --show-error \
+              --retry 5 --retry-all-errors --retry-delay 3 \
+              --connect-timeout 20 --max-time 60 \
+              --dump-header "$file" --output /dev/null \
+              --request OPTIONS \
+              --header "Origin: $origin" \
+              --header "Access-Control-Request-Method: GET" \
+              --header "Access-Control-Request-Headers: authorization,content-type" \
+              "$API_URL/v1/me"
+            tr -d '\r' < "$file" > "$file.normalized"
+            grep -Fqi "access-control-allow-origin: $origin" "$file.normalized"
+            grep -Eiq '^access-control-allow-headers:.*authorization' "$file.normalized"
+          }
+          check_origin "$WEB_ORIGIN" web-headers.txt
+          check_origin "$TAURI_ORIGIN" tauri-headers.txt
+
+      - name: Confirmar bloqueio de origem não confiável
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --silent --show-error \
+            --connect-timeout 20 --max-time 60 \
+            --dump-header untrusted.txt --output /dev/null \
+            --request OPTIONS \
+            --header "Origin: $UNTRUSTED_ORIGIN" \
+            --header "Access-Control-Request-Method: GET" \
+            --header "Access-Control-Request-Headers: authorization,content-type" \
+            "$API_URL/v1/me"
+          tr -d '\r' < untrusted.txt > untrusted.normalized
+          if grep -Fqi "access-control-allow-origin: $UNTRUSTED_ORIGIN" untrusted.normalized; then
+            echo "Origem não confiável foi autorizada."
+            exit 1
+          fi
+
+      - name: Diagnóstico da Fly.io
+        if: always()
+        shell: bash
+        run: |
+          timeout 30s flyctl status --app "$FLY_APP" --all || true
+          timeout 30s flyctl checks list --app "$FLY_APP" || true
+          timeout 30s flyctl logs --app "$FLY_APP" --no-tail || true

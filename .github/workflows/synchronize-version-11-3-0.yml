@@ -1,0 +1,95 @@
+name: Sincronizar versão 11.3.0
+
+on:
+  push:
+    branches:
+      - feat/backend-rust-complete
+    paths:
+      - package.json
+      - package-lock.json
+      - src-tauri/Cargo.toml
+      - src-tauri/Cargo.lock
+      - src-tauri/tauri.conf.json
+      - .github/workflows/synchronize-version-11-3-0.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: synchronize-version-11-3-0
+  cancel-in-progress: true
+
+jobs:
+  synchronize:
+    name: Atualizar manifestos e lockfiles
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Baixar branch
+        uses: actions/checkout@v4
+        with:
+          ref: feat/backend-rust-complete
+          fetch-depth: 0
+
+      - name: Configurar Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Configurar Rust estável
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Corrigir manifestos
+        shell: python
+        run: |
+          import json
+          from pathlib import Path
+
+          version = "11.3.0"
+
+          package_path = Path("package.json")
+          package = json.loads(package_path.read_text(encoding="utf-8"))
+          package["version"] = version
+          package_path.write_text(json.dumps(package, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+
+          tauri_path = Path("src-tauri/tauri.conf.json")
+          tauri = json.loads(tauri_path.read_text(encoding="utf-8"))
+          tauri["version"] = version
+          tauri_path.write_text(json.dumps(tauri, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+
+          cargo_path = Path("src-tauri/Cargo.toml")
+          cargo = cargo_path.read_text(encoding="utf-8")
+          cargo = cargo.replace('version = "11.2.9"', f'version = "{version}"', 1)
+          cargo = cargo.replace('ta uri = ', 'tauri = ')
+          cargo_path.write_text(cargo, encoding="utf-8")
+
+      - name: Regenerar package-lock completo
+        run: npm install --package-lock-only --ignore-scripts
+
+      - name: Regenerar Cargo.lock do Tauri
+        run: cargo generate-lockfile --manifest-path src-tauri/Cargo.toml
+
+      - name: Validar versões
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(node -p 'require("./package.json").version')" = "11.3.0"
+          test "$(node -p 'require("./package-lock.json").version')" = "11.3.0"
+          test "$(node -p 'require("./package-lock.json").packages[""].version')" = "11.3.0"
+          test "$(node -p 'require("./src-tauri/tauri.conf.json").version')" = "11.3.0"
+          grep -q '^version = "11.3.0"' src-tauri/Cargo.toml
+          grep -q '^tauri = ' src-tauri/Cargo.toml
+
+      - name: Registrar sincronização
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add package.json package-lock.json src-tauri/Cargo.toml src-tauri/Cargo.lock src-tauri/tauri.conf.json
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+          git commit -m "Sincroniza versão 11.3.0 em todos os manifestos"
+          git push origin HEAD:feat/backend-rust-complete

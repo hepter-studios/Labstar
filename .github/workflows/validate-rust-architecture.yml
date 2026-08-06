@@ -1,0 +1,89 @@
+name: Validar arquitetura Rust do Labstar
+
+on:
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: validate-labstar-rust-architecture-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: Backend Rust sem avisos
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - name: Baixar código
+        uses: actions/checkout@v4
+
+      - name: Instalar Rust estável
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Cache Cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: backend
+
+      - name: Validar backend
+        working-directory: backend
+        shell: bash
+        run: |
+          set -euo pipefail
+          cargo generate-lockfile
+          cargo fmt --all -- --check
+          cargo check --all-targets --locked
+          cargo clippy --all-targets --all-features --locked -- -D warnings
+          cargo test --all-targets --locked
+
+  web:
+    name: Interface TypeScript fina
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Baixar código
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Instalar dependências
+        run: npm ci
+
+      - name: Compilar interface
+        run: npm run build
+
+      - name: Bloquear acesso direto ao banco fora do Auth
+        shell: bash
+        run: |
+          set -euo pipefail
+          if grep -R --line-number --include='*.ts' --include='*.tsx' -P \
+            '(?<!Array)\.(?:from|rpc)\s*\(' src/lib src/components \
+            | grep -v 'src/lib/auth-client.ts'; then
+            echo "A interface ainda contém acesso direto ao banco/RPC."
+            exit 1
+          fi
+          if grep -R --line-number --include='*.ts' --include='*.tsx' \
+            -E '\.storage\.' src/lib src/components; then
+            echo "A interface ainda contém acesso direto ao Storage."
+            exit 1
+          fi
+
+      - name: Confirmar transporte Rust
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q 'rustApiBaseUrl' src/lib/rust-api.ts
+          grep -q '/v1/direct/threads' src/lib/directMessages.ts
+          grep -q '/v1/calls' src/lib/directCalls.ts
+          grep -q 'subscribeRustRealtime' src/lib/presence.ts

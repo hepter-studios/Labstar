@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
+  getDirectCallIceConfiguration,
   listDirectCallSignals,
   sendDirectCallSignal,
   setDirectCallStatus,
@@ -33,13 +34,6 @@ type Props = {
 };
 
 type CallPhase = "ringing" | "preparing" | "connecting" | "connected" | "finished" | "error";
-
-const rtcConfiguration: RTCConfiguration = {
-  iceServers: [
-    { urls: "stun:stun.l.google.com:19302" },
-    { urls: "stun:stun1.l.google.com:19302" },
-  ],
-};
 
 function signalPayload(value: RTCSessionDescriptionInit | RTCIceCandidateInit) {
   return JSON.parse(JSON.stringify(value)) as Record<string, unknown>;
@@ -122,7 +116,10 @@ export function PrivateCallOverlay({
 
   const ensurePeer = useCallback(async () => {
     if (peerRef.current) return peerRef.current;
-    const stream = await ensureLocalMedia();
+    const [stream, rtcConfiguration] = await Promise.all([
+      ensureLocalMedia(),
+      getDirectCallIceConfiguration(),
+    ]);
     const peer = new RTCPeerConnection(rtcConfiguration);
     peerRef.current = peer;
 
