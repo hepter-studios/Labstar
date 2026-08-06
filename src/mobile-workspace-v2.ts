@@ -1,3 +1,5 @@
+export {};
+
 const MOBILE_BREAKPOINT = 760;
 const WORKSPACE_NAV_ID = "labstar-mobile-workspace-nav";
 
