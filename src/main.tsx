@@ -60,6 +60,7 @@ import "./message-work-item.css";
 import "./direct-messages-v6.css";
 import "./direct-messages-v7.css";
 import "./direct-messages-height-guard.css";
+import "./brand-home-navigation";
 
 const BRAND_INTRO_DURATION_MS = 2350;
 const NATIVE_BRIDGE_TIMEOUT_MS = 4000;
