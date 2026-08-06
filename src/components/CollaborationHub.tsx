@@ -1,4 +1,4 @@
-import { House } from "lucide-react";
+import { MessageSquareText } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { Member } from "../lib/supabase";
 import { CommunicationHome } from "./CommunicationHome";
@@ -116,7 +116,7 @@ export function CollaborationHub({ member, initialChannelId, soundEnabled = true
         title="Home da Central de trabalho"
         aria-label="Abrir Home da Central de trabalho"
       >
-        <House size={21} />
+        <MessageSquareText size={21} />
         <i />
       </button>
       <button
