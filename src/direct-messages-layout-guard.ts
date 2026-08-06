@@ -48,19 +48,29 @@ function forceDirectMessagesLayout() {
 
 let frame = 0;
 let resizeObserver: ResizeObserver | null = null;
+let observedWorkspace: HTMLElement | null = null;
+let observedDirectHub: HTMLElement | null = null;
+
+function observeCurrentLayout() {
+  if (!resizeObserver) return;
+
+  const workspace = document.querySelector<HTMLElement>(".workspace.collaboration-workspace");
+  const directHub = workspace?.querySelector<HTMLElement>(":scope > .direct-hub") ?? null;
+  if (workspace === observedWorkspace && directHub === observedDirectHub) return;
+
+  resizeObserver.disconnect();
+  observedWorkspace = workspace;
+  observedDirectHub = directHub;
+
+  if (workspace) resizeObserver.observe(workspace);
+  if (directHub) resizeObserver.observe(directHub);
+}
 
 function scheduleDirectMessagesLayout() {
   window.cancelAnimationFrame(frame);
   frame = window.requestAnimationFrame(() => {
     forceDirectMessagesLayout();
-
-    const workspace = document.querySelector<HTMLElement>(".workspace.collaboration-workspace");
-    const directHub = workspace?.querySelector<HTMLElement>(":scope > .direct-hub");
-    if (workspace && directHub && resizeObserver) {
-      resizeObserver.disconnect();
-      resizeObserver.observe(workspace);
-      resizeObserver.observe(directHub);
-    }
+    observeCurrentLayout();
   });
 }
 
