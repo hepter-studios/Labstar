@@ -1,6 +1,7 @@
 import { Search, UserPlus, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
+import "../profile-connections.css";
 import { getCurrentAccessIdentity } from "../lib/access";
 import { LabstarEnhancementStyles } from "./LabstarEnhancementStyles";
 import { ProfileConnectionsBridge } from "./ProfileConnectionsBridge";
