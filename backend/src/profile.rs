@@ -1,12 +1,7 @@
-use axum::{extract::State, Json};
+use axum::{Json, extract::State};
 use serde::Deserialize;
 
-use crate::{
-    auth::AuthenticatedMember,
-    error::ApiError,
-    members::{MemberRow, MemberView},
-    state::AppState,
-};
+use crate::{auth::AuthenticatedMember, error::ApiError, members::MemberView, state::AppState};
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -36,18 +31,17 @@ pub async fn update(
             .map(|value| value.trim().chars().take(500).collect())
     };
 
-    let row = sqlx::query_as::<_, MemberRow>(
+    let mut row = sqlx::query_as::<_, MemberView>(
         r#"
         update public.members
         set name=coalesce($2,name),
             avatar_path=case when $3::text is null then avatar_path else nullif($3,'') end,
             updated_at=now(),last_seen_at=now()
         where id=$1
-        returning id,email,name,status::text as status,role::text as role,
-                  coalesce(job_title,'') as job_title,
-                  coalesce(area,'') as area,
-                  coalesce(assignments,'[]'::jsonb)::text as assignments_json,
-                  created_at,last_seen_at,coalesce(avatar_path,'') as avatar_path
+        returning id,email,name,status::text status,role::text role,
+                  coalesce(job_title,'') job_title,coalesce(area,'') area,
+                  coalesce(assignments,array[]::text[]) assignments,
+                  created_at,last_seen_at,coalesce(avatar_path,'') avatar_path
         "#,
     )
     .bind(member.member_id)
@@ -55,10 +49,8 @@ pub async fn update(
     .bind(avatar_path)
     .fetch_one(&state.pool)
     .await?;
-
-    let mut member = row.into_view();
-    member.avatar_url = crate::files::signed_asset_url(&state, &member.avatar_path, 28_800)
+    row.avatar_url = crate::files::signed_asset_url(&state, &row.avatar_path, 28_800)
         .await
         .unwrap_or_default();
-    Ok(Json(member))
+    Ok(Json(row))
 }
