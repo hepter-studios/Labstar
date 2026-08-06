@@ -1,6 +1,6 @@
 const DESKTOP_RAIL_WIDTH = 64;
-const MOBILE_BREAKPOINT = 700;
-const BUILD_MARKER = "dm-parent-scroll-fix-2026-08-06-2";
+const MOBILE_BREAKPOINT = 760;
+const BUILD_MARKER = "mobile-final-layout-2026-08-06-1";
 
 // O marcador é definido assim que o módulo entra na página. Antes ele só era
 // definido depois de encontrar a Central no DOM, o que dificultava distinguir
@@ -51,6 +51,11 @@ function bindOuterScrollLock(workspace: HTMLElement, directHub: HTMLElement) {
   resetOuterScroll();
 }
 
+function visibleViewportBottom() {
+  const viewport = window.visualViewport;
+  return viewport ? viewport.offsetTop + viewport.height : window.innerHeight;
+}
+
 function forceDirectMessagesLayout() {
   const workspace = document.querySelector<HTMLElement>(".workspace.collaboration-workspace");
   if (!workspace) return;
@@ -59,7 +64,7 @@ function forceDirectMessagesLayout() {
   if (!directHub) return;
 
   const workspaceRect = workspace.getBoundingClientRect();
-  const availableHeight = Math.max(0, window.innerHeight - workspaceRect.top);
+  const availableHeight = Math.max(0, visibleViewportBottom() - workspaceRect.top);
   const railWidth = window.innerWidth <= MOBILE_BREAKPOINT ? 0 : DESKTOP_RAIL_WIDTH;
 
   workspace.style.setProperty("position", "relative", "important");
@@ -83,9 +88,6 @@ function forceDirectMessagesLayout() {
   directHub.style.setProperty("margin", "0", "important");
   directHub.style.setProperty("overflow", "hidden", "important");
   directHub.style.setProperty("overscroll-behavior", "none", "important");
-  directHub.style.setProperty("grid-template-rows", "minmax(0, 1fr)", "important");
-  directHub.style.setProperty("grid-auto-rows", "minmax(0, 1fr)", "important");
-  directHub.style.setProperty("align-items", "stretch", "important");
 
   for (const child of Array.from(directHub.children)) {
     if (!(child instanceof HTMLElement)) continue;
@@ -147,6 +149,8 @@ function startDirectMessagesLayoutGuard() {
   window.addEventListener("orientationchange", scheduleDirectMessagesLayout);
   window.addEventListener("pageshow", scheduleDirectMessagesLayout);
   window.addEventListener("labstar:open-direct", scheduleDirectMessagesLayout);
+  window.visualViewport?.addEventListener("resize", scheduleDirectMessagesLayout);
+  window.visualViewport?.addEventListener("scroll", scheduleDirectMessagesLayout);
 
   scheduleDirectMessagesLayout();
   [80, 220, 600, 1200, 2200].forEach((delay) => {
