@@ -25,7 +25,7 @@ jobs:
       PROJECT_REF: pgzwyngxsxnheulvusdq
       GITHUB_PROFILE_CLIENT_ID: ${{ secrets.GITHUB_PROFILE_CLIENT_ID }}
       GITHUB_PROFILE_CLIENT_SECRET: ${{ secrets.GITHUB_PROFILE_CLIENT_SECRET }}
-      GITHUB_PROFILE_CALLBACK_URL: https://pgzwyngxsxnheulvusdq.supabase.co/functions/v1/github-profile-connection?action=callback
+      GITHUB_PROFILE_CALLBACK_URL: https://pgzwyngxsxnheulvusdq.supabase.co/functions/v1/github-profile-connection
       LABSTAR_PROFILE_ALLOWED_ORIGINS: https://labstar.pages.dev
     steps:
       - name: Baixar código
