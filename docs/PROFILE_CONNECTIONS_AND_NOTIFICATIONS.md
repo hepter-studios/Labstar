@@ -51,7 +51,7 @@ Depois de gerar backup, o workflow `.github/workflows/apply-profile-connections-
 3. `supabase/labstar-supabase-v15c-github-profile-oauth.sql`;
 4. `supabase/labstar-supabase-v15d-notification-hardening.sql`.
 
-A v15b remove a estrutura provisória do Instagram e elimina a função que permitia gravar um GitHub manualmente. O navegador só pode desconectar o próprio perfil; somente a função OAuth com `service_role` pode salvar um GitHub verificado.
+A v15b elimina a função que permitiria gravar um GitHub manualmente. O navegador só pode desconectar o próprio perfil; somente a função OAuth com `service_role` pode salvar um GitHub verificado.
 
 ## Arquivos principais
 
@@ -87,7 +87,6 @@ Uma regra mobile global criada durante o trabalho sobrescrevia `.workspace` e `.
 - cancelar a autorização e testar `state` expirado;
 - confirmar selo verificado e link clicável;
 - abrir o GitHub de outro membro;
-- confirmar que nenhum campo de Instagram aparece;
 - abrir conversas privadas no desktop e mobile e confirmar que a tela não sobe;
 - validar 320 px, 375 px, 430 px, tablet e desktop;
 - confirmar que membro suspenso continua bloqueado independentemente do GitHub.
