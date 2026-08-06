@@ -31,7 +31,7 @@
     ],
     "security": {
       "capabilities": ["desktop-main", "desktop-communications"],
-      "csp": "default-src 'self'; connect-src 'self' ipc: http://ipc.localhost https://pgzwyngxsxnheulvusdq.supabase.co wss://pgzwyngxsxnheulvusdq.supabase.co; img-src 'self' asset: http://asset.localhost blob: data: https://pgzwyngxsxnheulvusdq.supabase.co; media-src 'self' blob:; style-src 'self' 'unsafe-inline'; font-src 'self' data:; script-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'"
+      "csp": "default-src 'self'; connect-src 'self' ipc: http://ipc.localhost https://pgzwyngxsxnheulvusdq.supabase.co wss://pgzwyngxsxnheulvusdq.supabase.co https://api.github.com; img-src 'self' asset: http://asset.localhost blob: data: https://pgzwyngxsxnheulvusdq.supabase.co https://avatars.githubusercontent.com https://github.com; media-src 'self' blob:; style-src 'self' 'unsafe-inline'; font-src 'self' data:; script-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'"
     }
   },
   "plugins": {
