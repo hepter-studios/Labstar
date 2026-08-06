@@ -36,15 +36,28 @@ jobs:
           test -f supabase/labstar-supabase-v15c-github-profile-oauth.sql
           test -f supabase/labstar-supabase-v15d-notification-hardening.sql
 
-      - name: Instalar cliente PostgreSQL
+      - name: Instalar cliente PostgreSQL 17
+        shell: bash
         run: |
+          set -euo pipefail
+          sudo install -d /usr/share/postgresql-common/pgdg
+          sudo curl --fail --silent --show-error \
+            -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc \
+            https://www.postgresql.org/media/keys/ACCC4CF8.asc
+          . /etc/os-release
+          echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt ${VERSION_CODENAME}-pgdg main" \
+            | sudo tee /etc/apt/sources.list.d/pgdg.list > /dev/null
           sudo apt-get update
-          sudo apt-get install -y postgresql-client
+          sudo apt-get install -y --no-install-recommends postgresql-client-17
+          echo "/usr/lib/postgresql/17/bin" >> "$GITHUB_PATH"
+          /usr/lib/postgresql/17/bin/pg_dump --version
+          /usr/lib/postgresql/17/bin/psql --version
 
       - name: Gerar backup antes da migração
         shell: bash
         run: |
           set -euo pipefail
+          pg_dump --version
           mkdir -p database-backup
           pg_dump --format=custom --no-owner --no-privileges "$DATABASE_URL" > database-backup/labstar-before-v15.dump
           pg_dump --schema-only --no-owner --no-privileges "$DATABASE_URL" > database-backup/labstar-before-v15-schema.sql
