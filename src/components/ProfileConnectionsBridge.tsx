@@ -3,9 +3,7 @@ import {
   ExternalLink,
   Github,
   LoaderCircle,
-  MapPin,
   RefreshCw,
-  ShieldCheck,
   Unlink,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
@@ -83,7 +81,6 @@ function MemberDirectoryConnections() {
   if (!target || !profile) return null;
   return createPortal(
     <section className="member-directory-connections">
-      <small>GITHUB CONECTADO</small>
       <GithubProfileLink profile={profile} compact />
     </section>,
     target,
@@ -128,7 +125,7 @@ export function ProfileConnectionsBridge() {
       setConnections(await getCurrentProfileConnections());
       if (!silent && !resultRef.current) setMessage("");
     } catch {
-      if (!silent) setMessage("Não foi possível carregar a conexão do GitHub agora.");
+      if (!silent) setMessage("Não foi possível carregar o GitHub.");
     } finally {
       if (!silent) setLoading(false);
     }
@@ -137,9 +134,8 @@ export function ProfileConnectionsBridge() {
   useEffect(() => {
     if (!target) return;
     const result = resultRef.current;
-    if (result === "connected") setMessage("GitHub conectado e verificado com sucesso. Seu login do Labstar não foi alterado.");
-    else if (result === "cancelled") setMessage("A autorização do GitHub foi cancelada. Nenhuma alteração foi feita.");
-    else if (result === "error") setMessage("O GitHub autorizou o retorno, mas a conexão não pôde ser concluída.");
+    if (result === "error") setMessage("Não foi possível conectar ao GitHub.");
+    else setMessage("");
     resultRef.current = null;
     void loadConnections();
   }, [target]);
@@ -158,15 +154,14 @@ export function ProfileConnectionsBridge() {
 
   async function connectGithub() {
     setLoading(true);
-    setMessage("Abrindo a autorização segura do GitHub...");
+    setMessage("");
     try {
       await connectGithubProfile();
-      setMessage("Conclua a autorização no GitHub. Ao voltar ao Labstar, o perfil será atualizado automaticamente.");
     } catch (error) {
       const code = error instanceof Error ? error.message : "";
       setMessage(code.includes("not_configured")
-        ? "A integração GitHub ainda precisa das credenciais do aplicativo OAuth no servidor."
-        : "Não foi possível abrir a autorização do GitHub agora.");
+        ? "Conexão do GitHub ainda não configurada."
+        : "Não foi possível abrir o GitHub.");
     } finally {
       setLoading(false);
     }
@@ -174,13 +169,12 @@ export function ProfileConnectionsBridge() {
 
   async function disconnectGithub() {
     setLoading(true);
-    setMessage("Desconectando o GitHub do perfil...");
+    setMessage("");
     try {
       await disconnectGithubProfile();
       setConnections(emptyConnections);
-      setMessage("GitHub removido do perfil. Seu login do Labstar continua igual.");
     } catch {
-      setMessage("Não foi possível remover o GitHub do perfil agora.");
+      setMessage("Não foi possível desconectar o GitHub.");
     } finally {
       setLoading(false);
     }
@@ -189,60 +183,31 @@ export function ProfileConnectionsBridge() {
   const github = connections.github;
   const portal = target ? createPortal(
     <section className="profile-connections" aria-label="Conexão GitHub">
-      <div className="profile-connections-head">
-        <div>
-          <strong>GitHub</strong>
-          <small>Conexão profissional do perfil. Não altera seu método de login.</small>
-        </div>
-        {loading && <LoaderCircle className="spin" size={15} />}
-      </div>
-
-      <article className={`connection-card github ${github ? "connected" : ""}`}>
-        <span className="connection-icon github-icon">
-          {github?.avatarUrl ? <img src={github.avatarUrl} alt="" /> : <Github size={20} />}
-        </span>
-        <div className="connection-copy">
-          <b>
-            {github ? githubLabel(github) : "Conectar perfil do GitHub"}
-            {github && <em><ShieldCheck size={10} /> Verificado</em>}
-          </b>
-          {github ? (
-            <>
-              <GithubProfileLink profile={github} />
-              {github.bio && <p>{github.bio}</p>}
-              <div className="github-profile-meta">
-                <span><strong>{github.publicRepos}</strong> repositórios</span>
-                <span><strong>{github.followers}</strong> seguidores</span>
-                <span><strong>{github.following}</strong> seguindo</span>
-                {github.location && <span><MapPin size={10} />{github.location}</span>}
-              </div>
-            </>
-          ) : (
-            <small>Autorize o Labstar no GitHub para confirmar que o perfil pertence a você e importar apenas os dados públicos.</small>
-          )}
-        </div>
-        <div className="connection-actions">
-          {!github ? (
-            <button className="github-connect-button" type="button" disabled={loading} onClick={() => void connectGithub()}>
-              <Github size={14} /> Conectar ao GitHub <ExternalLink size={11} />
+      {!github ? (
+        <button
+          className="github-connect-button"
+          type="button"
+          disabled={loading}
+          onClick={() => void connectGithub()}
+        >
+          {loading ? <LoaderCircle className="spin" size={15} /> : <Github size={15} />}
+          Conectar ao GitHub
+          <ExternalLink size={11} />
+        </button>
+      ) : (
+        <div className="github-connected-row">
+          <span className="connection-icon">
+            {github.avatarUrl ? <img src={github.avatarUrl} alt="" /> : <Github size={18} />}
+          </span>
+          <GithubProfileLink profile={github} />
+          <div className="connection-actions">
+            <button type="button" disabled={loading} onClick={() => void connectGithub()} title="Reconectar GitHub">
+              {loading ? <LoaderCircle className="spin" size={12} /> : <RefreshCw size={12} />}
             </button>
-          ) : (
-            <>
-              <button type="button" disabled={loading} onClick={() => void connectGithub()} title="Atualizar conexão do GitHub">
-                <RefreshCw size={12} /> Reconectar
-              </button>
-              <button className="danger" type="button" disabled={loading} onClick={() => void disconnectGithub()} title="Desconectar GitHub">
-                <Unlink size={12} />
-              </button>
-            </>
-          )}
-        </div>
-      </article>
-
-      {github && (
-        <div className="connection-security-note">
-          <ShieldCheck size={13} />
-          <span>Perfil confirmado pelo OAuth do GitHub. O token é usado somente durante a conexão e não é armazenado.</span>
+            <button className="danger" type="button" disabled={loading} onClick={() => void disconnectGithub()} title="Desconectar GitHub">
+              <Unlink size={12} />
+            </button>
+          </div>
         </div>
       )}
       {message && <p className="connection-message">{message}</p>}
