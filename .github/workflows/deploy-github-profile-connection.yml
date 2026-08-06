@@ -23,8 +23,8 @@ jobs:
     env:
       SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
       PROJECT_REF: pgzwyngxsxnheulvusdq
-      GITHUB_PROFILE_CLIENT_ID: ${{ secrets.GITHUB_PROFILE_CLIENT_ID }}
-      GITHUB_PROFILE_CLIENT_SECRET: ${{ secrets.GITHUB_PROFILE_CLIENT_SECRET }}
+      LABSTAR_GH_PROFILE_CLIENT_ID: ${{ secrets.LABSTAR_GH_PROFILE_CLIENT_ID }}
+      LABSTAR_GH_PROFILE_CLIENT_SECRET: ${{ secrets.LABSTAR_GH_PROFILE_CLIENT_SECRET }}
       GITHUB_PROFILE_CALLBACK_URL: https://pgzwyngxsxnheulvusdq.supabase.co/functions/v1/github-profile-connection
       LABSTAR_PROFILE_ALLOWED_ORIGINS: https://labstar.pages.dev
     steps:
@@ -36,8 +36,8 @@ jobs:
         run: |
           set -euo pipefail
           test -n "${SUPABASE_ACCESS_TOKEN:-}" || { echo "SUPABASE_ACCESS_TOKEN ausente"; exit 1; }
-          test -n "${GITHUB_PROFILE_CLIENT_ID:-}" || { echo "GITHUB_PROFILE_CLIENT_ID ausente"; exit 1; }
-          test -n "${GITHUB_PROFILE_CLIENT_SECRET:-}" || { echo "GITHUB_PROFILE_CLIENT_SECRET ausente"; exit 1; }
+          test -n "${LABSTAR_GH_PROFILE_CLIENT_ID:-}" || { echo "LABSTAR_GH_PROFILE_CLIENT_ID ausente"; exit 1; }
+          test -n "${LABSTAR_GH_PROFILE_CLIENT_SECRET:-}" || { echo "LABSTAR_GH_PROFILE_CLIENT_SECRET ausente"; exit 1; }
           test -f supabase/functions/github-profile-connection/index.ts
 
       - name: Configurar Supabase CLI
@@ -50,8 +50,8 @@ jobs:
         run: |
           set -euo pipefail
           supabase secrets set \
-            GITHUB_PROFILE_CLIENT_ID="$GITHUB_PROFILE_CLIENT_ID" \
-            GITHUB_PROFILE_CLIENT_SECRET="$GITHUB_PROFILE_CLIENT_SECRET" \
+            GITHUB_PROFILE_CLIENT_ID="$LABSTAR_GH_PROFILE_CLIENT_ID" \
+            GITHUB_PROFILE_CLIENT_SECRET="$LABSTAR_GH_PROFILE_CLIENT_SECRET" \
             GITHUB_PROFILE_CALLBACK_URL="$GITHUB_PROFILE_CALLBACK_URL" \
             LABSTAR_PROFILE_ALLOWED_ORIGINS="$LABSTAR_PROFILE_ALLOWED_ORIGINS" \
             --project-ref "$PROJECT_REF"
