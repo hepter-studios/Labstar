@@ -1,5 +1,6 @@
 use crate::{
     deep_links::PendingDeepLinks,
+    profile_connections,
     security::{self, ValidatedDeepLink},
 };
 use serde::Serialize;
@@ -122,4 +123,13 @@ pub fn open_auth_url(app: AppHandle, url: String) -> Result<(), String> {
     app.opener()
         .open_url(safe_url, None::<&str>)
         .map_err(|error| format!("oauth_browser_open_failed: {error}"))
+}
+
+#[tauri::command]
+pub fn open_profile_connection_url(app: AppHandle, url: String) -> Result<(), String> {
+    let safe_url = profile_connections::validate_github_authorization_url(&url)
+        .map_err(|error| error.to_string())?;
+    app.opener()
+        .open_url(safe_url, None::<&str>)
+        .map_err(|error| format!("profile_connection_browser_open_failed: {error}"))
 }

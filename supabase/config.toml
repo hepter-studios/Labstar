@@ -1,0 +1,4 @@
+project_id = "pgzwyngxsxnheulvusdq"
+
+[functions.github-profile-connection]
+verify_jwt = false

@@ -1,5 +1,6 @@
 mod commands;
 mod deep_links;
+mod profile_connections;
 mod security;
 mod settings;
 
@@ -185,6 +186,7 @@ pub fn run() {
             commands::request_main_window_attention,
             commands::show_native_notification,
             commands::open_auth_url,
+            commands::open_profile_connection_url,
             settings::load_app_settings,
             settings::save_app_settings,
             settings::reset_app_settings

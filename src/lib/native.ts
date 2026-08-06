@@ -47,6 +47,11 @@ export async function openNativeAuthUrl(url: string) {
   await window.__TAURI__.core.invoke("open_auth_url", { url });
 }
 
+export async function openNativeProfileConnectionUrl(url: string) {
+  if (!window.__TAURI__) throw new Error("tauri_bridge_unavailable");
+  await window.__TAURI__.core.invoke("open_profile_connection_url", { url });
+}
+
 export function takeNativeAuthError() {
   const error = window.sessionStorage.getItem(NATIVE_ERROR_KEY) ?? "";
   window.sessionStorage.removeItem(NATIVE_ERROR_KEY);
