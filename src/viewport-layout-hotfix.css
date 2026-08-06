@@ -1,0 +1,71 @@
+/* Corrige a raiz do vazio abaixo das conversas.
+   A regra anterior removia a altura calculada da workspace, mas .app não era grid;
+   por isso a área de trabalho encolhia para a altura do conteúdo. */
+
+html,
+body,
+#root {
+  width: 100%;
+  height: 100%;
+  min-height: 100%;
+  overflow: hidden;
+}
+
+.app {
+  width: 100%;
+  height: 100dvh !important;
+  min-height: 0 !important;
+  display: grid !important;
+  grid-template-rows: 68px minmax(0, 1fr) !important;
+  overflow: hidden !important;
+}
+
+.app > .header {
+  grid-row: 1;
+  min-height: 68px;
+}
+
+.app > .workspace,
+.app > .workspace.collaboration-workspace {
+  grid-row: 2;
+  width: 100%;
+  height: 100% !important;
+  min-height: 0 !important;
+  max-height: 100% !important;
+  align-self: stretch !important;
+  overflow: hidden !important;
+}
+
+.workspace.collaboration-workspace > .direct-hub,
+.workspace.collaboration-workspace > .collaboration-server-mode,
+.direct-hub,
+.direct-hub .dm-conversation {
+  height: 100% !important;
+  min-height: 0 !important;
+  max-height: 100% !important;
+}
+
+.direct-hub .dm-conversation {
+  display: grid !important;
+  grid-template-rows: 65px minmax(0, 1fr) auto !important;
+  overflow: hidden !important;
+}
+
+.direct-hub .dm-message-scroll {
+  min-height: 0 !important;
+  overflow-y: auto !important;
+}
+
+.direct-hub .dm-composer {
+  align-self: end !important;
+}
+
+@media (max-width: 760px) {
+  .app {
+    grid-template-rows: 54px minmax(0, 1fr) !important;
+  }
+
+  .app > .header {
+    min-height: 54px;
+  }
+}
