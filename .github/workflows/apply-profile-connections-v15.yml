@@ -36,22 +36,41 @@ jobs:
           test -f supabase/labstar-supabase-v15c-github-profile-oauth.sql
           test -f supabase/labstar-supabase-v15d-notification-hardening.sql
 
-      - name: Instalar cliente PostgreSQL 17
+      - name: Preparar cliente PostgreSQL 17
         shell: bash
         run: |
           set -euo pipefail
-          sudo install -d /usr/share/postgresql-common/pgdg
-          sudo curl --fail --silent --show-error \
-            -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc \
-            https://www.postgresql.org/media/keys/ACCC4CF8.asc
-          . /etc/os-release
-          echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt ${VERSION_CODENAME}-pgdg main" \
-            | sudo tee /etc/apt/sources.list.d/pgdg.list > /dev/null
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends postgresql-client-17
-          echo "/usr/lib/postgresql/17/bin" >> "$GITHUB_PATH"
-          /usr/lib/postgresql/17/bin/pg_dump --version
-          /usr/lib/postgresql/17/bin/psql --version
+
+          docker pull --quiet postgres:17-alpine
+
+          pg17_bin="$RUNNER_TEMP/postgresql-17-bin"
+          mkdir -p "$pg17_bin"
+
+          cat > "$pg17_bin/pg_dump" <<'SCRIPT'
+          #!/usr/bin/env bash
+          set -euo pipefail
+          exec docker run --rm -i \
+            --volume "$PWD:/workspace" \
+            --workdir /workspace \
+            postgres:17-alpine \
+            pg_dump "$@"
+          SCRIPT
+
+          cat > "$pg17_bin/psql" <<'SCRIPT'
+          #!/usr/bin/env bash
+          set -euo pipefail
+          exec docker run --rm -i \
+            --volume "$PWD:/workspace" \
+            --workdir /workspace \
+            postgres:17-alpine \
+            psql "$@"
+          SCRIPT
+
+          chmod +x "$pg17_bin/pg_dump" "$pg17_bin/psql"
+          echo "$pg17_bin" >> "$GITHUB_PATH"
+
+          "$pg17_bin/pg_dump" --version
+          "$pg17_bin/psql" --version
 
       - name: Gerar backup antes da migração
         shell: bash
