@@ -1,6 +1,55 @@
 const DESKTOP_RAIL_WIDTH = 64;
 const MOBILE_BREAKPOINT = 700;
-const BUILD_MARKER = "dm-layout-runtime-2026-08-06-1";
+const BUILD_MARKER = "dm-parent-scroll-fix-2026-08-06-2";
+
+// O marcador é definido assim que o módulo entra na página. Antes ele só era
+// definido depois de encontrar a Central no DOM, o que dificultava distinguir
+// uma publicação antiga de uma tela ainda não montada.
+document.documentElement.dataset.labstarBuild = BUILD_MARKER;
+
+let lockedDirectHub: HTMLElement | null = null;
+let lockedWorkspace: HTMLElement | null = null;
+let resettingOuterScroll = false;
+
+function resetOuterScroll() {
+  if (resettingOuterScroll) return;
+  resettingOuterScroll = true;
+
+  if (lockedDirectHub) {
+    if (lockedDirectHub.scrollTop !== 0) lockedDirectHub.scrollTop = 0;
+    if (lockedDirectHub.scrollLeft !== 0) lockedDirectHub.scrollLeft = 0;
+  }
+
+  if (lockedWorkspace) {
+    if (lockedWorkspace.scrollTop !== 0) lockedWorkspace.scrollTop = 0;
+    if (lockedWorkspace.scrollLeft !== 0) lockedWorkspace.scrollLeft = 0;
+  }
+
+  resettingOuterScroll = false;
+}
+
+function onOuterScroll(event: Event) {
+  const target = event.target;
+  if (target !== lockedDirectHub && target !== lockedWorkspace) return;
+  resetOuterScroll();
+}
+
+function bindOuterScrollLock(workspace: HTMLElement, directHub: HTMLElement) {
+  if (lockedDirectHub === directHub && lockedWorkspace === workspace) {
+    resetOuterScroll();
+    return;
+  }
+
+  lockedDirectHub?.removeEventListener("scroll", onOuterScroll);
+  lockedWorkspace?.removeEventListener("scroll", onOuterScroll);
+
+  lockedDirectHub = directHub;
+  lockedWorkspace = workspace;
+
+  lockedDirectHub.addEventListener("scroll", onOuterScroll, { passive: true });
+  lockedWorkspace.addEventListener("scroll", onOuterScroll, { passive: true });
+  resetOuterScroll();
+}
 
 function forceDirectMessagesLayout() {
   const workspace = document.querySelector<HTMLElement>(".workspace.collaboration-workspace");
@@ -13,13 +62,12 @@ function forceDirectMessagesLayout() {
   const availableHeight = Math.max(0, window.innerHeight - workspaceRect.top);
   const railWidth = window.innerWidth <= MOBILE_BREAKPOINT ? 0 : DESKTOP_RAIL_WIDTH;
 
-  document.documentElement.dataset.labstarBuild = BUILD_MARKER;
-
   workspace.style.setProperty("position", "relative", "important");
   workspace.style.setProperty("height", `${availableHeight}px`, "important");
   workspace.style.setProperty("min-height", "0", "important");
   workspace.style.setProperty("max-height", `${availableHeight}px`, "important");
   workspace.style.setProperty("overflow", "hidden", "important");
+  workspace.style.setProperty("overscroll-behavior", "none", "important");
 
   directHub.style.setProperty("position", "absolute", "important");
   directHub.style.setProperty("top", "0", "important");
@@ -34,6 +82,7 @@ function forceDirectMessagesLayout() {
   directHub.style.setProperty("max-height", "none", "important");
   directHub.style.setProperty("margin", "0", "important");
   directHub.style.setProperty("overflow", "hidden", "important");
+  directHub.style.setProperty("overscroll-behavior", "none", "important");
   directHub.style.setProperty("grid-template-rows", "minmax(0, 1fr)", "important");
   directHub.style.setProperty("grid-auto-rows", "minmax(0, 1fr)", "important");
   directHub.style.setProperty("align-items", "stretch", "important");
@@ -44,6 +93,13 @@ function forceDirectMessagesLayout() {
     child.style.setProperty("max-height", "none", "important");
     child.style.setProperty("align-self", "stretch", "important");
   }
+
+  bindOuterScrollLock(workspace, directHub);
+
+  // scrollIntoView pode rolar ancestrais com overflow:hidden. A segunda
+  // verificação no próximo frame garante que qualquer rolagem feita depois da
+  // pintura do React também seja removida, sem mexer no scroll das mensagens.
+  window.requestAnimationFrame(resetOuterScroll);
 }
 
 let frame = 0;
