@@ -32,6 +32,7 @@ jobs:
           set -euo pipefail
           test -n "${DATABASE_URL:-}" || { echo "SUPABASE_DATABASE_URL não configurada"; exit 1; }
           test -f supabase/labstar-supabase-v15-profile-connections-notifications.sql
+          test -f supabase/labstar-supabase-v15b-profile-connections-no-auth.sql
 
       - name: Instalar cliente PostgreSQL
         shell: bash
@@ -55,11 +56,12 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
-      - name: Aplicar migração v15
+      - name: Aplicar migrações v15
         shell: bash
         run: |
           set -euo pipefail
           psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f supabase/labstar-supabase-v15-profile-connections-notifications.sql
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f supabase/labstar-supabase-v15b-profile-connections-no-auth.sql
 
       - name: Auditar instalação
         shell: bash
