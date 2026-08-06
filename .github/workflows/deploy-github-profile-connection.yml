@@ -18,7 +18,7 @@ concurrency:
 jobs:
   deploy:
     if: github.event.inputs.confirmation == 'DEPLOY_GITHUB_PROFILE'
-    runs-on: ubuntu-latest
+    runs-on: macos-15
     timeout-minutes: 15
     env:
       SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
