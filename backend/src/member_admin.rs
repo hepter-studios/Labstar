@@ -1,12 +1,7 @@
 use axum::{Json, extract::State};
 use serde::Deserialize;
 
-use crate::{
-    auth::AuthenticatedMember,
-    error::ApiError,
-    members::{MemberRow, MemberView},
-    state::AppState,
-};
+use crate::{auth::AuthenticatedMember, error::ApiError, members::MemberView, state::AppState};
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -43,20 +38,19 @@ pub async fn create(
         name
     };
 
-    let row = sqlx::query_as::<_, MemberRow>(
+    let mut member = sqlx::query_as::<_, MemberView>(
         r#"
         insert into public.members
           (email,name,status,role,job_title,area,assignments,last_seen_at)
-        values ($1,$2,'active',$3,$4,$5,'[]'::jsonb,now())
+        values ($1,$2,'active',$3,$4,$5,array[]::text[],now())
         on conflict (email) do update set
           name=excluded.name,job_title=excluded.job_title,area=excluded.area,
           role=case when public.members.role::text='owner' then public.members.role else excluded.role end,
           updated_at=now()
-        returning id,email,name,status::text as status,role::text as role,
-                  coalesce(job_title,'') as job_title,
-                  coalesce(area,'') as area,
-                  coalesce(assignments,'[]'::jsonb)::text as assignments_json,
-                  created_at,last_seen_at,coalesce(avatar_path,'') as avatar_path
+        returning id,email,name,status::text status,role::text role,
+                  coalesce(job_title,'') job_title,coalesce(area,'') area,
+                  coalesce(assignments,array[]::text[]) assignments,
+                  created_at,last_seen_at,coalesce(avatar_path,'') avatar_path
         "#,
     )
     .bind(email)
@@ -66,8 +60,8 @@ pub async fn create(
     .bind(clean(&input.area, 120))
     .fetch_one(&state.pool)
     .await?;
-
-    Ok(Json(row.into_view()))
+    member.avatar_url = String::new();
+    Ok(Json(member))
 }
 
 fn normalize_email(value: &str) -> Result<String, ApiError> {
