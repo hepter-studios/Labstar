@@ -1,5 +1,4 @@
 import { getCurrentIdentity, supabaseClient } from "./supabase";
-import { isTauriApp, nativeOAuthReturnUrl, openNativeAuthUrl } from "./native";
 
 export type GithubPublicProfile = {
   username: string;
@@ -32,9 +31,8 @@ type GithubApiUser = {
   public_repos?: number;
   followers?: number;
   following?: number;
+  message?: string;
 };
-
-const PROFILE_LINK_PENDING_KEY = "labstar-profile-link-pending";
 
 function requireClient() {
   if (!supabaseClient) throw new Error("supabase_not_configured");
@@ -68,12 +66,23 @@ export function normalizeInstagramUsername(value: string) {
   return candidate;
 }
 
-function normalizeGithubUsername(value: string) {
-  const username = value.trim();
-  if (!/^[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,37}[a-zA-Z0-9])?$/.test(username)) {
+export function normalizeGithubUsername(value: string) {
+  const trimmed = value.trim();
+  let candidate = trimmed.replace(/^@/, "");
+  try {
+    if (/^https?:\/\//i.test(candidate)) {
+      const url = new URL(candidate);
+      if (!/(^|\.)github\.com$/i.test(url.hostname)) throw new Error("invalid_github_host");
+      candidate = url.pathname.split("/").filter(Boolean)[0] ?? "";
+    }
+  } catch {
     throw new Error("invalid_github_username");
   }
-  return username;
+  candidate = candidate.replace(/^@/, "").trim();
+  if (!/^[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,37}[a-zA-Z0-9])?$/.test(candidate)) {
+    throw new Error("invalid_github_username");
+  }
+  return candidate;
 }
 
 function githubFromStored(value: unknown): GithubPublicProfile | null {
@@ -97,34 +106,21 @@ function githubFromStored(value: unknown): GithubPublicProfile | null {
   };
 }
 
-function identityUsername(identityData: Record<string, unknown>) {
-  const candidates = [
-    identityData.user_name,
-    identityData.preferred_username,
-    identityData.username,
-    identityData.login,
-  ];
-  return candidates.map(stringValue).find(Boolean) ?? "";
-}
-
-async function fetchGithubProfile(username: string, identityData: Record<string, unknown> = {}): Promise<GithubPublicProfile> {
-  const normalized = normalizeGithubUsername(username);
-  let api: GithubApiUser = {};
-  try {
-    const response = await fetch(`https://api.github.com/users/${encodeURIComponent(normalized)}`, {
-      headers: { Accept: "application/vnd.github+json" },
-    });
-    if (response.ok) api = await response.json() as GithubApiUser;
-  } catch {
-    // Os metadados verificados pelo OAuth continuam suficientes para mostrar a conexão.
+async function fetchGithubProfile(value: string): Promise<GithubPublicProfile> {
+  const username = normalizeGithubUsername(value);
+  const response = await fetch(`https://api.github.com/users/${encodeURIComponent(username)}`, {
+    headers: { Accept: "application/vnd.github+json" },
+  });
+  const api = await response.json() as GithubApiUser;
+  if (!response.ok || !api.login) {
+    throw new Error(response.status === 404 ? "github_profile_not_found" : "github_profile_unavailable");
   }
 
-  const login = stringValue(api.login) || normalized;
   return {
-    username: login,
-    name: stringValue(api.name) || stringValue(identityData.full_name) || stringValue(identityData.name),
-    avatarUrl: stringValue(api.avatar_url) || stringValue(identityData.avatar_url),
-    profileUrl: stringValue(api.html_url) || `https://github.com/${login}`,
+    username: stringValue(api.login),
+    name: stringValue(api.name),
+    avatarUrl: stringValue(api.avatar_url),
+    profileUrl: stringValue(api.html_url) || `https://github.com/${username}`,
     bio: stringValue(api.bio),
     company: stringValue(api.company),
     location: stringValue(api.location),
@@ -132,7 +128,7 @@ async function fetchGithubProfile(username: string, identityData: Record<string,
     followers: numberValue(api.followers),
     following: numberValue(api.following),
     connectedAt: new Date().toISOString(),
-    verified: true,
+    verified: false,
   };
 }
 
@@ -176,61 +172,26 @@ export async function listMemberProfileConnections() {
   }
 }
 
-export async function getCurrentProfileConnections(): Promise<PublicProfileConnections & { githubIdentityLinked: boolean }> {
-  const memberId = await currentMemberId();
-  const stored = await getMemberProfileConnections(memberId);
-  const { data, error } = await requireClient().auth.getUserIdentities();
-  if (error) throw error;
-  const githubIdentity = data?.identities?.find((identity) => identity.provider === "github") ?? null;
-  return { ...stored, githubIdentityLinked: Boolean(githubIdentity) };
+export async function getCurrentProfileConnections(): Promise<PublicProfileConnections> {
+  return getMemberProfileConnections(await currentMemberId());
 }
 
-export async function syncConnectedGithubProfile() {
-  const { data, error } = await requireClient().auth.getUserIdentities();
-  if (error) throw error;
-  const identity = data?.identities?.find((candidate) => candidate.provider === "github");
-  if (!identity) throw new Error("github_identity_not_linked");
-  const identityData = (identity.identity_data ?? {}) as Record<string, unknown>;
-  const username = identityUsername(identityData);
-  if (!username) throw new Error("github_username_missing");
-  const profile = await fetchGithubProfile(username, identityData);
-  const { error: saveError } = await requireClient().rpc("set_own_github_profile", {
+export async function connectGithubProfile(value: string) {
+  const profile = await fetchGithubProfile(value);
+  const { error } = await requireClient().rpc("set_own_github_profile", {
     new_github_profile: profile,
   });
-  if (saveError) throw saveError;
+  if (error) throw error;
   return profile;
 }
 
-export async function connectGithubIdentity() {
-  const redirectTo = isTauriApp()
-    ? nativeOAuthReturnUrl()
-    : `${window.location.origin}${window.location.pathname}?linked=github`;
-  window.sessionStorage.setItem(PROFILE_LINK_PENDING_KEY, "github");
-  const { data, error } = await requireClient().auth.linkIdentity({
-    provider: "github",
-    options: {
-      redirectTo,
-      skipBrowserRedirect: isTauriApp(),
-    },
-  });
-  if (error) {
-    window.sessionStorage.removeItem(PROFILE_LINK_PENDING_KEY);
-    throw error;
-  }
-  if (isTauriApp() && data?.url) await openNativeAuthUrl(data.url);
-  else if (data?.url) window.location.assign(data.url);
+export async function refreshGithubProfile(username: string) {
+  return connectGithubProfile(username);
 }
 
-export async function disconnectGithubIdentity() {
-  const { data, error } = await requireClient().auth.getUserIdentities();
+export async function disconnectGithubProfile() {
+  const { error } = await requireClient().rpc("clear_own_github_profile");
   if (error) throw error;
-  const identity = data?.identities?.find((candidate) => candidate.provider === "github");
-  if (identity) {
-    const { error: unlinkError } = await requireClient().auth.unlinkIdentity(identity);
-    if (unlinkError) throw unlinkError;
-  }
-  const { error: clearError } = await requireClient().rpc("clear_own_github_profile");
-  if (clearError) throw clearError;
 }
 
 export async function saveInstagramConnection(value: string) {
@@ -240,10 +201,4 @@ export async function saveInstagramConnection(value: string) {
   });
   if (error) throw error;
   return normalized;
-}
-
-export function takePendingProfileConnection() {
-  const pending = window.sessionStorage.getItem(PROFILE_LINK_PENDING_KEY);
-  if (pending) window.sessionStorage.removeItem(PROFILE_LINK_PENDING_KEY);
-  return pending;
 }
