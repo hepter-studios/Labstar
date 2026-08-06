@@ -102,9 +102,10 @@ mod tests {
     use super::*;
 
     fn valid_url() -> String {
-        let callback = urlencoding::encode(
-            "https://pgzwyngxsxnheulvusdq.supabase.co/functions/v1/github-profile-connection?action=callback",
-        );
+        let callback: String = url::form_urlencoded::byte_serialize(
+            b"https://pgzwyngxsxnheulvusdq.supabase.co/functions/v1/github-profile-connection?action=callback",
+        )
+        .collect();
         format!(
             "https://github.com/login/oauth/authorize?client_id=abc123&redirect_uri={callback}&scope=read%3Auser&state=secure-state&allow_signup=false"
         )
@@ -114,14 +115,14 @@ mod tests {
     fn accepts_only_the_profile_connection_flow() {
         assert!(validate_github_authorization_url(&valid_url()).is_ok());
         assert!(validate_github_authorization_url("https://github.com/login").is_err());
-        assert!(validate_github_authorization_url("https://evil.example/login/oauth/authorize").is_err());
+        assert!(validate_github_authorization_url("https://example.invalid/login/oauth/authorize").is_err());
     }
 
     #[test]
     fn rejects_a_callback_outside_the_labstar_function() {
-        let unsafe_url = "https://github.com/login/oauth/authorize?client_id=abc&state=state&redirect_uri=https%3A%2F%2Fevil.example%2Fcallback";
+        let invalid = "https://github.com/login/oauth/authorize?client_id=abc&state=state&redirect_uri=https%3A%2F%2Fexample.invalid%2Fcallback";
         assert_eq!(
-            validate_github_authorization_url(unsafe_url).unwrap_err(),
+            validate_github_authorization_url(invalid).unwrap_err(),
             ProfileConnectionError::InvalidCallback
         );
     }
