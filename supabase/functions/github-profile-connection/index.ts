@@ -5,7 +5,7 @@ const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "
 const GITHUB_CLIENT_ID = Deno.env.get("GITHUB_PROFILE_CLIENT_ID") ?? "";
 const GITHUB_CLIENT_SECRET = Deno.env.get("GITHUB_PROFILE_CLIENT_SECRET") ?? "";
 const GITHUB_CALLBACK_URL = Deno.env.get("GITHUB_PROFILE_CALLBACK_URL")
-  ?? `${SUPABASE_URL}/functions/v1/github-profile-connection?action=callback`;
+  ?? `${SUPABASE_URL}/functions/v1/github-profile-connection`;
 const EXTRA_ALLOWED_ORIGINS = (Deno.env.get("LABSTAR_PROFILE_ALLOWED_ORIGINS") ?? "")
   .split(",")
   .map((value) => value.trim())
@@ -16,7 +16,6 @@ const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
 });
 
 type StartPayload = {
-  action?: string;
   returnTo?: string;
 };
 
@@ -244,8 +243,7 @@ async function callback(request: Request) {
 
 Deno.serve(async (request) => {
   if (request.method === "OPTIONS") return new Response("ok", { headers: corsHeaders(request) });
-  const url = new URL(request.url);
-  if (request.method === "GET" && url.searchParams.get("action") === "callback") return callback(request);
+  if (request.method === "GET") return callback(request);
   if (request.method !== "POST") return json(request, 405, { error: "method_not_allowed" });
   return startConnection(request);
 });
