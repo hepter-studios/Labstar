@@ -88,9 +88,6 @@ function forceDirectMessagesLayout() {
   directHub.style.setProperty("margin", "0", "important");
   directHub.style.setProperty("overflow", "hidden", "important");
   directHub.style.setProperty("overscroll-behavior", "none", "important");
-  directHub.style.setProperty("grid-template-rows", "minmax(0, 1fr)", "important");
-  directHub.style.setProperty("grid-auto-rows", "minmax(0, 1fr)", "important");
-  directHub.style.setProperty("align-items", "stretch", "important");
 
   for (const child of Array.from(directHub.children)) {
     if (!(child instanceof HTMLElement)) continue;
