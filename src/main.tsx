@@ -29,6 +29,7 @@ import { WorkspaceQuickMenus } from "./components/WorkspaceQuickMenus";
 import { WorkspaceSettingsPortal } from "./components/WorkspaceSettingsPortal";
 import { applyAppSettings, loadAppSettings } from "./lib/app-settings";
 import { prewarmRustBackend } from "./lib/backend-prewarm";
+import "./lib/contained-scroll-guard";
 import { initializeNativeBridge } from "./lib/native";
 import "./styles.css";
 import "./access-control.css";
