@@ -1,9 +1,9 @@
 /*
  * Proteção estrutural da Central de conversas privadas.
  *
- * Este arquivo precisa ser carregado depois dos demais estilos. A aplicação usa
- * uma coluna flexível para que a área de trabalho receba exatamente o espaço
- * restante abaixo do cabeçalho, sem depender de cálculos repetidos de viewport.
+ * A Central fica presa diretamente aos quatro limites da área de trabalho.
+ * Ela não depende mais da altura intrínseca do grid e, por isso, abrir uma
+ * conversa não pode encolher a interface nem criar espaço vazio abaixo.
  */
 
 html,
@@ -29,18 +29,52 @@ body #root > .app > .header {
 }
 
 body #root > .app > .workspace.collaboration-workspace {
+  position: relative !important;
   width: 100%;
   height: auto !important;
   min-height: 0 !important;
   max-height: none !important;
   flex: 1 1 auto !important;
   align-self: stretch !important;
+  grid-template-columns: 64px minmax(0, 1fr) !important;
   grid-template-rows: minmax(0, 1fr) !important;
   align-items: stretch !important;
   overflow: hidden !important;
 }
 
+body #root > .app > .workspace.collaboration-workspace > .rail {
+  position: relative;
+  z-index: 30;
+  grid-column: 1;
+  grid-row: 1;
+  height: 100%;
+  min-height: 0;
+}
+
+/*
+ * O preenchimento absoluto elimina a disputa entre height: 100% e
+ * height: auto !important dos estilos legados. O trilho principal ocupa os
+ * primeiros 64 px; a Central começa exatamente depois dele.
+ */
 body #root > .app > .workspace.collaboration-workspace > .direct-hub,
+body #root > .app > .workspace.collaboration-workspace > .direct-hub.conversation-open {
+  position: absolute !important;
+  z-index: 1;
+  inset: 0 0 0 64px !important;
+  width: auto !important;
+  height: auto !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  max-width: none !important;
+  max-height: none !important;
+  margin: 0 !important;
+  align-self: auto !important;
+  grid-template-rows: minmax(0, 1fr) !important;
+  grid-auto-rows: minmax(0, 1fr) !important;
+  align-items: stretch !important;
+  overflow: hidden !important;
+}
+
 body #root > .app > .workspace.collaboration-workspace > .collaboration-server-mode {
   width: 100%;
   height: 100% !important;
@@ -50,36 +84,30 @@ body #root > .app > .workspace.collaboration-workspace > .collaboration-server-m
   overflow: hidden !important;
 }
 
-body #root > .app > .workspace.collaboration-workspace > .direct-hub {
-  grid-template-rows: minmax(0, 1fr) !important;
-  grid-auto-rows: minmax(0, 1fr) !important;
-  align-items: stretch !important;
-}
-
 body #root > .app > .workspace.collaboration-workspace > .direct-hub > .dm-space-rail,
 body #root > .app > .workspace.collaboration-workspace > .direct-hub > .dm-sidebar,
 body #root > .app > .workspace.collaboration-workspace > .direct-hub > .dm-home-main,
 body #root > .app > .workspace.collaboration-workspace > .direct-hub > .dm-conversation,
 body #root > .app > .workspace.collaboration-workspace > .direct-hub > .dm-profile-panel {
-  height: 100% !important;
+  height: auto !important;
   min-height: 0 !important;
   max-height: none !important;
   align-self: stretch !important;
+  overflow: hidden;
 }
 
 body #root > .app > .workspace.collaboration-workspace .dm-home-main {
   grid-template-rows: 65px 54px minmax(0, 1fr) !important;
-  overflow: hidden !important;
 }
 
 body #root > .app > .workspace.collaboration-workspace .dm-conversation {
   grid-template-rows: 65px minmax(0, 1fr) auto !important;
-  overflow: hidden !important;
 }
 
 body #root > .app > .workspace.collaboration-workspace .dm-message-scroll,
 body #root > .app > .workspace.collaboration-workspace .dm-contact-list,
-body #root > .app > .workspace.collaboration-workspace .dm-inbox-list {
+body #root > .app > .workspace.collaboration-workspace .dm-inbox-list,
+body #root > .app > .workspace.collaboration-workspace .dm-profile-panel {
   min-height: 0 !important;
   overflow-y: auto !important;
   overscroll-behavior: contain;
@@ -89,4 +117,15 @@ body #root > .app > .workspace.collaboration-workspace .dm-composer {
   min-height: 0;
   flex: 0 0 auto;
   align-self: end;
+}
+
+@media (max-width: 700px) {
+  body #root > .app > .workspace.collaboration-workspace {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  body #root > .app > .workspace.collaboration-workspace > .direct-hub,
+  body #root > .app > .workspace.collaboration-workspace > .direct-hub.conversation-open {
+    inset: 0 !important;
+  }
 }
