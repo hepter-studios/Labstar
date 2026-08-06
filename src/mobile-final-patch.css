@@ -29,4 +29,31 @@
   .communication-home {
     padding-bottom: calc(var(--mobile-safe-bottom) + 18px) !important;
   }
+
+  .notifications-panel {
+    position: fixed !important;
+    z-index: 1300 !important;
+    left: 8px !important;
+    right: 8px !important;
+    top: calc(var(--mobile-header-height) + 8px) !important;
+    bottom: calc(var(--mobile-safe-bottom) + 8px) !important;
+    width: auto !important;
+    max-height: none !important;
+    border-radius: 17px !important;
+  }
+
+  .install-app {
+    left: 8px !important;
+    right: 8px !important;
+    bottom: calc(var(--mobile-nav-height) + var(--mobile-safe-bottom) + 8px) !important;
+    width: auto !important;
+    max-width: none !important;
+  }
+}
+
+@media (max-height: 560px) and (max-width: 760px) {
+  .workspace:not(.collaboration-workspace) > .rail {
+    height: 46px !important;
+    min-height: 46px !important;
+  }
 }
