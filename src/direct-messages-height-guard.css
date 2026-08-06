@@ -1,1 +1,41 @@
-/* placeholder */
+/* Mantém a central de conversas privadas ocupando toda a área útil.
+   A especificidade alta impede regras posteriores de voltarem a usar altura intrínseca. */
+body #root .app .workspace.collaboration-workspace {
+  height: calc(100vh - 68px) !important;
+  height: calc(100dvh - 68px) !important;
+  min-height: 0 !important;
+  max-height: calc(100dvh - 68px) !important;
+  align-items: stretch !important;
+  overflow: hidden !important;
+}
+
+body #root .app .workspace.collaboration-workspace > .direct-hub,
+body #root .app .workspace.collaboration-workspace > .collaboration-server-mode {
+  height: 100% !important;
+  min-height: 0 !important;
+  max-height: 100% !important;
+  align-self: stretch !important;
+  overflow: hidden !important;
+}
+
+body #root .app .workspace.collaboration-workspace > .direct-hub {
+  grid-auto-rows: minmax(0, 1fr);
+}
+
+body #root .app .workspace.collaboration-workspace > .direct-hub > .dm-sidebar,
+body #root .app .workspace.collaboration-workspace > .direct-hub > .dm-home-main,
+body #root .app .workspace.collaboration-workspace > .direct-hub > .dm-conversation,
+body #root .app .workspace.collaboration-workspace > .direct-hub > .dm-profile-panel,
+body #root .app .workspace.collaboration-workspace .dm-message-scroll {
+  min-height: 0 !important;
+  max-height: 100% !important;
+}
+
+body #root .app .workspace.collaboration-workspace .dm-conversation {
+  height: 100% !important;
+  overflow: hidden !important;
+}
+
+body #root .app .workspace.collaboration-workspace .dm-message-scroll {
+  overflow-y: auto !important;
+}
