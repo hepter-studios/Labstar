@@ -14,4 +14,19 @@
     min-height: 50px !important;
     display: flex !important;
   }
+
+  .collaboration-server-mode .space-rail {
+    padding-left: 104px !important;
+  }
+
+  .communication-home-overlay {
+    top: calc(var(--mobile-header-height) + 54px) !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    left: 0 !important;
+  }
+
+  .communication-home {
+    padding-bottom: calc(var(--mobile-safe-bottom) + 18px) !important;
+  }
 }
