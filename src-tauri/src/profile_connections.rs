@@ -88,8 +88,8 @@ pub fn validate_github_authorization_url(raw: &str) -> Result<String, ProfileCon
         || callback.host_str() != Some(SUPABASE_HOST)
         || callback.port().is_some()
         || callback.path() != CALLBACK_PATH
+        || callback.query().is_some()
         || callback.fragment().is_some()
-        || callback.query_pairs().any(|(key, value)| key != "action" || value != "callback")
     {
         return Err(ProfileConnectionError::InvalidCallback);
     }
@@ -103,7 +103,7 @@ mod tests {
 
     fn valid_url() -> String {
         let callback: String = url::form_urlencoded::byte_serialize(
-            b"https://pgzwyngxsxnheulvusdq.supabase.co/functions/v1/github-profile-connection?action=callback",
+            b"https://pgzwyngxsxnheulvusdq.supabase.co/functions/v1/github-profile-connection",
         )
         .collect();
         format!(
