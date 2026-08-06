@@ -1,0 +1,17 @@
+@media (max-width: 760px) {
+  :root {
+    --mobile-header-height: calc(56px + env(safe-area-inset-top));
+  }
+
+  .workspace:not(.collaboration-workspace) > .rail {
+    position: fixed !important;
+    z-index: 900 !important;
+    left: 8px !important;
+    right: 8px !important;
+    bottom: var(--mobile-safe-bottom) !important;
+    width: auto !important;
+    height: 50px !important;
+    min-height: 50px !important;
+    display: flex !important;
+  }
+}
