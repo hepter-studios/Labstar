@@ -22,7 +22,21 @@ A conexão do GitHub:
 - `src/components/NotificationsPanel.tsx`: filtros, categorias, alertas do dispositivo e atualização em tempo real;
 - `supabase/labstar-supabase-v15-profile-connections-notifications.sql`: colunas, RPCs, políticas e gatilhos;
 - `supabase/labstar-supabase-v15b-profile-connections-no-auth.sql`: garantia explícita de que o GitHub é somente perfil público;
-- `src/member-panel-tools.css`: acabamento responsivo e mobile.
+- `supabase/labstar-supabase-v15d-notification-hardening.sql`: correção final do gatilho de cargos;
+- `src/member-panel-tools.css`: estilos exclusivamente do painel e das contas conectadas.
+
+## Preservação das conversas privadas
+
+As comunicações privadas 11.2.9 continuam sendo fornecidas por:
+
+- `src/components/DirectMessagesHubV6.tsx`;
+- `src/direct-messages.css`;
+- `src/direct-messages-v4.css`;
+- `src/direct-messages-v5.css`;
+- `src/direct-messages-v6.css`;
+- `src/direct-messages-v7.css`.
+
+Uma regra mobile global criada durante esta entrega sobrescrevia `.workspace` e `.direct-hub`, fazendo a tela privada subir. Essa regra foi removida. Os estilos novos de perfil agora ficam isolados e não redefinem o tamanho ou a posição das conversas.
 
 ## Funcionamento do GitHub
 
@@ -43,9 +57,10 @@ Antes de aplicar:
 3. revise o commit e os arquivos SQL completos;
 4. execute `supabase/labstar-supabase-v15-profile-connections-notifications.sql`;
 5. execute `supabase/labstar-supabase-v15b-profile-connections-no-auth.sql`;
-6. valide os RPCs e o Realtime de `notifications`.
+6. execute `supabase/labstar-supabase-v15d-notification-hardening.sql`;
+7. valide os RPCs e o Realtime de `notifications`.
 
-Também existe o workflow manual `.github/workflows/apply-profile-connections-v15.yml`, que cria um backup antes de executar as duas migrações.
+Também existe o workflow manual `.github/workflows/apply-profile-connections-v15.yml`, que cria um backup antes de executar as três migrações.
 
 ## Eventos cobertos pela central de notificações
 
@@ -67,6 +82,7 @@ Notificações normais de canais não são enviadas para todos indiscriminadamen
 - atualizar e remover o GitHub do perfil;
 - adicionar, alterar e remover o Instagram;
 - abrir o cartão de outro membro e conferir os links públicos;
+- abrir conversas privadas em desktop e mobile e confirmar que a tela não sobe;
 - gerar DM, menção, resposta, reunião, chamada perdida e mudança de cargo;
 - marcar uma e todas as notificações como lidas;
 - validar 320 px, 375 px, 430 px, tablet e desktop;
