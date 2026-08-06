@@ -32,7 +32,7 @@ A conexão do GitHub:
 Crie um aplicativo OAuth exclusivo para esta conexão de perfil. Ele não deve ser o aplicativo usado pelos logins do Labstar.
 
 - Homepage URL: `https://labstar.pages.dev`
-- Authorization callback URL: `https://pgzwyngxsxnheulvusdq.supabase.co/functions/v1/github-profile-connection?action=callback`
+- Authorization callback URL: `https://pgzwyngxsxnheulvusdq.supabase.co/functions/v1/github-profile-connection`
 
 Cadastre no GitHub Actions:
 
