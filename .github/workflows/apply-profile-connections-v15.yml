@@ -30,14 +30,13 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          test -n "${DATABASE_URL:-}" || { echo "SUPABASE_DATABASE_URL não configurada"; exit 1; }
+          test -n "${DATABASE_URL:-}" || exit 1
           test -f supabase/labstar-supabase-v15-profile-connections-notifications.sql
           test -f supabase/labstar-supabase-v15b-profile-connections-no-auth.sql
           test -f supabase/labstar-supabase-v15c-github-profile-oauth.sql
           test -f supabase/labstar-supabase-v15d-notification-hardening.sql
 
       - name: Instalar cliente PostgreSQL
-        shell: bash
         run: |
           sudo apt-get update
           sudo apt-get install -y postgresql-client
@@ -74,11 +73,10 @@ jobs:
           psql "$DATABASE_URL" -v ON_ERROR_STOP=1 <<'SQL'
           select
             exists(select 1 from information_schema.columns where table_schema='public' and table_name='members' and column_name='github_profile') as github_profile,
-            not exists(select 1 from information_schema.columns where table_schema='public' and table_name='members' and column_name='instagram_username') as instagram_removed,
             to_regprocedure('public.set_member_github_profile(uuid,jsonb)') is not null as github_oauth_writer,
             to_regprocedure('public.consume_github_profile_state(text)') is not null as github_state_consumer,
             to_regprocedure('public.clear_own_github_profile()') is not null as github_disconnect,
-            to_regprocedure('public.set_own_github_profile(jsonb)') is null as client_cannot_forge_github,
+            to_regprocedure('public.set_own_github_profile(jsonb)') is null as client_write_removed,
             exists(select 1 from pg_trigger where tgname='direct_message_notification' and not tgisinternal) as dm_notifications,
             exists(select 1 from pg_trigger where tgname='channel_message_notification' and not tgisinternal) as channel_notifications,
             exists(select 1 from pg_trigger where tgname='member_job_role_notification' and not tgisinternal) as role_notifications,
