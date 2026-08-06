@@ -1,4 +1,4 @@
-import { isTauriApp, openNativeProfileConnectionUrl, takeNativeProfileConnectionStatus } from "./native";
+import { isTauriApp, openNativeProfileConnectionUrl } from "./native";
 import { getCurrentIdentity, supabaseClient } from "./supabase";
 
 export type GithubPublicProfile = {
@@ -127,11 +127,9 @@ export async function disconnectGithubProfile() {
 }
 
 export function takeGithubProfileConnectionResult(): GithubProfileConnectionResult {
-  const nativeStatus = takeNativeProfileConnectionStatus();
   const url = new URL(window.location.href);
-  const queryStatus = url.searchParams.get("github_profile");
-  const status = nativeStatus || queryStatus;
-  if (queryStatus) {
+  const status = url.searchParams.get("github_profile");
+  if (status) {
     url.searchParams.delete("github_profile");
     url.searchParams.delete("source");
     window.history.replaceState({}, "", `${url.pathname}${url.search}${url.hash}`);
