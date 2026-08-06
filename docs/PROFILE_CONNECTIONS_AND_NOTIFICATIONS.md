@@ -37,10 +37,10 @@ Crie um aplicativo OAuth exclusivo para esta conexão de perfil. Ele não deve s
 Cadastre no GitHub Actions:
 
 - `SUPABASE_ACCESS_TOKEN`
-- `GITHUB_PROFILE_CLIENT_ID`
-- `GITHUB_PROFILE_CLIENT_SECRET`
+- `LABSTAR_GH_PROFILE_CLIENT_ID`
+- `LABSTAR_GH_PROFILE_CLIENT_SECRET`
 
-O workflow `.github/workflows/deploy-github-profile-connection.yml` publica os segredos no Supabase e faz o deploy da função `github-profile-connection`.
+Os dois últimos nomes evitam o prefixo reservado `GITHUB_`, que não pode iniciar nomes de Secrets no GitHub Actions. O workflow `.github/workflows/deploy-github-profile-connection.yml` converte esses valores para os nomes esperados pela Edge Function ao publicá-los no Supabase.
 
 ## Banco
 
