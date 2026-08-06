@@ -22,7 +22,9 @@ begin
   end if;
 
   username := trim(coalesce(new_github_profile ->> 'username', ''));
-  if username !~ '^[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?$' then
+  if username !~ '^[A-Za-z0-9][A-Za-z0-9-]{0,38}$'
+    or username ~ '-$'
+  then
     raise exception 'invalid_github_username';
   end if;
 
