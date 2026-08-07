@@ -91,12 +91,13 @@ jobs:
           result="$(psql "$DATABASE_URL" -At -v ON_ERROR_STOP=1 <<'SQL'
           select
             exists(select 1 from information_schema.columns where table_schema='public' and table_name='integration_rules' and column_name='webhook_token')::text || '|' ||
+            exists(select 1 from information_schema.columns where table_schema='public' and table_name='integration_rules' and column_name='created_by' and lower(coalesce(column_default,'')) like '%current_member_id%')::text || '|' ||
             (to_regclass('public.integration_event_receipts') is not null)::text || '|' ||
             (to_regprocedure('public.rotate_integration_webhook_token(uuid)') is not null)::text || '|' ||
             exists(select 1 from public.members where lower(email)='integrations@system.labstar')::text;
           SQL
           )"
-          test "$result" = "true|true|true|true" || { echo "Auditoria do banco falhou: $result"; exit 1; }
+          test "$result" = "true|true|true|true|true" || { echo "Auditoria do banco falhou: $result"; exit 1; }
 
           status="$(curl --silent --show-error --output /tmp/integration-ingest-audit.json --write-out '%{http_code}' \
             --request POST \
