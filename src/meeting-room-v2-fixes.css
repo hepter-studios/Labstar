@@ -1,0 +1,20 @@
+.meeting-v2-bridge-mount {
+  position: relative;
+  isolation: isolate;
+}
+
+.channel-content.meeting-v2-enhanced {
+  position: relative;
+  overflow: hidden;
+}
+
+.channel-content.meeting-v2-enhanced > .meeting-v2-bridge-mount {
+  display: block;
+  width: 100%;
+}
+
+@media (max-width: 760px) {
+  .channel-content.meeting-v2-enhanced > .meeting-v2-bridge-mount {
+    min-height: 0;
+  }
+}
