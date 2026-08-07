@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import "../meeting-room-v2.css";
 import { listMembers, loadCollaboration, type LabstarChannel, type Member } from "../lib/supabase";
 import { MeetingRoomV2 } from "./MeetingRoomV2";
 
@@ -18,19 +19,6 @@ export function MeetingRoomUpgradeBridge({ member, soundEnabled }: Props) {
 
   useEffect(() => {
     let disposed = false;
-
-    const load = async () => {
-      try {
-        const [collaboration, team] = await Promise.all([loadCollaboration(), listMembers()]);
-        if (disposed) return;
-        channelsRef.current = collaboration.channels;
-        spacesRef.current = collaboration.spaces.map((space) => ({ id: space.id, name: space.name }));
-        setMembers(team.members);
-        sync();
-      } catch {
-        // A sala antiga continua disponível caso os dados ainda não estejam prontos.
-      }
-    };
 
     const sync = () => {
       const shell = document.querySelector<HTMLElement>(".collaboration-shell");
@@ -69,6 +57,19 @@ export function MeetingRoomUpgradeBridge({ member, soundEnabled }: Props) {
       if (currentChannelIdRef.current !== selected.id) {
         currentChannelIdRef.current = selected.id;
         setChannel(selected);
+      }
+    };
+
+    const load = async () => {
+      try {
+        const [collaboration, team] = await Promise.all([loadCollaboration(), listMembers()]);
+        if (disposed) return;
+        channelsRef.current = collaboration.channels;
+        spacesRef.current = collaboration.spaces.map((space) => ({ id: space.id, name: space.name }));
+        setMembers(team.members);
+        sync();
+      } catch {
+        // A sala antiga continua disponível caso os dados ainda não estejam prontos.
       }
     };
 
