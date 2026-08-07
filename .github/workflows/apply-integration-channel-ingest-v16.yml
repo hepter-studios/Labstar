@@ -74,7 +74,7 @@ jobs:
       - name: Configurar Supabase CLI
         uses: supabase/setup-cli@v2
         with:
-          version: latest
+          version: 2.109.1
 
       - name: Publicar receptor de eventos
         shell: bash
