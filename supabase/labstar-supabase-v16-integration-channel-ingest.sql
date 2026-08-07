@@ -11,6 +11,18 @@ alter table public.integration_rules
 create unique index if not exists integration_rules_webhook_token_idx
   on public.integration_rules(webhook_token);
 
+create table if not exists public.integration_event_receipts (
+  id uuid primary key default gen_random_uuid(),
+  rule_id uuid not null references public.integration_rules(id) on delete cascade,
+  event_key text not null,
+  created_at timestamptz not null default now(),
+  unique(rule_id, event_key)
+);
+
+alter table public.integration_event_receipts enable row level security;
+revoke all on table public.integration_event_receipts from public, anon, authenticated;
+grant select, insert, delete on table public.integration_event_receipts to service_role;
+
 -- Autor técnico para mensagens geradas por integrações. Mantemos suspenso para
 -- não aparecer como pessoa disponível, mas a FK de channel_messages continua íntegra.
 insert into public.members (
