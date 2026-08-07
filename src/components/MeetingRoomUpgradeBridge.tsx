@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import "../meeting-room-v2.css";
+import "../meeting-room-v2-fixes.css";
 import { listMembers, loadCollaboration, type LabstarChannel, type Member } from "../lib/supabase";
 import { MeetingRoomV2 } from "./MeetingRoomV2";
 
