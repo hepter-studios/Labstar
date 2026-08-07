@@ -1,0 +1,180 @@
+.integration-chat-message-github > .message-body {
+  min-width: 0;
+}
+
+.integration-event-card {
+  width: min(680px, 100%);
+  margin-top: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  background: rgba(10, 13, 20, 0.92);
+  overflow: hidden;
+}
+
+.integration-event-card-github {
+  box-shadow: inset 3px 0 0 rgba(255, 255, 255, 0.16);
+}
+
+.integration-event-top {
+  display: flex;
+  align-items: flex-start;
+  gap: 11px;
+  padding: 13px 14px 10px;
+}
+
+.integration-provider-mark {
+  width: 34px;
+  height: 34px;
+  flex: 0 0 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.07);
+  color: #f3f5fa;
+}
+
+.integration-provider-mark svg {
+  width: 19px;
+  height: 19px;
+}
+
+.integration-event-heading {
+  min-width: 0;
+  flex: 1;
+  display: grid;
+  gap: 3px;
+}
+
+.integration-event-eyebrow {
+  color: #8e99ad;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.integration-event-heading strong {
+  color: #f4f6fb;
+  font-size: 13px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.integration-event-status {
+  flex: 0 0 auto;
+  padding: 4px 7px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.04);
+  color: #b7c0d0;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.integration-event-status.is-failure,
+.integration-event-status.is-cancelled {
+  color: #ff9a9a;
+  border-color: rgba(255, 104, 104, 0.2);
+  background: rgba(255, 76, 76, 0.06);
+}
+
+.integration-event-status.is-opened,
+.integration-event-status.is-published,
+.integration-event-status.is-merged {
+  color: #9de1bd;
+  border-color: rgba(83, 200, 139, 0.2);
+  background: rgba(83, 200, 139, 0.06);
+}
+
+.integration-event-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  padding: 0 14px 11px 59px;
+  color: #8e99ad;
+  font-size: 11px;
+}
+
+.integration-event-repo {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  color: #b8c2d4;
+}
+
+.integration-event-actor {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.integration-event-actor img {
+  width: 20px;
+  height: 20px;
+  object-fit: cover;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.13);
+  background: #111722;
+}
+
+.integration-event-open {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 38px;
+  padding: 0 14px 0 59px;
+  border-top: 1px solid rgba(255, 255, 255, 0.075);
+  color: #bfc9da;
+  text-decoration: none;
+  font-size: 11px;
+  font-weight: 700;
+  transition: background 120ms ease, color 120ms ease;
+}
+
+.integration-event-open:hover,
+.integration-event-open:focus-visible {
+  background: rgba(255, 255, 255, 0.045);
+  color: #ffffff;
+  outline: none;
+}
+
+.integration-event-open svg {
+  width: 14px;
+  height: 14px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.integration-test-message {
+  white-space: pre-line;
+}
+
+@media (max-width: 760px) {
+  .integration-event-card {
+    width: 100%;
+  }
+
+  .integration-event-top {
+    padding: 11px 12px 9px;
+  }
+
+  .integration-provider-mark {
+    width: 30px;
+    height: 30px;
+    flex-basis: 30px;
+  }
+
+  .integration-event-meta,
+  .integration-event-open {
+    padding-left: 53px;
+    padding-right: 12px;
+  }
+
+  .integration-event-status {
+    max-width: 84px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}
