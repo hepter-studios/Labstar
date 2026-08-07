@@ -139,6 +139,69 @@ on conflict ((lower(email))) do update set
   job_title = 'Automação',
   area = 'Sistema';
 
+-- Mensagens automáticas em canais comuns também devem aparecer na Central de
+-- notificações. Canais announcement/rules já são cobertos pelo gatilho v15 e
+-- são ignorados aqui para evitar notificação duplicada.
+create or replace function public.notify_integration_channel_message_insert()
+returns trigger
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  integration_author uuid;
+  channel_row public.channels%rowtype;
+  recipient record;
+begin
+  select id
+  into integration_author
+  from public.members
+  where lower(email) = 'integrations@system.labstar'
+  limit 1;
+
+  if integration_author is null or new.author_id is distinct from integration_author then
+    return new;
+  end if;
+
+  select * into channel_row from public.channels where id = new.channel_id;
+  if channel_row.id is null or channel_row.type in ('announcement', 'rules') then
+    return new;
+  end if;
+
+  for recipient in
+    select member.id
+    from public.members member
+    where member.status = 'active'
+      and (
+        cardinality(coalesce(channel_row.allowed_roles, '{}'::text[])) = 0
+        or member.role = any(channel_row.allowed_roles)
+      )
+      and (
+        cardinality(coalesce(channel_row.allowed_assignments, '{}'::text[])) = 0
+        or coalesce(member.assignments, '{}'::text[]) && channel_row.allowed_assignments
+      )
+  loop
+    perform public.push_labstar_notification(
+      recipient.id,
+      'Novo aviso em #' || coalesce(channel_row.name, 'canal'),
+      left(coalesce(nullif(trim(new.body), ''), 'Nova atualização de integração.'), 260),
+      new.channel_id,
+      'integration_event',
+      new.id
+    );
+  end loop;
+
+  return new;
+end;
+$$;
+
+revoke all on function public.notify_integration_channel_message_insert() from public, anon, authenticated;
+
+drop trigger if exists integration_channel_message_notification on public.channel_messages;
+create trigger integration_channel_message_notification
+after insert on public.channel_messages
+for each row execute function public.notify_integration_channel_message_insert();
+
 -- O token pode ser rotacionado somente por quem já pode gerenciar canais.
 create or replace function public.rotate_integration_webhook_token(target_rule_id uuid)
 returns uuid
