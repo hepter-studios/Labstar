@@ -139,8 +139,91 @@ on conflict ((lower(email))) do update set
   job_title = 'Automação',
   area = 'Sistema';
 
+-- A v15 tratava members.assignments como text[], mas a coluna real é jsonb.
+-- Recriamos o gatilho antigo aqui para que qualquer mensagem em canal restrito
+-- use a comparação correta entre o array JSON do membro e allowed_assignments.
+create or replace function public.notify_channel_message_insert()
+returns trigger
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  author_name text;
+  channel_row public.channels%rowtype;
+  replied_author uuid;
+  recipient record;
+  is_everyone boolean;
+  is_announcement boolean;
+  mentioned boolean;
+  event_name text;
+begin
+  select * into channel_row from public.channels where id = new.channel_id;
+  select name into author_name from public.members where id = new.author_id;
+  if new.reply_to is not null then
+    select author_id into replied_author from public.channel_messages where id = new.reply_to;
+  end if;
+
+  is_everyone := lower(coalesce(new.body, '')) ~ '@(todos|all|everyone)(\s|$|[,.!:;])';
+  is_announcement := channel_row.type in ('announcement', 'rules');
+
+  for recipient in
+    select member.id, member.name
+    from public.members member
+    where member.status = 'active'
+      and member.id <> new.author_id
+      and (
+        cardinality(coalesce(channel_row.allowed_roles, '{}'::text[])) = 0
+        or member.role = any(channel_row.allowed_roles)
+      )
+      and (
+        cardinality(coalesce(channel_row.allowed_assignments, '{}'::text[])) = 0
+        or exists (
+          select 1
+          from jsonb_array_elements_text(
+            case
+              when jsonb_typeof(coalesce(member.assignments, '[]'::jsonb)) = 'array'
+                then coalesce(member.assignments, '[]'::jsonb)
+              else '[]'::jsonb
+            end
+          ) as assignment(value)
+          where assignment.value = any(coalesce(channel_row.allowed_assignments, '{}'::text[]))
+        )
+      )
+  loop
+    mentioned := lower(coalesce(new.body, '')) like '%@' || lower(recipient.name) || '%';
+    if is_announcement or is_everyone or mentioned or recipient.id = replied_author then
+      event_name := case
+        when recipient.id = replied_author then 'channel_reply'
+        when is_announcement then 'announcement'
+        else 'channel_mention'
+      end;
+      perform public.push_labstar_notification(
+        recipient.id,
+        case
+          when recipient.id = replied_author then coalesce(author_name, 'Alguém') || ' respondeu você'
+          when is_announcement then 'Novo aviso em #' || coalesce(channel_row.name, 'canal')
+          else coalesce(author_name, 'Alguém') || ' mencionou você'
+        end,
+        left(coalesce(nullif(trim(new.body), ''), 'Nova atualização no canal.'), 260),
+        new.channel_id,
+        event_name,
+        new.id
+      );
+    end if;
+  end loop;
+  return new;
+end;
+$$;
+
+-- O trigger já existe desde a v15; recriá-lo deixa explícito que usa a função corrigida.
+drop trigger if exists channel_message_notification on public.channel_messages;
+create trigger channel_message_notification
+after insert on public.channel_messages
+for each row execute function public.notify_channel_message_insert();
+
 -- Mensagens automáticas em canais comuns também devem aparecer na Central de
--- notificações. Canais announcement/rules já são cobertos pelo gatilho v15 e
+-- notificações. Canais announcement/rules já são cobertos pelo gatilho acima e
 -- são ignorados aqui para evitar notificação duplicada.
 create or replace function public.notify_integration_channel_message_insert()
 returns trigger
@@ -178,7 +261,17 @@ begin
       )
       and (
         cardinality(coalesce(channel_row.allowed_assignments, '{}'::text[])) = 0
-        or coalesce(member.assignments, '{}'::text[]) && channel_row.allowed_assignments
+        or exists (
+          select 1
+          from jsonb_array_elements_text(
+            case
+              when jsonb_typeof(coalesce(member.assignments, '[]'::jsonb)) = 'array'
+                then coalesce(member.assignments, '[]'::jsonb)
+              else '[]'::jsonb
+            end
+          ) as assignment(value)
+          where assignment.value = any(coalesce(channel_row.allowed_assignments, '{}'::text[]))
+        )
       )
   loop
     perform public.push_labstar_notification(
