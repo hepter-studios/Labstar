@@ -1,4 +1,4 @@
-import { Home } from "lucide-react";
+import { Home, MessageSquare } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { Member } from "../lib/supabase";
 import { CommunicationHome } from "./CommunicationHome";
@@ -128,7 +128,7 @@ export function CollaborationHub({ member, initialChannelId, soundEnabled = true
         title="Mensagens diretas"
         aria-label="Abrir mensagens diretas"
       >
-        <img className="labstar-dm-logo" src="/labstar-dm.svg" alt="" aria-hidden="true" />
+        <MessageSquare size={21} />
         <i />
       </button>
       <LegacyCollaborationHub
