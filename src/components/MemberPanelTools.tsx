@@ -3,7 +3,9 @@ import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import "../profile-connections.css";
 import { getCurrentAccessIdentity } from "../lib/access";
+import { FinalProductPolishBridge } from "./FinalProductPolishBridge";
 import { LabstarEnhancementStyles } from "./LabstarEnhancementStyles";
+import { MemberDeletionBridge } from "./MemberDeletionBridge";
 import { ProfileConnectionsBridge } from "./ProfileConnectionsBridge";
 
 export function MemberPanelTools() {
@@ -54,5 +56,11 @@ export function MemberPanelTools() {
     target,
   ) : null;
 
-  return <><LabstarEnhancementStyles />{tools}<ProfileConnectionsBridge /></>;
+  return <>
+    <LabstarEnhancementStyles />
+    {tools}
+    <ProfileConnectionsBridge />
+    <FinalProductPolishBridge />
+    <MemberDeletionBridge />
+  </>;
 }
