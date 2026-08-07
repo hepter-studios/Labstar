@@ -64,11 +64,23 @@ function actionLabel(event: string) {
   return "Abrir no GitHub";
 }
 
+function decorateGithubProviderAvatar(article: HTMLElement) {
+  const avatar = article.querySelector<HTMLElement>(":scope > .user-avatar .avatar-media");
+  if (!avatar || avatar.dataset.integrationProvider === "github") return;
+  avatar.dataset.integrationProvider = "github";
+  avatar.classList.add("integration-provider-avatar");
+  avatar.innerHTML = githubMark();
+  const wrapper = avatar.closest<HTMLElement>(".user-avatar");
+  wrapper?.setAttribute("aria-label", "GitHub");
+  wrapper?.setAttribute("title", "Evento recebido do GitHub");
+}
+
 function enhanceGithubMessage(article: HTMLElement, paragraph: HTMLParagraphElement, parsed: ParsedGithubMessage) {
   if (article.dataset.integrationCard === "github") return;
   article.dataset.integrationCard = "github";
   article.classList.add("integration-chat-message", "integration-chat-message-github");
   paragraph.hidden = true;
+  decorateGithubProviderAvatar(article);
 
   const card = document.createElement("section");
   card.className = "integration-event-card integration-event-card-github";
