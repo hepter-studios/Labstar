@@ -90,11 +90,12 @@ export function FinalProductPolishBridge() {
       if (!supabaseClient) return;
       const [identity, team] = await Promise.all([getCurrentAccessIdentity(), listMembers()]);
       if (disposed || !identity?.member) return;
-      currentMemberId.current = identity.member.id;
+      const authenticatedMember = identity.member;
+      currentMemberId.current = authenticatedMember.id;
       memberIdsByName.current = new Map(team.members.map((member) => [normalize(member.name), member.id]));
 
       presenceChannel = supabaseClient.channel("labstar-global-presence", {
-        config: { presence: { key: identity.member.id } },
+        config: { presence: { key: authenticatedMember.id } },
       });
       presenceChannel.on("presence", { event: "sync" }, () => {
         const state = presenceChannel?.presenceState() ?? {};
@@ -104,8 +105,8 @@ export function FinalProductPolishBridge() {
       presenceChannel.subscribe(async (status) => {
         if (status !== "SUBSCRIBED") return;
         await presenceChannel?.track({
-          memberId: identity.member.id,
-          name: identity.member.name,
+          memberId: authenticatedMember.id,
+          name: authenticatedMember.name,
           onlineAt: new Date().toISOString(),
         });
       });
