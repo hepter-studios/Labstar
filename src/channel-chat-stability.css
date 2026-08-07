@@ -1,0 +1,82 @@
+.channel-content > .message-room {
+  position: relative;
+  display: grid !important;
+  grid-template-rows: auto minmax(0, 1fr) auto !important;
+  width: 100%;
+  height: 100% !important;
+  max-height: 100% !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+  overscroll-behavior: none;
+}
+
+.channel-content > .message-room > .message-scroll {
+  min-height: 0 !important;
+  height: auto !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  overscroll-behavior-y: contain;
+  scrollbar-gutter: stable;
+  scroll-anchor: none;
+}
+
+.channel-content > .message-room > .message-composer,
+.channel-content > .message-room > form.message-composer {
+  position: relative !important;
+  inset: auto !important;
+  align-self: end !important;
+  flex: 0 0 auto !important;
+  z-index: 8;
+  transform: none !important;
+}
+
+.collaboration-server-mode,
+.collaboration-server-mode > .collaboration-shell,
+.collaboration-shell > .channel-content {
+  overscroll-behavior: none;
+}
+
+.integrations-center[data-provider-mode="github-only"] .integration-create {
+  align-items: center;
+}
+
+.integrations-center[data-provider-mode="github-only"] .integration-create::before {
+  content: "GitHub";
+  display: inline-flex;
+  align-items: center;
+  min-height: 36px;
+  padding: 0 12px;
+  border: 1px solid rgba(255, 255, 255, .09);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, .035);
+  color: #dce3f0;
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.integrations-center[data-provider-mode="github-only"] .integration-create select[hidden],
+.integrations-center[data-provider-mode="github-only"] .integration-rule-list > article[hidden] {
+  display: none !important;
+}
+
+@media (max-width: 760px) {
+  .channel-content > .message-room {
+    max-height: 100dvh !important;
+  }
+
+  .channel-content > .message-room > .message-composer,
+  .channel-content > .message-room > form.message-composer {
+    padding-bottom: max(env(safe-area-inset-bottom), 0px);
+  }
+
+  .integrations-center[data-provider-mode="github-only"] .integration-create {
+    display: grid;
+    grid-template-columns: 1fr;
+    width: 100%;
+  }
+
+  .integrations-center[data-provider-mode="github-only"] .integration-create::before,
+  .integrations-center[data-provider-mode="github-only"] .integration-create button {
+    width: 100%;
+  }
+}
