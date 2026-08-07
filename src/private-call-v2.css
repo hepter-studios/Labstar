@@ -1,0 +1,113 @@
+.private-call-v2-head-actions {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.private-call-v2-head-actions button {
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(255,255,255,.09);
+  border-radius: 8px;
+  background: rgba(255,255,255,.04);
+  color: #c7d1e2;
+  cursor: pointer;
+}
+
+.private-call-v2-head-actions button:hover {
+  background: rgba(255,255,255,.075);
+  color: #fff;
+}
+
+.private-call-v2 .private-call-stage.visual {
+  position: relative;
+  overflow: hidden;
+}
+
+.private-call-sharing-badge {
+  position: absolute;
+  left: 12px;
+  top: 12px;
+  z-index: 5;
+  min-height: 28px;
+  padding: 0 9px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid rgba(91,205,164,.25);
+  border-radius: 8px;
+  background: rgba(8,23,18,.78);
+  color: #a8e1cf;
+  font-size: 9px;
+  font-weight: 700;
+  backdrop-filter: blur(10px);
+}
+
+.private-call-v2-controls button.sharing {
+  color: #a7dfcc;
+  border-color: rgba(83,196,157,.25);
+  background: rgba(47,130,103,.16);
+}
+
+.private-call-backdrop.private-call-minimized {
+  pointer-events: none;
+  background: transparent;
+  backdrop-filter: none;
+}
+
+.private-call-card.private-call-v2.minimized {
+  position: fixed;
+  right: 18px;
+  bottom: 18px;
+  width: min(360px,calc(100vw - 36px));
+  max-height: min(520px,calc(100vh - 36px));
+  pointer-events: auto;
+  border: 1px solid rgba(255,255,255,.13);
+  border-radius: 16px;
+  box-shadow: 0 28px 90px rgba(0,0,0,.58);
+  overflow: hidden;
+}
+
+.private-call-card.private-call-v2.minimized .private-call-stage {
+  min-height: 180px;
+  max-height: 230px;
+}
+
+.private-call-card.private-call-v2.minimized .private-call-copy {
+  padding-top: 10px;
+  padding-bottom: 8px;
+}
+
+.private-call-card.private-call-v2.minimized .private-call-copy h2 {
+  font-size: 16px;
+}
+
+.private-call-card.private-call-v2.minimized .private-call-copy p {
+  margin-top: 2px;
+}
+
+.private-call-card.private-call-v2.minimized .private-call-v2-controls {
+  padding-top: 7px;
+  padding-bottom: 10px;
+}
+
+.private-call-card.private-call-v2.minimized .private-call-local-video {
+  width: 86px;
+  height: 58px;
+}
+
+@media (max-width: 760px) {
+  .private-call-card.private-call-v2.minimized {
+    right: 8px;
+    bottom: calc(74px + env(safe-area-inset-bottom));
+    width: calc(100vw - 16px);
+    max-height: min(430px,calc(100vh - 90px));
+  }
+
+  .private-call-card.private-call-v2.minimized .private-call-stage {
+    min-height: 150px;
+    max-height: 190px;
+  }
+}

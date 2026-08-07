@@ -1,9 +1,10 @@
-import { MessageSquareText } from "lucide-react";
+import { Home, MessageSquareText } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { Member } from "../lib/supabase";
 import { CommunicationHome } from "./CommunicationHome";
 import { DirectMessagesHub } from "./DirectMessagesHubV6";
 import { CollaborationHub as LegacyCollaborationHub } from "./LegacyCollaborationHub";
+import { MeetingRoomUpgradeBridge } from "./MeetingRoomUpgradeBridge";
 
 type CollaborationHubProps = {
   member: Member;
@@ -116,7 +117,7 @@ export function CollaborationHub({ member, initialChannelId, soundEnabled = true
         title="Home da Central de trabalho"
         aria-label="Abrir Home da Central de trabalho"
       >
-        <MessageSquareText size={21} />
+        <Home size={21} />
         <i />
       </button>
       <button
@@ -134,6 +135,7 @@ export function CollaborationHub({ member, initialChannelId, soundEnabled = true
         initialChannelId={workspaceChannelId}
         soundEnabled={soundEnabled}
       />
+      <MeetingRoomUpgradeBridge member={member} soundEnabled={soundEnabled} />
       {surface === "home" && (
         <div className="communication-home-overlay">
           <CommunicationHome
