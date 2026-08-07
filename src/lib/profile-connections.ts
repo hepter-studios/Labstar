@@ -122,8 +122,12 @@ export async function connectGithubProfile() {
 }
 
 export async function disconnectGithubProfile() {
-  const { error } = await requireClient().rpc("clear_own_github_profile");
+  const { data, error } = await requireClient().functions.invoke<{ disconnected?: boolean; error?: string }>(
+    "github-profile-connection",
+    { body: { action: "disconnect" } },
+  );
   if (error) throw error;
+  if (data?.disconnected !== true) throw new Error(data?.error || "github_disconnect_failed");
 }
 
 export function takeGithubProfileConnectionResult(): GithubProfileConnectionResult {
