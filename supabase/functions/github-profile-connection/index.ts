@@ -16,6 +16,7 @@ const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
 });
 
 type StartPayload = {
+  action?: "start" | "disconnect";
   returnTo?: string;
 };
 
@@ -99,16 +100,33 @@ function redirectWithStatus(returnTo: string, status: "connected" | "cancelled" 
   return Response.redirect(target.toString(), 303);
 }
 
+async function authenticatedMember(request: Request) {
+  const token = bearerToken(request);
+  if (!token) return { error: "authentication_required" as const, member: null };
+
+  const { data: userData, error: userError } = await admin.auth.getUser(token);
+  if (userError || !userData.user) return { error: "invalid_session" as const, member: null };
+
+  const { data: member, error: memberError } = await admin
+    .from("members")
+    .select("id,status")
+    .eq("auth_user_id", userData.user.id)
+    .maybeSingle();
+
+  if (memberError || !member || member.status !== "active") {
+    return { error: "active_member_required" as const, member: null };
+  }
+
+  return { error: null, member };
+}
+
 async function startConnection(request: Request) {
   if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY || !GITHUB_CLIENT_ID || !GITHUB_CLIENT_SECRET) {
     return json(request, 503, { error: "github_profile_connection_not_configured" });
   }
 
-  const token = bearerToken(request);
-  if (!token) return json(request, 401, { error: "authentication_required" });
-
-  const { data: userData, error: userError } = await admin.auth.getUser(token);
-  if (userError || !userData.user) return json(request, 401, { error: "invalid_session" });
+  const auth = await authenticatedMember(request);
+  if (!auth.member) return json(request, auth.error === "active_member_required" ? 403 : 401, { error: auth.error });
 
   let payload: StartPayload;
   try {
@@ -124,27 +142,17 @@ async function startConnection(request: Request) {
     return json(request, 400, { error: "invalid_return_to" });
   }
 
-  const { data: member, error: memberError } = await admin
-    .from("members")
-    .select("id,status")
-    .eq("auth_user_id", userData.user.id)
-    .maybeSingle();
-
-  if (memberError || !member || member.status !== "active") {
-    return json(request, 403, { error: "active_member_required" });
-  }
-
   const state = randomState();
   const stateHash = await sha256Hex(state);
   const expiresAt = new Date(Date.now() + 10 * 60 * 1_000).toISOString();
 
   await admin.from("profile_connection_states")
     .delete()
-    .eq("member_id", member.id)
+    .eq("member_id", auth.member.id)
     .eq("provider", "github");
 
   const { error: stateError } = await admin.from("profile_connection_states").insert({
-    member_id: member.id,
+    member_id: auth.member.id,
     provider: "github",
     state_hash: stateHash,
     return_to: returnTo,
@@ -161,6 +169,29 @@ async function startConnection(request: Request) {
   authorizationUrl.searchParams.set("allow_signup", "false");
 
   return json(request, 200, { authorizationUrl: authorizationUrl.toString() });
+}
+
+async function disconnectConnection(request: Request) {
+  if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+    return json(request, 503, { error: "github_profile_connection_not_configured" });
+  }
+
+  const auth = await authenticatedMember(request);
+  if (!auth.member) return json(request, auth.error === "active_member_required" ? 403 : 401, { error: auth.error });
+
+  const { error } = await admin
+    .from("members")
+    .update({ github_profile: {}, last_seen_at: new Date().toISOString() })
+    .eq("id", auth.member.id);
+
+  if (error) return json(request, 500, { error: "github_disconnect_failed" });
+
+  await admin.from("profile_connection_states")
+    .delete()
+    .eq("member_id", auth.member.id)
+    .eq("provider", "github");
+
+  return json(request, 200, { disconnected: true });
 }
 
 async function callback(request: Request) {
@@ -245,5 +276,14 @@ Deno.serve(async (request) => {
   if (request.method === "OPTIONS") return new Response("ok", { headers: corsHeaders(request) });
   if (request.method === "GET") return callback(request);
   if (request.method !== "POST") return json(request, 405, { error: "method_not_allowed" });
+
+  let payload: StartPayload = {};
+  try {
+    payload = await request.clone().json() as StartPayload;
+  } catch {
+    return json(request, 400, { error: "invalid_json" });
+  }
+
+  if (payload.action === "disconnect") return disconnectConnection(request);
   return startConnection(request);
 });
