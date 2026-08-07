@@ -109,3 +109,60 @@ jobs:
           test "$status" = "401" || { echo "Função respondeu HTTP $status"; cat /tmp/integration-ingest-audit.json; exit 1; }
           grep -q 'invalid_webhook_credentials' /tmp/integration-ingest-audit.json || { cat /tmp/integration-ingest-audit.json; exit 1; }
           echo "Integrações externas prontas para entregar avisos aos canais e à Central de notificações."
+
+      - name: Testar gravação real no canal GitHub
+        shell: bash
+        run: |
+          set -euo pipefail
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 <<'SQL'
+          do $$
+          declare
+            target_rule record;
+            bot_id uuid;
+            test_message_id uuid;
+          begin
+            select r.id, r.channel_id, r.name, c.name as channel_name
+            into target_rule
+            from public.integration_rules r
+            join public.channels c
+              on c.id = r.channel_id
+             and c.space_id = r.space_id
+            where r.provider = 'github'
+              and r.enabled = true
+              and r.channel_id is not null
+              and c.type not in ('voice', 'social')
+            order by r.updated_at desc nulls last, r.created_at desc
+            limit 1;
+
+            if target_rule.id is null then
+              raise notice 'Nenhuma integração GitHub ativa com canal de texto foi encontrada; teste de gravação ignorado.';
+              return;
+            end if;
+
+            select id
+            into bot_id
+            from public.members
+            where lower(email) = 'integrations@system.labstar'
+            limit 1;
+
+            if bot_id is null then
+              raise exception 'Autor técnico Labstar Integrations não existe.';
+            end if;
+
+            begin
+              insert into public.channel_messages (channel_id, author_id, body)
+              values (
+                target_rule.channel_id,
+                bot_id,
+                'Labstar Integrations · Teste automático\nA entrega no canal #' || target_rule.channel_name || ' está funcionando.'
+              )
+              returning id into test_message_id;
+            exception
+              when others then
+                raise exception 'channel_messages rejeitou a entrega [SQLSTATE %]: %', SQLSTATE, SQLERRM;
+            end;
+
+            raise notice 'Mensagem de teste criada com sucesso: %', test_message_id;
+          end
+          $$;
+          SQL
