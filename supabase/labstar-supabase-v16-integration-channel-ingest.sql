@@ -30,8 +30,14 @@ security definer
 set search_path = public, pg_temp
 as $$
 declare
-  target_rule uuid := coalesce(new.rule_id, old.rule_id);
+  target_rule uuid;
 begin
+  if tg_op = 'DELETE' then
+    target_rule := old.rule_id;
+  else
+    target_rule := new.rule_id;
+  end if;
+
   update public.integration_rules
   set delivered_count = (
         select count(*)
@@ -41,7 +47,11 @@ begin
       last_event_at = case when tg_op = 'INSERT' then now() else last_event_at end,
       updated_at = now()
   where id = target_rule;
-  return coalesce(new, old);
+
+  if tg_op = 'DELETE' then
+    return old;
+  end if;
+  return new;
 end;
 $$;
 
