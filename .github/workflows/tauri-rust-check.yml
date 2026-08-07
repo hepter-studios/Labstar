@@ -1,28 +1,7 @@
 name: Validar Tauri e Rust
 
 on:
-  push:
-    branches:
-      - main
-      - "feat/tauri2-rust-foundation"
-      - "feat/tauri-auth-rust-integration"
-    paths:
-      - "src-tauri/**"
-      - "src/**"
-      - "public/**"
-      - "package.json"
-      - "package-lock.json"
-      - "vite.config.ts"
-      - ".github/workflows/tauri-rust-check.yml"
-  pull_request:
-    paths:
-      - "src-tauri/**"
-      - "src/**"
-      - "public/**"
-      - "package.json"
-      - "package-lock.json"
-      - "vite.config.ts"
-      - ".github/workflows/tauri-rust-check.yml"
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -86,18 +65,3 @@ jobs:
 
       - name: Executar testes Rust
         run: cargo test --manifest-path src-tauri/Cargo.toml --all-features
-
-      - name: Gerar instaladores Windows
-        if: github.event_name == 'pull_request' && github.head_ref == 'feat/tauri2-rust-foundation'
-        run: npx --yes @tauri-apps/cli@2 build --ci --bundles nsis,msi
-
-      - name: Disponibilizar instaladores Windows
-        if: github.event_name == 'pull_request' && github.head_ref == 'feat/tauri2-rust-foundation'
-        uses: actions/upload-artifact@v4
-        with:
-          name: labstar-windows-installer-technical
-          path: |
-            src-tauri/target/release/bundle/nsis/*.exe
-            src-tauri/target/release/bundle/msi/*.msi
-          if-no-files-found: error
-          retention-days: 7
