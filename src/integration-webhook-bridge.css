@@ -188,7 +188,8 @@
   color: #d1dceb;
 }
 
-.integration-webhook-url button {
+.integration-webhook-url button,
+.integration-webhook-self-test button {
   min-width: 82px;
   height: 34px;
   padding: 0 10px;
@@ -206,15 +207,85 @@
   cursor: pointer;
 }
 
-.integration-webhook-url button:hover {
+.integration-webhook-url button:hover,
+.integration-webhook-self-test button:hover {
   background: rgba(255,255,255,.085);
   border-color: rgba(255,255,255,.16);
+}
+
+.integration-webhook-url button:disabled,
+.integration-webhook-self-test button:disabled {
+  cursor: wait;
+  opacity: .58;
 }
 
 .integration-webhook-url button.rotate {
   min-width: 34px;
   width: 34px;
   padding: 0;
+}
+
+.integration-webhook-self-test {
+  margin-top: 9px;
+  padding: 9px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid rgba(126,164,241,.1);
+  border-radius: 9px;
+  background: rgba(77,106,170,.045);
+}
+
+.integration-webhook-self-test button {
+  flex: 0 0 auto;
+  min-width: 94px;
+  border-color: rgba(126,164,241,.18);
+  background: rgba(90,122,194,.1);
+  color: #dce7ff;
+}
+
+.integration-webhook-self-test > div {
+  min-width: 0;
+}
+
+.integration-webhook-self-test strong,
+.integration-webhook-self-test small {
+  display: block;
+}
+
+.integration-webhook-self-test strong {
+  color: #ced8e8;
+  font-size: 8px;
+}
+
+.integration-webhook-self-test small {
+  margin-top: 2px;
+  color: #77849a;
+  font-size: 7px;
+  line-height: 1.4;
+}
+
+.integration-webhook-test-status {
+  margin: 7px 0 0;
+  padding: 7px 9px;
+  border: 1px solid rgba(255,255,255,.07);
+  border-radius: 8px;
+  background: rgba(255,255,255,.025);
+  color: #9aa7bb;
+  font-size: 7px;
+  line-height: 1.45;
+}
+
+.integration-webhook-test-status.success {
+  border-color: rgba(87,201,155,.16);
+  background: rgba(87,201,155,.055);
+  color: #9ed8bf;
+}
+
+.integration-webhook-test-status.error {
+  border-color: rgba(255,108,108,.16);
+  background: rgba(255,108,108,.045);
+  color: #e3a0a0;
 }
 
 .integration-webhook-runtime > footer {
@@ -270,6 +341,15 @@
 
   .integration-webhook-url button span {
     display: none;
+  }
+
+  .integration-webhook-self-test {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .integration-webhook-self-test button {
+    width: 100%;
   }
 
   .integration-webhook-runtime > footer {

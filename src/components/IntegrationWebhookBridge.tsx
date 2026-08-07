@@ -1,4 +1,4 @@
-import { Check, Copy, Github, Hash, RefreshCw, ShieldCheck, Webhook } from "lucide-react";
+import { Check, Copy, Github, Hash, LoaderCircle, RefreshCw, Send, ShieldCheck, Webhook } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import "../integration-webhook-bridge.css";
@@ -8,13 +8,15 @@ const INGEST_URL = "https://pgzwyngxsxnheulvusdq.supabase.co/functions/v1/integr
 
 type WebhookRule = {
   id: string;
-  provider: string;
+  provider: "github";
   name: string;
   token: string;
   channelId: string;
   channelName: string;
   deliveredCount: number;
   lastEventAt: string;
+  events: string[];
+  endpoint: string;
 };
 
 type PortalTarget = {
@@ -44,18 +46,16 @@ function webhookUrl(rule: WebhookRule) {
   return url.toString();
 }
 
-function providerLabel(provider: string) {
-  if (provider === "github") return "GitHub";
-  if (provider === "discord") return "Discord";
-  if (provider === "monitoring") return "Monitoramento";
-  if (provider === "billing") return "Assinaturas";
-  if (provider === "support") return "Suporte";
-  return provider || "Integração";
+function wait(ms: number) {
+  return new Promise((resolve) => window.setTimeout(resolve, ms));
 }
 
-function RuleWebhook({ rule, onRotate }: { rule: WebhookRule; onRotate: () => Promise<void> }) {
+function RuleWebhook({ rule, onRotate, onRefresh }: { rule: WebhookRule; onRotate: () => Promise<void>; onRefresh: () => void }) {
   const [copied, setCopied] = useState(false);
   const [rotating, setRotating] = useState(false);
+  const [testing, setTesting] = useState(false);
+  const [testStatus, setTestStatus] = useState("");
+  const [testOk, setTestOk] = useState<boolean | null>(null);
   const url = webhookUrl(rule);
 
   async function copy() {
@@ -66,6 +66,8 @@ function RuleWebhook({ rule, onRotate }: { rule: WebhookRule; onRotate: () => Pr
 
   async function rotate() {
     setRotating(true);
+    setTestStatus("");
+    setTestOk(null);
     try {
       await onRotate();
     } finally {
@@ -73,15 +75,67 @@ function RuleWebhook({ rule, onRotate }: { rule: WebhookRule; onRotate: () => Pr
     }
   }
 
+  async function testDelivery() {
+    if (!supabaseClient || testing) return;
+    setTesting(true);
+    setTestOk(null);
+    setTestStatus("Enviando evento de teste…");
+
+    const beforeCount = rule.deliveredCount;
+    const beforeLastEvent = rule.lastEventAt;
+    const eventName = rule.events[0] || "Pull request";
+
+    try {
+      await fetch(url, {
+        method: "POST",
+        mode: "no-cors",
+        body: JSON.stringify({
+          event: eventName,
+          title: `Teste manual · ${rule.name || "GitHub"}`,
+          message: `A integração GitHub está entregando eventos no canal #${rule.channelName || "destino"}.`,
+          url: rule.endpoint || "https://github.com",
+          testId: crypto.randomUUID(),
+          sentAt: new Date().toISOString(),
+        }),
+      });
+
+      let confirmed = false;
+      for (let attempt = 0; attempt < 6; attempt += 1) {
+        await wait(700);
+        const { data, error } = await supabaseClient
+          .from("integration_rules")
+          .select("delivered_count,last_event_at")
+          .eq("id", rule.id)
+          .maybeSingle();
+        if (error) break;
+        const nextCount = Number(data?.delivered_count ?? 0);
+        const nextLast = String(data?.last_event_at ?? "");
+        if (nextCount > beforeCount || (nextLast && nextLast !== beforeLastEvent)) {
+          confirmed = true;
+          break;
+        }
+      }
+
+      setTestOk(confirmed);
+      setTestStatus(confirmed
+        ? `Teste entregue em #${rule.channelName || "canal"}. Confira também o sino de notificações.`
+        : "O teste foi enviado, mas o Labstar não confirmou a entrega. Verifique o canal e o status do webhook.");
+      onRefresh();
+    } catch {
+      setTestOk(false);
+      setTestStatus("Não foi possível enviar o teste deste dispositivo.");
+    } finally {
+      setTesting(false);
+    }
+  }
+
   return (
     <section className="integration-webhook-runtime">
       <div className="integration-webhook-summary">
-        <span className={`integration-webhook-avatar ${rule.provider}`}>
-          {rule.provider === "github" ? <Github size={18} /> : <Webhook size={18} />}
-        </span>
+        <span className="integration-webhook-avatar github"><Github size={18} /></span>
         <div className="integration-webhook-identity">
-          <strong>{rule.name || providerLabel(rule.provider)}</strong>
-          <small>{providerLabel(rule.provider)} · webhook ativo</small>
+          <strong>{rule.name || "GitHub"}</strong>
+          <small>GitHub · webhook ativo</small>
         </div>
         <div className="integration-webhook-destination" title="Canal de destino">
           <Hash size={12} />
@@ -94,7 +148,7 @@ function RuleWebhook({ rule, onRotate }: { rule: WebhookRule; onRotate: () => Pr
 
       <header>
         <span><Webhook size={13} /></span>
-        <div><strong>URL do webhook</strong><small>Copie esta URL para o serviço que enviará os eventos.</small></div>
+        <div><strong>URL do webhook</strong><small>Use esta URL em GitHub → Settings → Webhooks.</small></div>
         {rule.deliveredCount > 0 && <em>{rule.deliveredCount} entregue{rule.deliveredCount === 1 ? "" : "s"}</em>}
       </header>
       <div className="integration-webhook-url">
@@ -102,9 +156,22 @@ function RuleWebhook({ rule, onRotate }: { rule: WebhookRule; onRotate: () => Pr
         <button type="button" onClick={() => void copy()} title="Copiar URL do webhook">{copied ? <Check size={13} /> : <Copy size={13} />}<span>{copied ? "Copiado" : "Copiar URL"}</span></button>
         <button type="button" className="rotate" onClick={() => void rotate()} disabled={rotating} title="Gerar um novo endereço e invalidar o anterior"><RefreshCw className={rotating ? "spin" : ""} size={13} /></button>
       </div>
+
+      <div className="integration-webhook-self-test">
+        <button type="button" onClick={() => void testDelivery()} disabled={testing || !rule.channelId}>
+          {testing ? <LoaderCircle className="spin" size={13} /> : <Send size={13} />}
+          <span>{testing ? "Testando…" : "Testar agora"}</span>
+        </button>
+        <div>
+          <strong>Teste sem sair do Labstar</strong>
+          <small>Envia um evento real pelo mesmo webhook e confirma se ele chegou ao canal.</small>
+        </div>
+      </div>
+      {testStatus && <p className={`integration-webhook-test-status ${testOk === true ? "success" : testOk === false ? "error" : ""}`}>{testStatus}</p>}
+
       <footer>
         <ShieldCheck size={11} />
-        <span>{rule.provider === "github" ? "GitHub: Settings → Webhooks → Add webhook → cole esta URL em Payload URL." : "Use este endereço no serviço que enviará o evento."}</span>
+        <span>GitHub: Settings → Webhooks → Add webhook → cole esta URL em Payload URL.</span>
         {rule.lastEventAt && <time>Último evento: {new Date(rule.lastEventAt).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}</time>}
       </footer>
     </section>
@@ -144,8 +211,9 @@ export function IntegrationWebhookBridge() {
 
         const { data, error } = await supabaseClient
           .from("integration_rules")
-          .select("id,provider,name,channel_id,webhook_token,last_event_at,delivered_count")
+          .select("id,provider,name,endpoint,events,channel_id,webhook_token,last_event_at,delivered_count")
           .eq("space_id", space.id)
+          .eq("provider", "github")
           .order("created_at", { ascending: true });
         if (error) throw error;
 
@@ -153,16 +221,19 @@ export function IntegrationWebhookBridge() {
           const channelId = String(row.channel_id ?? "");
           return {
             id: String(row.id),
-            provider: String(row.provider),
-            name: String(row.name),
+            provider: "github",
+            name: String(row.name ?? "GitHub"),
             token: String(row.webhook_token),
             channelId,
             channelName: channelNames.get(channelId) ?? "",
             deliveredCount: Number(row.delivered_count ?? 0),
             lastEventAt: String(row.last_event_at ?? ""),
+            events: Array.isArray(row.events) ? row.events.map(String) : [],
+            endpoint: String(row.endpoint ?? ""),
           };
         });
-        const cards = [...modal.querySelectorAll<HTMLElement>(".integration-rule-list > article")];
+        const cards = [...modal.querySelectorAll<HTMLElement>(".integration-rule-list > article")]
+          .filter((card) => Boolean(card.querySelector(".provider-mark.github")));
         if (disposed || currentGeneration !== generation.current) return;
 
         setPortals(cards.flatMap((card, index) => {
@@ -191,6 +262,7 @@ export function IntegrationWebhookBridge() {
     observer.observe(document.body, { childList: true, subtree: true });
     document.addEventListener("change", schedule, true);
     document.addEventListener("click", schedule, true);
+    document.addEventListener("labstar:integration-refresh", schedule as EventListener);
     schedule();
 
     return () => {
@@ -199,6 +271,7 @@ export function IntegrationWebhookBridge() {
       observer.disconnect();
       document.removeEventListener("change", schedule, true);
       document.removeEventListener("click", schedule, true);
+      document.removeEventListener("labstar:integration-refresh", schedule as EventListener);
     };
   }, []);
 
@@ -206,9 +279,16 @@ export function IntegrationWebhookBridge() {
     if (!supabaseClient) return;
     const { error } = await supabaseClient.rpc("rotate_integration_webhook_token", { target_rule_id: ruleId });
     if (error) throw error;
-    const modal = document.querySelector<HTMLElement>(".integrations-center");
-    modal?.dispatchEvent(new Event("click", { bubbles: true }));
+    document.dispatchEvent(new Event("labstar:integration-refresh"));
   }
 
-  return <>{portals.map(({ target, rule }) => createPortal(<RuleWebhook key={rule.id} rule={rule} onRotate={() => rotate(rule.id)} />, target))}</>;
+  return <>{portals.map(({ target, rule }) => createPortal(
+    <RuleWebhook
+      key={rule.id}
+      rule={rule}
+      onRotate={() => rotate(rule.id)}
+      onRefresh={() => document.dispatchEvent(new Event("labstar:integration-refresh"))}
+    />,
+    target,
+  ))}</>;
 }
