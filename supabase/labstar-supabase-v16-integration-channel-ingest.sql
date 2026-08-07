@@ -67,14 +67,16 @@ create trigger integration_event_receipt_stats_delete
 after delete on public.integration_event_receipts
 for each row execute function public.sync_integration_delivery_stats();
 
--- O contador é derivado dos recibos. Uma atualização externa nunca pode reduzi-lo.
+-- O receptor legado ainda envia o contador junto da atualização. Ele não pode
+-- baixar o total já calculado pelos recibos, mas um estorno do próprio recibo pode.
 create or replace function public.keep_integration_delivery_count_monotonic()
 returns trigger
 language plpgsql
 set search_path = public, pg_temp
 as $$
 begin
-  if new.delivered_count < old.delivered_count then
+  if new.delivered_count < old.delivered_count
+     and new.last_event_at is distinct from old.last_event_at then
     new.delivered_count := old.delivered_count;
   end if;
   return new;
