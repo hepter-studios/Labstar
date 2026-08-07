@@ -1,4 +1,4 @@
-import { Check, Copy, RefreshCw, ShieldCheck, Webhook } from "lucide-react";
+import { Check, Copy, Github, Hash, RefreshCw, ShieldCheck, Webhook } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import "../integration-webhook-bridge.css";
@@ -11,6 +11,8 @@ type WebhookRule = {
   provider: string;
   name: string;
   token: string;
+  channelId: string;
+  channelName: string;
   deliveredCount: number;
   lastEventAt: string;
 };
@@ -42,6 +44,15 @@ function webhookUrl(rule: WebhookRule) {
   return url.toString();
 }
 
+function providerLabel(provider: string) {
+  if (provider === "github") return "GitHub";
+  if (provider === "discord") return "Discord";
+  if (provider === "monitoring") return "Monitoramento";
+  if (provider === "billing") return "Assinaturas";
+  if (provider === "support") return "Suporte";
+  return provider || "Integração";
+}
+
 function RuleWebhook({ rule, onRotate }: { rule: WebhookRule; onRotate: () => Promise<void> }) {
   const [copied, setCopied] = useState(false);
   const [rotating, setRotating] = useState(false);
@@ -64,20 +75,37 @@ function RuleWebhook({ rule, onRotate }: { rule: WebhookRule; onRotate: () => Pr
 
   return (
     <section className="integration-webhook-runtime">
+      <div className="integration-webhook-summary">
+        <span className={`integration-webhook-avatar ${rule.provider}`}>
+          {rule.provider === "github" ? <Github size={18} /> : <Webhook size={18} />}
+        </span>
+        <div className="integration-webhook-identity">
+          <strong>{rule.name || providerLabel(rule.provider)}</strong>
+          <small>{providerLabel(rule.provider)} · webhook ativo</small>
+        </div>
+        <div className="integration-webhook-destination" title="Canal de destino">
+          <Hash size={12} />
+          <span>{rule.channelName || "Canal não definido"}</span>
+        </div>
+        <span className="integration-webhook-status"><i /> Ativo</span>
+      </div>
+
+      <div className="integration-webhook-divider" />
+
       <header>
         <span><Webhook size={13} /></span>
-        <div><strong>Webhook de entrada</strong><small>Eventos externos publicados no canal escolhido.</small></div>
+        <div><strong>URL do webhook</strong><small>Copie esta URL para o serviço que enviará os eventos.</small></div>
         {rule.deliveredCount > 0 && <em>{rule.deliveredCount} entregue{rule.deliveredCount === 1 ? "" : "s"}</em>}
       </header>
       <div className="integration-webhook-url">
         <input value={url} readOnly aria-label={`Webhook da integração ${rule.name}`} onFocus={(event) => event.currentTarget.select()} />
-        <button type="button" onClick={() => void copy()} title="Copiar webhook">{copied ? <Check size={13} /> : <Copy size={13} />}<span>{copied ? "Copiado" : "Copiar"}</span></button>
+        <button type="button" onClick={() => void copy()} title="Copiar URL do webhook">{copied ? <Check size={13} /> : <Copy size={13} />}<span>{copied ? "Copiado" : "Copiar URL"}</span></button>
         <button type="button" className="rotate" onClick={() => void rotate()} disabled={rotating} title="Gerar um novo endereço e invalidar o anterior"><RefreshCw className={rotating ? "spin" : ""} size={13} /></button>
       </div>
       <footer>
         <ShieldCheck size={11} />
-        <span>{rule.provider === "github" ? "Use como Payload URL no webhook do repositório." : "Use este endereço no serviço que enviará o evento."}</span>
-        {rule.lastEventAt && <time>Último: {new Date(rule.lastEventAt).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}</time>}
+        <span>{rule.provider === "github" ? "GitHub: Settings → Webhooks → Add webhook → cole esta URL em Payload URL." : "Use este endereço no serviço que enviará o evento."}</span>
+        {rule.lastEventAt && <time>Último evento: {new Date(rule.lastEventAt).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}</time>}
       </footer>
     </section>
   );
@@ -108,27 +136,39 @@ export function IntegrationWebhookBridge() {
         const space = collaboration.spaces.find((item) => item.name === spaceLabel);
         if (!space || disposed || currentGeneration !== generation.current) return;
 
+        const channelNames = new Map(
+          collaboration.channels
+            .filter((channel) => channel.spaceId === space.id)
+            .map((channel) => [channel.id, channel.name] as const),
+        );
+
         const { data, error } = await supabaseClient
           .from("integration_rules")
-          .select("id,provider,name,webhook_token,last_event_at,delivered_count")
+          .select("id,provider,name,channel_id,webhook_token,last_event_at,delivered_count")
           .eq("space_id", space.id)
           .order("created_at", { ascending: true });
         if (error) throw error;
 
-        const rules: WebhookRule[] = (data ?? []).filter((row) => row.webhook_token).map((row) => ({
-          id: String(row.id),
-          provider: String(row.provider),
-          name: String(row.name),
-          token: String(row.webhook_token),
-          deliveredCount: Number(row.delivered_count ?? 0),
-          lastEventAt: String(row.last_event_at ?? ""),
-        }));
+        const rules: WebhookRule[] = (data ?? []).filter((row) => row.webhook_token).map((row) => {
+          const channelId = String(row.channel_id ?? "");
+          return {
+            id: String(row.id),
+            provider: String(row.provider),
+            name: String(row.name),
+            token: String(row.webhook_token),
+            channelId,
+            channelName: channelNames.get(channelId) ?? "",
+            deliveredCount: Number(row.delivered_count ?? 0),
+            lastEventAt: String(row.last_event_at ?? ""),
+          };
+        });
         const cards = [...modal.querySelectorAll<HTMLElement>(".integration-rule-list > article")];
         if (disposed || currentGeneration !== generation.current) return;
 
         setPortals(cards.flatMap((card, index) => {
           const rule = rules[index];
           if (!rule) return [];
+          card.classList.add("integration-card-enhanced");
           let target = card.querySelector<HTMLElement>(":scope > .integration-webhook-bridge-mount");
           if (!target) {
             target = document.createElement("div");
