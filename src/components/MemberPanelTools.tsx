@@ -2,6 +2,7 @@ import { Search, UserPlus, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import "../profile-connections.css";
+import "../final-product-polish.css";
 import { getCurrentAccessIdentity } from "../lib/access";
 import { FinalProductPolishBridge } from "./FinalProductPolishBridge";
 import { LabstarEnhancementStyles } from "./LabstarEnhancementStyles";
