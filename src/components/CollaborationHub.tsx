@@ -1,8 +1,9 @@
-import { Home, MessageSquareText } from "lucide-react";
+import { Home } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { Member } from "../lib/supabase";
 import { CommunicationHome } from "./CommunicationHome";
 import { DirectMessagesHub } from "./DirectMessagesHubV6";
+import { IntegrationWebhookBridge } from "./IntegrationWebhookBridge";
 import { CollaborationHub as LegacyCollaborationHub } from "./LegacyCollaborationHub";
 import { MeetingRoomUpgradeBridge } from "./MeetingRoomUpgradeBridge";
 
@@ -136,6 +137,7 @@ export function CollaborationHub({ member, initialChannelId, soundEnabled = true
         soundEnabled={soundEnabled}
       />
       <MeetingRoomUpgradeBridge member={member} soundEnabled={soundEnabled} />
+      <IntegrationWebhookBridge />
       {surface === "home" && (
         <div className="communication-home-overlay">
           <CommunicationHome
