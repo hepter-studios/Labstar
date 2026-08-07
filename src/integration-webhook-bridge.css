@@ -1,0 +1,158 @@
+.integration-webhook-bridge-mount {
+  grid-column: 1 / -1;
+  min-width: 0;
+}
+
+.integration-webhook-runtime {
+  margin: 8px 0 2px;
+  padding: 10px;
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 10px;
+  background: rgba(2,6,11,.44);
+}
+
+.integration-webhook-runtime > header {
+  min-height: 30px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 0;
+  background: transparent;
+}
+
+.integration-webhook-runtime > header > span {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(123,158,230,.16);
+  border-radius: 8px;
+  color: #9db6ee;
+  background: rgba(73,105,174,.08);
+}
+
+.integration-webhook-runtime > header > div {
+  min-width: 0;
+  flex: 1;
+}
+
+.integration-webhook-runtime > header strong,
+.integration-webhook-runtime > header small {
+  display: block;
+}
+
+.integration-webhook-runtime > header strong {
+  color: #dfe7f4;
+  font-size: 9px;
+}
+
+.integration-webhook-runtime > header small {
+  margin-top: 1px;
+  color: #77849a;
+  font-size: 7px;
+}
+
+.integration-webhook-runtime > header em {
+  flex: 0 0 auto;
+  color: #8da0bd;
+  font-size: 7px;
+  font-style: normal;
+}
+
+.integration-webhook-url {
+  margin-top: 8px;
+  display: grid;
+  grid-template-columns: minmax(0,1fr) auto 30px;
+  gap: 5px;
+}
+
+.integration-webhook-url input {
+  min-width: 0;
+  height: 32px;
+  padding: 0 9px;
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 8px;
+  outline: none;
+  background: #03060b;
+  color: #93a1b8;
+  font: 500 8px/1.2 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+.integration-webhook-url input:focus {
+  border-color: rgba(126,164,241,.28);
+  color: #cbd7ea;
+}
+
+.integration-webhook-url button {
+  min-width: 70px;
+  height: 32px;
+  padding: 0 9px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 8px;
+  background: rgba(255,255,255,.05);
+  color: #d1dbea;
+  font: inherit;
+  font-size: 8px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.integration-webhook-url button:hover {
+  background: rgba(255,255,255,.08);
+  border-color: rgba(255,255,255,.16);
+}
+
+.integration-webhook-url button.rotate {
+  min-width: 30px;
+  width: 30px;
+  padding: 0;
+}
+
+.integration-webhook-runtime > footer {
+  min-height: auto;
+  margin-top: 7px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  border: 0;
+  background: transparent;
+  color: #68768d;
+  font-size: 7px;
+}
+
+.integration-webhook-runtime > footer time {
+  margin-left: auto;
+  white-space: nowrap;
+}
+
+@media (max-width: 760px) {
+  .integration-webhook-url {
+    grid-template-columns: minmax(0,1fr) 32px;
+  }
+
+  .integration-webhook-url button:not(.rotate) {
+    min-width: 32px;
+    width: 32px;
+    padding: 0;
+  }
+
+  .integration-webhook-url button span {
+    display: none;
+  }
+
+  .integration-webhook-runtime > footer {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .integration-webhook-runtime > footer time {
+    width: 100%;
+    margin-left: 16px;
+  }
+}

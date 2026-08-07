@@ -1,0 +1,108 @@
+name: Ativar avisos externos nos canais
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirmation:
+        description: "Digite APPLY_INTEGRATION_INGEST"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: labstar-integration-channel-ingest-v16
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: github.event.inputs.confirmation == 'APPLY_INTEGRATION_INGEST'
+    runs-on: macos-15
+    timeout-minutes: 30
+    env:
+      DATABASE_URL: ${{ secrets.SUPABASE_DATABASE_URL }}
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      PROJECT_REF: pgzwyngxsxnheulvusdq
+      INGEST_URL: https://pgzwyngxsxnheulvusdq.supabase.co/functions/v1/integration-channel-ingest
+      HOMEBREW_NO_AUTO_UPDATE: "1"
+    steps:
+      - name: Baixar código
+        uses: actions/checkout@v4
+
+      - name: Validar configuração
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${DATABASE_URL:-}" || { echo "SUPABASE_DATABASE_URL ausente"; exit 1; }
+          test -n "${SUPABASE_ACCESS_TOKEN:-}" || { echo "SUPABASE_ACCESS_TOKEN ausente"; exit 1; }
+          test -f supabase/labstar-supabase-v16-integration-channel-ingest.sql
+          test -f supabase/functions/integration-channel-ingest/index.ts
+
+      - name: Preparar PostgreSQL 17
+        shell: bash
+        run: |
+          set -euo pipefail
+          brew install libpq@17
+          pg_bin="$(brew --prefix libpq@17)/bin"
+          echo "$pg_bin" >> "$GITHUB_PATH"
+          export PATH="$pg_bin:$PATH"
+          psql --version
+          pg_dump --version
+
+      - name: Guardar esquema antes da atualização
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p database-backup
+          pg_dump --schema-only --no-owner --no-privileges "$DATABASE_URL" > database-backup/labstar-before-v16-schema.sql
+
+      - name: Guardar backup privado
+        uses: actions/upload-artifact@v4
+        with:
+          name: labstar-before-v16-${{ github.run_id }}
+          path: database-backup/
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Aplicar atualização v16
+        shell: bash
+        run: |
+          set -euo pipefail
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f supabase/labstar-supabase-v16-integration-channel-ingest.sql
+
+      - name: Configurar Supabase CLI
+        uses: supabase/setup-cli@v2
+        with:
+          version: latest
+
+      - name: Publicar receptor de eventos
+        shell: bash
+        run: |
+          set -euo pipefail
+          supabase functions deploy integration-channel-ingest \
+            --project-ref "$PROJECT_REF" \
+            --no-verify-jwt
+
+      - name: Auditar instalação
+        shell: bash
+        run: |
+          set -euo pipefail
+          result="$(psql "$DATABASE_URL" -At -v ON_ERROR_STOP=1 <<'SQL'
+          select
+            exists(select 1 from information_schema.columns where table_schema='public' and table_name='integration_rules' and column_name='webhook_token')::text || '|' ||
+            (to_regclass('public.integration_event_receipts') is not null)::text || '|' ||
+            (to_regprocedure('public.rotate_integration_webhook_token(uuid)') is not null)::text || '|' ||
+            exists(select 1 from public.members where lower(email)='integrations@system.labstar')::text;
+          SQL
+          )"
+          test "$result" = "true|true|true|true" || { echo "Auditoria do banco falhou: $result"; exit 1; }
+
+          status="$(curl --silent --show-error --output /tmp/integration-ingest-audit.json --write-out '%{http_code}' \
+            --request POST \
+            "$INGEST_URL?rule=00000000-0000-4000-8000-000000000000&token=00000000-0000-4000-8000-000000000000" \
+            --header 'Content-Type: application/json' \
+            --data '{}')"
+          test "$status" = "401" || { echo "Função respondeu HTTP $status"; cat /tmp/integration-ingest-audit.json; exit 1; }
+          grep -q 'invalid_webhook_credentials' /tmp/integration-ingest-audit.json || { cat /tmp/integration-ingest-audit.json; exit 1; }
+          echo "Integrações externas prontas para entregar avisos aos canais."
