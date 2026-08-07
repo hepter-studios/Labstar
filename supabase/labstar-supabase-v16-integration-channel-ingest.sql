@@ -8,6 +8,30 @@ alter table public.integration_rules
   add column if not exists last_event_at timestamptz,
   add column if not exists delivered_count bigint not null default 0;
 
+-- integration_rules foi criada originalmente usando auth.uid() como autor padrão.
+-- No Labstar, members.id é resolvido pelo e-mail/sessão e não precisa ser o mesmo
+-- UUID do Supabase Auth. Usar current_member_id() mantém a FK íntegra.
+alter table public.integration_rules
+  alter column created_by set default public.current_member_id();
+
+-- Owner/admin sempre podem configurar os canais de integração. Os demais membros
+-- continuam seguindo a permissão granular manage_channels.
+drop policy if exists "integration_rules_manage" on public.integration_rules;
+create policy "integration_rules_manage"
+on public.integration_rules
+for all
+to authenticated
+using (
+  public.current_member_role() in ('owner', 'admin')
+  or public.current_member_has_permission('manage_channels')
+)
+with check (
+  public.current_member_role() in ('owner', 'admin')
+  or public.current_member_has_permission('manage_channels')
+);
+
+grant select, insert, update, delete on public.integration_rules to authenticated;
+
 create unique index if not exists integration_rules_webhook_token_idx
   on public.integration_rules(webhook_token);
 
@@ -125,7 +149,8 @@ as $$
 declare
   next_token uuid := gen_random_uuid();
 begin
-  if not public.current_member_has_permission('manage_channels') then
+  if public.current_member_role() not in ('owner', 'admin')
+     and not public.current_member_has_permission('manage_channels') then
     raise exception 'manage_channels_required';
   end if;
 
