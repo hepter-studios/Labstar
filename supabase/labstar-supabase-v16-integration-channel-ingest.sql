@@ -23,6 +23,30 @@ alter table public.integration_event_receipts enable row level security;
 revoke all on table public.integration_event_receipts from public, anon, authenticated;
 grant select, insert, delete on table public.integration_event_receipts to service_role;
 
+-- delivered_count nunca confia no JSON recebido: ele sempre é recalculado
+-- pelos recibos efetivamente aceitos para a regra.
+create or replace function public.enforce_integration_delivery_count()
+returns trigger
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+begin
+  select count(*)
+  into new.delivered_count
+  from public.integration_event_receipts receipt
+  where receipt.rule_id = new.id;
+  return new;
+end;
+$$;
+
+revoke all on function public.enforce_integration_delivery_count() from public, anon, authenticated;
+
+drop trigger if exists integration_delivery_count_guard on public.integration_rules;
+create trigger integration_delivery_count_guard
+before update of delivered_count on public.integration_rules
+for each row execute function public.enforce_integration_delivery_count();
+
 create or replace function public.sync_integration_delivery_stats()
 returns trigger
 language plpgsql
@@ -66,27 +90,6 @@ drop trigger if exists integration_event_receipt_stats_delete on public.integrat
 create trigger integration_event_receipt_stats_delete
 after delete on public.integration_event_receipts
 for each row execute function public.sync_integration_delivery_stats();
-
--- O receptor legado ainda envia o contador junto da atualização. Ele não pode
--- baixar o total já calculado pelos recibos, mas um estorno do próprio recibo pode.
-create or replace function public.keep_integration_delivery_count_monotonic()
-returns trigger
-language plpgsql
-set search_path = public, pg_temp
-as $$
-begin
-  if new.delivered_count < old.delivered_count
-     and new.last_event_at is distinct from old.last_event_at then
-    new.delivered_count := old.delivered_count;
-  end if;
-  return new;
-end;
-$$;
-
-drop trigger if exists integration_delivery_count_guard on public.integration_rules;
-create trigger integration_delivery_count_guard
-before update of delivered_count on public.integration_rules
-for each row execute function public.keep_integration_delivery_count_monotonic();
 
 -- Autor técnico para mensagens geradas por integrações. Mantemos suspenso para
 -- não aparecer como pessoa disponível, mas a FK de channel_messages continua íntegra.
