@@ -2,6 +2,19 @@
   min-width: 0;
 }
 
+.integration-provider-avatar {
+  display: grid !important;
+  place-items: center;
+  background: #0d1117 !important;
+  color: #f0f6fc !important;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.integration-provider-avatar svg {
+  width: 20px;
+  height: 20px;
+}
+
 .integration-event-card {
   width: min(680px, 100%);
   margin-top: 8px;
