@@ -12,6 +12,7 @@ import {
   Mail,
   RotateCcw,
   ShieldCheck,
+  Star,
   UserPlus,
   X,
 } from "lucide-react";
@@ -36,6 +37,8 @@ import {
 } from "../lib/access";
 
 type AccessStage = "loading" | "anonymous" | "active" | "pending" | "suspended" | "unauthorized" | "error";
+
+const BRAND_INTRO_DURATION_MS = 2350;
 
 type InviteForm = {
   mode: InviteMode;
@@ -81,6 +84,7 @@ async function copyText(value: string) {
 }
 
 export function AccessControl({ children }: { children: ReactNode }) {
+  const [introComplete, setIntroComplete] = useState(false);
   const [stage, setStage] = useState<AccessStage>("loading");
   const [identity, setIdentity] = useState<AccessIdentity | null>(null);
   const [inspection, setInspection] = useState<InviteInspection | null>(null);
@@ -109,6 +113,11 @@ export function AccessControl({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
+    const timer = window.setTimeout(() => setIntroComplete(true), BRAND_INTRO_DURATION_MS);
+    return () => window.clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
     void refresh();
     const unsubscribe = subscribeToAccessChanges((event) => {
       if (event === "INITIAL_SESSION" || event === "TOKEN_REFRESHED") return;
@@ -117,20 +126,15 @@ export function AccessControl({ children }: { children: ReactNode }) {
     return unsubscribe;
   }, [refresh]);
 
+  if (!introComplete) return <AccessBrandIntro />;
+
   if (stage === "active" && identity?.member) {
     const canInvite = identity.member.role === "owner" || identity.member.role === "admin";
     return <>{children}{canInvite && <InvitePortal />}</>;
   }
 
   if (stage === "loading") {
-    return (
-      <AccessFrame compact>
-        <LoaderCircle className="spin" size={22} />
-        <small>VERIFICANDO SESSÃO</small>
-        <h1>Abrindo seu ambiente seguro.</h1>
-        <p>Confirmando identidade e autorização da equipe…</p>
-      </AccessFrame>
-    );
+    return <ApprovalValidation />;
   }
   if (stage === "anonymous") return <SignInScreen inspection={inspection} />;
   if (stage === "pending" && identity) {
@@ -180,6 +184,36 @@ export function AccessControl({ children }: { children: ReactNode }) {
         {getPendingInviteToken() && <button className="access-v2-secondary" type="button" onClick={() => { clearPendingInviteToken(); void refresh(); }}>Remover convite</button>}
       </div>
     </AccessFrame>
+  );
+}
+
+function AccessBrandIntro() {
+  return (
+    <main className="access-screen brand-intro" aria-label="Abrindo Labstar" aria-live="polite" aria-busy="true">
+      <div className="intro-mark">
+        <strong className="wordmark large animated" aria-label="Labstar">
+          <span className="word-letter" aria-hidden="true">L</span>
+          <span className="word-letter transform-letter" aria-hidden="true">
+            <span className="letter-a">A</span>
+            <Star className="star-letter" size={28} fill="currentColor" strokeWidth={1.25} />
+          </span>
+          <span className="word-letter" aria-hidden="true">B</span>
+          <span className="word-letter" aria-hidden="true">S</span>
+          <span className="word-letter" aria-hidden="true">T</span>
+          <span className="word-letter" aria-hidden="true">A</span>
+          <span className="word-letter" aria-hidden="true">R</span>
+        </strong>
+        <span className="intro-progress" aria-hidden="true"><i /></span>
+      </div>
+    </main>
+  );
+}
+
+function ApprovalValidation() {
+  return (
+    <main className="access-screen" aria-label="Validando aprovação" aria-live="polite" aria-busy="true">
+      <p style={{ position: "relative", zIndex: 2, margin: 0, color: "#8f98aa", fontSize: 12, fontWeight: 500, letterSpacing: ".035em", animation: "access-v2-star-breathe 1.8s ease-in-out infinite" }}>Validando aprovação</p>
+    </main>
   );
 }
 
