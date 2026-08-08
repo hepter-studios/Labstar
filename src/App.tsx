@@ -802,6 +802,9 @@ function TeamDirectory({ nodes, currentMember, onMemberUpdated }: { nodes: Struc
   const [inviteOpen, setInviteOpen] = useState(false);
   const [removalTarget, setRemovalTarget] = useState<Member | null>(null);
   const [removing, setRemoving] = useState(false);
+  const [editingMemberId, setEditingMemberId] = useState<string | null>(null);
+  const [memberDraft, setMemberDraft] = useState<Member | null>(null);
+  const [savingMember, setSavingMember] = useState(false);
   const [message, setMessage] = useState("");
   const [memberSearch, setMemberSearch] = useState("");
   const [teamTab, setTeamTab] = useState<"members" | "roles">("members");
@@ -834,6 +837,50 @@ function TeamDirectory({ nodes, currentMember, onMemberUpdated }: { nodes: Struc
       setMessage("Alterações salvas");
     } catch {
       setMessage("Não foi possível salvar");
+    }
+  }
+
+  function startMemberEdit(member: Member) {
+    setEditingMemberId(member.id);
+    setMemberDraft({
+      ...member,
+      assignments: [...member.assignments],
+      jobRoles: [...member.jobRoles],
+    });
+    setMessage("");
+  }
+
+  function cancelMemberEdit() {
+    setEditingMemberId(null);
+    setMemberDraft(null);
+    setMessage("");
+  }
+
+  async function saveMemberEdit() {
+    if (!memberDraft || editingMemberId !== memberDraft.id || savingMember) return;
+    setSavingMember(true);
+    setMessage("Salvando alterações...");
+    try {
+      const [updated, assignedRoles] = await Promise.all([
+        updateRemoteMember(memberDraft.id, {
+          name: memberDraft.name,
+          jobTitle: memberDraft.jobTitle,
+          area: memberDraft.area,
+          role: memberDraft.role,
+          assignments: memberDraft.assignments,
+        }),
+        setMemberJobRoles(memberDraft.id, memberDraft.jobRoles.map((role) => role.id)),
+      ]);
+      const savedMember = { ...updated, jobRoles: assignedRoles };
+      setMembers((current) => current.map((member) => member.id === savedMember.id ? savedMember : member));
+      onMemberUpdated(savedMember);
+      setEditingMemberId(null);
+      setMemberDraft(null);
+      setMessage("Alterações salvas");
+    } catch {
+      setMessage("Não foi possível salvar as alterações. Nada foi apagado.");
+    } finally {
+      setSavingMember(false);
     }
   }
 
@@ -876,38 +923,38 @@ function TeamDirectory({ nodes, currentMember, onMemberUpdated }: { nodes: Struc
       setRemovalTarget(null);
     } catch (error) {
       const code = (error as { code?: string }).code;
-      setMessage(code === "self_removal_forbidden"
-        ? "Você não pode remover sua própria conta."
-        : code === "owner_removal_forbidden"
-          ? "O proprietário nunca pode ser removido."
-          : "Não foi possível remover este acesso. Nada foi alterado.");
+      if (code === "self_removal_forbidden") {
+        setMessage("Você não pode remover sua própria conta.");
+      } else if (code === "owner_removal_forbidden") {
+        setMessage("O proprietário nunca pode ser removido.");
+      } else if (code === "permission_denied" || code === "42501") {
+        setMessage("Sua conta não tem permissão para remover este membro.");
+      } else {
+        try {
+          const suspended = await updateRemoteMember(target.id, { status: "suspended" });
+          setMembers((current) => current.map((member) => member.id === target.id ? suspended : member));
+          setMessage(`${target.name} foi desativado com segurança. A exclusão física depende da migração do banco, mas esta pessoa já não pode entrar no Labstar.`);
+          setRemovalTarget(null);
+        } catch (fallbackError) {
+          const fallbackCode = (fallbackError as { code?: string }).code;
+          setMessage(fallbackCode === "42501"
+            ? "O Supabase recusou a remoção e a suspensão. A migração de administração ainda precisa ser aplicada no banco publicado."
+            : "Não foi possível remover nem desativar este acesso. Nada foi alterado.");
+        }
+      }
     } finally {
       setRemoving(false);
     }
   }
 
   const selected = members.find((member) => member.id === selectedId) ?? null;
+  const editingSelected = Boolean(selected && editingMemberId === selected.id && memberDraft);
+  const memberForm = editingSelected && memberDraft ? memberDraft : selected;
   const pending = members.filter((member) => member.status === "pending");
   const active = members.filter((member) => member.status === "active");
   const managers = members.filter((member) => member.role === "owner" || member.role === "admin" || member.role === "manager");
   const memberQuery = memberSearch.trim().toLocaleLowerCase();
   const visibleMembers = members.filter((member) => !memberQuery || [member.name, member.email, member.area, member.jobTitle].some((value) => value.toLocaleLowerCase().includes(memberQuery)));
-
-  async function toggleJobRole(member: Member, role: JobRole) {
-    const currentIds = member.jobRoles.map((item) => item.id);
-    const roleIds = currentIds.includes(role.id) ? currentIds.filter((id) => id !== role.id) : [...currentIds, role.id];
-    setMessage("Salvando cargos...");
-    try {
-      const assigned = await setMemberJobRoles(member.id, roleIds);
-      const updated = { ...member, jobRoles: assigned, jobTitle: assigned[0]?.name ?? member.jobTitle };
-      if (assigned[0]?.name && assigned[0].name !== member.jobTitle) await updateRemoteMember(member.id, { jobTitle: assigned[0].name });
-      setMembers((current) => current.map((item) => item.id === member.id ? updated : item));
-      onMemberUpdated(updated);
-      setMessage("Cargos atualizados");
-    } catch {
-      setMessage("Não foi possível atualizar os cargos");
-    }
-  }
 
   if (teamTab === "roles") {
     return (
@@ -954,7 +1001,10 @@ function TeamDirectory({ nodes, currentMember, onMemberUpdated }: { nodes: Struc
           ) : (
             <div className="member-list">
               {visibleMembers.map((member) => (
-                <button key={member.id} className={selectedId === member.id ? "active" : ""} onClick={() => setSelectedId(member.id)}>
+                <button key={member.id} className={selectedId === member.id ? "active" : ""} onClick={() => {
+                  setSelectedId(member.id);
+                  if (editingMemberId !== member.id) cancelMemberEdit();
+                }}>
                   <Avatar name={member.name} url={member.avatarUrl} size="sm" status={memberPresenceStatus(onlineMemberIds, currentMember.id, member.id)} />
                   <span className="member-main"><b>{member.name}</b><small>{member.email}</small></span>
                   <span className="member-area">{member.area || "Área não definida"}</span>
@@ -980,22 +1030,31 @@ function TeamDirectory({ nodes, currentMember, onMemberUpdated }: { nodes: Struc
                 <div className="approval-box"><ShieldCheck size={18} /><div><strong>Solicitação de acesso</strong><p>Confirme os dados abaixo antes de liberar esta pessoa.</p></div></div>
               )}
 
-              <div className="member-fields">
-                <label className="full">Nome completo<input value={selected.name} disabled={!canManage} onChange={(event) => setMembers((current) => current.map((member) => member.id === selected.id ? { ...member, name: event.target.value } : member))} onBlur={() => patchMember(selected.id, { name: selected.name })} placeholder="Nome profissional do membro" /></label>
-                <label>Cargo<input value={selected.jobTitle} disabled={!canManage} onChange={(event) => setMembers((current) => current.map((member) => member.id === selected.id ? { ...member, jobTitle: event.target.value } : member))} onBlur={() => patchMember(selected.id, { jobTitle: selected.jobTitle })} placeholder="Ex.: Desenvolvedor de jogos" /></label>
-                <label>Área<input value={selected.area} disabled={!canManage} onChange={(event) => setMembers((current) => current.map((member) => member.id === selected.id ? { ...member, area: event.target.value } : member))} onBlur={() => patchMember(selected.id, { area: selected.area })} placeholder="Ex.: Labstar Games" /></label>
-                <label>Nível de acesso<select value={selected.role} disabled={!canManage || selected.role === "owner" || selected.id === currentMember.id} onChange={(event) => patchMember(selected.id, { role: event.target.value as Member["role"] })}>
-                  {selected.role === "owner" && <option value="owner">Fundador</option>}
+              {canManage && !editingSelected && (
+                <div className="member-actions">
+                  <button className="approve-member" type="button" onClick={() => startMemberEdit(selected)}><Pencil size={14} /> Editar membro</button>
+                </div>
+              )}
+
+              {memberForm && <div className="member-fields">
+                <label className="full">Nome completo<input value={memberForm.name} disabled={!editingSelected} onChange={(event) => setMemberDraft((current) => current ? { ...current, name: event.target.value } : current)} placeholder="Nome profissional do membro" /></label>
+                <label>Cargo<input value={memberForm.jobTitle} disabled={!editingSelected} onChange={(event) => setMemberDraft((current) => current ? { ...current, jobTitle: event.target.value } : current)} placeholder="Ex.: Desenvolvedor de jogos" /></label>
+                <label>Área<input value={memberForm.area} disabled={!editingSelected} onChange={(event) => setMemberDraft((current) => current ? { ...current, area: event.target.value } : current)} placeholder="Ex.: Labstar Games" /></label>
+                <label>Nível de acesso<select value={memberForm.role} disabled={!editingSelected || selected.role === "owner" || selected.id === currentMember.id} onChange={(event) => setMemberDraft((current) => current ? { ...current, role: event.target.value as Member["role"] } : current)}>
+                  {memberForm.role === "owner" && <option value="owner">Fundador</option>}
                   <option value="admin">Administrador</option><option value="manager">Gestor</option><option value="member">Membro</option><option value="viewer">Convidado somente leitura</option>
                 </select></label>
-              </div>
+              </div>}
 
               <div className="job-role-assignment">
                 <div><strong>Cargos profissionais</strong><small>O primeiro cargo na hierarquia define a cor e o escudo exibidos.</small></div>
                 <div>
                   {jobRoles.map((role) => {
-                    const checked = selected.jobRoles.some((item) => item.id === role.id);
-                    return <label key={role.id} className={checked ? "active" : ""}><input type="checkbox" checked={checked} disabled={!canManage} onChange={() => void toggleJobRole(selected, role)} /><RoleBadge role={role} compact /></label>;
+                    const checked = memberForm?.jobRoles.some((item) => item.id === role.id) ?? false;
+                    return <label key={role.id} className={checked ? "active" : ""}><input type="checkbox" checked={checked} disabled={!editingSelected} onChange={() => setMemberDraft((current) => current ? {
+                      ...current,
+                      jobRoles: checked ? current.jobRoles.filter((item) => item.id !== role.id) : [...current.jobRoles, role],
+                    } : current)} /><RoleBadge role={role} compact /></label>;
                   })}
                 </div>
               </div>
@@ -1004,16 +1063,26 @@ function TeamDirectory({ nodes, currentMember, onMemberUpdated }: { nodes: Struc
                 <div><strong>Núcleos atribuídos</strong><small>Escolha onde esta pessoa poderá atuar.</small></div>
                 <div className="assignment-list">
                   {nodes.map((node) => {
-                    const checked = selected.assignments.includes(node.id);
-                    return <label key={node.id}><input type="checkbox" checked={checked} disabled={!canManage} onChange={() => {
-                      const assignments = checked ? selected.assignments.filter((id) => id !== node.id) : [...selected.assignments, node.id];
-                      patchMember(selected.id, { assignments });
+                    const checked = memberForm?.assignments.includes(node.id) ?? false;
+                    return <label key={node.id}><input type="checkbox" checked={checked} disabled={!editingSelected} onChange={() => {
+                      if (!editingSelected) return;
+                      setMemberDraft((current) => current ? {
+                        ...current,
+                        assignments: checked ? current.assignments.filter((id) => id !== node.id) : [...current.assignments, node.id],
+                      } : current);
                     }} /><span>{kindMeta[node.kind].label}</span><b>{node.name}</b></label>;
                   })}
                 </div>
               </div>
 
-              {canManage && selected.role !== "owner" && selected.id !== currentMember.id && (
+              {editingSelected && (
+                <div className="member-actions">
+                  <button className="approve-member" type="button" disabled={savingMember || !memberDraft?.name.trim()} onClick={() => void saveMemberEdit()}>{savingMember ? <LoaderCircle className="spin" size={14} /> : <Save size={14} />} {savingMember ? "Salvando…" : "Salvar alterações"}</button>
+                  <button className="suspend-member" type="button" disabled={savingMember} onClick={cancelMemberEdit}><X size={14} /> Cancelar edição</button>
+                </div>
+              )}
+
+              {canManage && !editingSelected && selected.role !== "owner" && selected.id !== currentMember.id && (
                 <div className="member-actions">
                   {selected.status !== "active" && <button className="approve-member" onClick={() => patchMember(selected.id, { status: "active" })}><UserCheck size={14} /> Aprovar acesso</button>}
                   {selected.status === "active" && <button className="suspend-member" onClick={() => patchMember(selected.id, { status: "suspended" })}><LockKeyhole size={14} /> Suspender acesso</button>}
