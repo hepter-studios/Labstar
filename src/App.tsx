@@ -143,7 +143,6 @@ function playTone() {
 }
 
 export default function Home() {
-  const [introComplete, setIntroComplete] = useState(false);
   const [sessionState, setSessionState] = useState<SessionState>("carregando");
   const [session, setSession] = useState<SessionData | null>(null);
   const [blockedIdentity, setBlockedIdentity] = useState<{ email: string } | null>(null);
@@ -170,11 +169,6 @@ export default function Home() {
   const zoomRef = useRef(zoom);
   const pendingWheelRef = useRef(0);
   const wheelFrameRef = useRef<number | null>(null);
-
-  useEffect(() => {
-    const timer = window.setTimeout(() => setIntroComplete(true), 2350);
-    return () => window.clearTimeout(timer);
-  }, []);
 
   useEffect(() => {
     zoomRef.current = zoom;
@@ -465,7 +459,6 @@ export default function Home() {
     });
   }
 
-  if (!introComplete) return <BrandIntro />;
   if (sessionState === "carregando") return <AccessLoading />;
   if (sessionState === "configuracao") return <ConfigurationRequired />;
   if (sessionState === "anonimo") return <AccessGate />;
@@ -1298,7 +1291,11 @@ function QuickPanel({
 }
 
 function AccessLoading() {
-  return <main className="access-screen brand-intro" aria-label="Carregando Labstar" aria-live="polite" aria-busy="true" />;
+  return (
+    <main className="access-screen" aria-label="Validando aprovação" aria-live="polite" aria-busy="true">
+      <p style={{ position: "relative", zIndex: 2, margin: 0, color: "#8f98aa", fontSize: 12, fontWeight: 500, letterSpacing: ".035em", animation: "access-v2-star-breathe 1.8s ease-in-out infinite" }}>Validando aprovação</p>
+    </main>
+  );
 }
 
 function AccessGate() {
@@ -1368,17 +1365,6 @@ function Wordmark({ large = false, animated = false }: { large?: boolean; animat
       <span className="word-letter" aria-hidden="true">A</span>
       <span className="word-letter" aria-hidden="true">R</span>
     </strong>
-  );
-}
-
-function BrandIntro() {
-  return (
-    <main className="access-screen brand-intro" aria-label="Abrindo Labstar">
-      <div className="intro-mark">
-        <Wordmark large animated />
-        <span className="intro-progress" aria-hidden="true"><i /></span>
-      </div>
-    </main>
   );
 }
 
