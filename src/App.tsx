@@ -52,7 +52,7 @@ import {
   listMembers,
   loadWorkspace as loadRemoteWorkspace,
   removeOwnAvatar,
-  removeTeamMember,
+  permanentlyDeleteTeamAccount,
   requestMagicLink,
   saveWorkspace,
   setMemberJobRoles,
@@ -802,6 +802,10 @@ function TeamDirectory({ nodes, currentMember, onMemberUpdated }: { nodes: Struc
   const [inviteOpen, setInviteOpen] = useState(false);
   const [removalTarget, setRemovalTarget] = useState<Member | null>(null);
   const [removing, setRemoving] = useState(false);
+  const [accountDeletionTarget, setAccountDeletionTarget] = useState<Member | "manual" | null>(null);
+  const [accountDeletionEmail, setAccountDeletionEmail] = useState("");
+  const [accountDeletionConfirmation, setAccountDeletionConfirmation] = useState("");
+  const [deletingAccount, setDeletingAccount] = useState(false);
   const [editingMemberId, setEditingMemberId] = useState<string | null>(null);
   const [memberDraft, setMemberDraft] = useState<Member | null>(null);
   const [savingMember, setSavingMember] = useState(false);
@@ -909,17 +913,9 @@ function TeamDirectory({ nodes, currentMember, onMemberUpdated }: { nodes: Struc
     setRemoving(true);
     setMessage("Removendo o acesso…");
     try {
-      const result = await removeTeamMember(target.id);
-      if (result.outcome === "removed") {
-        setMembers((current) => current.filter((member) => member.id !== target.id));
-        setSelectedId((current) => current === target.id
-          ? members.find((member) => member.id !== target.id)?.id ?? null
-          : current);
-        setMessage(`${target.name} foi removido do Labstar. O histórico existente foi preservado pelo banco.`);
-      } else if (result.member) {
-        setMembers((current) => current.map((member) => member.id === target.id ? result.member! : member));
-        setMessage(`${target.name} foi desativado. O cadastro foi mantido para preservar mensagens e vínculos.`);
-      }
+      const suspended = await updateRemoteMember(target.id, { status: "suspended" });
+      setMembers((current) => current.map((member) => member.id === target.id ? suspended : member));
+      setMessage(`${target.name} foi suspenso e já não pode entrar. Agora você pode excluir a conta e o login permanentemente.`);
       setRemovalTarget(null);
     } catch (error) {
       const code = (error as { code?: string }).code;
@@ -930,20 +926,70 @@ function TeamDirectory({ nodes, currentMember, onMemberUpdated }: { nodes: Struc
       } else if (code === "permission_denied" || code === "42501") {
         setMessage("Sua conta não tem permissão para remover este membro.");
       } else {
-        try {
-          const suspended = await updateRemoteMember(target.id, { status: "suspended" });
-          setMembers((current) => current.map((member) => member.id === target.id ? suspended : member));
-          setMessage(`${target.name} foi desativado com segurança. A exclusão física depende da migração do banco, mas esta pessoa já não pode entrar no Labstar.`);
-          setRemovalTarget(null);
-        } catch (fallbackError) {
-          const fallbackCode = (fallbackError as { code?: string }).code;
-          setMessage(fallbackCode === "42501"
-            ? "O Supabase recusou a remoção e a suspensão. A migração de administração ainda precisa ser aplicada no banco publicado."
-            : "Não foi possível remover nem desativar este acesso. Nada foi alterado.");
-        }
+        setMessage("Não foi possível suspender este acesso. Nada foi alterado.");
       }
     } finally {
       setRemoving(false);
+    }
+  }
+
+  function openAccountDeletion(target: Member | "manual") {
+    setAccountDeletionTarget(target);
+    setAccountDeletionEmail(target === "manual" ? "" : target.email);
+    setAccountDeletionConfirmation("");
+    setMessage("");
+  }
+
+  function closeAccountDeletion() {
+    if (deletingAccount) return;
+    setAccountDeletionTarget(null);
+    setAccountDeletionEmail("");
+    setAccountDeletionConfirmation("");
+  }
+
+  async function confirmAccountDeletion() {
+    if (!accountDeletionTarget || deletingAccount) return;
+    const normalizedEmail = accountDeletionEmail.trim().toLocaleLowerCase();
+    if (!normalizedEmail || normalizedEmail !== accountDeletionConfirmation.trim().toLocaleLowerCase()) {
+      setMessage("Digite exatamente o mesmo e-mail para confirmar a exclusão.");
+      return;
+    }
+
+    setDeletingAccount(true);
+    setMessage("Excluindo a conta e o login do Labstar…");
+    try {
+      const result = await permanentlyDeleteTeamAccount(normalizedEmail, accountDeletionConfirmation);
+      setMembers((current) => {
+        const remaining = current.filter((member) =>
+          member.id !== result.memberId && member.email.toLocaleLowerCase() !== normalizedEmail
+        );
+        setSelectedId((currentSelected) => remaining.some((member) => member.id === currentSelected)
+          ? currentSelected
+          : remaining[0]?.id ?? null);
+        return remaining;
+      });
+      setMessage(result.authIdentityDeleted
+        ? `A conta ${normalizedEmail} e o login correspondente foram excluídos do Labstar.`
+        : `O cadastro ${normalizedEmail} foi encerrado. Não existia mais um login Auth vinculado.`);
+      setAccountDeletionTarget(null);
+      setAccountDeletionEmail("");
+      setAccountDeletionConfirmation("");
+    } catch (error) {
+      const code = (error as { code?: string }).code;
+      const errors: Record<string, string> = {
+        self_deletion_forbidden: "Você não pode excluir sua própria conta por esta tela.",
+        owner_deletion_forbidden: "A conta do proprietário nunca pode ser excluída pela administração da equipe.",
+        owner_required: "Somente o proprietário pode excluir outro administrador ou limpar um login antigo por e-mail.",
+        member_must_be_suspended: "Suspenda este membro antes de excluir permanentemente a conta.",
+        confirmation_email_mismatch: "O e-mail de confirmação não corresponde à conta escolhida.",
+        account_not_found: "Nenhum membro ou login do Labstar foi encontrado com este e-mail.",
+        permission_denied: "Sua conta não tem permissão para excluir este login.",
+        member_not_authorized: "Sua sessão não possui autorização administrativa válida.",
+        PGRST202: "A migração de exclusão permanente ainda não foi aplicada no Supabase publicado.",
+      };
+      setMessage(errors[code ?? ""] ?? "Não foi possível excluir a conta. Nada foi alterado.");
+    } finally {
+      setDeletingAccount(false);
     }
   }
 
@@ -975,7 +1021,10 @@ function TeamDirectory({ nodes, currentMember, onMemberUpdated }: { nodes: Struc
     <section className="team-page">
       <header className="team-head">
         <div><span className="overline">ADMINISTRAÇÃO / PESSOAS</span><h1>Equipe Labstar</h1><p>Gerencie quem entra, onde trabalha e o que pode acessar.</p></div>
-        {canManage && <button onClick={() => setInviteOpen(true)}><UserPlus size={14} /> Autorizar membro</button>}
+        {canManage && <div className="team-head-actions">
+          {currentMember.role === "owner" && <button className="secondary" type="button" onClick={() => openAccountDeletion("manual")}><Trash2 size={14} /> Excluir login antigo</button>}
+          <button type="button" onClick={() => setInviteOpen(true)}><UserPlus size={14} /> Autorizar membro</button>
+        </div>}
       </header>
       <div className="team-section-tabs">
         <button className="active" onClick={() => setTeamTab("members")}><Users size={15} /> Membros</button>
@@ -1086,7 +1135,9 @@ function TeamDirectory({ nodes, currentMember, onMemberUpdated }: { nodes: Struc
                 <div className="member-actions">
                   {selected.status !== "active" && <button className="approve-member" onClick={() => patchMember(selected.id, { status: "active" })}><UserCheck size={14} /> Aprovar acesso</button>}
                   {selected.status === "active" && <button className="suspend-member" onClick={() => patchMember(selected.id, { status: "suspended" })}><LockKeyhole size={14} /> Suspender acesso</button>}
-                  <button className="remove-member" onClick={() => setRemovalTarget(selected)}><Trash2 size={14} /> Remover do Labstar</button>
+                  {selected.status !== "suspended"
+                    ? <button className="remove-member" onClick={() => setRemovalTarget(selected)}><Trash2 size={14} /> Remover do Labstar</button>
+                    : <button className="remove-member" onClick={() => openAccountDeletion(selected)}><Trash2 size={14} /> Excluir conta e login</button>}
                 </div>
               )}
               {message && <p className="team-message">{message}</p>}
@@ -1116,9 +1167,22 @@ function TeamDirectory({ nodes, currentMember, onMemberUpdated }: { nodes: Struc
         <div className="modal-backdrop" onMouseDown={() => !removing && setRemovalTarget(null)}>
           <section className="invite-modal removal-modal" role="alertdialog" aria-modal="true" aria-labelledby="removal-title" onMouseDown={(event) => event.stopPropagation()}>
             <div className="modal-head"><span><Trash2 size={17} /></span><div><strong id="removal-title">Remover acesso de {removalTarget.name}?</strong><small>Esta ação bloqueia a entrada desta pessoa no Labstar.</small></div><button type="button" disabled={removing} onClick={() => setRemovalTarget(null)} aria-label="Fechar"><X size={16} /></button></div>
-            <p>O proprietário nunca pode ser removido e você não pode excluir a própria conta. Se houver mensagens ou outros vínculos, o membro será desativado para preservar o histórico.</p>
+            <p>Esta é a primeira etapa: o membro será suspenso imediatamente e o histórico será preservado. Depois da suspensão, a administração poderá escolher “Excluir conta e login”.</p>
             <div className="removal-identity"><Avatar name={removalTarget.name} url={removalTarget.avatarUrl} size="sm" /><span><strong>{removalTarget.name}</strong><small>{removalTarget.email}</small></span></div>
             <div className="removal-actions"><button type="button" disabled={removing} onClick={() => setRemovalTarget(null)}>Cancelar</button><button className="confirm" type="button" disabled={removing} onClick={() => void confirmMemberRemoval()}>{removing ? <LoaderCircle className="spin" size={14} /> : <Trash2 size={14} />} Confirmar remoção</button></div>
+          </section>
+        </div>
+      )}
+
+      {accountDeletionTarget && (
+        <div className="modal-backdrop" onMouseDown={closeAccountDeletion}>
+          <section className="invite-modal removal-modal permanent-deletion-modal" role="alertdialog" aria-modal="true" aria-labelledby="account-deletion-title" onMouseDown={(event) => event.stopPropagation()}>
+            <div className="modal-head"><span><Trash2 size={17} /></span><div><strong id="account-deletion-title">Excluir conta e login permanentemente?</strong><small>Esta ação não poderá ser desfeita.</small></div><button type="button" disabled={deletingAccount} onClick={closeAccountDeletion} aria-label="Fechar"><X size={16} /></button></div>
+            <p>O acesso do Labstar e a identidade correspondente no Supabase Auth serão apagados. A conta Google/Gmail real da pessoa não será alterada, e o nome continuará apenas nas mensagens antigas para preservar o histórico.</p>
+            {accountDeletionTarget !== "manual" && <div className="removal-identity"><Avatar name={accountDeletionTarget.name} url={accountDeletionTarget.avatarUrl} size="sm" /><span><strong>{accountDeletionTarget.name}</strong><small>{accountDeletionTarget.email}</small></span></div>}
+            <label>E-mail da conta<input type="email" autoComplete="off" readOnly={accountDeletionTarget !== "manual"} value={accountDeletionEmail} onChange={(event) => setAccountDeletionEmail(event.target.value)} placeholder="pessoa@email.com" /></label>
+            <label>Digite o e-mail novamente para confirmar<input type="email" autoComplete="off" value={accountDeletionConfirmation} onChange={(event) => setAccountDeletionConfirmation(event.target.value)} placeholder={accountDeletionEmail || "pessoa@email.com"} /></label>
+            <div className="removal-actions"><button type="button" disabled={deletingAccount} onClick={closeAccountDeletion}>Cancelar</button><button className="confirm" type="button" disabled={deletingAccount || !accountDeletionEmail.trim() || accountDeletionEmail.trim().toLocaleLowerCase() !== accountDeletionConfirmation.trim().toLocaleLowerCase()} onClick={() => void confirmAccountDeletion()}>{deletingAccount ? <LoaderCircle className="spin" size={14} /> : <Trash2 size={14} />} Excluir conta e login</button></div>
           </section>
         </div>
       )}
