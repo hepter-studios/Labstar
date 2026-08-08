@@ -34,6 +34,7 @@ type Props = {
   session: DirectCallSession;
   direction: "incoming" | "outgoing";
   contactOnline: boolean;
+  onAccepted?: () => void;
   onFinished: () => void;
 };
 
@@ -67,6 +68,7 @@ export function PrivateCallOverlay({
   session,
   direction,
   contactOnline,
+  onAccepted,
   onFinished,
 }: Props) {
   const [phase, setPhase] = useState<CallPhase>(direction === "incoming" ? "ringing" : "preparing");
@@ -74,7 +76,7 @@ export function PrivateCallOverlay({
   const [micEnabled, setMicEnabled] = useState(true);
   const [cameraEnabled, setCameraEnabled] = useState(session.kind === "video");
   const [screenSharing, setScreenSharing] = useState(false);
-  const [remoteHasVideo, setRemoteHasVideo] = useState(session.kind === "video");
+  const [remoteHasVideo, setRemoteHasVideo] = useState(false);
   const [minimized, setMinimized] = useState(false);
   const [elapsed, setElapsed] = useState(0);
 
@@ -91,6 +93,8 @@ export function PrivateCallOverlay({
   const processedSignalsRef = useRef<Set<string>>(new Set());
   const acceptedRef = useRef(direction === "outgoing");
   const closingRef = useRef(false);
+  const finishTimerRef = useRef(0);
+  const reconnectTimerRef = useRef(0);
   const otherMemberId = direction === "outgoing" ? session.recipientId : session.initiatorId;
   const visualStage = session.kind === "video" || remoteHasVideo || screenSharing;
 
@@ -109,12 +113,20 @@ export function PrivateCallOverlay({
     attachRemoteStream();
   }, [attachRemoteStream, remoteHasVideo]);
 
+  useEffect(() => {
+    const stream = screenStreamRef.current ?? localStreamRef.current;
+    if (localVideoRef.current && stream && localVideoRef.current.srcObject !== stream) {
+      localVideoRef.current.srcObject = stream;
+    }
+  }, [cameraEnabled, screenSharing, visualStage]);
+
   const finish = useCallback((message = "Chamada encerrada") => {
     if (closingRef.current) return;
     closingRef.current = true;
     setPhase("finished");
     setError(message);
-    window.setTimeout(onFinished, 900);
+    window.clearTimeout(finishTimerRef.current);
+    finishTimerRef.current = window.setTimeout(onFinished, 900);
   }, [onFinished]);
 
   const ensureLocalMedia = useCallback(async () => {
@@ -162,8 +174,11 @@ export function PrivateCallOverlay({
       for (const track of event.streams[0]?.getTracks() ?? [event.track]) {
         if (!remote.getTracks().some((current) => current.id === track.id)) remote.addTrack(track);
         if (track.kind === "video") {
-          setRemoteHasVideo(true);
-          track.addEventListener("ended", () => setRemoteHasVideo(remote.getVideoTracks().some((item) => item.readyState === "live")), { once: true });
+          const updateRemoteVideo = () => setRemoteHasVideo(remote.getVideoTracks().some((item) => item.readyState === "live" && !item.muted));
+          track.addEventListener("mute", updateRemoteVideo);
+          track.addEventListener("unmute", updateRemoteVideo);
+          track.addEventListener("ended", updateRemoteVideo, { once: true });
+          updateRemoteVideo();
         }
       }
       attachRemoteStream();
@@ -171,10 +186,21 @@ export function PrivateCallOverlay({
     };
 
     peer.onconnectionstatechange = () => {
-      if (peer.connectionState === "connected") setPhase("connected");
-      if (["failed", "disconnected", "closed"].includes(peer.connectionState)) {
-        finish(peer.connectionState === "failed" ? "A ligação perdeu a conexão." : "Chamada encerrada");
+      if (peer.connectionState === "connected") {
+        window.clearTimeout(reconnectTimerRef.current);
+        setError("");
+        setPhase("connected");
       }
+      if (peer.connectionState === "disconnected") {
+        setError("Reconectando a chamada…");
+        setPhase("connecting");
+        window.clearTimeout(reconnectTimerRef.current);
+        reconnectTimerRef.current = window.setTimeout(() => {
+          if (peer.connectionState === "disconnected") finish("A ligação perdeu a conexão.");
+        }, 10_000);
+      }
+      if (peer.connectionState === "failed") finish("A ligação perdeu a conexão.");
+      if (peer.connectionState === "closed") finish("Chamada encerrada");
     };
 
     return peer;
@@ -240,13 +266,22 @@ export function PrivateCallOverlay({
     subscriptionRef.current = subscription;
 
     void listDirectCallSignals(session.id)
-      .then((signals) => Promise.all(signals.map((signal) => handleSignal(signal))))
+      .then(async (signals) => {
+        for (const signal of signals) await handleSignal(signal);
+      })
       .catch(() => setError("Não foi possível recuperar a sinalização da chamada."));
 
     return () => {
+      window.clearTimeout(finishTimerRef.current);
+      window.clearTimeout(reconnectTimerRef.current);
       unsubscribeDirectCall(subscriptionRef.current);
       subscriptionRef.current = null;
-      peerRef.current?.close();
+      if (peerRef.current) {
+        peerRef.current.onconnectionstatechange = null;
+        peerRef.current.onicecandidate = null;
+        peerRef.current.ontrack = null;
+        peerRef.current.close();
+      }
       peerRef.current = null;
       screenStreamRef.current?.getTracks().forEach((track) => track.stop());
       screenStreamRef.current = null;
@@ -300,6 +335,7 @@ export function PrivateCallOverlay({
       setPhase("preparing");
       await ensurePeer();
       await setDirectCallStatus(session.id, "accepted");
+      onAccepted?.();
       const offer = pendingOfferRef.current;
       if (offer) {
         pendingOfferRef.current = null;
@@ -441,17 +477,16 @@ export function PrivateCallOverlay({
         <div className={`private-call-stage ${visualStage ? "visual" : "audio"}`}>
           {visualStage ? (
             <>
-              <video ref={remoteVideoRef} className="private-call-remote-video" autoPlay playsInline />
-              <video ref={localVideoRef} className="private-call-local-video" autoPlay playsInline muted />
-              {!remoteHasVideo && phase !== "connected" && (
-                <div className="private-call-video-placeholder"><Avatar name={contact.name} url={contact.avatarUrl} size="xl" status={contactOnline ? "online" : "offline"} /></div>
+              <video ref={remoteVideoRef} className={`private-call-remote-video ${remoteHasVideo ? "" : "is-hidden"}`} autoPlay playsInline />
+              <video ref={localVideoRef} className={`private-call-local-video ${cameraEnabled || screenSharing ? "" : "is-hidden"}`} autoPlay playsInline muted />
+              {!remoteHasVideo && (
+                <div className="private-call-video-placeholder"><Avatar name={contact.name} url={contact.avatarUrl} size="xl" className="private-call-profile-photo" status={contactOnline ? "online" : "offline"} /></div>
               )}
               {screenSharing && <span className="private-call-sharing-badge"><MonitorUp size={13} /> Você está compartilhando a tela</span>}
             </>
           ) : (
             <div className="private-call-audio-person">
-              <Avatar name={contact.name} url={contact.avatarUrl} size="xl" status={contactOnline ? "online" : "offline"} />
-              <span className="private-call-rings" aria-hidden="true" />
+              <Avatar name={contact.name} url={contact.avatarUrl} size="xl" className="private-call-profile-photo" status={contactOnline ? "online" : "offline"} />
             </div>
           )}
           <audio ref={remoteAudioRef} autoPlay />

@@ -24,6 +24,8 @@ import {
   X,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
+import "../meeting-room-v2.css";
+import "../meeting-room-v2-fixes.css";
 import {
   cancelMeeting,
   createMeeting,
@@ -147,10 +149,33 @@ function VideoTile({
   handRaised?: boolean;
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const hasVideo = stream.getVideoTracks().some((track) => track.readyState === "live");
+  const [hasVideo, setHasVideo] = useState(() => stream.getVideoTracks().some((track) => track.readyState === "live" && !track.muted));
 
   useEffect(() => {
     if (videoRef.current && videoRef.current.srcObject !== stream) videoRef.current.srcObject = stream;
+    const subscribedTracks = new Set<MediaStreamTrack>();
+    const updateVideoState = () => {
+      for (const track of stream.getVideoTracks()) {
+        if (subscribedTracks.has(track)) continue;
+        subscribedTracks.add(track);
+        track.addEventListener("mute", updateVideoState);
+        track.addEventListener("unmute", updateVideoState);
+        track.addEventListener("ended", updateVideoState);
+      }
+      setHasVideo(stream.getVideoTracks().some((track) => track.readyState === "live" && !track.muted));
+    };
+    stream.addEventListener("addtrack", updateVideoState);
+    stream.addEventListener("removetrack", updateVideoState);
+    updateVideoState();
+    return () => {
+      subscribedTracks.forEach((track) => {
+        track.removeEventListener("mute", updateVideoState);
+        track.removeEventListener("unmute", updateVideoState);
+        track.removeEventListener("ended", updateVideoState);
+      });
+      stream.removeEventListener("addtrack", updateVideoState);
+      stream.removeEventListener("removetrack", updateVideoState);
+    };
   }, [stream]);
 
   async function openPiP() {
@@ -169,7 +194,7 @@ function VideoTile({
       <video ref={videoRef} autoPlay playsInline muted={local || muted} />
       {!hasVideo && (
         <div className="meeting-v2-avatar-fallback">
-          <Avatar name={person.name} url={person.avatarUrl} size="xl" status="online" />
+          <Avatar name={person.name} url={person.avatarUrl} size="xl" className="meeting-v2-profile-photo" status={local ? undefined : "online"} />
         </div>
       )}
       <div className="meeting-v2-tile-meta">
@@ -225,6 +250,7 @@ export function MeetingRoomV2({ channel, member, members, soundEnabled }: Props)
   const testStream = useRef<MediaStream | null>(null);
   const realtime = useRef<ReturnType<NonNullable<typeof supabaseClient>["channel"]> | null>(null);
   const peers = useRef(new Map<string, RTCPeerConnection>());
+  const pendingIce = useRef(new Map<string, RTCIceCandidateInit[]>());
   const meterContext = useRef<AudioContext | null>(null);
   const meterFrame = useRef<number | null>(null);
   const joinedRef = useRef(false);
@@ -262,6 +288,14 @@ export function MeetingRoomV2({ channel, member, members, soundEnabled }: Props)
   }, [member, members, participantIds, presence]);
 
   const isHost = joined && hostId === member.id;
+  const canJoinRoom = member.status === "active" && (
+    member.role === "owner"
+    || member.role === "admin"
+    || (
+      (!channel.allowedRoles.length || channel.allowedRoles.includes(member.role))
+      && (!channel.allowedAssignments.length || channel.allowedAssignments.some((assignment) => member.assignments.includes(assignment)))
+    )
+  );
 
   useEffect(() => {
     hostRef.current = hostId;
@@ -388,11 +422,33 @@ export function MeetingRoomV2({ channel, member, members, soundEnabled }: Props)
         handRaised: Boolean(row.handRaised),
       });
     });
+    for (const [peerId, peer] of peers.current) {
+      if (next.has(peerId)) continue;
+      peer.close();
+      peers.current.delete(peerId);
+      pendingIce.current.delete(peerId);
+    }
+    setRemoteStreams((current) => {
+      const nextStreams = new Map(current);
+      for (const peerId of nextStreams.keys()) {
+        if (!next.has(peerId)) nextStreams.delete(peerId);
+      }
+      return nextStreams;
+    });
     setPresence(next);
   }
 
   function sendSignal(payload: Record<string, unknown>) {
     void realtime.current?.send({ type: "broadcast", event: "signal", payload: { ...payload, from: member.id } });
+  }
+
+  async function flushPendingIce(peerId: string, peer: RTCPeerConnection) {
+    if (!peer.remoteDescription) return;
+    const queued = pendingIce.current.get(peerId) ?? [];
+    pendingIce.current.delete(peerId);
+    for (const candidate of queued) {
+      await peer.addIceCandidate(candidate).catch(() => undefined);
+    }
   }
 
   function videoSender(peer: RTCPeerConnection) {
@@ -445,8 +501,21 @@ export function MeetingRoomV2({ channel, member, members, soundEnabled }: Props)
       }, { once: true });
     };
     peer.onconnectionstatechange = () => {
-      if (["failed", "closed", "disconnected"].includes(peer.connectionState)) {
+      if (peer.connectionState === "connected") setNotice("");
+      if (peer.connectionState === "failed") {
+        setNotice("A conexão de um participante falhou. Tentando recuperar…");
+        peer.restartIce();
+        if (peer.signalingState === "stable") {
+          void peer.createOffer({ iceRestart: true }).then(async (offer) => {
+            await peer.setLocalDescription(offer);
+            sendSignal({ to: peerId, kind: "offer", sdp: offer });
+          }).catch(() => undefined);
+        }
+        return;
+      }
+      if (peer.connectionState === "closed") {
         peers.current.delete(peerId);
+        pendingIce.current.delete(peerId);
         setRemoteStreams((current) => {
           const next = new Map(current);
           next.delete(peerId);
@@ -469,6 +538,10 @@ export function MeetingRoomV2({ channel, member, members, soundEnabled }: Props)
     if (!supabaseClient || joining || joined) return;
     setError("");
     setNotice("");
+    if (!canJoinRoom) {
+      setError("Seu cargo ou equipe não possui acesso a esta sala.");
+      return;
+    }
     setJoining(true);
     try {
       if (!navigator.mediaDevices?.getUserMedia) throw new Error("media_unavailable");
@@ -501,14 +574,24 @@ export function MeetingRoomV2({ channel, member, members, soundEnabled }: Props)
           const peer = ensurePeer(peerId, false);
           try {
             if (payload.kind === "offer") {
+              const offerCollision = peer.signalingState !== "stable";
+              const polite = member.id.localeCompare(peerId) > 0;
+              if (offerCollision && !polite) return;
+              if (offerCollision) await peer.setLocalDescription({ type: "rollback" }).catch(() => undefined);
               await peer.setRemoteDescription(payload.sdp as RTCSessionDescriptionInit);
+              await flushPendingIce(peerId, peer);
               const answer = await peer.createAnswer();
               await peer.setLocalDescription(answer);
               sendSignal({ to: peerId, kind: "answer", sdp: answer });
             } else if (payload.kind === "answer") {
-              await peer.setRemoteDescription(payload.sdp as RTCSessionDescriptionInit);
+              if (peer.signalingState === "have-local-offer") {
+                await peer.setRemoteDescription(payload.sdp as RTCSessionDescriptionInit);
+                await flushPendingIce(peerId, peer);
+              }
             } else if (payload.kind === "candidate") {
-              await peer.addIceCandidate(payload.candidate as RTCIceCandidateInit);
+              const candidate = payload.candidate as RTCIceCandidateInit;
+              if (peer.remoteDescription) await peer.addIceCandidate(candidate);
+              else pendingIce.current.set(peerId, [...(pendingIce.current.get(peerId) ?? []), candidate]);
             }
           } catch {
             setNotice("A sala está ajustando a conexão de um participante.");
@@ -639,6 +722,7 @@ export function MeetingRoomV2({ channel, member, members, soundEnabled }: Props)
     stopLevelMeter();
     peers.current.forEach((peer) => peer.close());
     peers.current.clear();
+    pendingIce.current.clear();
     setRemoteStreams(new Map());
     if (realtime.current && supabaseClient) void supabaseClient.removeChannel(realtime.current);
     realtime.current = null;
@@ -786,10 +870,11 @@ export function MeetingRoomV2({ channel, member, members, soundEnabled }: Props)
           </section>
 
           <div className="meeting-v2-entry-actions">
-            <button type="button" className="primary" onClick={() => void join(false)} disabled={joining}>{joining ? <LoaderCircle className="spin" size={17} /> : <Mic size={17} />}{joining ? "Conectando…" : "Entrar por voz"}</button>
-            <button type="button" onClick={() => void join(true)} disabled={joining}><Camera size={17} /> Entrar com vídeo</button>
+            <button type="button" className="primary" onClick={() => void join(false)} disabled={joining || !canJoinRoom}>{joining ? <LoaderCircle className="spin" size={17} /> : <Mic size={17} />}{joining ? "Conectando…" : "Entrar por voz"}</button>
+            <button type="button" onClick={() => void join(true)} disabled={joining || !canJoinRoom}><Camera size={17} /> Entrar com vídeo</button>
             <button type="button" onClick={() => setMeetingOpen(true)}><CalendarDays size={17} /> Agendar reunião</button>
           </div>
+          {!canJoinRoom && <p className="meeting-v2-error">Seu cargo ou equipe não possui acesso a esta sala.</p>}
           {error && <p className="meeting-v2-error">{error}</p>}
         </div>
       ) : (
@@ -823,7 +908,7 @@ export function MeetingRoomV2({ channel, member, members, soundEnabled }: Props)
               })}
               {!remoteStreams.size && !cameraOn && !screenSharing && (
                 <div className="meeting-v2-stage-empty">
-                  <Avatar name={member.name} url={member.avatarUrl} size="xl" />
+                  <Avatar name={member.name} url={member.avatarUrl} size="xl" className="meeting-v2-profile-photo" />
                   <strong>Você está na sala</strong>
                   <span>A câmera está desligada. Sua voz continua conectada.</span>
                 </div>

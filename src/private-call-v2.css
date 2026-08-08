@@ -26,6 +26,42 @@
   overflow: hidden;
 }
 
+.private-call-v2 .private-call-remote-video.is-hidden,
+.private-call-v2 .private-call-local-video.is-hidden {
+  visibility: hidden;
+}
+
+.private-call-v2 .private-call-audio-person {
+  width: auto !important;
+  height: auto !important;
+}
+
+.private-call-v2 .private-call-video-placeholder {
+  background: #05080d !important;
+}
+
+.private-call-v2 .private-call-profile-photo.user-avatar-xl {
+  width: clamp(128px,18vw,176px) !important;
+  height: clamp(128px,18vw,176px) !important;
+  border: 0 !important;
+  border-radius: 50% !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.private-call-v2 .private-call-profile-photo.user-avatar-xl > .avatar-media {
+  inset: 0 !important;
+  border: 0 !important;
+  border-radius: inherit !important;
+  background: #111722 !important;
+  box-shadow: none !important;
+}
+
+.private-call-v2 .private-call-profile-photo.user-avatar-xl > .avatar-media > img {
+  border-radius: inherit !important;
+  object-fit: cover !important;
+}
+
 .private-call-sharing-badge {
   position: absolute;
   left: 12px;

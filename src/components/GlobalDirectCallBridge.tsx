@@ -235,6 +235,7 @@ export function GlobalDirectCallBridge() {
           session={incomingCall.session}
           direction="incoming"
           contactOnline={onlineMemberIds.has(incomingCall.contact.id)}
+          onAccepted={stopIncomingCallRingtone}
           onFinished={() => {
             stopIncomingCallRingtone();
             incomingRef.current = null;

@@ -5,7 +5,6 @@ import { CommunicationHome } from "./CommunicationHome";
 import { DirectMessagesHub } from "./DirectMessagesHubV6";
 import { IntegrationWebhookBridge } from "./IntegrationWebhookBridge";
 import { CollaborationHub as LegacyCollaborationHub } from "./LegacyCollaborationHub";
-import { MeetingRoomUpgradeBridge } from "./MeetingRoomUpgradeBridge";
 
 type CollaborationHubProps = {
   member: Member;
@@ -136,7 +135,6 @@ export function CollaborationHub({ member, initialChannelId, soundEnabled = true
         initialChannelId={workspaceChannelId}
         soundEnabled={soundEnabled}
       />
-      <MeetingRoomUpgradeBridge member={member} soundEnabled={soundEnabled} />
       <IntegrationWebhookBridge />
       {surface === "home" && (
         <div className="communication-home-overlay">

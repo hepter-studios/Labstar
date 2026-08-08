@@ -82,6 +82,7 @@ import {
 } from "../lib/supabase";
 import { memberPresenceStatus, useMemberPresence } from "../lib/presence";
 import { Avatar } from "./Avatar";
+import { MeetingRoomV2 } from "./MeetingRoomV2";
 
 type CollaborationHubProps = {
   member: Member;
@@ -300,7 +301,7 @@ export function CollaborationHub({ member, initialChannelId, soundEnabled = true
               </div>
             </header>
             {selectedChannel.type === "voice"
-              ? <VoiceRoom channel={selectedChannel} member={member} members={members} soundEnabled={soundEnabled} />
+              ? <MeetingRoomV2 channel={selectedChannel} member={member} members={members} soundEnabled={soundEnabled} />
               : selectedChannel.type === "social"
                 ? <SocialPlanner space={selectedSpace!} member={member} />
                 : <MessageRoom channel={selectedChannel} space={selectedSpace!} member={member} />}

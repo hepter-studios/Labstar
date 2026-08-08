@@ -232,7 +232,24 @@
   background: #030509;
 }
 .meeting-v2-tile.sharing video { object-fit: contain; }
-.meeting-v2-avatar-fallback { position: absolute; inset: 0; display: grid; place-items: center; background: radial-gradient(circle at center,#111827,#070a10 64%); }
+.meeting-v2-avatar-fallback { position: absolute; inset: 0; display: grid; place-items: center; background: #070a10; }
+
+.meeting-v2-profile-photo.user-avatar-xl {
+  width: clamp(104px,15vw,148px) !important;
+  height: clamp(104px,15vw,148px) !important;
+  border: 0 !important;
+  border-radius: 50% !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+.meeting-v2-profile-photo.user-avatar-xl > .avatar-media {
+  inset: 0 !important;
+  border: 0 !important;
+  border-radius: inherit !important;
+  background: #111722 !important;
+  box-shadow: none !important;
+}
+.meeting-v2-profile-photo.user-avatar-xl > .avatar-media > img { border-radius: inherit !important; object-fit: cover !important; }
 
 .meeting-v2-tile-meta {
   position: absolute;
@@ -264,6 +281,7 @@
   color: var(--meeting-muted);
   text-align: center;
 }
+.meeting-v2-stage-empty .meeting-v2-profile-photo { margin-bottom: 6px; }
 .meeting-v2-stage-empty strong { color: #e5ebf6; font-size: 13px; }
 .meeting-v2-stage-empty span { font-size: 10px; }
 
