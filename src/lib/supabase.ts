@@ -38,6 +38,12 @@ export type MemberRemovalResult = {
   reason: string;
 };
 
+export type AccountDeletionResult = {
+  outcome: "deleted";
+  memberId: string | null;
+  authIdentityDeleted: boolean;
+};
+
 type MemberRow = {
   id: string;
   email: string;
@@ -362,7 +368,9 @@ export async function listMembers() {
     rolesByMember.set(memberId, [...(rolesByMember.get(memberId) ?? []), jobRoleFromRow(roleRow)]);
   }
   return {
-    members: await Promise.all((data as MemberRow[]).map((row) => memberFromRow(row, rolesByMember.get(row.id) ?? []))),
+    members: await Promise.all((data as MemberRow[])
+      .filter((row) => !row.email.toLocaleLowerCase().endsWith("@labstar.invalid"))
+      .map((row) => memberFromRow(row, rolesByMember.get(row.id) ?? []))),
     canManage,
   };
 }
@@ -431,6 +439,51 @@ export async function removeTeamMember(id: string): Promise<MemberRemovalResult>
     outcome: "suspended",
     member: suspended,
     reason: "safe_fallback",
+  };
+}
+
+function accountDeletionError(error: { code?: string; message?: string }) {
+  const text = `${error.code ?? ""} ${error.message ?? ""}`.toLocaleLowerCase();
+  const knownCodes = [
+    "self_deletion_forbidden",
+    "owner_deletion_forbidden",
+    "owner_required",
+    "member_must_be_suspended",
+    "confirmation_email_mismatch",
+    "account_not_found",
+    "permission_denied",
+    "member_not_authorized",
+  ];
+  const known = knownCodes.find((code) => text.includes(code));
+  return memberRemovalError(known ?? error.code ?? "account_deletion_failed");
+}
+
+export async function permanentlyDeleteTeamAccount(
+  email: string,
+  confirmationEmail: string,
+): Promise<AccountDeletionResult> {
+  const normalizedEmail = email.trim().toLocaleLowerCase();
+  const normalizedConfirmation = confirmationEmail.trim().toLocaleLowerCase();
+  if (!normalizedEmail || normalizedEmail !== normalizedConfirmation) {
+    throw memberRemovalError("confirmation_email_mismatch");
+  }
+
+  const { data, error } = await requireClient().rpc("delete_labstar_account", {
+    target_email: normalizedEmail,
+    confirmation_email: normalizedConfirmation,
+  });
+  if (error) throw accountDeletionError(error);
+
+  const row = (Array.isArray(data) ? data[0] : data) as {
+    outcome?: string;
+    member_id?: string | null;
+    auth_identity_deleted?: boolean;
+  } | null;
+  if (row?.outcome !== "deleted") throw memberRemovalError("invalid_account_deletion_response");
+  return {
+    outcome: "deleted",
+    memberId: row.member_id ?? null,
+    authIdentityDeleted: Boolean(row.auth_identity_deleted),
   };
 }
 
