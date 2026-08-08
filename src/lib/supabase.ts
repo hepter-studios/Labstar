@@ -32,6 +32,12 @@ export type Member = {
   jobRoles: JobRole[];
 };
 
+export type MemberRemovalResult = {
+  outcome: "removed" | "suspended";
+  member: Member | null;
+  reason: string;
+};
+
 type MemberRow = {
   id: string;
   email: string;
@@ -371,6 +377,61 @@ export async function updateMember(id: string, updates: Partial<Member>) {
   if (error) throw error;
   const roles = await listRolesForMember(id);
   return memberFromRow(data as MemberRow, roles);
+}
+
+function memberRemovalError(code: string) {
+  return Object.assign(new Error(code), { code });
+}
+
+export async function removeTeamMember(id: string): Promise<MemberRemovalResult> {
+  const identity = await getCurrentIdentity();
+  if (!identity?.member) throw memberRemovalError("member_not_authorized");
+  if (identity.member.role !== "owner" && identity.member.role !== "admin") {
+    throw memberRemovalError("permission_denied");
+  }
+  if (identity.member.id === id) throw memberRemovalError("self_removal_forbidden");
+
+  const client = requireClient();
+  const { data: targetData, error: targetError } = await client
+    .from("members")
+    .select("*")
+    .eq("id", id)
+    .maybeSingle();
+  if (targetError) throw targetError;
+  if (!targetData) throw memberRemovalError("member_not_found");
+  const target = targetData as MemberRow;
+  if (target.role === "owner") throw memberRemovalError("owner_removal_forbidden");
+
+  const { data, error } = await client.rpc("remove_team_member", { target_member_id: id });
+  if (!error) {
+    const row = (Array.isArray(data) ? data[0] : data) as { outcome?: string; reason?: string } | null;
+    if (row?.outcome === "removed") {
+      return { outcome: "removed", member: null, reason: row.reason ?? "access_removed" };
+    }
+    if (row?.outcome === "suspended") {
+      const roles = await listRolesForMember(id);
+      const { data: suspendedData, error: suspendedError } = await client.from("members").select("*").eq("id", id).single();
+      if (suspendedError) throw suspendedError;
+      return {
+        outcome: "suspended",
+        member: await memberFromRow(suspendedData as MemberRow, roles),
+        reason: row.reason ?? "history_preserved",
+      };
+    }
+    throw memberRemovalError("invalid_removal_response");
+  }
+
+  const missingRpc = error.code === "PGRST202"
+    || error.message?.toLocaleLowerCase().includes("schema cache")
+    || error.message?.toLocaleLowerCase().includes("could not find the function");
+  if (!missingRpc) throw error;
+
+  const suspended = await updateMember(id, { status: "suspended" });
+  return {
+    outcome: "suspended",
+    member: suspended,
+    reason: "safe_fallback",
+  };
 }
 
 export async function inviteMember(input: {

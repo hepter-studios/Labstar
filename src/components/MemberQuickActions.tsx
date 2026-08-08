@@ -1,5 +1,7 @@
 import { CheckCircle2, Copy, ExternalLink, Github, MessageSquare, Users, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { getCurrentAccessIdentity } from "../lib/access";
+import { memberPresenceStatus, useMemberPresence } from "../lib/presence";
 import { getMemberProfileConnections, type PublicProfileConnections } from "../lib/profile-connections";
 import { listMembers, type Member } from "../lib/supabase";
 import { Avatar } from "./Avatar";
@@ -33,16 +35,20 @@ function openDirectMessage(member: Member) {
 export function MemberQuickActions() {
   const [menu, setMenu] = useState<MenuState>(null);
   const [members, setMembers] = useState<Member[]>([]);
+  const [currentMemberId, setCurrentMemberId] = useState("");
   const [connections, setConnections] = useState<PublicProfileConnections>(emptyConnections);
   const menuRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
     let cancelled = false;
-    void listMembers().then((result) => {
-      if (!cancelled) setMembers(result.members);
+    void Promise.all([listMembers(), getCurrentAccessIdentity()]).then(([result, identity]) => {
+      if (cancelled) return;
+      setMembers(result.members);
+      setCurrentMemberId(identity?.member?.id ?? "");
     }).catch(() => undefined);
     return () => { cancelled = true; };
   }, []);
+  const onlineMemberIds = useMemberPresence(currentMemberId);
 
   useEffect(() => {
     let cancelled = false;
@@ -101,11 +107,12 @@ export function MemberQuickActions() {
   if (!menu) return null;
   const role = menu.member.jobRoles[0];
   const github = connections.github;
+  const isSelf = menu.member.id === currentMemberId;
 
   return (
     <aside ref={menuRef} className="member-quick-card" style={{ left: menu.x, top: menu.y }} role="dialog" aria-label={`Ações para ${menu.member.name}`} onClick={(event) => event.stopPropagation()}>
       <button className="member-quick-close" type="button" onClick={() => setMenu(null)} aria-label="Fechar"><X size={13} /></button>
-      <div className="member-quick-profile"><Avatar name={menu.member.name} url={menu.member.avatarUrl} size="lg" status={menu.member.status === "active" ? "online" : "offline"}/><div><strong>{menu.member.name}</strong><span>{role?.name || menu.member.jobTitle || menu.member.role}</span><small>{menu.member.area || menu.member.email}</small></div></div>
+      <div className="member-quick-profile"><Avatar name={menu.member.name} url={menu.member.avatarUrl} size="lg" status={memberPresenceStatus(onlineMemberIds, currentMemberId, menu.member.id)}/><div><strong>{menu.member.name}{isSelf ? " (você)" : ""}</strong><span>{role?.name || menu.member.jobTitle || menu.member.role}</span><small>{menu.member.area || menu.member.email}</small></div></div>
       {github && (
         <div className="member-quick-connections">
           <small>GITHUB VERIFICADO</small>
@@ -115,7 +122,7 @@ export function MemberQuickActions() {
         </div>
       )}
       <div className="member-quick-actions">
-        <button type="button" onClick={() => { openDirectMessage(menu.member); setMenu(null); }}><MessageSquare size={14}/> Mensagem</button>
+        {!isSelf && <button type="button" onClick={() => { openDirectMessage(menu.member); setMenu(null); }}><MessageSquare size={14}/> Mensagem</button>}
         <button type="button" onClick={() => { void navigator.clipboard.writeText(menu.member.email); setMenu(null); }}><Copy size={14}/> Copiar e-mail</button>
         <button type="button" onClick={() => { document.querySelector<HTMLButtonElement>('button[aria-label="Equipe"]')?.click(); setMenu(null); }}><Users size={14}/> Abrir na Equipe</button>
       </div>

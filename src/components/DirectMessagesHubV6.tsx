@@ -57,7 +57,7 @@ import {
   type DirectMessage,
   type DirectThreadSummary,
 } from "../lib/directMessages";
-import { subscribeToMemberPresence } from "../lib/presence";
+import { useMemberPresence } from "../lib/presence";
 import {
   listMembers,
   listNotifications,
@@ -161,7 +161,6 @@ export function DirectMessagesHub({ member, onOpenWorkspace }: Props) {
   const [homeTab, setHomeTab] = useState<HomeTab>("for-you");
   const [inboxTab, setInboxTab] = useState<"unread" | "mentions">("unread");
   const [favoriteIds, setFavoriteIds] = useState<Set<string>>(() => loadFavoriteIds());
-  const [onlineMemberIds, setOnlineMemberIds] = useState<ReadonlySet<string>>(new Set());
   const [toast, setToast] = useState<ToastState>(null);
   const [activeCall, setActiveCall] = useState<ActiveCall | null>(null);
   const searchRef = useRef<HTMLInputElement>(null);
@@ -172,6 +171,8 @@ export function DirectMessagesHub({ member, onOpenWorkspace }: Props) {
     setToast({ message, tone });
     toastTimerRef.current = window.setTimeout(() => setToast(null), 4200);
   }, []);
+  const handlePresenceError = useCallback((message: string) => showToast(message, "warning"), [showToast]);
+  const onlineMemberIds = useMemberPresence(member.id, handlePresenceError);
 
   const refreshThreads = useCallback(async (silent = false) => {
     try {
@@ -215,20 +216,6 @@ export function DirectMessagesHub({ member, onOpenWorkspace }: Props) {
       window.clearTimeout(toastTimerRef.current);
     };
   }, [member.id, refreshThreads, showToast]);
-
-  useEffect(() => {
-    try {
-      const presence = subscribeToMemberPresence(
-        member.id,
-        (online) => setOnlineMemberIds(new Set(online)),
-        (message) => showToast(message, "warning"),
-      );
-      return presence.close;
-    } catch {
-      setOnlineMemberIds(new Set());
-      return undefined;
-    }
-  }, [member.id, showToast]);
 
   useEffect(() => {
     if (!members.length) return undefined;
@@ -506,7 +493,7 @@ export function DirectMessagesHub({ member, onOpenWorkspace }: Props) {
         </div>
 
         <footer className="dm-own-profile">
-          <Avatar name={member.name} url={member.avatarUrl} size="sm" status={memberIsOnline(onlineMemberIds, member.id) ? "online" : "offline"} />
+          <Avatar name={member.name} url={member.avatarUrl} size="sm" />
           <span><strong>{member.name}</strong><small>{member.jobRoles[0]?.name || member.jobTitle || "Membro"}</small></span>
           <b>{memberIsOnline(onlineMemberIds, member.id) ? "Online" : "Conectando"}</b>
         </footer>

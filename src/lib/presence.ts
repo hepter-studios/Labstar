@@ -1,4 +1,5 @@
 import type { RealtimeChannel } from "@supabase/supabase-js";
+import { useEffect, useState } from "react";
 import { supabaseClient } from "./supabase";
 
 export type PresenceSubscription = {
@@ -8,8 +9,19 @@ export type PresenceSubscription = {
 
 type PresencePayload = {
   memberId: string;
-  activeAt: string;
+  connectedAt: string;
 };
+
+type PresenceListener = {
+  onChange: (onlineMemberIds: ReadonlySet<string>) => void;
+  onError?: (message: string) => void;
+};
+
+let sharedChannel: RealtimeChannel | null = null;
+let sharedMemberId = "";
+let sharedSnapshot: ReadonlySet<string> = new Set();
+let listenerSequence = 0;
+const listeners = new Map<number, PresenceListener>();
 
 function requireClient() {
   if (!supabaseClient) throw new Error("supabase_not_configured");
@@ -28,84 +40,114 @@ function readOnlineMembers(channel: RealtimeChannel) {
   return online;
 }
 
+function notifySnapshot() {
+  for (const listener of listeners.values()) listener.onChange(sharedSnapshot);
+}
+
+function notifyError(message: string) {
+  for (const listener of listeners.values()) listener.onError?.(message);
+}
+
+function closeSharedChannel() {
+  const channel = sharedChannel;
+  sharedChannel = null;
+  sharedMemberId = "";
+  sharedSnapshot = new Set();
+  if (!channel || !supabaseClient) return;
+  void channel.untrack().catch(() => undefined);
+  void supabaseClient.removeChannel(channel);
+}
+
+function ensureSharedChannel(memberId: string) {
+  if (sharedChannel && sharedMemberId === memberId) return sharedChannel;
+  closeSharedChannel();
+
+  const client = requireClient();
+  const channel = client.channel("labstar-presence-v3", {
+    config: { presence: { key: memberId } },
+  });
+  sharedChannel = channel;
+  sharedMemberId = memberId;
+
+  const publish = () => {
+    if (sharedChannel !== channel) return;
+    sharedSnapshot = readOnlineMembers(channel);
+    notifySnapshot();
+  };
+
+  channel
+    .on("presence", { event: "sync" }, publish)
+    .on("presence", { event: "join" }, publish)
+    .on("presence", { event: "leave" }, publish)
+    .subscribe((status) => {
+      if (sharedChannel !== channel) return;
+      if (status === "SUBSCRIBED") {
+        void channel.track({
+          memberId,
+          connectedAt: new Date().toISOString(),
+        } satisfies PresencePayload).then((result) => {
+          if (result !== "ok") notifyError("Não foi possível atualizar a presença agora.");
+          publish();
+        });
+      } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+        sharedSnapshot = new Set();
+        notifySnapshot();
+        notifyError("A presença em tempo real foi interrompida.");
+      }
+    });
+
+  return channel;
+}
+
 export function subscribeToMemberPresence(
   memberId: string,
   onChange: (onlineMemberIds: ReadonlySet<string>) => void,
   onError?: (message: string) => void,
 ): PresenceSubscription {
-  const client = requireClient();
-  const channel = client.channel("labstar-presence-v2", {
-    config: {
-      presence: { key: memberId },
-    },
-  });
+  if (!memberId) throw new Error("member_id_required");
+  const id = ++listenerSequence;
+  listeners.set(id, { onChange, onError });
+  const channel = ensureSharedChannel(memberId);
+  onChange(sharedSnapshot);
 
   let closed = false;
-  let heartbeat = 0;
-  let tracked = false;
-
-  const publishSnapshot = () => {
-    if (closed) return;
-    const online = readOnlineMembers(channel);
-    if (tracked && document.visibilityState === "visible") online.add(memberId);
-    onChange(online);
-  };
-
-  const track = async () => {
-    if (closed || document.visibilityState !== "visible") return;
-    const result = await channel.track({
-      memberId,
-      activeAt: new Date().toISOString(),
-    } satisfies PresencePayload);
-    tracked = result === "ok";
-    if (!tracked) onError?.("Não foi possível atualizar a presença agora.");
-    publishSnapshot();
-  };
-
-  const untrack = async () => {
-    if (closed || !tracked) return;
-    tracked = false;
-    await channel.untrack().catch(() => undefined);
-    publishSnapshot();
-  };
-
-  channel
-    .on("presence", { event: "sync" }, publishSnapshot)
-    .on("presence", { event: "join" }, publishSnapshot)
-    .on("presence", { event: "leave" }, publishSnapshot)
-    .subscribe((status) => {
-      if (status === "SUBSCRIBED") {
-        void track();
-        heartbeat = window.setInterval(() => void track(), 25_000);
-      } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
-        tracked = false;
-        publishSnapshot();
-        onError?.("A presença em tempo real foi interrompida.");
-      }
-    });
-
-  const handleVisibility = () => {
-    if (document.visibilityState === "visible") void track();
-    else void untrack();
-  };
-  const handlePageHide = () => {
-    void untrack();
-  };
-
-  document.addEventListener("visibilitychange", handleVisibility);
-  window.addEventListener("pagehide", handlePageHide);
-
   return {
     channel,
     close: () => {
       if (closed) return;
       closed = true;
-      tracked = false;
-      window.clearInterval(heartbeat);
-      document.removeEventListener("visibilitychange", handleVisibility);
-      window.removeEventListener("pagehide", handlePageHide);
-      void channel.untrack();
-      void client.removeChannel(channel);
+      listeners.delete(id);
+      if (!listeners.size) closeSharedChannel();
     },
   };
+}
+
+export function useMemberPresence(memberId: string, onError?: (message: string) => void) {
+  const [onlineMemberIds, setOnlineMemberIds] = useState<ReadonlySet<string>>(new Set());
+
+  useEffect(() => {
+    if (!memberId) {
+      setOnlineMemberIds(new Set());
+      return undefined;
+    }
+    try {
+      const subscription = subscribeToMemberPresence(memberId, (online) => setOnlineMemberIds(new Set(online)), onError);
+      return subscription.close;
+    } catch {
+      setOnlineMemberIds(new Set());
+      onError?.("A presença em tempo real não está disponível.");
+      return undefined;
+    }
+  }, [memberId, onError]);
+
+  return onlineMemberIds;
+}
+
+export function memberPresenceStatus(
+  onlineMemberIds: ReadonlySet<string>,
+  currentMemberId: string,
+  targetMemberId: string,
+): "online" | "offline" | undefined {
+  if (!targetMemberId || targetMemberId === currentMemberId) return undefined;
+  return onlineMemberIds.has(targetMemberId) ? "online" : "offline";
 }

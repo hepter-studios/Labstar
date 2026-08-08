@@ -312,11 +312,23 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .member-actions button { height: 34px; display: flex; align-items: center; justify-content: center; gap: 6px; border-radius: 8px; cursor: pointer; font-size: 8px; font-weight: 700; }
 .approve-member { border: 1px solid rgba(97,190,163,.17); color: #81c7b3; background: rgba(75,156,134,.07); }
 .suspend-member { border: 1px solid rgba(138,83,93,.14); color: #8e636a; background: rgba(112,54,64,.055); }
+.remove-member { border: 1px solid rgba(211,91,105,.2); color: #cf7c87; background: rgba(143,50,62,.09); }
 .team-message { margin: 10px 0 0; text-align: center; color: #626975; font-size: 7px; }
 .member-empty { min-height: 360px; display: grid; place-content: center; justify-items: center; color: #454c57; text-align: center; }
 .member-empty p { max-width: 150px; font-size: 8px; line-height: 1.5; }
 .modal-backdrop { position: fixed; z-index: 100; inset: 0; display: grid; place-items: center; padding: 20px; background: rgba(0,0,0,.72); backdrop-filter: blur(8px); }
 .invite-modal { width: min(420px,100%); padding: 17px; display: grid; gap: 12px; border: 1px solid var(--line-strong); border-radius: 14px; background: #090b10; box-shadow: 0 30px 90px #000e; }
+.removal-modal { width: min(460px,100%); }
+.removal-modal > p { margin: 0; color: #7b838f; font-size: 10px; line-height: 1.6; }
+.removal-identity { min-width: 0; padding: 10px; display: flex; align-items: center; gap: 9px; border: 1px solid var(--line); border-radius: 10px; background: rgba(255,255,255,.018); }
+.removal-identity > span { min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.removal-identity strong,.removal-identity small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.removal-identity strong { font-size: 10px; }
+.removal-identity small { color: #646d7a; font-size: 9px; }
+.removal-actions { display: flex; justify-content: flex-end; gap: 7px; }
+.removal-actions button { min-height: 36px; padding: 0 12px; display: flex; align-items: center; justify-content: center; gap: 6px; border: 1px solid var(--line); border-radius: 8px; color: #929ba8; background: transparent; font-size: 9px; cursor: pointer; }
+.removal-actions button.confirm { border-color: rgba(211,91,105,.24); color: #e0969f; background: rgba(143,50,62,.11); }
+.removal-actions button:disabled { opacity: .55; cursor: wait; }
 .modal-head { display: grid; grid-template-columns: 35px 1fr 26px; align-items: center; gap: 9px; padding-bottom: 13px; border-bottom: 1px solid var(--line); }
 .modal-head > span { width: 35px; height: 35px; display: grid; place-items: center; border: 1px solid rgba(139,174,255,.15); border-radius: 9px; color: #9ab2ec; background: rgba(139,174,255,.05); }
 .modal-head > div { display: flex; flex-direction: column; gap: 3px; }

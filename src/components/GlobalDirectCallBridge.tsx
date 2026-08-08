@@ -23,7 +23,7 @@ import {
   unsubscribeDirect,
   type DirectThreadSummary,
 } from "../lib/directMessages";
-import { subscribeToMemberPresence } from "../lib/presence";
+import { useMemberPresence } from "../lib/presence";
 import { listMembers, type Member } from "../lib/supabase";
 import { PrivateCallOverlay } from "./PrivateCallOverlay";
 
@@ -45,7 +45,7 @@ export function GlobalDirectCallBridge() {
   const [contacts, setContacts] = useState<Member[]>([]);
   const [threads, setThreads] = useState<DirectThreadSummary[]>([]);
   const [incomingCall, setIncomingCall] = useState<IncomingCall | null>(null);
-  const [onlineMemberIds, setOnlineMemberIds] = useState<ReadonlySet<string>>(new Set());
+  const onlineMemberIds = useMemberPresence(member?.id ?? "");
   const [permission, setPermission] = useState<CommunicationNotificationPermission>(() => getCommunicationNotificationPermission());
   const [toast, setToast] = useState<RuntimeToast | null>(null);
   const incomingRef = useRef<IncomingCall | null>(null);
@@ -108,15 +108,12 @@ export function GlobalDirectCallBridge() {
     let disposed = false;
     let incomingSubscription: ReturnType<typeof subscribeIncomingDirectCalls> = null;
     let messagesSubscription: ReturnType<typeof subscribeToAllDirectMessages> | null = null;
-    let closePresence: (() => void) | null = null;
 
     const start = async () => {
       unsubscribeDirectCall(incomingSubscription);
       incomingSubscription = null;
       unsubscribeDirect(messagesSubscription);
       messagesSubscription = null;
-      closePresence?.();
-      closePresence = null;
 
       try {
         const identity = await getCurrentAccessIdentity();
@@ -146,14 +143,6 @@ export function GlobalDirectCallBridge() {
         setMember(currentMember);
         setContacts(availableContacts);
         setThreads(availableThreads);
-
-        const presence = subscribeToMemberPresence(
-          currentMember.id,
-          (online) => {
-            if (!disposed) setOnlineMemberIds(new Set(online));
-          },
-        );
-        closePresence = presence.close;
 
         incomingSubscription = subscribeIncomingDirectCalls(
           currentMember.id,
@@ -191,7 +180,6 @@ export function GlobalDirectCallBridge() {
       unsubscribeAccess();
       unsubscribeDirectCall(incomingSubscription);
       unsubscribeDirect(messagesSubscription);
-      closePresence?.();
       stopIncomingCallRingtone();
     };
   }, [receiveCall]);

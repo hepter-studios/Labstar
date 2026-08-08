@@ -823,7 +823,7 @@ export function MeetingRoomV2({ channel, member, members, soundEnabled }: Props)
               })}
               {!remoteStreams.size && !cameraOn && !screenSharing && (
                 <div className="meeting-v2-stage-empty">
-                  <Avatar name={member.name} url={member.avatarUrl} size="xl" status="online" />
+                  <Avatar name={member.name} url={member.avatarUrl} size="xl" />
                   <strong>Você está na sala</strong>
                   <span>A câmera está desligada. Sua voz continua conectada.</span>
                 </div>
@@ -840,7 +840,7 @@ export function MeetingRoomV2({ channel, member, members, soundEnabled }: Props)
                     const state = presence.get(id) ?? (id === member.id ? localPresence.current : null);
                     return (
                       <article key={id}>
-                        <Avatar name={person.name} url={person.avatarUrl} size="sm" status="online" />
+                        <Avatar name={person.name} url={person.avatarUrl} size="sm" status={id === member.id ? undefined : "online"} />
                         <span><strong>{person.name}{id === member.id ? " (você)" : ""}</strong><small>{id === hostId ? "Anfitrião" : state?.screenSharing ? "Compartilhando tela" : state?.handRaised ? "Mão levantada" : "Na reunião"}</small></span>
                         <div className="meeting-v2-participant-state">
                           {state?.handRaised && <Hand size={13} />}

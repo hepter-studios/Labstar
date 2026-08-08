@@ -52,6 +52,7 @@ import {
   listMembers,
   loadWorkspace as loadRemoteWorkspace,
   removeOwnAvatar,
+  removeTeamMember,
   requestMagicLink,
   saveWorkspace,
   setMemberJobRoles,
@@ -62,6 +63,7 @@ import {
   type Member,
   type JobRole,
 } from "./lib/supabase";
+import { memberPresenceStatus, useMemberPresence } from "./lib/presence";
 import { Avatar } from "./components/Avatar";
 import { CollaborationHub } from "./components/CollaborationHub";
 import { NotificationsButton } from "./components/NotificationsPanel";
@@ -499,7 +501,7 @@ export default function Home() {
           }} />
           <button className="icon-button" data-tooltip={sound ? "Desativar som" : "Ativar som"} onClick={() => setSound((value) => !value)} aria-label="Ativar ou desativar som">{sound ? <Volume2 size={15} /> : <VolumeX size={15} />}</button>
           <button className="create-button" onClick={() => addNode(null)}><Plus size={14} /> Criar núcleo</button>
-          <button className="avatar avatar-button" onClick={() => setQuickPanel(quickPanel === "profile" ? null : "profile")} aria-label="Perfil"><Avatar name={session.member.name} url={session.member.avatarUrl} size="sm" status="online" /></button>
+          <button className="avatar avatar-button" onClick={() => setQuickPanel(quickPanel === "profile" ? null : "profile")} aria-label="Perfil"><Avatar name={session.member.name} url={session.member.avatarUrl} size="sm" /></button>
         </div>
       </header>
 
@@ -798,10 +800,13 @@ function TeamDirectory({ nodes, currentMember, onMemberUpdated }: { nodes: Struc
   const [loading, setLoading] = useState(true);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [inviteOpen, setInviteOpen] = useState(false);
+  const [removalTarget, setRemovalTarget] = useState<Member | null>(null);
+  const [removing, setRemoving] = useState(false);
   const [message, setMessage] = useState("");
   const [memberSearch, setMemberSearch] = useState("");
   const [teamTab, setTeamTab] = useState<"members" | "roles">("members");
   const [invite, setInvite] = useState({ email: "", name: "", jobTitle: "", area: "", role: "member" as "admin" | "manager" | "member" | "viewer" });
+  const onlineMemberIds = useMemberPresence(currentMember.id);
 
   async function loadMembers() {
     setLoading(true);
@@ -848,6 +853,36 @@ function TeamDirectory({ nodes, currentMember, onMemberUpdated }: { nodes: Struc
       setMessage((error as { code?: string }).code === "23505"
         ? "Este e-mail já pertence à equipe"
         : "Não foi possível adicionar");
+    }
+  }
+
+  async function confirmMemberRemoval() {
+    if (!removalTarget || removing) return;
+    const target = removalTarget;
+    setRemoving(true);
+    setMessage("Removendo o acesso…");
+    try {
+      const result = await removeTeamMember(target.id);
+      if (result.outcome === "removed") {
+        setMembers((current) => current.filter((member) => member.id !== target.id));
+        setSelectedId((current) => current === target.id
+          ? members.find((member) => member.id !== target.id)?.id ?? null
+          : current);
+        setMessage(`${target.name} foi removido do Labstar. O histórico existente foi preservado pelo banco.`);
+      } else if (result.member) {
+        setMembers((current) => current.map((member) => member.id === target.id ? result.member! : member));
+        setMessage(`${target.name} foi desativado. O cadastro foi mantido para preservar mensagens e vínculos.`);
+      }
+      setRemovalTarget(null);
+    } catch (error) {
+      const code = (error as { code?: string }).code;
+      setMessage(code === "self_removal_forbidden"
+        ? "Você não pode remover sua própria conta."
+        : code === "owner_removal_forbidden"
+          ? "O proprietário nunca pode ser removido."
+          : "Não foi possível remover este acesso. Nada foi alterado.");
+    } finally {
+      setRemoving(false);
     }
   }
 
@@ -920,7 +955,7 @@ function TeamDirectory({ nodes, currentMember, onMemberUpdated }: { nodes: Struc
             <div className="member-list">
               {visibleMembers.map((member) => (
                 <button key={member.id} className={selectedId === member.id ? "active" : ""} onClick={() => setSelectedId(member.id)}>
-                  <Avatar name={member.name} url={member.avatarUrl} size="sm" />
+                  <Avatar name={member.name} url={member.avatarUrl} size="sm" status={memberPresenceStatus(onlineMemberIds, currentMember.id, member.id)} />
                   <span className="member-main"><b>{member.name}</b><small>{member.email}</small></span>
                   <span className="member-area">{member.area || "Área não definida"}</span>
                   <span className={`member-state ${member.status}`}><i />{member.status === "active" ? "Ativo" : member.status === "pending" ? "Pendente" : "Suspenso"}</span>
@@ -936,8 +971,8 @@ function TeamDirectory({ nodes, currentMember, onMemberUpdated }: { nodes: Struc
           {selected ? (
             <>
               <div className="member-profile">
-                <Avatar name={selected.name} url={selected.avatarUrl} size="lg" />
-                <div><strong>{selected.name}</strong><small>{selected.email}</small></div>
+                <Avatar name={selected.name} url={selected.avatarUrl} size="lg" status={memberPresenceStatus(onlineMemberIds, currentMember.id, selected.id)} />
+                <div><strong>{selected.name}{selected.id === currentMember.id ? " (você)" : ""}</strong><small>{selected.email}</small></div>
                 {selected.jobRoles[0] ? <RoleBadge role={selected.jobRoles[0]} compact /> : <span className={`role-badge ${selected.role}`}>{roleLabel(selected.role)}</span>}
               </div>
 
@@ -949,7 +984,7 @@ function TeamDirectory({ nodes, currentMember, onMemberUpdated }: { nodes: Struc
                 <label className="full">Nome completo<input value={selected.name} disabled={!canManage} onChange={(event) => setMembers((current) => current.map((member) => member.id === selected.id ? { ...member, name: event.target.value } : member))} onBlur={() => patchMember(selected.id, { name: selected.name })} placeholder="Nome profissional do membro" /></label>
                 <label>Cargo<input value={selected.jobTitle} disabled={!canManage} onChange={(event) => setMembers((current) => current.map((member) => member.id === selected.id ? { ...member, jobTitle: event.target.value } : member))} onBlur={() => patchMember(selected.id, { jobTitle: selected.jobTitle })} placeholder="Ex.: Desenvolvedor de jogos" /></label>
                 <label>Área<input value={selected.area} disabled={!canManage} onChange={(event) => setMembers((current) => current.map((member) => member.id === selected.id ? { ...member, area: event.target.value } : member))} onBlur={() => patchMember(selected.id, { area: selected.area })} placeholder="Ex.: Labstar Games" /></label>
-                <label>Nível de acesso<select value={selected.role} disabled={!canManage || selected.role === "owner"} onChange={(event) => patchMember(selected.id, { role: event.target.value as Member["role"] })}>
+                <label>Nível de acesso<select value={selected.role} disabled={!canManage || selected.role === "owner" || selected.id === currentMember.id} onChange={(event) => patchMember(selected.id, { role: event.target.value as Member["role"] })}>
                   {selected.role === "owner" && <option value="owner">Fundador</option>}
                   <option value="admin">Administrador</option><option value="manager">Gestor</option><option value="member">Membro</option><option value="viewer">Convidado somente leitura</option>
                 </select></label>
@@ -978,10 +1013,11 @@ function TeamDirectory({ nodes, currentMember, onMemberUpdated }: { nodes: Struc
                 </div>
               </div>
 
-              {canManage && selected.role !== "owner" && (
+              {canManage && selected.role !== "owner" && selected.id !== currentMember.id && (
                 <div className="member-actions">
                   {selected.status !== "active" && <button className="approve-member" onClick={() => patchMember(selected.id, { status: "active" })}><UserCheck size={14} /> Aprovar acesso</button>}
                   {selected.status === "active" && <button className="suspend-member" onClick={() => patchMember(selected.id, { status: "suspended" })}><LockKeyhole size={14} /> Suspender acesso</button>}
+                  <button className="remove-member" onClick={() => setRemovalTarget(selected)}><Trash2 size={14} /> Remover do Labstar</button>
                 </div>
               )}
               {message && <p className="team-message">{message}</p>}
@@ -1004,6 +1040,17 @@ function TeamDirectory({ nodes, currentMember, onMemberUpdated }: { nodes: Struc
             <div className="invite-note"><ShieldCheck size={14} /><span>Funciona com Google Workspace, Gmail, Outlook ou qualquer domínio. O acesso depende deste convite, não do provedor.</span></div>
             <button className="invite-submit" type="submit"><ShieldCheck size={14} /> Autorizar acesso</button>
           </form>
+        </div>
+      )}
+
+      {removalTarget && (
+        <div className="modal-backdrop" onMouseDown={() => !removing && setRemovalTarget(null)}>
+          <section className="invite-modal removal-modal" role="alertdialog" aria-modal="true" aria-labelledby="removal-title" onMouseDown={(event) => event.stopPropagation()}>
+            <div className="modal-head"><span><Trash2 size={17} /></span><div><strong id="removal-title">Remover acesso de {removalTarget.name}?</strong><small>Esta ação bloqueia a entrada desta pessoa no Labstar.</small></div><button type="button" disabled={removing} onClick={() => setRemovalTarget(null)} aria-label="Fechar"><X size={16} /></button></div>
+            <p>O proprietário nunca pode ser removido e você não pode excluir a própria conta. Se houver mensagens ou outros vínculos, o membro será desativado para preservar o histórico.</p>
+            <div className="removal-identity"><Avatar name={removalTarget.name} url={removalTarget.avatarUrl} size="sm" /><span><strong>{removalTarget.name}</strong><small>{removalTarget.email}</small></span></div>
+            <div className="removal-actions"><button type="button" disabled={removing} onClick={() => setRemovalTarget(null)}>Cancelar</button><button className="confirm" type="button" disabled={removing} onClick={() => void confirmMemberRemoval()}>{removing ? <LoaderCircle className="spin" size={14} /> : <Trash2 size={14} />} Confirmar remoção</button></div>
+          </section>
         </div>
       )}
     </section>
@@ -1089,7 +1136,7 @@ function QuickPanel({
       </div>
       {type === "profile" && <>
         <div className="profile-card">
-          <Avatar name={session.member.name} url={session.member.avatarUrl} size="lg" status="online" />
+          <Avatar name={session.member.name} url={session.member.avatarUrl} size="lg" />
           <div><b>{session.member.name}</b><small>{session.member.email}</small></div>
         </div>
         <div className="profile-photo-actions">

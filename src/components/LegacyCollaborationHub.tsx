@@ -80,6 +80,7 @@ import {
   type SocialPost,
   type IntegrationRule,
 } from "../lib/supabase";
+import { memberPresenceStatus, useMemberPresence } from "../lib/presence";
 import { Avatar } from "./Avatar";
 
 type CollaborationHubProps = {
@@ -146,6 +147,7 @@ export function CollaborationHub({ member, initialChannelId, soundEnabled = true
   const [createModal, setCreateModal] = useState<CreateModal>(null);
   const [integrationsOpen, setIntegrationsOpen] = useState(false);
   const [showMembers, setShowMembers] = useState(true);
+  const onlineMemberIds = useMemberPresence(member.id);
 
   async function refresh() {
     setLoading(true);
@@ -278,9 +280,9 @@ export function CollaborationHub({ member, initialChannelId, soundEnabled = true
         </div>
 
         <div className="channel-user">
-          <Avatar name={member.name} url={member.avatarUrl} size="sm" status="online" />
+          <Avatar name={member.name} url={member.avatarUrl} size="sm" />
           <div><strong>{member.name}</strong><small>{member.jobRoles[0]?.name || member.jobTitle || "Membro"}</small></div>
-          <span className="online-label">Online</span>
+          <span className="online-label">Você</span>
         </div>
       </aside>
 
@@ -314,7 +316,7 @@ export function CollaborationHub({ member, initialChannelId, soundEnabled = true
           <div className="member-group-label">DISPONÍVEIS — {visibleMembers.length}</div>
           {visibleMembers.map((item) => (
             <div className="channel-member-row" key={item.id}>
-              <Avatar name={item.name} url={item.avatarUrl} size="sm" status="online" />
+              <Avatar name={item.name} url={item.avatarUrl} size="sm" status={memberPresenceStatus(onlineMemberIds, member.id, item.id)} />
               <span><b>{item.name}</b><small>{item.jobRoles[0]?.name || item.jobTitle || "Membro"}</small></span>
               {item.jobRoles[0] && <i className="member-role-star" style={{ color: item.jobRoles[0].color }}><Star size={11} fill="currentColor" /></i>}
             </div>
@@ -1210,7 +1212,7 @@ function VoiceRoom({
         <div>
           {participants.map((id) => {
             const person = members.find((item) => item.id === id) ?? (id === member.id ? member : null);
-            return person && <article key={id}><Avatar name={person.name} url={person.avatarUrl} size="lg" status="online" /><strong>{person.name}{id === member.id ? " (você)" : ""}</strong><small>{person.jobRoles[0]?.name || person.jobTitle || "Membro"}</small>{id === member.id && muted ? <MicOff size={14} /> : <Mic size={14} />}</article>;
+            return person && <article key={id}><Avatar name={person.name} url={person.avatarUrl} size="lg" status={id === member.id ? undefined : "online"} /><strong>{person.name}{id === member.id ? " (você)" : ""}</strong><small>{person.jobRoles[0]?.name || person.jobTitle || "Membro"}</small>{id === member.id && muted ? <MicOff size={14} /> : <Mic size={14} />}</article>;
           })}
           {!participants.length && <p>Ninguém entrou ainda.</p>}
         </div>

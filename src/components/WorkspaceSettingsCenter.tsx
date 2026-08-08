@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { updateChannelPermissions } from "../lib/channel-admin";
+import { memberPresenceStatus, useMemberPresence } from "../lib/presence";
 import type {
   ChannelCategory,
   CollaborationSpace,
@@ -80,6 +81,7 @@ export function WorkspaceSettingsCenter({
   const [tab, setTab] = useState<Tab>("general");
   const [memberSearch, setMemberSearch] = useState("");
   const [channelSearch, setChannelSearch] = useState("");
+  const onlineMemberIds = useMemberPresence(currentMember.id);
 
   useEffect(() => {
     const close = (event: KeyboardEvent) => event.key === "Escape" && onClose();
@@ -162,7 +164,7 @@ export function WorkspaceSettingsCenter({
                 <header><div><strong>Membros deste ecossistema</strong><p>Consulte quem está ativo, cargo e área. A administração completa continua no diretório global.</p></div><button type="button" onClick={() => { onOpenTeam(); onClose(); }}><Users size={14} /> Gerenciar equipe</button></header>
                 <label className="workspace-admin-search"><Search size={14} /><input value={memberSearch} onChange={(event) => setMemberSearch(event.target.value)} placeholder="Buscar nome, e-mail, cargo ou área" /></label>
                 <div className="workspace-member-admin-list">
-                  {visibleMembers.map((member) => <article key={member.id}><Avatar name={member.name} url={member.avatarUrl} size="sm" status="online" /><span><strong>{member.name}</strong><small>{member.email}</small></span><em>{member.jobRoles[0]?.name || member.jobTitle || member.role}</em><i>{member.area || "Sem área"}</i></article>)}
+                  {visibleMembers.map((member) => <article key={member.id}><Avatar name={member.name} url={member.avatarUrl} size="sm" status={memberPresenceStatus(onlineMemberIds, currentMember.id, member.id)} /><span><strong>{member.name}{member.id === currentMember.id ? " (você)" : ""}</strong><small>{member.email}</small></span><em>{member.jobRoles[0]?.name || member.jobTitle || member.role}</em><i>{member.area || "Sem área"}</i></article>)}
                   {!visibleMembers.length && <WorkspaceEmpty icon={<Users size={22} />} title="Nenhum membro encontrado" text="Ajuste a busca ou gerencie os membros no diretório global." />}
                 </div>
               </section>

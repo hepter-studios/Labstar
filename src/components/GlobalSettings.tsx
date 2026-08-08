@@ -277,7 +277,7 @@ export function GlobalSettings({
             <div className="settings-sections">
               <SettingsSection title="Perfil" description="Estas informações representam você em todo o Labstar.">
                 <div className="settings-profile-row">
-                  <Avatar name={member.name} url={member.avatarUrl} size="xl" status="online" />
+                  <Avatar name={member.name} url={member.avatarUrl} size="xl" />
                   <div><strong>{member.name}</strong><span>{member.email}</span><small>{member.jobTitle || member.role} · {member.area || "Área não definida"}</small></div>
                   <div className="settings-profile-actions">
                     <input ref={avatarInput} hidden type="file" accept="image/*" onChange={(event) => void uploadAvatar(event.target.files?.[0])} />
