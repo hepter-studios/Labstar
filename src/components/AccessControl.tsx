@@ -15,7 +15,7 @@ import {
   UserPlus,
   X,
 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import {
   accessErrorMessage,
@@ -80,7 +80,7 @@ async function copyText(value: string) {
   element.remove();
 }
 
-export function AccessControl() {
+export function AccessControl({ children }: { children: ReactNode }) {
   const [stage, setStage] = useState<AccessStage>("loading");
   const [identity, setIdentity] = useState<AccessIdentity | null>(null);
   const [inspection, setInspection] = useState<InviteInspection | null>(null);
@@ -100,11 +100,6 @@ export function AccessControl() {
         return;
       }
 
-      if (result.acceptedInvite) {
-        window.location.replace("/");
-        return;
-      }
-
       setIdentity(result);
       setStage(result.authorization);
     } catch (cause) {
@@ -115,16 +110,28 @@ export function AccessControl() {
 
   useEffect(() => {
     void refresh();
-    const unsubscribe = subscribeToAccessChanges(() => void refresh());
+    const unsubscribe = subscribeToAccessChanges((event) => {
+      if (event === "INITIAL_SESSION" || event === "TOKEN_REFRESHED") return;
+      void refresh();
+    });
     return unsubscribe;
   }, [refresh]);
 
   if (stage === "active" && identity?.member) {
     const canInvite = identity.member.role === "owner" || identity.member.role === "admin";
-    return canInvite ? <InvitePortal /> : null;
+    return <>{children}{canInvite && <InvitePortal />}</>;
   }
 
-  if (stage === "loading") return null;
+  if (stage === "loading") {
+    return (
+      <AccessFrame compact>
+        <LoaderCircle className="spin" size={22} />
+        <small>VERIFICANDO SESSÃO</small>
+        <h1>Abrindo seu ambiente seguro.</h1>
+        <p>Confirmando identidade e autorização da equipe…</p>
+      </AccessFrame>
+    );
+  }
   if (stage === "anonymous") return <SignInScreen inspection={inspection} />;
   if (stage === "pending" && identity) {
     return (
@@ -170,7 +177,7 @@ export function AccessControl() {
       <div className="access-v2-actions">
         <button type="button" onClick={() => void refresh()}><RotateCcw size={15} /> Tentar novamente</button>
         <button className="access-v2-secondary" type="button" onClick={() => void secureSignOut()}><LogOut size={15} /> Entrar com outra conta</button>
-        {getPendingInviteToken() && <button className="access-v2-secondary" type="button" onClick={() => { clearPendingInviteToken(); window.location.replace("/"); }}>Remover convite</button>}
+        {getPendingInviteToken() && <button className="access-v2-secondary" type="button" onClick={() => { clearPendingInviteToken(); void refresh(); }}>Remover convite</button>}
       </div>
     </AccessFrame>
   );

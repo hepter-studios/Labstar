@@ -1,5 +1,7 @@
-import { createClient, type RealtimeChannel, type SupabaseClient, type User } from "@supabase/supabase-js";
+import { type RealtimeChannel, type SupabaseClient, type User } from "@supabase/supabase-js";
+import { secureSignOut } from "./access";
 import { BackendApiError, getBackendIdentity, type BackendMember } from "./backend";
+import { authClient } from "./auth-client";
 
 export type MemberRole = "owner" | "admin" | "manager" | "member" | "viewer";
 export type MemberStatus = "pending" | "active" | "suspended";
@@ -145,23 +147,8 @@ export type IntegrationRule = {
   renewalDate: string;
 };
 
-const supabaseUrl = (import.meta.env.VITE_SUPABASE_URL ?? "").replace(/\/rest\/v1\/?$/, "");
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY ?? "";
-
-export const isSupabaseConfigured =
-  supabaseUrl.startsWith("https://") &&
-  supabaseAnonKey.length > 40 &&
-  !supabaseAnonKey.includes("cole_a_chave");
-
-export const supabaseClient: SupabaseClient | null = isSupabaseConfigured
-  ? createClient(supabaseUrl, supabaseAnonKey, {
-      auth: {
-        persistSession: true,
-        autoRefreshToken: true,
-        detectSessionInUrl: true,
-      },
-    })
-  : null;
+export const isSupabaseConfigured = Boolean(authClient);
+export const supabaseClient: SupabaseClient | null = authClient;
 
 function requireClient() {
   if (!supabaseClient) throw new Error("supabase_not_configured");
@@ -283,9 +270,7 @@ export async function requestMagicLink(email: string) {
 }
 
 export async function signOut() {
-  const { error } = await requireClient().auth.signOut();
-  if (error) throw error;
-  window.location.assign("/");
+  await secureSignOut();
 }
 
 export async function getCurrentIdentity(): Promise<{ user: User; member: Member | null } | null> {

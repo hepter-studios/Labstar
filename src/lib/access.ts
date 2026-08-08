@@ -53,6 +53,7 @@ type AccessError = Error & {
 };
 
 const INVITE_STORAGE_KEY = "labstar-pending-invite";
+const ACCESS_STATE_CHANGED_EVENT = "labstar:access-state-changed";
 
 function normalizeInviteToken(value: string | null | undefined) {
   const token = value?.trim().toLowerCase() ?? "";
@@ -252,7 +253,12 @@ export async function createInviteLink(input: {
 
 export function subscribeToAccessChanges(callback: (event: AuthChangeEvent, session: Session | null) => void) {
   const { data } = requireAuthClient().auth.onAuthStateChange(callback);
-  return () => data.subscription.unsubscribe();
+  const handleLocalChange = () => callback("SIGNED_OUT", null);
+  window.addEventListener(ACCESS_STATE_CHANGED_EVENT, handleLocalChange);
+  return () => {
+    data.subscription.unsubscribe();
+    window.removeEventListener(ACCESS_STATE_CHANGED_EVENT, handleLocalChange);
+  };
 }
 
 export function subscribeToNativeAccessChanges(callback: () => void) {
@@ -278,7 +284,11 @@ export async function secureSignOut() {
   } finally {
     clearPersistedAuthSession();
     if (pendingInvite) window.sessionStorage.setItem(INVITE_STORAGE_KEY, pendingInvite);
-    window.location.replace("/");
+    const url = new URL(window.location.href);
+    url.search = "";
+    url.hash = "";
+    window.history.replaceState({}, "", url.pathname || "/");
+    window.dispatchEvent(new Event(ACCESS_STATE_CHANGED_EVENT));
   }
 }
 

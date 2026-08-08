@@ -9,7 +9,6 @@ import {
 import { createRoot } from "react-dom/client";
 import App from "./App";
 import { AccessControl } from "./components/AccessControl";
-import { AppSessionRecovery } from "./components/AppSessionRecovery";
 import { CommandPalette } from "./components/CommandPalette";
 import { DashboardWorkSurface } from "./components/DashboardWorkSurface";
 import { GlobalDirectCallBridge } from "./components/GlobalDirectCallBridge";
@@ -145,8 +144,6 @@ function RootSurfaces() {
       <OptionalSurface name="ponte de ações legadas"><LegacyActionBridge /></OptionalSurface>
       <OptionalSurface name="confiabilidade de runtime"><RuntimeReliability /></OptionalSurface>
       <OptionalSurface name="preferências de mídia"><MediaPreferenceBridge /></OptionalSurface>
-      <OptionalSurface name="recuperação de sessão"><AppSessionRecovery /></OptionalSurface>
-      {introFinished && <OptionalSurface name="controle de acesso"><AccessControl /></OptionalSurface>}
       {introFinished && <OptionalSurface name="configurações globais"><GlobalSettingsPortal /></OptionalSurface>}
       {introFinished && <OptionalSurface name="diagnóstico do sistema"><SystemDiagnosticsAddon /></OptionalSurface>}
       {introFinished && <OptionalSurface name="configurações do espaço"><WorkspaceSettingsPortal /></OptionalSurface>}
@@ -163,6 +160,19 @@ function RootSurfaces() {
   );
 }
 
+function ApplicationRoot() {
+  const previewMode = import.meta.env.DEV
+    && new URLSearchParams(window.location.search).has("preview");
+
+  if (previewMode) return <RootSurfaces />;
+
+  return (
+    <AccessControl>
+      <RootSurfaces />
+    </AccessControl>
+  );
+}
+
 function mountReact() {
   const rootElement = document.getElementById("root");
   if (!rootElement) {
@@ -174,7 +184,7 @@ function mountReact() {
     createRoot(rootElement).render(
       <StrictMode>
         <SurfaceBoundary name="raiz React" critical>
-          <RootSurfaces />
+          <ApplicationRoot />
         </SurfaceBoundary>
       </StrictMode>,
     );

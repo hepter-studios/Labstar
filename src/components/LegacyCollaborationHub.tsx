@@ -459,6 +459,35 @@ function IntegrationsCenter({ space, channels, onClose }: { space: Collaboration
   );
 }
 
+const CHAT_LOAD_TIMEOUT_MS = 10_000;
+
+function withChatLoadTimeout<T>(promise: Promise<T>): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = window.setTimeout(() => reject(new Error("chat_load_timeout")), CHAT_LOAD_TIMEOUT_MS);
+    promise.then(
+      (value) => {
+        window.clearTimeout(timer);
+        resolve(value);
+      },
+      (error) => {
+        window.clearTimeout(timer);
+        reject(error);
+      },
+    );
+  });
+}
+
+function scrollInside(container: HTMLElement | null, target: HTMLElement | null) {
+  if (!container || !target) return;
+  const containerRect = container.getBoundingClientRect();
+  const targetRect = target.getBoundingClientRect();
+  const top = container.scrollTop
+    + targetRect.top
+    - containerRect.top
+    - Math.max(0, (container.clientHeight - targetRect.height) / 2);
+  container.scrollTo({ top: Math.max(0, top), behavior: "smooth" });
+}
+
 function MessageRoom({ channel, space, member }: { channel: LabstarChannel; space: CollaborationSpace; member: Member }) {
   const [messages, setMessages] = useState<ChannelMessage[]>([]);
   const [loading, setLoading] = useState(true);
@@ -473,15 +502,22 @@ function MessageRoom({ channel, space, member }: { channel: LabstarChannel; spac
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; message: ChannelMessage } | null>(null);
   const [imagePreview, setImagePreview] = useState<{ url: string; name: string } | null>(null);
   const [brokenImages, setBrokenImages] = useState<Set<string>>(new Set());
-  const endRef = useRef<HTMLDivElement>(null);
+  const [loadError, setLoadError] = useState("");
+  const messageScrollRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const stickerRef = useRef<HTMLInputElement>(null);
 
   async function refreshMessages(scroll = false) {
     try {
-      const data = await listMessages(channel.id);
+      const data = await withChatLoadTimeout(listMessages(channel.id));
       setMessages(data);
-      if (scroll) requestAnimationFrame(() => endRef.current?.scrollIntoView({ behavior: "smooth" }));
+      setLoadError("");
+      if (scroll) requestAnimationFrame(() => {
+        const container = messageScrollRef.current;
+        container?.scrollTo({ top: container.scrollHeight, behavior: "smooth" });
+      });
+    } catch {
+      setLoadError("As mensagens demoraram demais para responder. Você pode continuar navegando e tentar novamente.");
     } finally {
       setLoading(false);
     }
@@ -495,6 +531,7 @@ function MessageRoom({ channel, space, member }: { channel: LabstarChannel; spac
     setEditing(null);
     setEmojiOpen(false);
     setContextMenu(null);
+    setLoadError("");
     void refreshMessages(true);
     const messageSubscription = subscribeToTable("channel_messages", `channel_id=eq.${channel.id}`, () => void refreshMessages());
     const attachmentSubscription = subscribeToTable("channel_message_attachments", "", () => void refreshMessages());
@@ -579,7 +616,7 @@ function MessageRoom({ channel, space, member }: { channel: LabstarChannel; spac
         <button className={pinnedOnly ? "active" : ""} onClick={() => setPinnedOnly((value) => !value)}><Pin size={13} /> {pinnedOnly ? "Mostrando fixadas" : "Fixadas"}</button>
         <span>{filtered.length} mensagens</span>
       </div>
-      <div className="message-scroll">
+      <div ref={messageScrollRef} className="message-scroll">
         <section className="channel-welcome">
           <span>{channel.type === "announcement" ? <Megaphone size={23} /> : channel.type === "rules" ? <ShieldCheck size={23} /> : <Hash size={23} />}</span>
           <h2>Este é o início de #{channel.name}</h2>
@@ -601,7 +638,7 @@ function MessageRoom({ channel, space, member }: { channel: LabstarChannel; spac
             >
               <Avatar name={message.author?.name ?? "Membro removido"} url={message.author?.avatarUrl} size="md" />
               <div className="message-body">
-                {reply && <button className="message-reply-preview" onClick={() => document.getElementById(`message-${reply.id}`)?.scrollIntoView({ behavior: "smooth" })}><Reply size={11} /> <b>{reply.author?.name}</b><span>{reply.body}</span></button>}
+                {reply && <button className="message-reply-preview" onClick={() => scrollInside(messageScrollRef.current, document.getElementById(`message-${reply.id}`))}><Reply size={11} /> <b>{reply.author?.name}</b><span>{reply.body}</span></button>}
                 <header id={`message-${message.id}`}>
                   <strong style={{ color: primaryRole?.color || undefined }}>{message.author?.name ?? "Membro removido"}</strong>
                   {primaryRole && <span className="role-chip" style={{ "--role-color": primaryRole.color } as React.CSSProperties}><Star size={10} fill="currentColor" />{primaryRole.name}</span>}
@@ -646,8 +683,8 @@ function MessageRoom({ channel, space, member }: { channel: LabstarChannel; spac
             </article>
           );
         })}
+        {loadError && <div className="message-empty">{loadError} <button type="button" onClick={() => { setLoading(true); void refreshMessages(); }}>Tentar novamente</button></div>}
         {!loading && !filtered.length && messageSearch && <div className="message-empty">Nenhuma mensagem corresponde à busca.</div>}
-        <div ref={endRef} />
       </div>
 
       {canWrite ? (

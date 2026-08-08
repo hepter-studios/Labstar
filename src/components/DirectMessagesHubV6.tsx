@@ -81,6 +81,34 @@ const dmEmojiSet = [
 ];
 
 const FAVORITES_KEY = "labstar-dm-favorites-v1";
+const DM_LOAD_TIMEOUT_MS = 10_000;
+
+function withDmLoadTimeout<T>(promise: Promise<T>): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = window.setTimeout(() => reject(new Error("dm_load_timeout")), DM_LOAD_TIMEOUT_MS);
+    promise.then(
+      (value) => {
+        window.clearTimeout(timer);
+        resolve(value);
+      },
+      (error) => {
+        window.clearTimeout(timer);
+        reject(error);
+      },
+    );
+  });
+}
+
+function scrollInside(container: HTMLElement | null, target: HTMLElement | null) {
+  if (!container || !target) return;
+  const containerRect = container.getBoundingClientRect();
+  const targetRect = target.getBoundingClientRect();
+  const top = container.scrollTop
+    + targetRect.top
+    - containerRect.top
+    - Math.max(0, (container.clientHeight - targetRect.height) / 2);
+  container.scrollTo({ top: Math.max(0, top), behavior: "smooth" });
+}
 
 type Props = {
   member: Member;
@@ -147,7 +175,7 @@ export function DirectMessagesHub({ member, onOpenWorkspace }: Props) {
 
   const refreshThreads = useCallback(async (silent = false) => {
     try {
-      setThreads(await listDirectThreads());
+      setThreads(await withDmLoadTimeout(listDirectThreads()));
       setDmAvailable(true);
     } catch {
       setDmAvailable(false);
@@ -159,9 +187,9 @@ export function DirectMessagesHub({ member, onOpenWorkspace }: Props) {
     let cancelled = false;
     void (async () => {
       const [teamResult, collaborationResult, notificationResult] = await Promise.allSettled([
-        listMembers(),
-        loadCollaboration(),
-        listNotifications(member.id),
+        withDmLoadTimeout(listMembers()),
+        withDmLoadTimeout(loadCollaboration()),
+        withDmLoadTimeout(listNotifications(member.id)),
       ]);
       if (cancelled) return;
 
@@ -652,7 +680,7 @@ function DirectConversation({
   const [emojiOpen, setEmojiOpen] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const composerRef = useRef<HTMLTextAreaElement>(null);
-  const endRef = useRef<HTMLDivElement>(null);
+  const messageScrollRef = useRef<HTMLDivElement>(null);
   const emojiRef = useRef<HTMLDivElement>(null);
   const emojiButtonRef = useRef<HTMLButtonElement>(null);
 
@@ -663,9 +691,12 @@ function DirectConversation({
       return;
     }
     try {
-      setMessages(await listDirectMessages(threadId));
+      setMessages(await withDmLoadTimeout(listDirectMessages(threadId)));
       void markDirectThreadRead(threadId).catch(() => undefined);
-      if (scroll) window.requestAnimationFrame(() => endRef.current?.scrollIntoView({ behavior: "smooth" }));
+      if (scroll) window.requestAnimationFrame(() => {
+        const container = messageScrollRef.current;
+        container?.scrollTo({ top: container.scrollHeight, behavior: "smooth" });
+      });
       setError("");
     } catch {
       setError("Não foi possível carregar esta conversa privada.");
@@ -784,7 +815,7 @@ function DirectConversation({
           </div>
         </header>
 
-        <div className="dm-message-scroll">
+        <div ref={messageScrollRef} className="dm-message-scroll">
           <section className="dm-thread-intro">
             <Avatar name={contact.name} url={contact.avatarUrl} size="xl" status={contactOnline ? "online" : "offline"} />
             <h2>{contact.name}</h2>
@@ -810,7 +841,6 @@ function DirectConversation({
             <div className="dm-thread-empty"><MessageSquare size={25} /><strong>{pinnedOnly ? "Nenhuma mensagem fixada" : "Nenhuma mensagem ainda"}</strong><span>{pinnedOnly ? "Fixe mensagens importantes para encontrá-las aqui." : `Envie a primeira mensagem para ${contact.name}.`}</span></div>
           )}
           {!threadId && <div className="dm-thread-empty"><MessageSquare size={25} /><strong>Conversa indisponível</strong><span>A estrutura privada ainda não foi ativada neste ambiente.</span></div>}
-          <div ref={endRef} />
         </div>
 
         <form className="dm-composer" onSubmit={submit}>
@@ -939,7 +969,7 @@ function DirectMessageRow({
   return (
     <article className="dm-message" id={`dm-message-${message.id}`}>
       {reply && (
-        <button className="dm-reply-preview" type="button" onClick={() => document.getElementById(`dm-message-${reply.id}`)?.scrollIntoView({ behavior: "smooth", block: "center" })}>
+        <button className="dm-reply-preview" type="button" onClick={(event) => scrollInside(event.currentTarget.closest<HTMLElement>(".dm-message-scroll"), document.getElementById(`dm-message-${reply.id}`))}>
           <Reply size={11} /><b>{reply.author?.name || "Membro"}</b><span>{reply.body}</span>
         </button>
       )}
