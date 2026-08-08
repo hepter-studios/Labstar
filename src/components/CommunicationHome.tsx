@@ -4,7 +4,6 @@ import {
   BellRing,
   FileText,
   Hash,
-  LoaderCircle,
   MessageSquareText,
   RefreshCw,
   Search,
@@ -46,6 +45,25 @@ const EMPTY_DATA: CommunicationData = {
   notifications: [],
 };
 
+const HOME_CORE_TIMEOUT_MS = 4_000;
+const HOME_MESSAGES_TIMEOUT_MS = 3_000;
+
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number, label: string): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = window.setTimeout(() => reject(new Error(`${label}_timeout`)), timeoutMs);
+    promise.then(
+      (value) => {
+        window.clearTimeout(timer);
+        resolve(value);
+      },
+      (error) => {
+        window.clearTimeout(timer);
+        reject(error);
+      },
+    );
+  });
+}
+
 function relativeTime(value: string) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "agora";
@@ -68,20 +86,26 @@ function messagePreview(message: ChannelMessage) {
 
 export function CommunicationHome({ member, onOpenChannel, onOpenDirect }: CommunicationHomeProps) {
   const [data, setData] = useState<CommunicationData>(EMPTY_DATA);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
+  const [refreshing, setRefreshing] = useState(true);
   const [error, setError] = useState("");
   const homeRef = useRef<HTMLElement>(null);
+  const refreshGeneration = useRef(0);
 
-  const refresh = useCallback(async (silent = false) => {
-    if (silent) setRefreshing(true); else setLoading(true);
+  const refresh = useCallback(async (_silent = false) => {
+    const generation = ++refreshGeneration.current;
+    setRefreshing(true);
     setError("");
+
     try {
       const [collaborationResult, membersResult, notificationsResult] = await Promise.allSettled([
-        loadCollaboration(),
-        listMembers(),
-        member.id === "preview-member" ? Promise.resolve([] as LabstarNotification[]) : listNotifications(member.id),
+        withTimeout(loadCollaboration(), HOME_CORE_TIMEOUT_MS, "collaboration"),
+        withTimeout(listMembers(), HOME_CORE_TIMEOUT_MS, "members"),
+        member.id === "preview-member"
+          ? Promise.resolve([] as LabstarNotification[])
+          : withTimeout(listNotifications(member.id), HOME_CORE_TIMEOUT_MS, "notifications"),
       ]);
+
+      if (generation !== refreshGeneration.current) return;
 
       const collaboration = collaborationResult.status === "fulfilled"
         ? collaborationResult.value
@@ -92,32 +116,49 @@ export function CommunicationHome({ member, onOpenChannel, onOpenDirect }: Commu
         (channel) => channel.allowedRoles.length === 0 && channel.allowedAssignments.length === 0,
       );
       const publicChannelIds = new Set(publicChannels.map((channel) => channel.id));
-      const readableChannels = publicChannels
-        .filter((channel) => channel.type === "text" || channel.type === "announcement" || channel.type === "rules")
-        .slice(0, 30);
-      const messageResults = await Promise.allSettled(readableChannels.map((channel) => listMessages(channel.id)));
-      const messages = messageResults
-        .flatMap((result) => result.status === "fulfilled" ? result.value.slice(-80) : [])
-        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
       setData({
         spaces: collaboration.spaces,
         channels: publicChannels,
         members,
-        messages,
+        messages: [],
         notifications: notifications.filter(
           (notification) => !notification.channelId || publicChannelIds.has(notification.channelId),
         ),
       });
 
-      if (collaborationResult.status === "rejected") {
-        setError("Não foi possível sincronizar todos os servidores agora.");
+      const failedCore = [collaborationResult, membersResult, notificationsResult]
+        .filter((result) => result.status === "rejected").length;
+      if (failedCore) {
+        setError("A Home abriu com dados parciais. Alguns itens demoraram demais para responder.");
       }
+
+      const readableChannels = publicChannels
+        .filter((channel) => channel.type === "text" || channel.type === "announcement" || channel.type === "rules")
+        .slice(0, 20);
+
+      if (!readableChannels.length) return;
+
+      const messageResults = await Promise.allSettled(
+        readableChannels.map((channel) => withTimeout(
+          listMessages(channel.id),
+          HOME_MESSAGES_TIMEOUT_MS,
+          `messages_${channel.id}`,
+        )),
+      );
+
+      if (generation !== refreshGeneration.current) return;
+
+      const messages = messageResults
+        .flatMap((result) => result.status === "fulfilled" ? result.value.slice(-60) : [])
+        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+      setData((current) => ({ ...current, messages }));
     } catch {
-      setError("A Home da Central não conseguiu atualizar os dados agora.");
+      if (generation !== refreshGeneration.current) return;
+      setError("A Home abriu em modo reduzido porque parte dos dados não respondeu.");
     } finally {
-      setLoading(false);
-      setRefreshing(false);
+      if (generation === refreshGeneration.current) setRefreshing(false);
     }
   }, [member.id]);
 
@@ -127,13 +168,13 @@ export function CommunicationHome({ member, onOpenChannel, onOpenDirect }: Commu
     const interval = window.setInterval(changed, 60_000);
     window.addEventListener("labstar:data-changed", changed);
     return () => {
+      refreshGeneration.current += 1;
       window.clearInterval(interval);
       window.removeEventListener("labstar:data-changed", changed);
     };
   }, [refresh]);
 
   useLayoutEffect(() => {
-    if (loading) return;
     const resetPosition = () => {
       const home = homeRef.current;
       if (!home) return;
@@ -151,7 +192,7 @@ export function CommunicationHome({ member, onOpenChannel, onOpenDirect }: Commu
       window.cancelAnimationFrame(frame);
       window.clearTimeout(timer);
     };
-  }, [loading, member.id]);
+  }, [member.id]);
 
   const channelById = useMemo(() => new Map(data.channels.map((channel) => [channel.id, channel])), [data.channels]);
   const spaceById = useMemo(() => new Map(data.spaces.map((space) => [space.id, space])), [data.spaces]);
@@ -171,16 +212,6 @@ export function CommunicationHome({ member, onOpenChannel, onOpenDirect }: Commu
   const unread = data.notifications.filter((notification) => !notification.isRead);
   const mentions = unread.filter((notification) => /menç|mencion|@/i.test(`${notification.title} ${notification.body}`));
   const activeMembers = data.members.filter((item) => item.status === "active" && item.id !== member.id).slice(0, 8);
-
-  if (loading) {
-    return (
-      <section key="loading" ref={homeRef} className="communication-home communication-home-loading">
-        <LoaderCircle className="spin" size={24} />
-        <strong>Preparando sua Home</strong>
-        <span>Reunindo conversas, menções, arquivos e pessoas…</span>
-      </section>
-    );
-  }
 
   return (
     <section key="content" ref={homeRef} className="communication-home">
@@ -224,7 +255,7 @@ export function CommunicationHome({ member, onOpenChannel, onOpenDirect }: Commu
                 </button>
               );
             })}
-            {!recentChannels.length && <div className="communication-empty"><MessageSquareText size={22} /><strong>Nenhuma conversa recente</strong><span>Abra um servidor na coluna esquerda e comece por um canal.</span></div>}
+            {!recentChannels.length && <div className="communication-empty"><MessageSquareText size={22} /><strong>{refreshing ? "Carregando conversas…" : "Nenhuma conversa recente"}</strong><span>{refreshing ? "Você já pode usar a Central enquanto os dados chegam." : "Abra um servidor na coluna esquerda e comece por um canal."}</span></div>}
           </div>
         </section>
 
@@ -238,7 +269,7 @@ export function CommunicationHome({ member, onOpenChannel, onOpenDirect }: Commu
                 <time>{relativeTime(notification.createdAt)}</time>
               </button>
             ))}
-            {!unread.length && <div className="communication-empty small"><BellRing size={20} /><strong>Tudo em dia</strong><span>Novas menções e avisos aparecerão aqui.</span></div>}
+            {!unread.length && <div className="communication-empty small"><BellRing size={20} /><strong>{refreshing ? "Atualizando avisos…" : "Tudo em dia"}</strong><span>Novas menções e avisos aparecerão aqui.</span></div>}
           </div>
         </aside>
       </div>
@@ -257,7 +288,7 @@ export function CommunicationHome({ member, onOpenChannel, onOpenDirect }: Commu
                 </button>
               );
             })}
-            {!recentFiles.length && <div className="communication-empty small"><FileText size={20} /><strong>Nenhum arquivo recente</strong><span>Imagens e documentos compartilhados aparecerão aqui.</span></div>}
+            {!recentFiles.length && <div className="communication-empty small"><FileText size={20} /><strong>{refreshing ? "Buscando arquivos…" : "Nenhum arquivo recente"}</strong><span>Imagens e documentos compartilhados aparecerão aqui.</span></div>}
           </div>
         </section>
 
@@ -270,7 +301,7 @@ export function CommunicationHome({ member, onOpenChannel, onOpenDirect }: Commu
                 <span><b>{item.name}</b><small>{item.jobRoles[0]?.name || item.jobTitle || "Membro"}</small></span>
               </button>
             ))}
-            {!activeMembers.length && <div className="communication-empty small"><Users size={20} /><strong>Equipe ainda pequena</strong><span>Novos membros aparecerão aqui.</span></div>}
+            {!activeMembers.length && <div className="communication-empty small"><Users size={20} /><strong>{refreshing ? "Carregando equipe…" : "Equipe ainda pequena"}</strong><span>Novos membros aparecerão aqui.</span></div>}
           </div>
         </aside>
       </div>
