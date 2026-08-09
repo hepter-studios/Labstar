@@ -1,5 +1,11 @@
 import type { RealtimeChannel } from "@supabase/supabase-js";
 import { listRolesForMember, supabaseClient, type JobRole } from "./supabase";
+import {
+  defaultAttachmentMessage,
+  normalizeDeveloperFile,
+  uploadContentType,
+  validateChatFiles,
+} from "./programmer-files";
 
 export type DirectThreadSummary = {
   threadId: string;
@@ -193,10 +199,9 @@ export async function sendDirectMessage(input: {
   replyTo?: string | null;
   files?: File[];
 }) {
-  const files = input.files ?? [];
-  const body = input.body.trim() || (files.some((file) => file.type.startsWith("image/"))
-    ? "Enviou uma imagem"
-    : `Enviou ${files.length} arquivo(s)`);
+  const files = (input.files ?? []).map(normalizeDeveloperFile);
+  validateChatFiles(files);
+  const body = input.body.trim() || defaultAttachmentMessage(files);
 
   const { data: message, error } = await requireClient().from("direct_messages").insert({
     thread_id: input.threadId,
@@ -206,24 +211,36 @@ export async function sendDirectMessage(input: {
   }).select("*").single();
   if (error) throw error;
 
-  for (const file of files.slice(0, 8)) {
-    if (file.size > 50 * 1024 * 1024) throw new Error("file_too_large");
-    const path = `direct/${input.threadId}/${message.id}/${Date.now()}-${safeFileName(file.name)}`;
-    const { error: uploadError } = await requireClient().storage.from("labstar-files").upload(path, file, {
-      cacheControl: "3600",
-      contentType: file.type || "application/octet-stream",
-      upsert: false,
-    });
-    if (uploadError) throw uploadError;
+  const uploadedPaths: string[] = [];
+  try {
+    for (const [index, file] of files.entries()) {
+      const path = `direct/${input.threadId}/${message.id}/${Date.now()}-${index}-${safeFileName(file.name)}`;
+      const contentType = uploadContentType(file);
+      const { error: uploadError } = await requireClient().storage.from("labstar-files").upload(path, file, {
+        cacheControl: "3600",
+        contentType,
+        upsert: false,
+      });
+      if (uploadError) throw uploadError;
+      uploadedPaths.push(path);
 
-    const { error: attachmentError } = await requireClient().from("direct_message_attachments").insert({
-      message_id: message.id,
-      file_name: file.name,
-      file_path: path,
-      mime_type: file.type || "application/octet-stream",
-      size_bytes: file.size,
-    });
-    if (attachmentError) throw attachmentError;
+      const { error: attachmentError } = await requireClient().from("direct_message_attachments").insert({
+        message_id: message.id,
+        file_name: file.name,
+        file_path: path,
+        mime_type: contentType,
+        size_bytes: file.size,
+      });
+      if (attachmentError) throw attachmentError;
+    }
+  } catch (uploadError) {
+    if (uploadedPaths.length) await requireClient().storage.from("labstar-files").remove(uploadedPaths).catch(() => undefined);
+    try {
+      await requireClient().from("direct_messages").delete().eq("id", message.id);
+    } catch {
+      // A falha original do upload é mais útil para quem enviou.
+    }
+    throw uploadError;
   }
 
   return message;

@@ -10,7 +10,6 @@ import {
   ChevronRight,
   Download,
   Edit3,
-  File,
   FileImage,
   FolderPlus,
   Github,
@@ -81,7 +80,20 @@ import {
   type IntegrationRule,
 } from "../lib/supabase";
 import { memberPresenceStatus, useMemberPresence } from "../lib/presence";
+import {
+  MAX_CHAT_FILE_BYTES,
+  MAX_CHAT_FILES,
+  chatFileErrorMessage,
+  createLargePasteAttachment,
+  formatChatBytes,
+  mergeChatFiles,
+} from "../lib/programmer-files";
 import { Avatar } from "./Avatar";
+import {
+  DeveloperAttachmentCard,
+  DeveloperFileQueue,
+  DeveloperMessageBody,
+} from "./DeveloperChatContent";
 import { MeetingRoomV2 } from "./MeetingRoomV2";
 
 type CollaborationHubProps = {
@@ -506,6 +518,9 @@ function MessageRoom({ channel, space, member }: { channel: LabstarChannel; spac
   const [imagePreview, setImagePreview] = useState<{ url: string; name: string } | null>(null);
   const [brokenImages, setBrokenImages] = useState<Set<string>>(new Set());
   const [loadError, setLoadError] = useState("");
+  const [uploadNotice, setUploadNotice] = useState("");
+  const [uploadNoticeError, setUploadNoticeError] = useState(false);
+  const [dragActive, setDragActive] = useState(false);
   const messageScrollRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const stickerRef = useRef<HTMLInputElement>(null);
@@ -535,6 +550,9 @@ function MessageRoom({ channel, space, member }: { channel: LabstarChannel; spac
     setEmojiOpen(false);
     setContextMenu(null);
     setLoadError("");
+    setUploadNotice("");
+    setUploadNoticeError(false);
+    setDragActive(false);
     void refreshMessages(true);
     const messageSubscription = subscribeToTable("channel_messages", `channel_id=eq.${channel.id}`, () => void refreshMessages());
     const attachmentSubscription = subscribeToTable("channel_message_attachments", "", () => void refreshMessages());
@@ -567,6 +585,8 @@ function MessageRoom({ channel, space, member }: { channel: LabstarChannel; spac
     event.preventDefault();
     if (!draft.trim() && !files.length) return;
     setSending(true);
+    setUploadNotice("");
+    setUploadNoticeError(false);
     try {
       if (editing) {
         await editMessage(editing.id, draft);
@@ -585,9 +605,39 @@ function MessageRoom({ channel, space, member }: { channel: LabstarChannel; spac
       setEditing(null);
       setReplying(null);
       await refreshMessages(true);
+    } catch (error) {
+      setUploadNotice(chatFileErrorMessage(error));
+      setUploadNoticeError(true);
     } finally {
       setSending(false);
     }
+  }
+
+  function addFiles(incoming: Iterable<File>, notice = "") {
+    if (editing) return;
+    try {
+      const next = mergeChatFiles(files, incoming);
+      setFiles(next);
+      setUploadNotice(notice || `${next.length} de ${MAX_CHAT_FILES} arquivos preparados.`);
+      setUploadNoticeError(false);
+    } catch (error) {
+      setUploadNotice(chatFileErrorMessage(error));
+      setUploadNoticeError(true);
+    }
+  }
+
+  function pasteIntoComposer(event: React.ClipboardEvent<HTMLTextAreaElement>) {
+    if (editing) return;
+    const clipboardFiles = Array.from(event.clipboardData.files);
+    if (clipboardFiles.length) {
+      event.preventDefault();
+      addFiles(clipboardFiles, "Arquivo colado e preparado para envio.");
+      return;
+    }
+    const attachment = createLargePasteAttachment(event.clipboardData.getData("text/plain"));
+    if (!attachment) return;
+    event.preventDefault();
+    addFiles([attachment], "A colagem grande virou um anexo para manter o chat leve.");
   }
 
   function openMessageMenu(message: ChannelMessage, x: number, y: number) {
@@ -602,6 +652,8 @@ function MessageRoom({ channel, space, member }: { channel: LabstarChannel; spac
   function beginEdit(message: ChannelMessage) {
     setEditing(message);
     setReplying(null);
+    setFiles([]);
+    setUploadNotice("");
     setDraft(message.body);
     setContextMenu(null);
   }
@@ -649,7 +701,7 @@ function MessageRoom({ channel, space, member }: { channel: LabstarChannel; spac
                   {message.editedAt && <em>(editada)</em>}
                   {message.isPinned && <Pin size={11} />}
                 </header>
-                <p>{message.body}</p>
+                <DeveloperMessageBody body={message.body} />
                 {!!message.attachments.length && (
                   <div className="message-attachments">
                     {message.attachments.map((attachment) => attachment.mimeType.startsWith("image/") ? (
@@ -669,11 +721,13 @@ function MessageRoom({ channel, space, member }: { channel: LabstarChannel; spac
                         <span><FileImage size={12} /> <b>{brokenImages.has(attachment.id) ? "Imagem indisponível" : attachment.fileName}</b></span>
                       </button>
                     ) : (
-                      <a key={attachment.id} className="file-attachment" href={attachment.url} target="_blank" rel="noreferrer">
-                        <span><File size={20} /></span>
-                        <div><b>{attachment.fileName}</b><small>{formatBytes(attachment.sizeBytes)}</small></div>
-                        <Download size={16} />
-                      </a>
+                      <DeveloperAttachmentCard
+                        key={attachment.id}
+                        fileName={attachment.fileName}
+                        mimeType={attachment.mimeType}
+                        sizeBytes={attachment.sizeBytes}
+                        url={attachment.url}
+                      />
                     ))}
                   </div>
                 )}
@@ -691,7 +745,18 @@ function MessageRoom({ channel, space, member }: { channel: LabstarChannel; spac
       </div>
 
       {canWrite ? (
-        <form className="message-composer" onSubmit={submit}>
+        <form
+          className={`message-composer ${dragActive ? "developer-drop-active" : ""}`}
+          onSubmit={submit}
+          onDragEnter={(event) => { if (!editing) { event.preventDefault(); setDragActive(true); } }}
+          onDragOver={(event) => { if (!editing) { event.preventDefault(); event.dataTransfer.dropEffect = "copy"; } }}
+          onDragLeave={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setDragActive(false); }}
+          onDrop={(event) => {
+            event.preventDefault();
+            setDragActive(false);
+            addFiles(Array.from(event.dataTransfer.files), "Arquivos soltos e preparados para envio.");
+          }}
+        >
           {(replying || editing) && (
             <div className="composer-context">
               {editing ? <Edit3 size={13} /> : <Reply size={13} />}
@@ -699,17 +764,15 @@ function MessageRoom({ channel, space, member }: { channel: LabstarChannel; spac
               <button type="button" onClick={() => { setEditing(null); setReplying(null); setDraft(""); }}><X size={14} /></button>
             </div>
           )}
-          {!!files.length && (
-            <div className="composer-files">
-              {files.map((file, index) => <span key={`${file.name}-${index}`}>{file.type.startsWith("image/") ? <FileImage size={13} /> : <File size={13} />}<b>{file.name}</b><button type="button" onClick={() => setFiles((current) => current.filter((_, itemIndex) => itemIndex !== index))}><X size={12} /></button></span>)}
-            </div>
-          )}
+          {!!files.length && <DeveloperFileQueue files={files} onRemove={(index) => setFiles((current) => current.filter((_, itemIndex) => itemIndex !== index))} />}
+          {uploadNotice && <p className={`developer-composer-notice ${uploadNoticeError ? "error" : ""}`}>{uploadNotice}</p>}
           <div className="composer-row">
-            <button type="button" onClick={() => fileRef.current?.click()} title="Anexar arquivo"><Paperclip size={18} /></button>
+            <button type="button" disabled={Boolean(editing)} onClick={() => fileRef.current?.click()} title={editing ? "Anexos não mudam durante edição" : `Anexar até ${MAX_CHAT_FILES} arquivos de ${formatChatBytes(MAX_CHAT_FILE_BYTES)}`}><Paperclip size={18} /></button>
             <textarea
               rows={1}
               value={draft}
               onChange={(event) => setDraft(event.target.value)}
+              onPaste={pasteIntoComposer}
               onKeyDown={(event) => {
                 if (event.key === "Enter" && !event.shiftKey) {
                   event.preventDefault();
@@ -725,10 +788,13 @@ function MessageRoom({ channel, space, member }: { channel: LabstarChannel; spac
             </button>
           </div>
           {emojiOpen && <div className="emoji-picker" role="listbox" aria-label="Emojis disponíveis">{emojiSet.map((emoji) => <button key={emoji} type="button" title={`Inserir ${emoji}`} aria-label={`Inserir emoji ${emoji}`} onClick={() => setDraft((current) => `${current}${emoji}`)}>{emoji}</button>)}</div>}
-          <input ref={fileRef} hidden multiple type="file" onChange={(event) => setFiles((current) => [...current, ...Array.from(event.target.files ?? [])].slice(0, 8))} />
+          <input ref={fileRef} hidden multiple type="file" onChange={(event) => {
+            addFiles(Array.from(event.target.files ?? []));
+            event.currentTarget.value = "";
+          }} />
           <input ref={stickerRef} hidden type="file" accept="image/*,.gif,.webp" onChange={(event) => {
             const file = event.target.files?.[0];
-            if (file) setFiles((current) => [...current, file].slice(0, 8));
+            if (file) addFiles([file]);
             event.target.value = "";
           }} />
         </form>
@@ -1410,10 +1476,4 @@ function formatMessageTime(value: string) {
   const today = new Date();
   if (date.toDateString() === today.toDateString()) return `hoje às ${date.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`;
   return date.toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
-}
-
-function formatBytes(value: number) {
-  if (value < 1024) return `${value} B`;
-  if (value < 1024 * 1024) return `${(value / 1024).toFixed(1)} KB`;
-  return `${(value / (1024 * 1024)).toFixed(1)} MB`;
 }

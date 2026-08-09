@@ -2,6 +2,12 @@ import { type RealtimeChannel, type SupabaseClient, type User } from "@supabase/
 import { secureSignOut } from "./access";
 import { BackendApiError, getBackendIdentity, type BackendMember } from "./backend";
 import { authClient } from "./auth-client";
+import {
+  defaultAttachmentMessage,
+  normalizeDeveloperFile,
+  uploadContentType,
+  validateChatFiles,
+} from "./programmer-files";
 
 export type MemberRole = "owner" | "admin" | "manager" | "member" | "viewer";
 export type MemberStatus = "pending" | "active" | "suspended";
@@ -832,8 +838,9 @@ export async function sendMessage(input: {
   replyTo?: string | null;
   files?: File[];
 }) {
-  const files = input.files ?? [];
-  const body = input.body.trim() || (files.some((file) => file.type.startsWith("image/")) ? "Enviou uma imagem" : `Enviou ${files.length} arquivo(s)`);
+  const files = (input.files ?? []).map(normalizeDeveloperFile);
+  validateChatFiles(files);
+  const body = input.body.trim() || defaultAttachmentMessage(files);
   const { data: message, error } = await requireClient().from("channel_messages").insert({
     channel_id: input.channelId,
     author_id: input.authorId,
@@ -841,23 +848,35 @@ export async function sendMessage(input: {
     reply_to: input.replyTo ?? null,
   }).select("*").single();
   if (error) throw error;
-  for (const file of files.slice(0, 8)) {
-    if (file.size > 20 * 1024 * 1024) throw new Error("file_too_large");
-    const path = `spaces/${input.spaceId}/channels/${input.channelId}/${message.id}/${Date.now()}-${safeFileName(file.name)}`;
-    const { error: uploadError } = await requireClient().storage.from("labstar-files").upload(path, file, {
-      cacheControl: "3600",
-      contentType: file.type || "application/octet-stream",
-      upsert: false,
-    });
-    if (uploadError) throw uploadError;
-    const { error: attachmentError } = await requireClient().from("channel_message_attachments").insert({
-      message_id: message.id,
-      file_name: file.name,
-      file_path: path,
-      mime_type: file.type || "application/octet-stream",
-      size_bytes: file.size,
-    });
-    if (attachmentError) throw attachmentError;
+  const uploadedPaths: string[] = [];
+  try {
+    for (const [index, file] of files.entries()) {
+      const path = `spaces/${input.spaceId}/channels/${input.channelId}/${message.id}/${Date.now()}-${index}-${safeFileName(file.name)}`;
+      const contentType = uploadContentType(file);
+      const { error: uploadError } = await requireClient().storage.from("labstar-files").upload(path, file, {
+        cacheControl: "3600",
+        contentType,
+        upsert: false,
+      });
+      if (uploadError) throw uploadError;
+      uploadedPaths.push(path);
+      const { error: attachmentError } = await requireClient().from("channel_message_attachments").insert({
+        message_id: message.id,
+        file_name: file.name,
+        file_path: path,
+        mime_type: contentType,
+        size_bytes: file.size,
+      });
+      if (attachmentError) throw attachmentError;
+    }
+  } catch (uploadError) {
+    if (uploadedPaths.length) await requireClient().storage.from("labstar-files").remove(uploadedPaths).catch(() => undefined);
+    try {
+      await requireClient().from("channel_messages").delete().eq("id", message.id);
+    } catch {
+      // A falha original do upload é mais útil para quem enviou.
+    }
+    throw uploadError;
   }
   return message;
 }

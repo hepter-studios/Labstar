@@ -59,6 +59,14 @@ import {
 } from "../lib/directMessages";
 import { useMemberPresence } from "../lib/presence";
 import {
+  MAX_CHAT_FILE_BYTES,
+  MAX_CHAT_FILES,
+  chatFileErrorMessage,
+  createLargePasteAttachment,
+  formatChatBytes,
+  mergeChatFiles,
+} from "../lib/programmer-files";
+import {
   listMembers,
   listNotifications,
   loadCollaboration,
@@ -69,6 +77,11 @@ import {
   type Member,
 } from "../lib/supabase";
 import { Avatar } from "./Avatar";
+import {
+  DeveloperAttachmentCard,
+  DeveloperFileQueue,
+  DeveloperMessageBody,
+} from "./DeveloperChatContent";
 import { PrivateCallOverlay } from "./PrivateCallOverlay";
 
 const dmEmojiSet = [
@@ -665,6 +678,9 @@ function DirectConversation({
   const [replying, setReplying] = useState<DirectMessage | null>(null);
   const [editing, setEditing] = useState<DirectMessage | null>(null);
   const [emojiOpen, setEmojiOpen] = useState(false);
+  const [uploadNotice, setUploadNotice] = useState("");
+  const [uploadNoticeError, setUploadNoticeError] = useState(false);
+  const [dragActive, setDragActive] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const composerRef = useRef<HTMLTextAreaElement>(null);
   const messageScrollRef = useRef<HTMLDivElement>(null);
@@ -701,6 +717,9 @@ function DirectConversation({
     setReplying(null);
     setEditing(null);
     setEmojiOpen(false);
+    setUploadNotice("");
+    setUploadNoticeError(false);
+    setDragActive(false);
     setNote(window.localStorage.getItem(`labstar-dm-note-${contact.id}`) ?? "");
     void refresh(true);
 
@@ -742,6 +761,8 @@ function DirectConversation({
 
     setSending(true);
     setError("");
+    setUploadNotice("");
+    setUploadNoticeError(false);
     try {
       if (editing) await editDirectMessage(editing.id, draft);
       else await sendDirectMessage({ threadId, authorId: member.id, body: draft, replyTo: replying?.id ?? null, files });
@@ -752,11 +773,38 @@ function DirectConversation({
       setEmojiOpen(false);
       await refresh(true);
       onThreadsChanged();
-    } catch {
-      setError(editing ? "Não foi possível editar esta mensagem." : "Não foi possível enviar agora. Verifique a conexão e tente novamente.");
+    } catch (sendError) {
+      setError(editing ? "Não foi possível editar esta mensagem." : chatFileErrorMessage(sendError));
     } finally {
       setSending(false);
     }
+  }
+
+  function addFiles(incoming: Iterable<File>, notice = "") {
+    if (editing) return;
+    try {
+      const next = mergeChatFiles(files, incoming);
+      setFiles(next);
+      setUploadNotice(notice || `${next.length} de ${MAX_CHAT_FILES} arquivos preparados.`);
+      setUploadNoticeError(false);
+    } catch (fileError) {
+      setUploadNotice(chatFileErrorMessage(fileError));
+      setUploadNoticeError(true);
+    }
+  }
+
+  function pasteIntoComposer(event: React.ClipboardEvent<HTMLTextAreaElement>) {
+    if (editing) return;
+    const clipboardFiles = Array.from(event.clipboardData.files);
+    if (clipboardFiles.length) {
+      event.preventDefault();
+      addFiles(clipboardFiles, "Arquivo colado e preparado para envio.");
+      return;
+    }
+    const attachment = createLargePasteAttachment(event.clipboardData.getData("text/plain"));
+    if (!attachment) return;
+    event.preventDefault();
+    addFiles([attachment], "A colagem grande virou um anexo para manter o chat leve.");
   }
 
   function beginReply(message: DirectMessage) {
@@ -770,6 +818,7 @@ function DirectConversation({
     setEditing(message);
     setReplying(null);
     setFiles([]);
+    setUploadNotice("");
     setDraft(message.body);
     window.requestAnimationFrame(() => composerRef.current?.focus());
   }
@@ -830,7 +879,18 @@ function DirectConversation({
           {!threadId && <div className="dm-thread-empty"><MessageSquare size={25} /><strong>Conversa indisponível</strong><span>A estrutura privada ainda não foi ativada neste ambiente.</span></div>}
         </div>
 
-        <form className="dm-composer" onSubmit={submit}>
+        <form
+          className={`dm-composer ${dragActive ? "developer-drop-active" : ""}`}
+          onSubmit={submit}
+          onDragEnter={(event) => { if (!editing) { event.preventDefault(); setDragActive(true); } }}
+          onDragOver={(event) => { if (!editing) { event.preventDefault(); event.dataTransfer.dropEffect = "copy"; } }}
+          onDragLeave={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setDragActive(false); }}
+          onDrop={(event) => {
+            event.preventDefault();
+            setDragActive(false);
+            addFiles(Array.from(event.dataTransfer.files), "Arquivos soltos e preparados para envio.");
+          }}
+        >
           {(replying || editing) && (
             <div className="dm-composer-context">
               {editing ? <Edit3 size={13} /> : <Reply size={13} />}
@@ -839,13 +899,8 @@ function DirectConversation({
             </div>
           )}
 
-          {!!files.length && (
-            <div className="dm-composer-files">
-              {files.map((file, index) => (
-                <span key={`${file.name}-${index}`}><File size={13} /><b>{file.name}</b><button type="button" onClick={() => setFiles((current) => current.filter((_, itemIndex) => itemIndex !== index))}><X size={12} /></button></span>
-              ))}
-            </div>
-          )}
+          {!!files.length && <DeveloperFileQueue files={files} onRemove={(index) => setFiles((current) => current.filter((_, itemIndex) => itemIndex !== index))} />}
+          {uploadNotice && <p className={`developer-composer-notice ${uploadNoticeError ? "error" : ""}`}>{uploadNotice}</p>}
 
           {error && <div className="dm-composer-notice error">{error}</div>}
           {!dmAvailable && <div className="dm-composer-notice error">Mensagens privadas aguardam a migração segura do banco.</div>}
@@ -870,12 +925,13 @@ function DirectConversation({
           )}
 
           <div>
-            <button type="button" disabled={Boolean(editing)} onClick={() => fileRef.current?.click()} title={editing ? "Anexos não mudam durante edição" : "Anexar arquivo"}><Paperclip size={18} /></button>
+            <button type="button" disabled={Boolean(editing)} onClick={() => fileRef.current?.click()} title={editing ? "Anexos não mudam durante edição" : `Anexar até ${MAX_CHAT_FILES} arquivos de ${formatChatBytes(MAX_CHAT_FILE_BYTES)}`}><Paperclip size={18} /></button>
             <textarea
               ref={composerRef}
               rows={1}
               value={draft}
               onChange={(event) => setDraft(event.target.value)}
+              onPaste={pasteIntoComposer}
               onKeyDown={(event) => {
                 if (event.key === "Enter" && !event.shiftKey) {
                   event.preventDefault();
@@ -888,7 +944,10 @@ function DirectConversation({
             <button ref={emojiButtonRef} type="button" className={emojiOpen ? "active" : ""} aria-expanded={emojiOpen} title="Escolher emoji" onClick={() => setEmojiOpen((value) => !value)}><Smile size={18} /></button>
             <button type="submit" className="dm-send" disabled={sending || !threadId || (editing ? !draft.trim() : (!draft.trim() && !files.length))}>{sending ? <LoaderCircle className="spin" size={17} /> : editing ? <Save size={17} /> : <Send size={17} />}</button>
           </div>
-          <input ref={fileRef} hidden multiple type="file" onChange={(event) => { setFiles(Array.from(event.target.files ?? []).slice(0, 8)); event.currentTarget.value = ""; }} />
+          <input ref={fileRef} hidden multiple type="file" onChange={(event) => {
+            addFiles(Array.from(event.target.files ?? []));
+            event.currentTarget.value = "";
+          }} />
         </form>
       </main>
 
@@ -968,12 +1027,18 @@ function DirectMessageRow({
           <time>{formatMessageDate(message.createdAt)}</time>
           {message.editedAt && <em>(editada)</em>}
         </header>
-        <p>{message.body}</p>
+        <DeveloperMessageBody body={message.body} />
         {!!message.attachments.length && (
           <div className="dm-attachments">
             {message.attachments.map((attachment) => attachment.mimeType.startsWith("image/")
               ? <a key={attachment.id} href={attachment.url} target="_blank" rel="noreferrer" className="dm-image-attachment"><img src={attachment.url} alt={attachment.fileName} /><span><FileImage size={13} />{attachment.fileName}</span></a>
-              : <a key={attachment.id} href={attachment.url} target="_blank" rel="noreferrer" className="dm-file-attachment"><span><File size={18} /></span><div><strong>{attachment.fileName}</strong><small>{formatBytes(attachment.sizeBytes)}</small></div><Download size={15} /></a>)}
+              : <DeveloperAttachmentCard
+                  key={attachment.id}
+                  fileName={attachment.fileName}
+                  mimeType={attachment.mimeType}
+                  sizeBytes={attachment.sizeBytes}
+                  url={attachment.url}
+                />)}
           </div>
         )}
       </div>
@@ -1005,10 +1070,4 @@ function formatMessageDate(value: string) {
     hour: "2-digit",
     minute: "2-digit",
   });
-}
-
-function formatBytes(value: number) {
-  if (value < 1024) return `${value} B`;
-  if (value < 1024 * 1024) return `${(value / 1024).toFixed(1)} KB`;
-  return `${(value / (1024 * 1024)).toFixed(1)} MB`;
 }
