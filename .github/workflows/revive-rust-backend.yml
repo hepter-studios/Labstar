@@ -1,0 +1,56 @@
+name: Retomar backend Rust
+
+on:
+  push:
+    branches:
+      - feat/rust-backend-revival-v2
+    paths:
+      - ".github/workflows/revive-rust-backend.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: revive-rust-backend-v2
+  cancel-in-progress: false
+
+jobs:
+  restore:
+    name: Restaurar backend Rust sobre a main atual
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+
+    steps:
+      - name: Baixar branch atual
+        uses: actions/checkout@v4
+        with:
+          ref: feat/rust-backend-revival-v2
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Recuperar somente o backend Rust validável da branch histórica
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin feat/backend-rust-complete:refs/remotes/origin/feat/backend-rust-complete
+          git checkout origin/feat/backend-rust-complete -- backend
+
+          # Não trazemos os adapters TypeScript antigos nem workflows de deploy.
+          # Eles divergiram da main e serão refeitos por etapas depois que o núcleo
+          # Rust compilar novamente sobre o estado atual do produto.
+          test -f backend/Cargo.toml
+          test -f backend/src/main.rs
+
+      - name: Registrar restauração
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add backend
+          if git diff --cached --quiet; then
+            echo "Backend Rust já restaurado nesta branch."
+            exit 0
+          fi
+          git commit -m "feat: restore Rust backend foundation"
+          git push origin HEAD:feat/rust-backend-revival-v2
