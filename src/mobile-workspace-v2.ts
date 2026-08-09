@@ -126,12 +126,20 @@ function handleWorkspaceClick(event: Event) {
 }
 
 function startMobileWorkspaceV2() {
-  const observer = new MutationObserver(syncMobileWorkspace);
+  let frame: number | null = null;
+  const scheduleSync = () => {
+    if (frame !== null) return;
+    frame = window.requestAnimationFrame(() => {
+      frame = null;
+      syncMobileWorkspace();
+    });
+  };
+  const observer = new MutationObserver(scheduleSync);
   observer.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ["class"] });
   document.addEventListener("click", handleWorkspaceClick, true);
-  window.addEventListener("resize", syncMobileWorkspace);
-  window.visualViewport?.addEventListener("resize", syncMobileWorkspace);
-  window.addEventListener("pageshow", syncMobileWorkspace);
+  window.addEventListener("resize", scheduleSync);
+  window.visualViewport?.addEventListener("resize", scheduleSync);
+  window.addEventListener("pageshow", scheduleSync);
   syncMobileWorkspace();
 }
 
