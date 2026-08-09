@@ -130,9 +130,10 @@ export function ChannelMessageActionsBridge() {
   }, [menu]);
 
   if (!menu) return null;
+  const activeMenu = menu;
 
-  const replyButton = menu.article.querySelector<HTMLButtonElement>('.message-actions button[title="Responder"]');
-  const editButton = menu.article.querySelector<HTMLButtonElement>('.message-actions button[title="Editar"]');
+  const replyButton = activeMenu.article.querySelector<HTMLButtonElement>('.message-actions button[title="Responder"]');
+  const editButton = activeMenu.article.querySelector<HTMLButtonElement>('.message-actions button[title="Editar"]');
 
   function reply() {
     setMenu(null);
@@ -146,7 +147,7 @@ export function ChannelMessageActionsBridge() {
 
   async function copyBody() {
     try {
-      await copyText(menu.body);
+      await copyText(activeMenu.body);
       setMenu(null);
     } catch {
       setError("Não foi possível copiar o texto desta mensagem.");
@@ -156,7 +157,7 @@ export function ChannelMessageActionsBridge() {
   async function copyLink() {
     try {
       const url = new URL(window.location.href);
-      url.hash = `message-${menu.id}`;
+      url.hash = `message-${activeMenu.id}`;
       await copyText(url.toString());
       setMenu(null);
     } catch {
@@ -165,11 +166,11 @@ export function ChannelMessageActionsBridge() {
   }
 
   function downloadMarkdown() {
-    const blob = new Blob([menu.body], { type: "text/markdown;charset=utf-8" });
+    const blob = new Blob([activeMenu.body], { type: "text/markdown;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement("a");
     anchor.href = url;
-    anchor.download = `mensagem-${menu.id.slice(0, 8)}.md`;
+    anchor.download = `mensagem-${activeMenu.id.slice(0, 8)}.md`;
     anchor.click();
     window.setTimeout(() => URL.revokeObjectURL(url), 0);
     setMenu(null);
@@ -181,12 +182,12 @@ export function ChannelMessageActionsBridge() {
       return;
     }
     window.speechSynthesis.cancel();
-    window.speechSynthesis.speak(new SpeechSynthesisUtterance(menu.body));
+    window.speechSynthesis.speak(new SpeechSynthesisUtterance(activeMenu.body));
     setMenu(null);
   }
 
   function runExistingChannelAction(pattern: RegExp) {
-    const article = menu.article;
+    const article = activeMenu.article;
     const rect = article.getBoundingClientRect();
     setMenu(null);
 
@@ -209,17 +210,17 @@ export function ChannelMessageActionsBridge() {
       ref={menuRef}
       className="channel-message-actions-menu"
       role="menu"
-      style={{ left: menu.x, top: menu.y }}
+      style={{ left: activeMenu.x, top: activeMenu.y }}
       onClick={(event) => event.stopPropagation()}
     >
       <header>
         <strong>Ações da mensagem</strong>
-        <small>{menu.createdAtLabel}</small>
+        <small>{activeMenu.createdAtLabel}</small>
       </header>
 
       <button type="button" role="menuitem" onClick={reply}><Reply size={15} /><span>Responder</span></button>
-      {menu.canManage && <button type="button" role="menuitem" onClick={edit}><Pencil size={15} /><span>Editar em Markdown</span></button>}
-      <button type="button" role="menuitem" onClick={() => runExistingChannelAction(/Fixar mensagem|Desafixar/i)}><Pin size={15} /><span>{menu.isPinned ? "Desafixar mensagem" : "Fixar mensagem"}</span></button>
+      {activeMenu.canManage && <button type="button" role="menuitem" onClick={edit}><Pencil size={15} /><span>Editar em Markdown</span></button>}
+      <button type="button" role="menuitem" onClick={() => runExistingChannelAction(/Fixar mensagem|Desafixar/i)}><Pin size={15} /><span>{activeMenu.isPinned ? "Desafixar mensagem" : "Fixar mensagem"}</span></button>
 
       <i className="channel-message-menu-separator" />
 
@@ -228,7 +229,7 @@ export function ChannelMessageActionsBridge() {
       <button type="button" role="menuitem" onClick={downloadMarkdown}><FileCode2 size={15} /><span>Baixar como Markdown</span></button>
       <button type="button" role="menuitem" onClick={speak}><Volume2 size={15} /><span>Ler mensagem</span></button>
 
-      {menu.canManage && <>
+      {activeMenu.canManage && <>
         <i className="channel-message-menu-separator" />
         <button className="danger" type="button" role="menuitem" onClick={() => runExistingChannelAction(/Excluir mensagem/i)}><Trash2 size={15} /><span>Excluir mensagem</span></button>
       </>}
