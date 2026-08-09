@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import "../channel-runtime-access.css";
 import {
   listManagedChannels,
   loadChannelAccessDirectory,
