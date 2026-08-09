@@ -47,9 +47,7 @@ pub fn router(state: AppState) -> Result<Router, Box<dyn std::error::Error + Sen
     let cors_origins = allowed_origins.clone();
     let cors = CorsLayer::new()
         .allow_origin(AllowOrigin::predicate(
-            move |origin: &HeaderValue, _request: &Parts| {
-                origin_is_allowed(origin, &cors_origins)
-            },
+            move |origin: &HeaderValue, _request: &Parts| origin_is_allowed(origin, &cors_origins),
         ))
         .allow_credentials(true)
         .allow_methods([
@@ -223,12 +221,10 @@ fn origin_is_allowed(origin: &HeaderValue, configured: &[HeaderValue]) -> bool {
         return false;
     }
 
-    matches!(
-        url.host_str(),
-        Some("labstar.pages.dev")
-    ) || url
-        .host_str()
-        .is_some_and(|host| host.ends_with(".labstar.pages.dev"))
+    matches!(url.host_str(), Some("labstar.pages.dev"))
+        || url
+            .host_str()
+            .is_some_and(|host| host.ends_with(".labstar.pages.dev"))
 }
 
 async fn health() -> Json<HealthResponse> {
