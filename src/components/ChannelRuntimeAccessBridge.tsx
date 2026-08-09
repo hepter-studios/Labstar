@@ -66,14 +66,18 @@ function injectCreateButtons(directory: ChannelAccessDirectory) {
 }
 
 async function postingDirectory(channels: ChannelAccessConfig[]) {
-  const result = new Map<string, boolean>();
-  if (!supabaseClient) return result;
+  // Cada canal já começa com um fallback seguro baseado no read_only local.
+  // Um RPC bem-sucedido substitui esse valor e inclui as regras herdadas da categoria.
+  const result = new Map(channels.map((channel) => [channel.id, !channel.readOnly]));
+  const client = supabaseClient;
+  if (!client) return result;
+
   await Promise.all(channels.map(async (channel) => {
     try {
-      const { data, error } = await supabaseClient.rpc("member_can_post_labstar_channel", { target_channel_id: channel.id });
+      const { data, error } = await client.rpc("member_can_post_labstar_channel", { target_channel_id: channel.id });
       if (!error) result.set(channel.id, Boolean(data));
     } catch {
-      // Em rollout antigo o campo read_only local continua sendo usado abaixo.
+      // O fallback do canal permanece quando a migração/RPC ainda não está disponível.
     }
   }));
   return result;
@@ -90,10 +94,6 @@ export function ChannelRuntimeAccessBridge() {
     const apply = () => {
       if (disposed || !directory) return;
       injectCreateButtons(directory);
-      // Se o RPC ainda não existir, preserva o comportamento do read_only do canal.
-      if (!posting.size) {
-        posting = new Map(channels.map((channel) => [channel.id, !channel.readOnly]));
-      }
       applyReadOnlyState(channels, posting);
     };
 
