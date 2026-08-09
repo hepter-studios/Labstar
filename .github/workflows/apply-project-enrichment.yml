@@ -1,0 +1,106 @@
+name: Ativar projetos avançados
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "supabase/migrations/20260809201500_project_enrichment.sql"
+      - ".github/workflows/apply-project-enrichment.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: labstar-project-enrichment
+  cancel-in-progress: false
+
+jobs:
+  migrate:
+    name: Backup, aplicar projetos e auditar
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - name: Baixar código oficial
+        uses: actions/checkout@v4
+
+      - name: Validar conexão protegida
+        shell: bash
+        env:
+          SUPABASE_DATABASE_URL: ${{ secrets.SUPABASE_DATABASE_URL }}
+        run: |
+          set -euo pipefail
+          if [ -z "${SUPABASE_DATABASE_URL:-}" ]; then
+            echo "O secret SUPABASE_DATABASE_URL não está configurado."
+            exit 1
+          fi
+
+      - name: Preparar PostgreSQL 17
+        run: |
+          docker pull postgres:17-bookworm
+          docker run --rm postgres:17-bookworm psql --version
+
+      - name: Backup antes da migração
+        shell: bash
+        env:
+          SUPABASE_DATABASE_URL: ${{ secrets.SUPABASE_DATABASE_URL }}
+        run: |
+          set -euo pipefail
+          mkdir -p backup
+          timestamp="$(date -u +'%Y-%m-%dT%H-%M-%SZ')"
+          docker run --rm \
+            -e SUPABASE_DATABASE_URL \
+            -e PGSSLMODE=require \
+            -e BACKUP_TIMESTAMP="${timestamp}" \
+            -v "${PWD}/backup:/backup" \
+            postgres:17-bookworm \
+            bash -euo pipefail -c '
+              pg_dump --dbname="${SUPABASE_DATABASE_URL}" --format=custom --no-owner --no-privileges --file="/backup/labstar-before-projects-${BACKUP_TIMESTAMP}.dump"
+            '
+          sha256sum backup/*.dump > backup/SHA256SUMS.txt
+
+      - name: Aplicar enriquecimento de projetos
+        shell: bash
+        env:
+          SUPABASE_DATABASE_URL: ${{ secrets.SUPABASE_DATABASE_URL }}
+        run: |
+          set -euo pipefail
+          docker run --rm \
+            -e SUPABASE_DATABASE_URL \
+            -e PGSSLMODE=require \
+            -v "${PWD}:/workspace:ro" \
+            postgres:17-bookworm \
+            psql "${SUPABASE_DATABASE_URL}" --set ON_ERROR_STOP=1 --file /workspace/supabase/migrations/20260809201500_project_enrichment.sql
+
+      - name: Auditar tabela, permissões e funções
+        shell: bash
+        env:
+          SUPABASE_DATABASE_URL: ${{ secrets.SUPABASE_DATABASE_URL }}
+        run: |
+          set -euo pipefail
+          docker run --rm \
+            -e SUPABASE_DATABASE_URL \
+            -e PGSSLMODE=require \
+            postgres:17-bookworm \
+            psql "${SUPABASE_DATABASE_URL}" --set ON_ERROR_STOP=1 --tuples-only --no-align --command "
+              select
+                to_regclass('public.project_profiles') is not null
+                and to_regprocedure('public.can_manage_projects()') is not null
+                and has_table_privilege('authenticated', 'public.project_profiles', 'SELECT')
+                and has_table_privilege('authenticated', 'public.project_profiles', 'INSERT')
+                and has_function_privilege('authenticated', 'public.can_manage_projects()', 'EXECUTE');
+            " | tee project-enrichment-audit.txt
+          grep -qx 't' project-enrichment-audit.txt
+
+      - name: Guardar backup privado
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: labstar-before-projects-${{ github.run_number }}
+          path: |
+            backup/
+            project-enrichment-audit.txt
+          if-no-files-found: warn
+          retention-days: 7
+          compression-level: 6
