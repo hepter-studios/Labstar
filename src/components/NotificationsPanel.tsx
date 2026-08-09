@@ -10,6 +10,7 @@ import {
   Phone,
   RefreshCw,
   ShieldCheck,
+  Star,
   UserPlus,
   X,
   type LucideIcon,
@@ -18,9 +19,17 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   DEFAULT_APP_SETTINGS,
   loadAppSettings,
+  saveAppSettings,
   subscribeToAppSettings,
   type AppSettings,
 } from "../lib/app-settings";
+import {
+  enableDeviceNotifications as enableExternalNotifications,
+  getDeviceNotificationState,
+  hasActivePushSubscription,
+  updateAppBadge,
+  type DeviceNotificationState,
+} from "../lib/push-notifications";
 import {
   listNotifications,
   markAllNotificationsRead,
@@ -71,7 +80,7 @@ function notificationVisual(item: LabstarNotification): NotificationVisual {
   if (/acesso|membro|cargo|aprova|suspens/.test(text)) return { Icon: UserPlus, label: "Equipe", className: "member" };
   if (/integração|integracao|renovação|renovacao|github/.test(text)) return { Icon: ShieldCheck, label: "Integração", className: "integration" };
   if (/mensagem|enviou/.test(text)) return { Icon: MessageSquare, label: "Mensagem", className: "message" };
-  return { Icon: Bell, label: "Atualização", className: "general" };
+  return { Icon: Star, label: "Labstar", className: "general" };
 }
 
 function isToday(value: string) {
@@ -89,9 +98,7 @@ export function NotificationsButton({ member, onOpenChannel }: { member: Member;
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState("");
-  const [devicePermission, setDevicePermission] = useState<NotificationPermission | "unsupported">(
-    "Notification" in window ? Notification.permission : "unsupported",
-  );
+  const [devicePermission, setDevicePermission] = useState<DeviceNotificationState>(() => getDeviceNotificationState());
   const wrapRef = useRef<HTMLDivElement>(null);
   const knownIds = useRef<Set<string>>(new Set());
   const settingsRef = useRef<AppSettings>(DEFAULT_APP_SETTINGS);
@@ -118,12 +125,15 @@ export function NotificationsButton({ member, onOpenChannel }: { member: Member;
     return !isMention || settings.mentionNotifications;
   }
 
-  function showDeviceNotification(item: LabstarNotification) {
+  async function showDeviceNotification(item: LabstarNotification) {
     if (!mayNotify(item)) return;
+    if (await hasActivePushSubscription()) return;
     try {
       const notification = new Notification(item.title || "Labstar", {
         body: item.body,
         tag: `labstar-${item.id}`,
+        icon: "/pwa-192.png",
+        badge: "/favicon-180.png",
         silent: !settingsRef.current.messageSounds,
       });
       notification.onclick = () => {
@@ -143,7 +153,7 @@ export function NotificationsButton({ member, onOpenChannel }: { member: Member;
       if (notifyNew) {
         const newItems = data.filter((item) => !item.isRead && !knownIds.current.has(item.id));
         if (newItems.length && settingsRef.current.messageSounds) playNotificationTone();
-        for (const item of newItems) showDeviceNotification(item);
+        for (const item of newItems) void showDeviceNotification(item);
       }
       knownIds.current = new Set(data.map((item) => item.id));
       setNotifications(data);
@@ -183,6 +193,7 @@ export function NotificationsButton({ member, onOpenChannel }: { member: Member;
   }, [open]);
 
   const unread = notifications.filter((item) => !item.isRead).length;
+  useEffect(() => { void updateAppBadge(unread); }, [unread]);
   const visible = useMemo(
     () => filter === "unread" ? notifications.filter((item) => !item.isRead) : notifications,
     [filter, notifications],
@@ -210,11 +221,15 @@ export function NotificationsButton({ member, onOpenChannel }: { member: Member;
   }
 
   async function enableDeviceNotifications() {
-    if (!("Notification" in window)) return;
     try {
-      const permission = await Notification.requestPermission();
+      const permission = await enableExternalNotifications();
       setDevicePermission(permission);
-      if (permission === "granted") setError("");
+      if (permission === "active") {
+        settingsRef.current = await saveAppSettings({ ...settingsRef.current, desktopNotifications: true });
+        setError("");
+      }
+      else if (permission === "install-required") setError("No iPhone/iPad, adicione o Labstar à Tela de Início e abra o aplicativo instalado.");
+      else if (permission === "blocked") setError("As notificações estão bloqueadas nas configurações do sistema.");
     } catch {
       setError("O sistema não permitiu ativar alertas neste dispositivo.");
     }
@@ -240,7 +255,7 @@ export function NotificationsButton({ member, onOpenChannel }: { member: Member;
             <button type="button" className={filter === "unread" ? "active" : ""} onClick={() => setFilter("unread")}>Não lidas <i>{unread}</i></button>
             {unread > 0 && <button className="mark-all" type="button" onClick={() => void markAll()}><CheckCheck size={13} /> Marcar lidas</button>}
           </div>
-          {devicePermission === "default" && (
+          {(devicePermission === "available" || devicePermission === "install-required") && (
             <button className="notification-permission" type="button" onClick={() => void enableDeviceNotifications()}><BellRing size={14} /><span><b>Ativar alertas do dispositivo</b><small>Receba mensagens, chamadas, reuniões e avisos mesmo fora da janela.</small></span></button>
           )}
           {error && <div className="notifications-error"><span>{error}</span><button type="button" onClick={() => void refresh(false, true)}>Tentar novamente</button></div>}
