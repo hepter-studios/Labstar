@@ -27,6 +27,10 @@ A conexão do GitHub:
 8. o token não é persistido;
 9. o perfil passa a mostrar selo verificado e link clicável para o GitHub.
 
+Na aplicação instalada, a chamada inicial aceita somente as origens oficiais
+`http://tauri.localhost` e `https://tauri.localhost`. O callback continua voltando
+para a Web oficial, e o desktop atualiza o perfil quando recupera o foco.
+
 ## Configuração do aplicativo OAuth
 
 Crie um aplicativo OAuth exclusivo para esta conexão de perfil. Ele não deve ser o aplicativo usado pelos logins do Labstar.
@@ -41,6 +45,9 @@ Cadastre no GitHub Actions:
 - `LABSTAR_GH_PROFILE_CLIENT_SECRET`
 
 Os dois últimos nomes evitam o prefixo reservado `GITHUB_`, que não pode iniciar nomes de Secrets no GitHub Actions. O workflow `.github/workflows/deploy-github-profile-connection.yml` converte esses valores para os nomes esperados pela Edge Function ao publicá-los no Supabase.
+
+O workflow é manual e usa `ubuntu-latest`; ele não deve ser executado a cada ajuste
+de interface. Só é necessário quando a Edge Function ou seus segredos mudarem.
 
 ## Banco
 

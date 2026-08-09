@@ -67,7 +67,9 @@ import { memberPresenceStatus, useMemberPresence } from "./lib/presence";
 import { Avatar } from "./components/Avatar";
 import { CollaborationHub } from "./components/CollaborationHub";
 import { NotificationsButton } from "./components/NotificationsPanel";
+import { CurrentProfileConnection, MemberProfileConnection } from "./components/ProfileConnectionsBridge";
 import { RoleBadge, RoleManager } from "./components/RoleManager";
+import { takeGithubProfileConnectionResult, type GithubProfileConnectionResult } from "./lib/profile-connections";
 
 type NodeKind = "holding" | "empresa" | "area" | "produto" | "projeto";
 type NodeStatus = "planejamento" | "ativo" | "atencao" | "concluido";
@@ -153,6 +155,7 @@ export default function Home() {
   const [sound, setSound] = useState(true);
   const [search, setSearch] = useState("");
   const [quickPanel, setQuickPanel] = useState<"profile" | "help" | "summary" | null>(null);
+  const [githubConnectionResult] = useState(() => takeGithubProfileConnectionResult());
   const [notificationChannelId, setNotificationChannelId] = useState<string | null>(null);
   const [legalOpen, setLegalOpen] = useState(false);
   const [editorOpen, setEditorOpen] = useState(false);
@@ -169,6 +172,10 @@ export default function Home() {
   const zoomRef = useRef(zoom);
   const pendingWheelRef = useRef(0);
   const wheelFrameRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (githubConnectionResult) setQuickPanel("profile");
+  }, [githubConnectionResult]);
 
   useEffect(() => {
     zoomRef.current = zoom;
@@ -706,6 +713,7 @@ export default function Home() {
           onOpenTeam={() => { setQuickPanel(null); setView("equipe"); }}
           onOpenLegal={() => { setQuickPanel(null); setLegalOpen(true); }}
           onMemberUpdated={(member) => setSession((current) => current ? { ...current, member } : current)}
+          githubConnectionResult={githubConnectionResult}
         />
       )}
       {legalOpen && <LegalModal anchored onClose={() => setLegalOpen(false)} />}
@@ -1067,6 +1075,7 @@ function TeamDirectory({ nodes, currentMember, onMemberUpdated }: { nodes: Struc
                 <div><strong>{selected.name}{selected.id === currentMember.id ? " (você)" : ""}</strong><small>{selected.email}</small></div>
                 {selected.jobRoles[0] ? <RoleBadge role={selected.jobRoles[0]} compact /> : <span className={`role-badge ${selected.role}`}>{roleLabel(selected.role)}</span>}
               </div>
+              <MemberProfileConnection memberId={selected.id} />
 
               {selected.status === "pending" && canManage && (
                 <div className="approval-box"><ShieldCheck size={18} /><div><strong>Solicitação de acesso</strong><p>Confirme os dados abaixo antes de liberar esta pessoa.</p></div></div>
@@ -1190,6 +1199,7 @@ function QuickPanel({
   onOpenTeam,
   onOpenLegal,
   onMemberUpdated,
+  githubConnectionResult,
 }: {
   type: "profile" | "help" | "summary";
   session: SessionData;
@@ -1197,6 +1207,7 @@ function QuickPanel({
   onOpenTeam: () => void;
   onOpenLegal: () => void;
   onMemberUpdated: (member: Member) => void;
+  githubConnectionResult: GithubProfileConnectionResult;
 }) {
   const [profileName, setProfileName] = useState(session.member.name);
   const [profileState, setProfileState] = useState("");
@@ -1280,6 +1291,7 @@ function QuickPanel({
           <span>Acesso<b>{roleLabel(session.member.role)}</b></span>
         </div>
         {session.member.jobRoles.length > 0 && <div className="profile-role-list">{session.member.jobRoles.slice(0, 4).map((role) => <RoleBadge role={role} compact key={role.id} />)}</div>}
+        <CurrentProfileConnection result={githubConnectionResult} />
         {profileState && <p className="profile-state">{profileState}</p>}
         <button className="panel-action" type="button" onClick={onOpenTeam}><UserCog size={13} /> Abrir equipe e cargos</button>
         <button className="sign-out" type="button" onClick={() => void signOut()}>Sair do Labstar</button>

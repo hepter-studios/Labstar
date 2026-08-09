@@ -4,7 +4,6 @@ import { createPortal } from "react-dom";
 import "../profile-connections.css";
 import { getCurrentAccessIdentity } from "../lib/access";
 import { LabstarEnhancementStyles } from "./LabstarEnhancementStyles";
-import { ProfileConnectionsBridge } from "./ProfileConnectionsBridge";
 
 export function MemberPanelTools() {
   const [target, setTarget] = useState<Element | null>(null);
@@ -54,5 +53,5 @@ export function MemberPanelTools() {
     target,
   ) : null;
 
-  return <><LabstarEnhancementStyles />{tools}<ProfileConnectionsBridge /></>;
+  return <><LabstarEnhancementStyles />{tools}</>;
 }

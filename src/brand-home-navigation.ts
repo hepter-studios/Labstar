@@ -1,6 +1,3 @@
-import "./integration-message-cards";
-import "./integration-message-cards.css";
-
 export {};
 
 const BRAND_SELECTOR = ".app > .header .brand";

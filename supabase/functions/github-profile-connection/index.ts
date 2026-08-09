@@ -10,6 +10,10 @@ const EXTRA_ALLOWED_ORIGINS = (Deno.env.get("LABSTAR_PROFILE_ALLOWED_ORIGINS") ?
   .split(",")
   .map((value) => value.trim())
   .filter(Boolean);
+const NATIVE_ALLOWED_ORIGINS = new Set([
+  "http://tauri.localhost",
+  "https://tauri.localhost",
+]);
 
 const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
   auth: { autoRefreshToken: false, persistSession: false },
@@ -40,6 +44,7 @@ function isAllowedOrigin(origin: string) {
     const url = new URL(origin);
     if (url.protocol === "https:" && (url.hostname === "labstar.pages.dev" || url.hostname.endsWith(".labstar.pages.dev"))) return true;
     if (url.protocol === "http:" && (url.hostname === "localhost" || url.hostname === "127.0.0.1")) return true;
+    if (NATIVE_ALLOWED_ORIGINS.has(url.origin)) return true;
     return EXTRA_ALLOWED_ORIGINS.includes(url.origin);
   } catch {
     return false;

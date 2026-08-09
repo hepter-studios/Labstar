@@ -70,6 +70,7 @@ import {
   updateSpace,
   uploadSpaceLogo,
   removeIntegrationRule,
+  rotateIntegrationWebhookToken,
   type ChannelCategory,
   type ChannelMessage,
   type CollaborationSpace,
@@ -95,6 +96,13 @@ import {
   DeveloperMessageBody,
 } from "./DeveloperChatContent";
 import { MeetingRoomV2 } from "./MeetingRoomV2";
+import { GithubWebhookSettings } from "./IntegrationWebhookBridge";
+import { DeveloperComposerTools, handleDeveloperComposerKeyDown } from "./DeveloperComposerTools";
+import {
+  GithubIntegrationMessage,
+  normalizeIntegrationMessageBody,
+  parseGithubIntegrationMessage,
+} from "./GithubIntegrationMessage";
 
 type CollaborationHubProps = {
   member: Member;
@@ -360,20 +368,15 @@ export function CollaborationHub({ member, initialChannelId, soundEnabled = true
   );
 }
 
-const integrationCatalog: Record<IntegrationRule["provider"], { label: string; description: string; events: string[] }> = {
-  github: { label: "GitHub", description: "Pull requests, issues, releases, ações e alertas de segurança.", events: ["Pull request", "Issue crítica", "Deploy falhou", "Nova versão", "Alerta de segurança"] },
-  discord: { label: "Discord", description: "Encaminhe avisos importantes de uma comunidade existente.", events: ["Mensagem de suporte", "Menção à equipe", "Aviso da comunidade", "Incidente reportado"] },
-  monitoring: { label: "Monitoramento", description: "Disponibilidade, domínio, certificado e incidentes do produto.", events: ["Site fora do ar", "SSL vai expirar", "Domínio vai expirar", "Erro crítico", "Serviço recuperado"] },
-  billing: { label: "Assinaturas e renovações", description: "Lembretes de serviços, licenças, contratos e cobranças.", events: ["Renovação em 30 dias", "Renovação em 7 dias", "Pagamento falhou", "Plano alterado"] },
-  support: { label: "Suporte", description: "Organize chamados e encaminhe cada produto ao canal correto.", events: ["Novo chamado", "Chamado urgente", "Resposta do cliente", "SLA próximo do limite"] },
-};
+const githubEvents = ["Pull request", "Issue crítica", "Deploy falhou", "Nova versão", "Alerta de segurança"];
 
 function IntegrationsCenter({ space, channels, onClose }: { space: CollaborationSpace; channels: LabstarChannel[]; onClose: () => void }) {
   const [rules, setRules] = useState<IntegrationRule[]>([]);
-  const [provider, setProvider] = useState<IntegrationRule["provider"]>("github");
   const [notice, setNotice] = useState("Carregando configurações…");
+  const [adding, setAdding] = useState(false);
   const modalRef = useRef<HTMLElement>(null);
   const writableChannels = channels.filter((channel) => channel.type !== "voice" && channel.type !== "social");
+  const channelNames = new Map(writableChannels.map((channel) => [channel.id, channel.name] as const));
 
   useEffect(() => {
     const closeOnEscape = (event: KeyboardEvent) => event.key === "Escape" && onClose();
@@ -381,44 +384,83 @@ function IntegrationsCenter({ space, channels, onClose }: { space: Collaboration
     return () => window.removeEventListener("keydown", closeOnEscape);
   }, [onClose]);
 
-  useEffect(() => {
-    void listIntegrationRules(space.id).then((data) => {
-      setRules(data);
-      setNotice("As regras ficam salvas para toda a equipe.");
-    }).catch(() => setNotice("Execute a atualização v8 para salvar integrações no banco."));
-  }, [space.id]);
-
-  async function persist(next: IntegrationRule[], changed?: IntegrationRule) {
-    setRules(next);
-    if (!changed) return;
-    setNotice("Salvando…");
+  async function refreshRules(silent = false) {
+    if (!silent) setNotice("Carregando configurações…");
     try {
-      await saveIntegrationRule(changed);
-      setNotice("Configuração salva para toda a equipe.");
+      const data = await listIntegrationRules(space.id);
+      setRules(data.filter((rule) => rule.provider === "github"));
+      if (!silent) setNotice("Integrações GitHub sincronizadas para toda a equipe.");
     } catch {
-      setNotice("Não foi possível salvar. Verifique se a atualização v8 foi executada.");
+      setNotice("Não foi possível carregar as integrações. Verifique se as atualizações v8 e v16 foram aplicadas.");
     }
   }
 
-  function addRule() {
-    const catalog = integrationCatalog[provider];
+  useEffect(() => {
+    void refreshRules();
+  }, [space.id]);
+
+  async function persist(changed: IntegrationRule) {
+    setNotice("Salvando…");
+    try {
+      await saveIntegrationRule(changed);
+      setNotice("Configuração GitHub salva para toda a equipe.");
+    } catch (error) {
+      const code = error instanceof Error ? error.message : "";
+      setNotice(code.includes("permission") || code.includes("policy")
+        ? "Sua conta não tem permissão para administrar integrações."
+        : "Não foi possível salvar. Verifique as atualizações v8 e v16 do banco.");
+    }
+  }
+
+  async function addRule() {
+    if (adding) return;
+    setAdding(true);
     const newRule: IntegrationRule = {
       id: crypto.randomUUID(),
       spaceId: space.id,
-      provider,
-      name: catalog.label,
+      provider: "github",
+      name: "GitHub",
       endpoint: "",
       channelId: writableChannels[0]?.id || "",
-      events: [catalog.events[0]],
+      events: [githubEvents[0]],
       enabled: true,
       renewalDate: "",
+      webhookToken: "",
+      lastEventAt: "",
+      deliveredCount: 0,
     };
-    void persist([...rules, newRule], newRule);
+    setNotice("Criando integração GitHub…");
+    try {
+      await saveIntegrationRule(newRule);
+      await refreshRules(true);
+      setNotice("Integração GitHub criada. Agora copie o webhook para o repositório.");
+    } catch {
+      setNotice("Não foi possível criar a integração GitHub.");
+    } finally {
+      setAdding(false);
+    }
   }
 
-  function patchRule(id: string, patch: Partial<IntegrationRule>) {
-    const changed = { ...rules.find((rule) => rule.id === id)!, ...patch };
-    void persist(rules.map((rule) => rule.id === id ? changed : rule), changed);
+  function updateRule(id: string, patch: Partial<IntegrationRule>) {
+    setRules((current) => current.map((rule) => rule.id === id ? { ...rule, ...patch } : rule));
+  }
+
+  function patchAndPersist(id: string, patch: Partial<IntegrationRule>) {
+    const current = rules.find((rule) => rule.id === id);
+    if (!current) return;
+    const changed = { ...current, ...patch };
+    setRules((items) => items.map((rule) => rule.id === id ? changed : rule));
+    void persist(changed);
+  }
+
+  function saveCurrentRule(id: string) {
+    const current = rules.find((rule) => rule.id === id);
+    if (current) void persist(current);
+  }
+
+  async function rotateWebhook(id: string) {
+    const token = await rotateIntegrationWebhookToken(id);
+    setRules((current) => current.map((rule) => rule.id === id ? { ...rule, webhookToken: token } : rule));
   }
 
   return (
@@ -430,45 +472,50 @@ function IntegrationsCenter({ space, channels, onClose }: { space: Collaboration
         </header>
 
         <div className="integration-intro">
-          <div><b>Central operacional</b><p>Concentre incidentes, suporte, GitHub, vencimentos e renovações sem procurar informação em vários serviços.</p></div>
+          <div><b>GitHub conectado aos canais</b><p>Envie pull requests, issues críticas, falhas, versões e alertas de segurança diretamente para a equipe.</p></div>
           <div className="integration-create">
-            <select value={provider} onChange={(event) => setProvider(event.target.value as IntegrationRule["provider"])}>
-              {Object.entries(integrationCatalog).map(([value, item]) => <option key={value} value={value}>{item.label}</option>)}
-            </select>
-            <button type="button" onClick={addRule}><Plus size={14} /> Adicionar integração</button>
+            <button type="button" onClick={() => void addRule()} disabled={adding}>{adding ? <LoaderCircle className="spin" size={14} /> : <Plus size={14} />} Adicionar GitHub</button>
           </div>
         </div>
 
         <div className="integration-rule-list">
           {rules.map((rule) => {
-            const catalog = integrationCatalog[rule.provider];
             return (
-              <article key={rule.id} className={rule.enabled ? "" : "disabled"}>
+              <article key={rule.id} className={`integration-card-enhanced ${rule.enabled ? "" : "disabled"}`}>
                 <div className="integration-rule-head">
-                  <span className={`provider-mark ${rule.provider}`}>{rule.provider === "github" ? <Github size={18} /> : <Webhook size={18} />}</span>
-                  <div><strong>{catalog.label}</strong><small>{catalog.description}</small></div>
-                  <label className="integration-toggle"><input type="checkbox" checked={rule.enabled} onChange={(event) => patchRule(rule.id, { enabled: event.target.checked })} /><i /></label>
+                  <span className="provider-mark github"><Github size={18} /></span>
+                  <div><strong>GitHub</strong><small>Pull requests, issues, releases, ações e alertas de segurança.</small></div>
+                  <label className="integration-toggle"><input type="checkbox" checked={rule.enabled} onChange={(event) => patchAndPersist(rule.id, { enabled: event.target.checked })} /><i /></label>
                   <button className="remove-rule" type="button" onClick={async () => {
-                    setRules((current) => current.filter((item) => item.id !== rule.id));
-                    try { await removeIntegrationRule(rule.id); setNotice("Integração removida."); } catch { setNotice("Não foi possível remover a integração."); }
+                    if (!window.confirm(`Remover a integração ${rule.name || "GitHub"}? O endereço atual deixará de funcionar.`)) return;
+                    try {
+                      await removeIntegrationRule(rule.id);
+                      setRules((current) => current.filter((item) => item.id !== rule.id));
+                      setNotice("Integração GitHub removida.");
+                    } catch { setNotice("Não foi possível remover a integração."); }
                   }} aria-label="Remover integração"><Trash2 size={14} /></button>
                 </div>
                 <div className="integration-rule-fields">
-                  <label>Nome<input value={rule.name} onChange={(event) => patchRule(rule.id, { name: event.target.value })} /></label>
-                  <label>Enviar para<select value={rule.channelId} onChange={(event) => patchRule(rule.id, { channelId: event.target.value })}><option value="">Escolha um canal</option>{writableChannels.map((channel) => <option key={channel.id} value={channel.id}>#{channel.name}</option>)}</select></label>
-                  <label className="full">{rule.provider === "billing" ? "Página ou referência do serviço" : "Webhook, repositório ou endereço da integração"}<input type="url" value={rule.endpoint} onChange={(event) => patchRule(rule.id, { endpoint: event.target.value })} placeholder={rule.provider === "github" ? "https://github.com/empresa/repositorio" : "https://…"} /></label>
-                  {rule.provider === "billing" && <label>Próxima renovação<input type="date" value={rule.renewalDate} onChange={(event) => patchRule(rule.id, { renewalDate: event.target.value })} /></label>}
+                  <label>Nome<input value={rule.name} onChange={(event) => updateRule(rule.id, { name: event.target.value })} onBlur={() => saveCurrentRule(rule.id)} /></label>
+                  <label>Enviar para<select value={rule.channelId} onChange={(event) => patchAndPersist(rule.id, { channelId: event.target.value })}><option value="">Escolha um canal</option>{writableChannels.map((channel) => <option key={channel.id} value={channel.id}>#{channel.name}</option>)}</select></label>
+                  <label className="full">Repositório GitHub (opcional)<input type="url" value={rule.endpoint} onChange={(event) => updateRule(rule.id, { endpoint: event.target.value })} onBlur={() => saveCurrentRule(rule.id)} placeholder="https://github.com/empresa/repositorio" /></label>
                 </div>
                 <fieldset>
                   <legend>Eventos que devem gerar aviso</legend>
-                  {catalog.events.map((eventName) => <label key={eventName}><input type="checkbox" checked={rule.events.includes(eventName)} onChange={() => patchRule(rule.id, { events: rule.events.includes(eventName) ? rule.events.filter((item) => item !== eventName) : [...rule.events, eventName] })} /><span>{eventName}</span></label>)}
+                  {githubEvents.map((eventName) => <label key={eventName}><input type="checkbox" checked={rule.events.includes(eventName)} onChange={() => patchAndPersist(rule.id, { events: rule.events.includes(eventName) ? rule.events.filter((item) => item !== eventName) : [...rule.events, eventName] })} /><span>{eventName}</span></label>)}
                 </fieldset>
+                <GithubWebhookSettings
+                  rule={rule}
+                  channelName={channelNames.get(rule.channelId) ?? ""}
+                  onRotate={() => rotateWebhook(rule.id)}
+                  onRefresh={() => refreshRules(true)}
+                />
               </article>
             );
           })}
-          {!rules.length && <div className="integration-empty"><Webhook size={26} /><strong>Nenhuma integração configurada</strong><p>Comece pelo GitHub, monitoramento ou renovações. Depois escolha quais eventos vão para cada canal.</p></div>}
+          {!rules.length && <div className="integration-empty"><Github size={26} /><strong>Nenhum GitHub configurado</strong><p>Adicione o GitHub, escolha um canal e copie o endereço para Settings → Webhooks no repositório.</p></div>}
         </div>
-        <footer><span>{notice || "As regras ficam separadas por Espaço."}</span><button type="button" onClick={onClose}><Check size={14} /> Concluir</button></footer>
+        <footer><span role="status">{notice || "As regras ficam separadas por Espaço."}</span><button type="button" onClick={onClose}><Check size={14} /> Concluir</button></footer>
       </section>
     </div>
   );
@@ -522,6 +569,7 @@ function MessageRoom({ channel, space, member }: { channel: LabstarChannel; spac
   const [uploadNoticeError, setUploadNoticeError] = useState(false);
   const [dragActive, setDragActive] = useState(false);
   const messageScrollRef = useRef<HTMLDivElement>(null);
+  const composerRef = useRef<HTMLTextAreaElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const stickerRef = useRef<HTMLInputElement>(null);
 
@@ -682,6 +730,12 @@ function MessageRoom({ channel, space, member }: { channel: LabstarChannel; spac
           const reply = message.replyTo ? messages.find((item) => item.id === message.replyTo) : null;
           const primaryRole = message.author?.jobRoles[0];
           const own = message.authorId === member.id;
+          const integrationBody = message.author?.name === "Labstar Integrations"
+            ? normalizeIntegrationMessageBody(message.body)
+            : message.body;
+          const githubMessage = message.author?.name === "Labstar Integrations"
+            ? parseGithubIntegrationMessage(integrationBody)
+            : null;
           return (
             <article
               key={message.id}
@@ -701,7 +755,9 @@ function MessageRoom({ channel, space, member }: { channel: LabstarChannel; spac
                   {message.editedAt && <em>(editada)</em>}
                   {message.isPinned && <Pin size={11} />}
                 </header>
-                <DeveloperMessageBody body={message.body} />
+                {githubMessage
+                  ? <GithubIntegrationMessage message={githubMessage} />
+                  : <DeveloperMessageBody body={integrationBody} />}
                 {!!message.attachments.length && (
                   <div className="message-attachments">
                     {message.attachments.map((attachment) => attachment.mimeType.startsWith("image/") ? (
@@ -766,14 +822,17 @@ function MessageRoom({ channel, space, member }: { channel: LabstarChannel; spac
           )}
           {!!files.length && <DeveloperFileQueue files={files} onRemove={(index) => setFiles((current) => current.filter((_, itemIndex) => itemIndex !== index))} />}
           {uploadNotice && <p className={`developer-composer-notice ${uploadNoticeError ? "error" : ""}`}>{uploadNotice}</p>}
+          <DeveloperComposerTools textareaRef={composerRef} value={draft} onChange={setDraft} disabled={sending} />
           <div className="composer-row">
             <button type="button" disabled={Boolean(editing)} onClick={() => fileRef.current?.click()} title={editing ? "Anexos não mudam durante edição" : `Anexar até ${MAX_CHAT_FILES} arquivos de ${formatChatBytes(MAX_CHAT_FILE_BYTES)}`}><Paperclip size={18} /></button>
             <textarea
+              ref={composerRef}
               rows={1}
               value={draft}
               onChange={(event) => setDraft(event.target.value)}
               onPaste={pasteIntoComposer}
               onKeyDown={(event) => {
+                if (handleDeveloperComposerKeyDown(event, draft, setDraft)) return;
                 if (event.key === "Enter" && !event.shiftKey) {
                   event.preventDefault();
                   event.currentTarget.form?.requestSubmit();

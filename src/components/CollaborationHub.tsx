@@ -3,7 +3,6 @@ import { useEffect, useState } from "react";
 import type { Member } from "../lib/supabase";
 import { CommunicationHome } from "./CommunicationHome";
 import { DirectMessagesHub } from "./DirectMessagesHubV6";
-import { IntegrationWebhookBridge } from "./IntegrationWebhookBridge";
 import { CollaborationHub as LegacyCollaborationHub } from "./LegacyCollaborationHub";
 
 type CollaborationHubProps = {
@@ -135,7 +134,6 @@ export function CollaborationHub({ member, initialChannelId, soundEnabled = true
         initialChannelId={workspaceChannelId}
         soundEnabled={soundEnabled}
       />
-      <IntegrationWebhookBridge />
       {surface === "home" && (
         <div className="communication-home-overlay">
           <CommunicationHome

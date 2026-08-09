@@ -1,27 +1,15 @@
 import { Check, Copy, Github, Hash, LoaderCircle, RefreshCw, Send, ShieldCheck, Webhook } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { createPortal } from "react-dom";
 import "../integration-webhook-bridge.css";
-import { loadCollaboration, supabaseClient } from "../lib/supabase";
+import { supabaseClient, type IntegrationRule } from "../lib/supabase";
 
 const INGEST_URL = "https://pgzwyngxsxnheulvusdq.supabase.co/functions/v1/integration-channel-ingest";
 
-type WebhookRule = {
-  id: string;
-  provider: "github";
-  name: string;
-  token: string;
-  channelId: string;
+type GithubWebhookSettingsProps = {
+  rule: IntegrationRule;
   channelName: string;
-  deliveredCount: number;
-  lastEventAt: string;
-  events: string[];
-  endpoint: string;
-};
-
-type PortalTarget = {
-  target: HTMLElement;
-  rule: WebhookRule;
+  onRotate: () => Promise<void>;
+  onRefresh: () => Promise<void> | void;
 };
 
 async function copyText(value: string) {
@@ -39,10 +27,11 @@ async function copyText(value: string) {
   }
 }
 
-function webhookUrl(rule: WebhookRule) {
+function webhookUrl(rule: IntegrationRule) {
+  if (!rule.webhookToken) return "";
   const url = new URL(INGEST_URL);
   url.searchParams.set("rule", rule.id);
-  url.searchParams.set("token", rule.token);
+  url.searchParams.set("token", rule.webhookToken);
   return url.toString();
 }
 
@@ -50,33 +39,44 @@ function wait(ms: number) {
   return new Promise((resolve) => window.setTimeout(resolve, ms));
 }
 
-function RuleWebhook({ rule, onRotate, onRefresh }: { rule: WebhookRule; onRotate: () => Promise<void>; onRefresh: () => void }) {
+export function GithubWebhookSettings({ rule, channelName, onRotate, onRefresh }: GithubWebhookSettingsProps) {
   const [copied, setCopied] = useState(false);
   const [rotating, setRotating] = useState(false);
   const [testing, setTesting] = useState(false);
   const [testStatus, setTestStatus] = useState("");
   const [testOk, setTestOk] = useState<boolean | null>(null);
+  const copiedTimer = useRef(0);
   const url = webhookUrl(rule);
 
+  useEffect(() => () => window.clearTimeout(copiedTimer.current), []);
+
   async function copy() {
+    if (!url) return;
     await copyText(url);
     setCopied(true);
-    window.setTimeout(() => setCopied(false), 1800);
+    window.clearTimeout(copiedTimer.current);
+    copiedTimer.current = window.setTimeout(() => setCopied(false), 1800);
   }
 
   async function rotate() {
+    if (rotating) return;
     setRotating(true);
     setTestStatus("");
     setTestOk(null);
     try {
       await onRotate();
+      setTestOk(true);
+      setTestStatus("Novo endereço criado. O webhook anterior deixou de funcionar.");
+    } catch {
+      setTestOk(false);
+      setTestStatus("Não foi possível gerar um novo endereço. Verifique sua permissão de administrar canais.");
     } finally {
       setRotating(false);
     }
   }
 
   async function testDelivery() {
-    if (!supabaseClient || testing) return;
+    if (!supabaseClient || testing || !url || !rule.channelId || !rule.enabled) return;
     setTesting(true);
     setTestOk(null);
     setTestStatus("Enviando evento de teste…");
@@ -92,7 +92,7 @@ function RuleWebhook({ rule, onRotate, onRefresh }: { rule: WebhookRule; onRotat
         body: JSON.stringify({
           event: eventName,
           title: `Teste manual · ${rule.name || "GitHub"}`,
-          message: `A integração GitHub está entregando eventos no canal #${rule.channelName || "destino"}.`,
+          message: `A integração GitHub está entregando eventos no canal #${channelName || "destino"}.`,
           url: rule.endpoint || "https://github.com",
           testId: crypto.randomUUID(),
           sentAt: new Date().toISOString(),
@@ -100,14 +100,14 @@ function RuleWebhook({ rule, onRotate, onRefresh }: { rule: WebhookRule; onRotat
       });
 
       let confirmed = false;
-      for (let attempt = 0; attempt < 6; attempt += 1) {
+      for (let attempt = 0; attempt < 8; attempt += 1) {
         await wait(700);
         const { data, error } = await supabaseClient
           .from("integration_rules")
           .select("delivered_count,last_event_at")
           .eq("id", rule.id)
           .maybeSingle();
-        if (error) break;
+        if (error) throw error;
         const nextCount = Number(data?.delivered_count ?? 0);
         const nextLast = String(data?.last_event_at ?? "");
         if (nextCount > beforeCount || (nextLast && nextLast !== beforeLastEvent)) {
@@ -118,16 +118,18 @@ function RuleWebhook({ rule, onRotate, onRefresh }: { rule: WebhookRule; onRotat
 
       setTestOk(confirmed);
       setTestStatus(confirmed
-        ? `Teste entregue em #${rule.channelName || "canal"}. Confira também o sino de notificações.`
-        : "O teste foi enviado, mas o Labstar não confirmou a entrega. Verifique o canal e o status do webhook.");
-      onRefresh();
+        ? `Teste entregue em #${channelName || "canal"}.`
+        : "O receptor não confirmou a entrega. Confira se a atualização v16 foi aplicada e tente novamente.");
+      await onRefresh();
     } catch {
       setTestOk(false);
-      setTestStatus("Não foi possível enviar o teste deste dispositivo.");
+      setTestStatus("Não foi possível entregar o teste. O endereço pode estar desatualizado ou o receptor ainda não foi publicado.");
     } finally {
       setTesting(false);
     }
   }
+
+  const ready = Boolean(url && rule.channelId && rule.events.length && rule.enabled);
 
   return (
     <section className="integration-webhook-runtime">
@@ -135,13 +137,13 @@ function RuleWebhook({ rule, onRotate, onRefresh }: { rule: WebhookRule; onRotat
         <span className="integration-webhook-avatar github"><Github size={18} /></span>
         <div className="integration-webhook-identity">
           <strong>{rule.name || "GitHub"}</strong>
-          <small>GitHub · webhook ativo</small>
+          <small>{ready ? "GitHub · webhook pronto" : "GitHub · configuração incompleta"}</small>
         </div>
         <div className="integration-webhook-destination" title="Canal de destino">
           <Hash size={12} />
-          <span>{rule.channelName || "Canal não definido"}</span>
+          <span>{channelName || "Canal não definido"}</span>
         </div>
-        <span className="integration-webhook-status"><i /> Ativo</span>
+        <span className={`integration-webhook-status ${ready ? "" : "pending"}`}><i /> {ready ? "Ativo" : "Pendente"}</span>
       </div>
 
       <div className="integration-webhook-divider" />
@@ -151,144 +153,31 @@ function RuleWebhook({ rule, onRotate, onRefresh }: { rule: WebhookRule; onRotat
         <div><strong>URL do webhook</strong><small>Use esta URL em GitHub → Settings → Webhooks.</small></div>
         {rule.deliveredCount > 0 && <em>{rule.deliveredCount} entregue{rule.deliveredCount === 1 ? "" : "s"}</em>}
       </header>
-      <div className="integration-webhook-url">
-        <input value={url} readOnly aria-label={`Webhook da integração ${rule.name}`} onFocus={(event) => event.currentTarget.select()} />
-        <button type="button" onClick={() => void copy()} title="Copiar URL do webhook">{copied ? <Check size={13} /> : <Copy size={13} />}<span>{copied ? "Copiado" : "Copiar URL"}</span></button>
-        <button type="button" className="rotate" onClick={() => void rotate()} disabled={rotating} title="Gerar um novo endereço e invalidar o anterior"><RefreshCw className={rotating ? "spin" : ""} size={13} /></button>
-      </div>
+      {url ? (
+        <div className="integration-webhook-url">
+          <input value={url} readOnly aria-label={`Webhook da integração ${rule.name}`} onFocus={(event) => event.currentTarget.select()} />
+          <button type="button" onClick={() => void copy()} title="Copiar URL do webhook">{copied ? <Check size={13} /> : <Copy size={13} />}<span>{copied ? "Copiado" : "Copiar URL"}</span></button>
+          <button type="button" className="rotate" onClick={() => void rotate()} disabled={rotating} title="Gerar um novo endereço e invalidar o anterior"><RefreshCw className={rotating ? "spin" : ""} size={13} /></button>
+        </div>
+      ) : <p className="integration-webhook-test-status error">O endereço ainda não existe. Aplique a atualização v16 no Supabase.</p>}
 
       <div className="integration-webhook-self-test">
-        <button type="button" onClick={() => void testDelivery()} disabled={testing || !rule.channelId}>
+        <button type="button" onClick={() => void testDelivery()} disabled={testing || !ready}>
           {testing ? <LoaderCircle className="spin" size={13} /> : <Send size={13} />}
           <span>{testing ? "Testando…" : "Testar agora"}</span>
         </button>
         <div>
           <strong>Teste sem sair do Labstar</strong>
-          <small>Envia um evento real pelo mesmo webhook e confirma se ele chegou ao canal.</small>
+          <small>Envia um evento pelo mesmo receptor e confirma a chegada no canal.</small>
         </div>
       </div>
       {testStatus && <p className={`integration-webhook-test-status ${testOk === true ? "success" : testOk === false ? "error" : ""}`}>{testStatus}</p>}
 
       <footer>
         <ShieldCheck size={11} />
-        <span>GitHub: Settings → Webhooks → Add webhook → cole esta URL em Payload URL.</span>
+        <span>Content type: application/json. Em “Which events”, escolha os mesmos eventos marcados acima.</span>
         {rule.lastEventAt && <time>Último evento: {new Date(rule.lastEventAt).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}</time>}
       </footer>
     </section>
   );
-}
-
-export function IntegrationWebhookBridge() {
-  const [portals, setPortals] = useState<PortalTarget[]>([]);
-  const refreshTimer = useRef(0);
-  const generation = useRef(0);
-
-  useEffect(() => {
-    let disposed = false;
-
-    const refresh = async () => {
-      window.clearTimeout(refreshTimer.current);
-      const currentGeneration = ++generation.current;
-      const modal = document.querySelector<HTMLElement>(".integrations-center");
-      if (!modal || !supabaseClient) {
-        setPortals([]);
-        return;
-      }
-
-      const spaceLabel = modal.querySelector<HTMLElement>(":scope > header small")?.textContent?.split(" · ")[0]?.trim() ?? "";
-      if (!spaceLabel) return;
-
-      try {
-        const collaboration = await loadCollaboration();
-        const space = collaboration.spaces.find((item) => item.name === spaceLabel);
-        if (!space || disposed || currentGeneration !== generation.current) return;
-
-        const channelNames = new Map(
-          collaboration.channels
-            .filter((channel) => channel.spaceId === space.id)
-            .map((channel) => [channel.id, channel.name] as const),
-        );
-
-        const { data, error } = await supabaseClient
-          .from("integration_rules")
-          .select("id,provider,name,endpoint,events,channel_id,webhook_token,last_event_at,delivered_count")
-          .eq("space_id", space.id)
-          .eq("provider", "github")
-          .order("created_at", { ascending: true });
-        if (error) throw error;
-
-        const rules: WebhookRule[] = (data ?? []).filter((row) => row.webhook_token).map((row) => {
-          const channelId = String(row.channel_id ?? "");
-          return {
-            id: String(row.id),
-            provider: "github",
-            name: String(row.name ?? "GitHub"),
-            token: String(row.webhook_token),
-            channelId,
-            channelName: channelNames.get(channelId) ?? "",
-            deliveredCount: Number(row.delivered_count ?? 0),
-            lastEventAt: String(row.last_event_at ?? ""),
-            events: Array.isArray(row.events) ? row.events.map(String) : [],
-            endpoint: String(row.endpoint ?? ""),
-          };
-        });
-        const cards = [...modal.querySelectorAll<HTMLElement>(".integration-rule-list > article")]
-          .filter((card) => Boolean(card.querySelector(".provider-mark.github")));
-        if (disposed || currentGeneration !== generation.current) return;
-
-        setPortals(cards.flatMap((card, index) => {
-          const rule = rules[index];
-          if (!rule) return [];
-          card.classList.add("integration-card-enhanced");
-          let target = card.querySelector<HTMLElement>(":scope > .integration-webhook-bridge-mount");
-          if (!target) {
-            target = document.createElement("div");
-            target.className = "integration-webhook-bridge-mount";
-            card.appendChild(target);
-          }
-          return [{ target, rule }];
-        }));
-      } catch {
-        setPortals([]);
-      }
-    };
-
-    const schedule = () => {
-      window.clearTimeout(refreshTimer.current);
-      refreshTimer.current = window.setTimeout(() => void refresh(), 220);
-    };
-
-    const observer = new MutationObserver(schedule);
-    observer.observe(document.body, { childList: true, subtree: true });
-    document.addEventListener("change", schedule, true);
-    document.addEventListener("click", schedule, true);
-    document.addEventListener("labstar:integration-refresh", schedule as EventListener);
-    schedule();
-
-    return () => {
-      disposed = true;
-      window.clearTimeout(refreshTimer.current);
-      observer.disconnect();
-      document.removeEventListener("change", schedule, true);
-      document.removeEventListener("click", schedule, true);
-      document.removeEventListener("labstar:integration-refresh", schedule as EventListener);
-    };
-  }, []);
-
-  async function rotate(ruleId: string) {
-    if (!supabaseClient) return;
-    const { error } = await supabaseClient.rpc("rotate_integration_webhook_token", { target_rule_id: ruleId });
-    if (error) throw error;
-    document.dispatchEvent(new Event("labstar:integration-refresh"));
-  }
-
-  return <>{portals.map(({ target, rule }) => createPortal(
-    <RuleWebhook
-      key={rule.id}
-      rule={rule}
-      onRotate={() => rotate(rule.id)}
-      onRefresh={() => document.dispatchEvent(new Event("labstar:integration-refresh"))}
-    />,
-    target,
-  ))}</>;
 }

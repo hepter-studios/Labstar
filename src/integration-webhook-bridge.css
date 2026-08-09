@@ -109,6 +109,11 @@
   box-shadow: 0 0 0 3px rgba(87,201,155,.08);
 }
 
+.integration-webhook-status.pending i {
+  background: #d8a657;
+  box-shadow: 0 0 0 3px rgba(216,166,87,.08);
+}
+
 .integration-webhook-divider {
   height: 1px;
   margin: 11px 0;

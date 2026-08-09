@@ -1,19 +1,11 @@
-import {
-  CheckCircle2,
-  ExternalLink,
-  Github,
-  LoaderCircle,
-  RefreshCw,
-  Unlink,
-} from "lucide-react";
-import { useEffect, useRef, useState } from "react";
-import { createPortal } from "react-dom";
+import { CheckCircle2, ExternalLink, Github, LoaderCircle, RefreshCw, Unlink } from "lucide-react";
+import { useEffect, useState } from "react";
 import {
   connectGithubProfile,
   disconnectGithubProfile,
   getCurrentProfileConnections,
-  listMemberProfileConnections,
-  takeGithubProfileConnectionResult,
+  getMemberProfileConnections,
+  type GithubProfileConnectionResult,
   type GithubPublicProfile,
   type PublicProfileConnections,
 } from "../lib/profile-connections";
@@ -24,13 +16,13 @@ function githubLabel(profile: GithubPublicProfile) {
   return profile.name || `@${profile.username}`;
 }
 
-function GithubProfileLink({ profile, compact = false }: { profile: GithubPublicProfile; compact?: boolean }) {
+export function GithubProfileLink({ profile, compact = false }: { profile: GithubPublicProfile; compact?: boolean }) {
   return (
     <a
       className={`github-public-link ${compact ? "compact" : ""}`}
       href={profile.profileUrl}
       target="_blank"
-      rel="noreferrer"
+      rel="noopener noreferrer"
       title="Abrir perfil verificado no GitHub"
     >
       <Github size={compact ? 13 : 15} />
@@ -41,89 +33,40 @@ function GithubProfileLink({ profile, compact = false }: { profile: GithubPublic
   );
 }
 
-function MemberDirectoryConnections() {
-  const [target, setTarget] = useState<HTMLElement | null>(null);
+export function MemberProfileConnection({ memberId }: { memberId: string }) {
   const [profile, setProfile] = useState<GithubPublicProfile | null>(null);
-  const directoryRef = useRef<Awaited<ReturnType<typeof listMemberProfileConnections>>>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
-    void listMemberProfileConnections().then((items) => {
-      if (!cancelled) directoryRef.current = items;
+    setLoading(true);
+    void getMemberProfileConnections(memberId).then((connections) => {
+      if (!cancelled) setProfile(connections.github);
+    }).finally(() => {
+      if (!cancelled) setLoading(false);
     });
+    return () => { cancelled = true; };
+  }, [memberId]);
 
-    const findTarget = () => {
-      const memberProfile = document.querySelector<HTMLElement>(".member-editor .member-profile");
-      if (!memberProfile) {
-        setTarget(null);
-        return;
-      }
-      let mount = memberProfile.parentElement?.querySelector<HTMLElement>(":scope > .member-directory-connections-mount") ?? null;
-      if (!mount) {
-        mount = document.createElement("div");
-        mount.className = "member-directory-connections-mount";
-        memberProfile.insertAdjacentElement("afterend", mount);
-      }
-      const email = memberProfile.querySelector("small")?.textContent?.trim().toLowerCase() ?? "";
-      setProfile(directoryRef.current.find((entry) => entry.email === email)?.github ?? null);
-      setTarget(mount);
-    };
-
-    findTarget();
-    const observer = new MutationObserver(findTarget);
-    observer.observe(document.body, { childList: true, subtree: true, characterData: true });
-    return () => {
-      cancelled = true;
-      observer.disconnect();
-    };
-  }, []);
-
-  if (!target || !profile) return null;
-  return createPortal(
-    <section className="member-directory-connections">
-      <GithubProfileLink profile={profile} compact />
-    </section>,
-    target,
-  );
+  if (loading) return <div className="member-directory-connections" aria-label="Carregando GitHub"><LoaderCircle className="spin" size={13} /></div>;
+  if (!profile) return null;
+  return <section className="member-directory-connections"><GithubProfileLink profile={profile} compact /></section>;
 }
 
-export function ProfileConnectionsBridge() {
-  const [target, setTarget] = useState<HTMLElement | null>(null);
+export function CurrentProfileConnection({ result = null }: { result?: GithubProfileConnectionResult }) {
   const [connections, setConnections] = useState(emptyConnections);
   const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState("");
-  const resultRef = useRef(takeGithubProfileConnectionResult());
-
-  useEffect(() => {
-    const findProfilePanel = () => {
-      const panel = document.querySelector<HTMLElement>(".quick-panel.profile");
-      if (!panel) {
-        setTarget(null);
-        if (resultRef.current) document.querySelector<HTMLButtonElement>(".avatar-button")?.click();
-        return;
-      }
-      let mount = panel.querySelector<HTMLElement>(":scope > .profile-connections-mount");
-      if (!mount) {
-        mount = document.createElement("div");
-        mount.className = "profile-connections-mount";
-        const signOut = panel.querySelector(".sign-out");
-        if (signOut) panel.insertBefore(mount, signOut);
-        else panel.appendChild(mount);
-      }
-      setTarget(mount);
-    };
-
-    findProfilePanel();
-    const observer = new MutationObserver(findProfilePanel);
-    observer.observe(document.body, { childList: true, subtree: true });
-    return () => observer.disconnect();
-  }, []);
+  const [message, setMessage] = useState(() => {
+    if (result === "connected") return "GitHub conectado e verificado.";
+    if (result === "cancelled") return "Conexão cancelada. Nenhuma alteração foi feita.";
+    if (result === "error") return "Não foi possível conectar ao GitHub.";
+    return "";
+  });
 
   async function loadConnections(silent = false) {
     if (!silent) setLoading(true);
     try {
       setConnections(await getCurrentProfileConnections());
-      if (!silent && !resultRef.current) setMessage("");
     } catch {
       if (!silent) setMessage("Não foi possível carregar o GitHub.");
     } finally {
@@ -132,25 +75,21 @@ export function ProfileConnectionsBridge() {
   }
 
   useEffect(() => {
-    if (!target) return;
-    const result = resultRef.current;
-    if (result === "error") setMessage("Não foi possível conectar ao GitHub.");
-    else setMessage("");
-    resultRef.current = null;
     void loadConnections();
-  }, [target]);
+  }, []);
 
   useEffect(() => {
-    const refreshOnFocus = () => {
-      if (target) void loadConnections(true);
+    const refreshOnFocus = () => void loadConnections(true);
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === "visible") void loadConnections(true);
     };
     window.addEventListener("focus", refreshOnFocus);
-    document.addEventListener("visibilitychange", refreshOnFocus);
+    document.addEventListener("visibilitychange", refreshWhenVisible);
     return () => {
       window.removeEventListener("focus", refreshOnFocus);
-      document.removeEventListener("visibilitychange", refreshOnFocus);
+      document.removeEventListener("visibilitychange", refreshWhenVisible);
     };
-  }, [target]);
+  }, []);
 
   async function connectGithub() {
     setLoading(true);
@@ -162,17 +101,18 @@ export function ProfileConnectionsBridge() {
       setMessage(code.includes("not_configured")
         ? "Conexão do GitHub ainda não configurada."
         : "Não foi possível abrir o GitHub.");
-    } finally {
       setLoading(false);
     }
   }
 
   async function disconnectGithub() {
+    if (!window.confirm("Desconectar seu perfil do GitHub no Labstar?")) return;
     setLoading(true);
     setMessage("");
     try {
       await disconnectGithubProfile();
       setConnections(emptyConnections);
+      setMessage("GitHub desconectado do seu perfil.");
     } catch {
       setMessage("Não foi possível desconectar o GitHub.");
     } finally {
@@ -181,15 +121,10 @@ export function ProfileConnectionsBridge() {
   }
 
   const github = connections.github;
-  const portal = target ? createPortal(
-    <section className="profile-connections" aria-label="Conexão GitHub">
+  return (
+    <section className="profile-connections" aria-label="Conexão GitHub" aria-busy={loading}>
       {!github ? (
-        <button
-          className="github-connect-button"
-          type="button"
-          disabled={loading}
-          onClick={() => void connectGithub()}
-        >
+        <button className="github-connect-button" type="button" disabled={loading} onClick={() => void connectGithub()}>
           {loading ? <LoaderCircle className="spin" size={15} /> : <Github size={15} />}
           Conectar ao GitHub
           <ExternalLink size={11} />
@@ -201,19 +136,16 @@ export function ProfileConnectionsBridge() {
           </span>
           <GithubProfileLink profile={github} />
           <div className="connection-actions">
-            <button type="button" disabled={loading} onClick={() => void connectGithub()} title="Reconectar GitHub">
+            <button type="button" disabled={loading} onClick={() => void connectGithub()} title="Reconectar GitHub" aria-label="Reconectar GitHub">
               {loading ? <LoaderCircle className="spin" size={12} /> : <RefreshCw size={12} />}
             </button>
-            <button className="danger" type="button" disabled={loading} onClick={() => void disconnectGithub()} title="Desconectar GitHub">
+            <button className="danger" type="button" disabled={loading} onClick={() => void disconnectGithub()} title="Desconectar GitHub" aria-label="Desconectar GitHub">
               <Unlink size={12} />
             </button>
           </div>
         </div>
       )}
-      {message && <p className="connection-message">{message}</p>}
-    </section>,
-    target,
-  ) : null;
-
-  return <>{portal}<MemberDirectoryConnections /></>;
+      {message && <p className="connection-message" role="status">{message}</p>}
+    </section>
+  );
 }

@@ -83,6 +83,7 @@ import {
   DeveloperMessageBody,
 } from "./DeveloperChatContent";
 import { PrivateCallOverlay } from "./PrivateCallOverlay";
+import { DeveloperComposerTools, handleDeveloperComposerKeyDown } from "./DeveloperComposerTools";
 
 const dmEmojiSet = [
   "😀", "😃", "😄", "😁", "😂", "🤣", "😊", "🥹",
@@ -905,6 +906,8 @@ function DirectConversation({
           {error && <div className="dm-composer-notice error">{error}</div>}
           {!dmAvailable && <div className="dm-composer-notice error">Mensagens privadas aguardam a migração segura do banco.</div>}
 
+          <DeveloperComposerTools textareaRef={composerRef} value={draft} onChange={setDraft} disabled={sending || !threadId || !dmAvailable} />
+
           {emojiOpen && (
             <div ref={emojiRef} className="dm-emoji-picker" role="listbox" aria-label="Emojis disponíveis">
               <header><strong>Emojis</strong><button type="button" onClick={() => setEmojiOpen(false)} aria-label="Fechar emojis"><X size={14} /></button></header>
@@ -933,6 +936,7 @@ function DirectConversation({
               onChange={(event) => setDraft(event.target.value)}
               onPaste={pasteIntoComposer}
               onKeyDown={(event) => {
+                if (handleDeveloperComposerKeyDown(event, draft, setDraft)) return;
                 if (event.key === "Enter" && !event.shiftKey) {
                   event.preventDefault();
                   event.currentTarget.form?.requestSubmit();

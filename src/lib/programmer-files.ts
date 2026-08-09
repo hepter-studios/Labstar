@@ -167,6 +167,10 @@ function inferredPasteExtension(text: string) {
   return "txt";
 }
 
+export function inferProgrammingLanguage(text: string) {
+  return inferredPasteExtension(text);
+}
+
 export function createLargePasteAttachment(text: string) {
   if (text.length < LARGE_PASTE_CHARACTERS && text.split(/\r?\n/).length < 120) return null;
   const extension = inferredPasteExtension(text);

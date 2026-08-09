@@ -1,7 +1,7 @@
-import { Check, ChevronDown, Copy, Download, FileArchive, FileCode2, FileText, LoaderCircle, X } from "lucide-react";
+import { Check, ChevronDown, Copy, Download, FileArchive, FileCode2, FileText, LoaderCircle, WrapText, X } from "lucide-react";
 import { useState, type CSSProperties } from "react";
 import "../programmer-chat.css";
-import { MAX_INLINE_PREVIEW_BYTES, describeDeveloperFile, formatChatBytes } from "../lib/programmer-files";
+import { MAX_INLINE_PREVIEW_BYTES, describeDeveloperFile, formatChatBytes, inferProgrammingLanguage } from "../lib/programmer-files";
 
 async function copyText(value: string) {
   try {
@@ -26,15 +26,37 @@ function FileKindIcon({ kind }: { kind: ReturnType<typeof describeDeveloperFile>
 
 function CodeBlock({ language, code }: { language: string; code: string }) {
   const [copied, setCopied] = useState(false);
+  const [wrap, setWrap] = useState(false);
+  const detectedLanguage = language || inferProgrammingLanguage(code);
+  const extension = ({ typescript: "ts", javascript: "js", python: "py", shell: "sh", terminal: "sh" } as Record<string, string>)[detectedLanguage.toLowerCase()] || detectedLanguage || "txt";
+  const normalizedCode = code.replace(/\n$/, "");
   async function copy() {
     await copyText(code);
     setCopied(true);
     window.setTimeout(() => setCopied(false), 1600);
   }
+
+  function download() {
+    const descriptor = describeDeveloperFile(`snippet.${extension}`);
+    const blob = new Blob([normalizedCode], { type: descriptor.mimeType || "text/plain" });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = `snippet-${new Date().toISOString().replace(/[:.]/g, "-")}.${extension}`;
+    anchor.click();
+    window.setTimeout(() => URL.revokeObjectURL(url), 0);
+  }
   return (
     <section className="developer-code-block">
-      <header><span>{language || "código"}</span><button type="button" onClick={() => void copy()}>{copied ? <Check size={12} /> : <Copy size={12} />}{copied ? "Copiado" : "Copiar"}</button></header>
-      <pre><code>{code.replace(/\n$/, "")}</code></pre>
+      <header>
+        <span>{detectedLanguage || "código"}</span>
+        <div>
+          <button type="button" className={wrap ? "active" : ""} onClick={() => setWrap((value) => !value)} title="Alternar quebra de linha"><WrapText size={12} /> Quebrar</button>
+          <button type="button" onClick={download} title="Baixar snippet"><Download size={12} /> Baixar</button>
+          <button type="button" onClick={() => void copy()}>{copied ? <Check size={12} /> : <Copy size={12} />}{copied ? "Copiado" : "Copiar"}</button>
+        </div>
+      </header>
+      <pre className={wrap ? "wrap" : ""}><code>{normalizedCode.split("\n").map((line, index) => <span className="developer-code-line" data-line={index + 1} key={`${index}-${line}`}>{line || " "}</span>)}</code></pre>
     </section>
   );
 }

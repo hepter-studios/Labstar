@@ -163,6 +163,9 @@ export type IntegrationRule = {
   events: string[];
   enabled: boolean;
   renewalDate: string;
+  webhookToken: string;
+  lastEventAt: string;
+  deliveredCount: number;
 };
 
 export const isSupabaseConfigured = Boolean(authClient);
@@ -758,6 +761,9 @@ export async function listIntegrationRules(spaceId: string) {
     events: Array.isArray(row.events) ? row.events.map(String) : [],
     enabled: Boolean(row.enabled),
     renewalDate: String(row.renewal_date ?? ""),
+    webhookToken: String(row.webhook_token ?? ""),
+    lastEventAt: String(row.last_event_at ?? ""),
+    deliveredCount: Number(row.delivered_count ?? 0),
   }));
 }
 
@@ -781,6 +787,16 @@ export async function saveIntegrationRule(rule: IntegrationRule) {
 export async function removeIntegrationRule(id: string) {
   const { error } = await requireClient().from("integration_rules").delete().eq("id", id);
   if (error) throw error;
+}
+
+export async function rotateIntegrationWebhookToken(id: string) {
+  const { data, error } = await requireClient().rpc("rotate_integration_webhook_token", {
+    target_rule_id: id,
+  });
+  if (error) throw error;
+  const token = String(data ?? "");
+  if (!token) throw new Error("integration_webhook_token_missing");
+  return token;
 }
 
 export async function listMessages(channelId: string) {
