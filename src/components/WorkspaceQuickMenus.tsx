@@ -1,6 +1,8 @@
 import { CheckCircle2, Copy, LoaderCircle, Pin, Search, Settings2, Trash2, Users, Webhook, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { clearChannelChat, clearDirectConversation } from "../lib/chatMaintenance";
+import { listDirectThreads } from "../lib/directMessages";
+import { listMembers, loadCollaboration } from "../lib/supabase";
 
 type Menu =
   | { kind: "channel"; x: number; y: number; button: HTMLButtonElement; name: string; channelId: string }
@@ -66,6 +68,9 @@ function friendlyMaintenanceError(error: unknown) {
   }
   if (/manage_channels|required|permission|denied|42501|access_denied/i.test(message)) {
     return "Você não tem permissão para limpar este chat.";
+  }
+  if (/ambiguous/i.test(message)) {
+    return "Não consegui identificar essa conversa com segurança.";
   }
   if (/channel_required|direct_thread_required/i.test(message)) {
     return "O Labstar não encontrou o identificador desta conversa. Reabra o canal ou a DM e tente novamente.";
@@ -243,10 +248,8 @@ export function WorkspaceQuickMenus() {
   }, []);
 
   const activeMenu = menu;
-  const canClearChannel = activeMenu?.kind === "channel"
-    && Boolean(activeMenu.channelId)
-    && Boolean(document.querySelector(".add-space"));
-  const canClearDirect = activeMenu?.kind === "direct" && Boolean(activeMenu.threadId);
+  const canClearChannel = activeMenu?.kind === "channel" && Boolean(document.querySelector(".add-space"));
+  const canClearDirect = activeMenu?.kind === "direct";
 
   function openSelected() {
     if (!activeMenu || activeMenu.kind === "direct") return;
@@ -292,6 +295,30 @@ export function WorkspaceQuickMenus() {
     setMenu(null);
   }
 
+  async function resolveChannelId(target: Extract<Exclude<Menu, null>, { kind: "channel" }>) {
+    if (target.channelId) return target.channelId;
+    const collaboration = await loadCollaboration();
+    const visibleSpaceName = document.querySelector<HTMLElement>(".space-title strong")?.textContent?.trim().toLocaleLowerCase() || "";
+    const currentSpace = collaboration.spaces.find((space) => space.name.trim().toLocaleLowerCase() === visibleSpaceName);
+    const candidates = collaboration.channels.filter((channel) =>
+      channel.name.trim().toLocaleLowerCase() === target.name.trim().toLocaleLowerCase()
+      && (!currentSpace || channel.spaceId === currentSpace.id)
+    );
+    if (candidates.length !== 1) throw new Error("channel_ambiguous");
+    return candidates[0].id;
+  }
+
+  async function resolveDirectThreadId(target: Extract<Exclude<Menu, null>, { kind: "direct" }>) {
+    if (target.threadId) return target.threadId;
+    const [team, threads] = await Promise.all([listMembers(), listDirectThreads()]);
+    const normalizedName = target.name.trim().toLocaleLowerCase();
+    const candidates = team.members.filter((member) => member.name.trim().toLocaleLowerCase() === normalizedName);
+    const candidateIds = new Set(candidates.map((member) => member.id));
+    const matchingThreads = threads.filter((thread) => candidateIds.has(thread.otherMemberId));
+    if (matchingThreads.length !== 1) throw new Error("direct_thread_ambiguous");
+    return matchingThreads[0].threadId;
+  }
+
   function removeVisibleMessagesAfterSuccess(target: Exclude<Menu, null>) {
     if (target.kind === "direct") {
       document.querySelectorAll(".dm-message").forEach((node) => node.remove());
@@ -305,18 +332,6 @@ export function WorkspaceQuickMenus() {
   async function clearCurrentChat() {
     if (!activeMenu || activeMenu.kind === "space" || clearState === "working") return;
     const target = activeMenu;
-    if (target.kind === "channel" && !target.channelId) {
-      const friendly = friendlyMaintenanceError(new Error("channel_required"));
-      setNotice(friendly);
-      showProgress({ tone: "error", title: "Canal não identificado", detail: friendly }, 3200);
-      return;
-    }
-    if (target.kind === "direct" && !target.threadId) {
-      const friendly = friendlyMaintenanceError(new Error("direct_thread_required"));
-      setNotice(friendly);
-      showProgress({ tone: "error", title: "Conversa não identificada", detail: friendly }, 3200);
-      return;
-    }
 
     if (clearState !== "confirm") {
       setClearState("confirm");
@@ -336,8 +351,8 @@ export function WorkspaceQuickMenus() {
 
     try {
       const count = target.kind === "direct"
-        ? await withActionTimeout(clearDirectConversation(target.threadId!))
-        : await withActionTimeout(clearChannelChat(target.channelId));
+        ? await withActionTimeout(clearDirectConversation(await resolveDirectThreadId(target)))
+        : await withActionTimeout(clearChannelChat(await resolveChannelId(target)));
 
       removeVisibleMessagesAfterSuccess(target);
       setClearState("idle");
