@@ -11,6 +11,8 @@ import {
   type ProjectDocumentAsset,
 } from "../lib/project-document-assets";
 
+const WORKSPACE_KEY = "labstar-workspace-v1";
+
 function setTextareaValue(textarea: HTMLTextAreaElement, value: string, selection?: number) {
   const setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")?.set;
   setter?.call(textarea, value);
@@ -51,22 +53,55 @@ function assetErrorMessage(reason: unknown) {
   if (text.includes("file_too_large")) return "O arquivo deve ter no máximo 25 MB.";
   if (text.includes("empty_file")) return "Esse arquivo está vazio.";
   if (/42501|permission|denied|row-level/.test(text)) return "Sua conta não tem permissão para anexar arquivos a este projeto.";
-  if (/42p01|pgrst205|project_document_assets|schema cache/.test(text)) return "A atualização de anexos do README ainda está sendo aplicada no banco.";
+  if (/42p01|pgrst205|project_document_assets|schema cache/.test(text)) return "A atualização de anexos do README ainda não está ativa no banco publicado.";
   return "Não foi possível enviar esse arquivo agora.";
+}
+
+function readWorkspaceNodeIdByName(name: string) {
+  if (!name) return "";
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(WORKSPACE_KEY) ?? "[]") as unknown;
+    if (!Array.isArray(parsed)) return "";
+    const normalized = name.trim().toLocaleLowerCase();
+    const match = parsed.find((value) => {
+      if (!value || typeof value !== "object") return false;
+      const candidate = value as { name?: unknown };
+      return typeof candidate.name === "string" && candidate.name.trim().toLocaleLowerCase() === normalized;
+    }) as { id?: unknown } | undefined;
+    return typeof match?.id === "string" ? match.id : "";
+  } catch {
+    return "";
+  }
+}
+
+function resolveProjectNodeId(modal: HTMLElement) {
+  const selectedCard = document.querySelector<HTMLElement>(".node-card.selected[data-project-node-id]");
+  if (selectedCard?.dataset.projectNodeId) return selectedCard.dataset.projectNodeId;
+
+  const ariaLabel = modal.getAttribute("aria-label") ?? "";
+  const ariaName = ariaLabel.replace(/^Detalhes de\s+/i, "").trim();
+  const headerName = modal.querySelector<HTMLElement>("header strong")?.textContent?.trim() ?? "";
+  return readWorkspaceNodeIdByName(ariaName || headerName);
 }
 
 function ReadmeAssetTools({ nodeId, textarea }: { nodeId: string; textarea: HTMLTextAreaElement }) {
   const [assets, setAssets] = useState<ProjectDocumentAsset[]>([]);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
+  const [loading, setLoading] = useState(true);
   const imageInput = useRef<HTMLInputElement>(null);
   const fileInput = useRef<HTMLInputElement>(null);
 
   async function refresh() {
+    setLoading(true);
     try {
       setAssets(await listProjectDocumentAssets(nodeId));
-    } catch {
+      setMessage("");
+    } catch (reason) {
       setAssets([]);
+      setMessage(assetErrorMessage(reason));
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -80,11 +115,12 @@ function ReadmeAssetTools({ nodeId, textarea }: { nodeId: string; textarea: HTML
       const accepted = files.slice(0, 8);
       for (const file of accepted) {
         if (file.size > MAX_PROJECT_DOCUMENT_ASSET_BYTES) throw new Error("file_too_large");
+        if (file.size === 0) throw new Error("empty_file");
         const asset = await uploadProjectDocumentAsset(nodeId, file);
         setAssets((current) => [...current, asset]);
         insertAsset(textarea, asset);
       }
-      setMessage(accepted.length === 1 ? "Arquivo inserido no documento." : `${accepted.length} arquivos inseridos no documento.`);
+      setMessage(accepted.length === 1 ? "Arquivo inserido na linha atual do documento." : `${accepted.length} arquivos inseridos a partir da linha atual.`);
     } catch (reason) {
       setMessage(assetErrorMessage(reason));
     } finally {
@@ -118,10 +154,10 @@ function ReadmeAssetTools({ nodeId, textarea }: { nodeId: string; textarea: HTML
       }}
     >
       <div className="project-readme-assets-head">
-        <div><strong>Imagens e arquivos</strong><span>Envie e o Labstar insere a referência no ponto atual do Markdown.</span></div>
+        <div><strong>Imagens e arquivos</strong><span>Posicione o cursor na linha desejada e envie. O Labstar insere a referência exatamente ali.</span></div>
         <div>
-          <button type="button" disabled={busy} onClick={() => imageInput.current?.click()}><ImagePlus size={14} /> Imagem</button>
-          <button type="button" disabled={busy} onClick={() => fileInput.current?.click()}><Paperclip size={14} /> Arquivo</button>
+          <button type="button" disabled={busy || loading} onMouseDown={(event) => event.preventDefault()} onClick={() => imageInput.current?.click()}><ImagePlus size={14} /> Imagem</button>
+          <button type="button" disabled={busy || loading} onMouseDown={(event) => event.preventDefault()} onClick={() => fileInput.current?.click()}><Paperclip size={14} /> Arquivo</button>
         </div>
       </div>
 
@@ -134,8 +170,8 @@ function ReadmeAssetTools({ nodeId, textarea }: { nodeId: string; textarea: HTML
         event.currentTarget.value = "";
       }} />
 
-      {busy && <div className="project-readme-assets-status"><LoaderCircle className="spin" size={14} /> Enviando arquivo…</div>}
-      {!busy && message && <div className="project-readme-assets-status">{message}</div>}
+      {loading && <div className="project-readme-assets-status"><LoaderCircle className="spin" size={14} /> Carregando arquivos…</div>}
+      {!loading && message && <div className="project-readme-assets-status">{message}</div>}
 
       {!!assets.length && (
         <div className="project-readme-assets-list">
@@ -145,14 +181,14 @@ function ReadmeAssetTools({ nodeId, textarea }: { nodeId: string; textarea: HTML
                 {asset.mimeType.startsWith("image/") ? <img src={asset.url} alt="" /> : <File size={16} />}
               </span>
               <div><strong>{asset.fileName}</strong><small>{formatChatBytes(asset.sizeBytes)}</small></div>
-              <button type="button" title="Inserir novamente no Markdown" onClick={() => insertAsset(textarea, asset)}><Plus size={13} /></button>
+              <button type="button" disabled={busy} title="Inserir na linha atual do Markdown" onMouseDown={(event) => event.preventDefault()} onClick={() => insertAsset(textarea, asset)}><Plus size={13} /></button>
               <a href={asset.url} target="_blank" rel="noreferrer" download={asset.fileName} title="Abrir ou baixar"><Download size={13} /></a>
-              <button className="danger" type="button" title="Remover arquivo" onClick={() => void remove(asset)}><Trash2 size={13} /></button>
+              <button className="danger" type="button" disabled={busy} title="Remover arquivo" onClick={() => void remove(asset)}><Trash2 size={13} /></button>
             </article>
           ))}
         </div>
       )}
-      <small className="project-readme-assets-hint">Você também pode arrastar imagens ou arquivos para esta área. Limite: 25 MB por arquivo.</small>
+      <small className="project-readme-assets-hint">Também aceita arrastar e soltar. Limite: 25 MB por arquivo.</small>
     </div>
   );
 }
@@ -163,17 +199,23 @@ export function ProjectReadmeAssetsBridge() {
   const [nodeId, setNodeId] = useState("");
 
   useEffect(() => {
-    // Pré-carrega o registro de URLs assinadas para imagens/links renderizados no README.
     void listProjectDocumentAssets().catch(() => undefined);
 
     let frame = 0;
     const sync = () => {
       window.cancelAnimationFrame(frame);
       frame = window.requestAnimationFrame(() => {
-        const nextTextarea = document.querySelector<HTMLTextAreaElement>(".project-details-modal .project-markdown-input");
-        const selectedCard = document.querySelector<HTMLElement>(".node-card.selected[data-project-node-id]");
-        const nextNodeId = selectedCard?.dataset.projectNodeId ?? "";
-        if (!nextTextarea || !nextNodeId) {
+        const modal = document.querySelector<HTMLElement>(".project-details-modal");
+        const nextTextarea = modal?.querySelector<HTMLTextAreaElement>(".project-markdown-input") ?? null;
+        if (!modal || !nextTextarea) {
+          setHost(null);
+          setTextarea(null);
+          setNodeId("");
+          return;
+        }
+
+        const nextNodeId = resolveProjectNodeId(modal);
+        if (!nextNodeId) {
           setHost(null);
           setTextarea(null);
           setNodeId("");
@@ -189,22 +231,24 @@ export function ProjectReadmeAssetsBridge() {
           nextHost.className = "project-readme-assets-host";
           label.insertAdjacentElement("afterend", nextHost);
         }
-        setHost(nextHost);
-        setTextarea(nextTextarea);
-        setNodeId(nextNodeId);
+        setHost((current) => current === nextHost ? current : nextHost);
+        setTextarea((current) => current === nextTextarea ? current : nextTextarea);
+        setNodeId((current) => current === nextNodeId ? current : nextNodeId);
       });
     };
 
     sync();
     const observer = new MutationObserver(sync);
-    observer.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ["class"] });
+    observer.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ["class", "aria-label", "data-project-node-id"] });
+    const interval = window.setInterval(sync, 700);
     return () => {
       window.cancelAnimationFrame(frame);
+      window.clearInterval(interval);
       observer.disconnect();
       document.querySelectorAll(".project-readme-assets-host").forEach((node) => node.remove());
     };
   }, []);
 
   if (!host || !textarea || !nodeId) return null;
-  return createPortal(<ReadmeAssetTools nodeId={nodeId} textarea={textarea} />, host);
+  return createPortal(<ReadmeAssetTools key={nodeId} nodeId={nodeId} textarea={textarea} />, host);
 }
