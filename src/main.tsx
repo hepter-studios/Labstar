@@ -25,6 +25,7 @@ import { MediaPreferenceBridge } from "./components/MediaPreferenceBridge";
 import { MemberPanelTools } from "./components/MemberPanelTools";
 import { MemberQuickActions } from "./components/MemberQuickActions";
 import { MessageWorkItemBridge } from "./components/MessageWorkItemBridge";
+import { ProfessionalPermissionBridge } from "./components/ProfessionalPermissionBridge";
 import { ProjectEnhancementsPortal } from "./components/ProjectEnhancementsPortal";
 import { PushNotificationBridge } from "./components/PushNotificationBridge";
 import { RuntimeReliability } from "./components/RuntimeReliability";
@@ -71,6 +72,7 @@ import "./project-enhancements.css";
 import "./channel-access.css";
 import "./category-access-polish.css";
 import "./role-professional-polish.css";
+import "./professional-permission-bridge.css";
 import "./brand-home-navigation";
 import "./product-polish.css";
 
@@ -164,6 +166,7 @@ function RootSurfaces() {
       {introFinished && <OptionalSurface name="configurações do espaço"><WorkspaceSettingsPortal /></OptionalSurface>}
       {introFinished && <OptionalSurface name="ações rápidas de membro"><MemberQuickActions /></OptionalSurface>}
       {introFinished && <OptionalSurface name="ferramentas do painel de membros"><MemberPanelTools /></OptionalSurface>}
+      {introFinished && <OptionalSurface name="permissões profissionais delegadas"><ProfessionalPermissionBridge /></OptionalSurface>}
       {introFinished && <OptionalSurface name="menus rápidos do espaço"><WorkspaceQuickMenus /></OptionalSurface>}
       {introFinished && <OptionalSurface name="canais privados e permissões"><ChannelAccessPortal /></OptionalSurface>}
       {introFinished && <OptionalSurface name="categorias privadas e herança"><CategoryAccessPortal /></OptionalSurface>}
