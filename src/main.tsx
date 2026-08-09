@@ -21,6 +21,7 @@ import { MediaPreferenceBridge } from "./components/MediaPreferenceBridge";
 import { MemberPanelTools } from "./components/MemberPanelTools";
 import { MemberQuickActions } from "./components/MemberQuickActions";
 import { MessageWorkItemBridge } from "./components/MessageWorkItemBridge";
+import { ProjectEnhancementsPortal } from "./components/ProjectEnhancementsPortal";
 import { PushNotificationBridge } from "./components/PushNotificationBridge";
 import { RuntimeReliability } from "./components/RuntimeReliability";
 import { SafetyGuards } from "./components/SafetyGuards";
@@ -62,6 +63,7 @@ import "./message-work-item.css";
 import "./direct-messages-v6.css";
 import "./direct-messages-v7.css";
 import "./direct-messages-height-guard.css";
+import "./project-enhancements.css";
 import "./brand-home-navigation";
 
 const BRAND_INTRO_DURATION_MS = 2350;
@@ -160,6 +162,7 @@ function RootSurfaces() {
       {introFinished && <OptionalSurface name="mensagens para trabalho"><MessageWorkItemBridge /></OptionalSurface>}
       {introFinished && <OptionalSurface name="ações das mensagens em canais"><ChannelMessageActionsBridge /></OptionalSurface>}
       {introFinished && <OptionalSurface name="busca global"><GlobalSearchBridge /></OptionalSurface>}
+      {introFinished && <OptionalSurface name="projetos avançados"><ProjectEnhancementsPortal /></OptionalSurface>}
       {introFinished && <OptionalSurface name="instalação web"><InstallApp /></OptionalSurface>}
     </>
   );
