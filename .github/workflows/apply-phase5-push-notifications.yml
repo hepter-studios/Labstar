@@ -1,0 +1,89 @@
+name: APPLY_PHASE5_PUSH_NOTIFICATIONS
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: apply-phase5-push-notifications
+  cancel-in-progress: false
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Validate required secrets
+        env:
+          DATABASE_URL: ${{ secrets.SUPABASE_DATABASE_URL }}
+          ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          VAPID_PUBLIC_KEY: ${{ secrets.LABSTAR_VAPID_PUBLIC_KEY }}
+          VAPID_PRIVATE_JWK: ${{ secrets.LABSTAR_VAPID_PRIVATE_JWK }}
+          PUSH_WEBHOOK_SECRET: ${{ secrets.LABSTAR_PUSH_WEBHOOK_SECRET }}
+        run: |
+          test -n "$DATABASE_URL"
+          test -n "$ACCESS_TOKEN"
+          test -n "$VAPID_PUBLIC_KEY"
+          test -n "$VAPID_PRIVATE_JWK"
+          test -n "$PUSH_WEBHOOK_SECRET"
+
+      - name: Backup affected schema
+        env:
+          DATABASE_URL: ${{ secrets.SUPABASE_DATABASE_URL }}
+        run: |
+          pg_dump "$DATABASE_URL" --schema-only --no-owner --no-privileges \
+            --table=public.notifications --table=public.members \
+            --file="$RUNNER_TEMP/phase5-before.sql"
+
+      - name: Store the database webhook secret in Vault
+        env:
+          PGOPTIONS: --client-min-messages=warning
+          DATABASE_URL: ${{ secrets.SUPABASE_DATABASE_URL }}
+          PUSH_WEBHOOK_SECRET: ${{ secrets.LABSTAR_PUSH_WEBHOOK_SECRET }}
+        run: |
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -v push_secret="$PUSH_WEBHOOK_SECRET" <<'SQL'
+          select set_config('labstar.push_secret', :'push_secret', false);
+          do $$
+          declare existing_id uuid;
+          begin
+            select id into existing_id from vault.secrets where name = 'labstar_push_webhook_secret' limit 1;
+            if existing_id is null then
+              perform vault.create_secret(current_setting('labstar.push_secret'), 'labstar_push_webhook_secret', 'Labstar Phase 5 database-to-Edge webhook');
+            else
+              perform vault.update_secret(existing_id, current_setting('labstar.push_secret'), 'labstar_push_webhook_secret', 'Labstar Phase 5 database-to-Edge webhook');
+            end if;
+          end $$;
+          SQL
+
+      - name: Apply Phase 5 database migration
+        env:
+          DATABASE_URL: ${{ secrets.SUPABASE_DATABASE_URL }}
+        run: psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f supabase/migrations/20260809010000_phase5_device_push_notifications.sql
+
+      - name: Configure and deploy the push function
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          LABSTAR_VAPID_PUBLIC_KEY: ${{ secrets.LABSTAR_VAPID_PUBLIC_KEY }}
+          LABSTAR_VAPID_PRIVATE_JWK: ${{ secrets.LABSTAR_VAPID_PRIVATE_JWK }}
+          LABSTAR_PUSH_WEBHOOK_SECRET: ${{ secrets.LABSTAR_PUSH_WEBHOOK_SECRET }}
+        run: |
+          supabase secrets set --project-ref pgzwyngxsxnheulvusdq \
+            LABSTAR_VAPID_PUBLIC_KEY="$LABSTAR_VAPID_PUBLIC_KEY" \
+            LABSTAR_VAPID_PRIVATE_JWK="$LABSTAR_VAPID_PRIVATE_JWK" \
+            LABSTAR_PUSH_WEBHOOK_SECRET="$LABSTAR_PUSH_WEBHOOK_SECRET"
+          supabase functions deploy labstar-push --project-ref pgzwyngxsxnheulvusdq --no-verify-jwt
+
+      - name: Audit installation
+        env:
+          DATABASE_URL: ${{ secrets.SUPABASE_DATABASE_URL }}
+        run: |
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -Atc "select to_regclass('public.push_subscriptions'), to_regprocedure('public.upsert_push_subscription(text,text,text,text,text,text)'), exists(select 1 from pg_trigger where tgname='notifications_enqueue_labstar_push' and not tgisinternal);"
+          curl --fail --silent --show-error https://pgzwyngxsxnheulvusdq.supabase.co/functions/v1/labstar-push | jq -e '.publicKey | length > 20'
