@@ -191,6 +191,106 @@
   outline: none;
 }
 
+.labstar-action-progress {
+  position: fixed;
+  z-index: 16000;
+  left: 50%;
+  bottom: max(24px, env(safe-area-inset-bottom));
+  width: min(390px, calc(100vw - 28px));
+  min-height: 66px;
+  padding: 11px 13px;
+  display: grid;
+  grid-template-columns: 38px minmax(0,1fr);
+  align-items: center;
+  gap: 10px;
+  border: 1px solid rgba(139,174,255,.19);
+  border-radius: 14px;
+  color: #e8eef9;
+  background: linear-gradient(145deg, rgba(13,18,28,.985), rgba(6,9,15,.992));
+  box-shadow: 0 24px 70px rgba(0,0,0,.65), inset 0 1px rgba(255,255,255,.04);
+  backdrop-filter: blur(18px);
+  transform: translateX(-50%);
+  animation: labstar-action-progress-enter .16s ease-out;
+}
+
+.labstar-action-progress > span {
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(139,174,255,.14);
+  border-radius: 11px;
+  color: #a9bfff;
+  background: rgba(90,126,215,.08);
+}
+
+.labstar-action-progress > div {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.labstar-action-progress strong {
+  font-size: 11px;
+  font-weight: 780;
+}
+
+.labstar-action-progress small {
+  color: #7c899e;
+  font-size: 8.5px;
+  line-height: 1.4;
+}
+
+.labstar-action-progress.success {
+  border-color: rgba(89,190,157,.22);
+}
+
+.labstar-action-progress.success > span {
+  color: #80c8ae;
+  border-color: rgba(89,190,157,.18);
+  background: rgba(52,134,108,.09);
+}
+
+.labstar-action-progress.error {
+  border-color: rgba(221,93,107,.24);
+}
+
+.labstar-action-progress.error > span {
+  color: #ef8c96;
+  border-color: rgba(221,93,107,.2);
+  background: rgba(151,45,58,.1);
+}
+
+/* A exclusão permanente já tinha spinner no botão, mas o texto não mudava.
+   Quando o RPC está rodando, deixa inequívoco que o Labstar está trabalhando. */
+.permanent-deletion-modal:has(.removal-actions .spin) {
+  cursor: wait;
+}
+
+.permanent-deletion-modal:has(.removal-actions .spin) .removal-actions .confirm {
+  min-width: 190px;
+  color: #f4f7ff;
+  border-color: rgba(139,174,255,.32);
+  background: rgba(91,126,215,.15);
+  box-shadow: 0 0 0 3px rgba(91,126,215,.055);
+  cursor: wait;
+}
+
+.permanent-deletion-modal:has(.removal-actions .spin) .removal-actions .confirm {
+  font-size: 0;
+}
+
+.permanent-deletion-modal:has(.removal-actions .spin) .removal-actions .confirm svg {
+  width: 15px;
+  height: 15px;
+}
+
+.permanent-deletion-modal:has(.removal-actions .spin) .removal-actions .confirm::after {
+  content: "Excluindo conta e login…";
+  font-size: 10px;
+  font-weight: 760;
+}
+
 /* Acabamento leve e consistente para as superfícies mais usadas, sem mudar o layout. */
 .app button,
 .collaboration-shell button,
@@ -238,6 +338,11 @@
   to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
+@keyframes labstar-action-progress-enter {
+  from { opacity: 0; transform: translate(-50%, 8px) scale(.985); }
+  to { opacity: 1; transform: translate(-50%, 0) scale(1); }
+}
+
 @media (hover: none), (max-width: 760px) {
   .channel-list > button > .channel-quick-menu-trigger {
     opacity: .9;
@@ -252,6 +357,11 @@
     height: 36px;
     flex-basis: 36px;
   }
+
+  .labstar-action-progress {
+    bottom: max(14px, env(safe-area-inset-bottom));
+    width: min(390px, calc(100vw - 18px));
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -260,7 +370,8 @@
   .channel-list > button,
   .chat-message,
   .dm-message,
-  .dm-contact-entry {
+  .dm-contact-entry,
+  .labstar-action-progress {
     animation: none !important;
     transition: none !important;
   }

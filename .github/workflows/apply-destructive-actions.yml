@@ -1,0 +1,117 @@
+name: Ativar ações destrutivas seguras
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "supabase/migrations/20260809181500_destructive_actions_reliability.sql"
+      - ".github/workflows/apply-destructive-actions.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: labstar-destructive-actions
+  cancel-in-progress: false
+
+jobs:
+  migrate:
+    name: Backup, aplicar RPCs e auditar
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+
+    steps:
+      - name: Baixar código oficial
+        uses: actions/checkout@v4
+
+      - name: Validar conexão protegida
+        shell: bash
+        env:
+          SUPABASE_DATABASE_URL: ${{ secrets.SUPABASE_DATABASE_URL }}
+        run: |
+          set -euo pipefail
+          if [ -z "${SUPABASE_DATABASE_URL:-}" ]; then
+            echo "O secret SUPABASE_DATABASE_URL não está configurado."
+            exit 1
+          fi
+
+      - name: Preparar PostgreSQL 17
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker pull postgres:17-bookworm
+          docker run --rm postgres:17-bookworm psql --version
+
+      - name: Gerar backup antes da migração
+        shell: bash
+        env:
+          SUPABASE_DATABASE_URL: ${{ secrets.SUPABASE_DATABASE_URL }}
+        run: |
+          set -euo pipefail
+          mkdir -p backup
+          timestamp="$(date -u +'%Y-%m-%dT%H-%M-%SZ')"
+          docker run --rm \
+            -e SUPABASE_DATABASE_URL \
+            -e PGSSLMODE=require \
+            -e BACKUP_TIMESTAMP="${timestamp}" \
+            -v "${PWD}/backup:/backup" \
+            postgres:17-bookworm \
+            bash -euo pipefail -c '
+              pg_dump \
+                --dbname="${SUPABASE_DATABASE_URL}" \
+                --format=custom \
+                --no-owner \
+                --no-privileges \
+                --file="/backup/labstar-before-destructive-actions-${BACKUP_TIMESTAMP}.dump"
+            '
+          sha256sum backup/*.dump > backup/SHA256SUMS.txt
+
+      - name: Aplicar rotinas destrutivas seguras
+        shell: bash
+        env:
+          SUPABASE_DATABASE_URL: ${{ secrets.SUPABASE_DATABASE_URL }}
+        run: |
+          set -euo pipefail
+          docker run --rm \
+            -e SUPABASE_DATABASE_URL \
+            -e PGSSLMODE=require \
+            -v "${PWD}:/workspace:ro" \
+            postgres:17-bookworm \
+            psql "${SUPABASE_DATABASE_URL}" \
+              --set ON_ERROR_STOP=1 \
+              --file /workspace/supabase/migrations/20260809181500_destructive_actions_reliability.sql
+
+      - name: Auditar funções e permissões
+        shell: bash
+        env:
+          SUPABASE_DATABASE_URL: ${{ secrets.SUPABASE_DATABASE_URL }}
+        run: |
+          set -euo pipefail
+          docker run --rm \
+            -e SUPABASE_DATABASE_URL \
+            -e PGSSLMODE=require \
+            postgres:17-bookworm \
+            psql "${SUPABASE_DATABASE_URL}" --set ON_ERROR_STOP=1 --tuples-only --no-align --command "
+              select
+                to_regprocedure('public.clear_channel_chat(uuid)') is not null
+                and to_regprocedure('public.clear_direct_conversation(uuid)') is not null
+                and to_regprocedure('public.delete_labstar_account(text,text)') is not null
+                and has_function_privilege('authenticated', 'public.clear_channel_chat(uuid)', 'EXECUTE')
+                and has_function_privilege('authenticated', 'public.clear_direct_conversation(uuid)', 'EXECUTE')
+                and has_function_privilege('authenticated', 'public.delete_labstar_account(text,text)', 'EXECUTE');
+            " | tee destructive-actions-audit.txt
+          grep -qx 't' destructive-actions-audit.txt
+
+      - name: Guardar backup privado
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: labstar-before-destructive-actions-${{ github.run_number }}
+          path: |
+            backup/
+            destructive-actions-audit.txt
+          if-no-files-found: warn
+          retention-days: 7
+          compression-level: 6
