@@ -65,23 +65,19 @@ as $$
 $$;
 
 revoke all on function public.can_manage_labstar_members() from public, anon;
+revoke all on function public.can_manage_professional_roles() from public, anon;
 grant execute on function public.can_manage_labstar_members() to authenticated;
+grant execute on function public.can_manage_professional_roles() to authenticated;
 
--- Permite que um cargo profissional com manage_members administre pessoas comuns,
--- mas nunca altere owner/admin. Owner/admin continuam cobertos pelas políticas antigas.
+-- Um cargo com manage_members pode administrar pessoas comuns, mas nunca pode
+-- criar, promover ou alterar owner/admin. As políticas administrativas antigas
+-- continuam atendendo owner/admin e são combinadas pelo PostgreSQL.
 drop policy if exists "members_insert_professional_manager" on public.members;
 create policy "members_insert_professional_manager"
 on public.members for insert to authenticated
 with check (
   public.can_manage_labstar_members()
-  and (
-    exists (
-      select 1 from public.members actor
-      where actor.id = public.labstar_current_member_id()
-        and actor.role in ('owner', 'admin')
-    )
-    or role not in ('owner', 'admin')
-  )
+  and role not in ('owner', 'admin')
 );
 
 drop policy if exists "members_update_professional_manager" on public.members;
@@ -89,25 +85,11 @@ create policy "members_update_professional_manager"
 on public.members for update to authenticated
 using (
   public.can_manage_labstar_members()
-  and (
-    exists (
-      select 1 from public.members actor
-      where actor.id = public.labstar_current_member_id()
-        and actor.role in ('owner', 'admin')
-    )
-    or role not in ('owner', 'admin')
-  )
+  and role not in ('owner', 'admin')
 )
 with check (
   public.can_manage_labstar_members()
-  and (
-    exists (
-      select 1 from public.members actor
-      where actor.id = public.labstar_current_member_id()
-        and actor.role in ('owner', 'admin')
-    )
-    or role not in ('owner', 'admin')
-  )
+  and role not in ('owner', 'admin')
 );
 
 create or replace function public.member_can_access_labstar_category(target_category_id uuid)
