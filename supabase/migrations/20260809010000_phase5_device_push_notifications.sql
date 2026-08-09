@@ -1,5 +1,6 @@
 begin;
 
+create extension if not exists supabase_vault with schema vault;
 create extension if not exists pg_net with schema extensions;
 
 create table if not exists public.push_subscriptions (
