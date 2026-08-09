@@ -55,9 +55,32 @@ export type DirectMessageRealtimeEvent = {
   createdAt: string;
 };
 
+const LOCAL_HIDDEN_DIRECT_PREFIX = "labstar-hidden-direct-v1:";
+
 function requireClient() {
   if (!supabaseClient) throw new Error("supabase_not_configured");
   return supabaseClient;
+}
+
+function readLocalHiddenDirect(authUserId: string) {
+  if (!authUserId) return new Set<string>();
+  try {
+    const value = JSON.parse(window.localStorage.getItem(`${LOCAL_HIDDEN_DIRECT_PREFIX}${authUserId}`) ?? "[]") as unknown;
+    return new Set(Array.isArray(value) ? value.map(String) : []);
+  } catch {
+    return new Set<string>();
+  }
+}
+
+function rememberLocalHiddenDirect(authUserId: string, messageId: string) {
+  if (!authUserId) return;
+  const next = readLocalHiddenDirect(authUserId);
+  next.add(messageId);
+  try {
+    window.localStorage.setItem(`${LOCAL_HIDDEN_DIRECT_PREFIX}${authUserId}`, JSON.stringify([...next].slice(-2500)));
+  } catch {
+    // O banco continua sendo a fonte principal quando o armazenamento local está bloqueado.
+  }
 }
 
 async function signedAssetUrl(path?: string | null, expiresIn = 60 * 60 * 8) {
@@ -117,8 +140,33 @@ export async function listDirectMessages(threadId: string): Promise<DirectMessag
   if (messageError) throw messageError;
   if (!messageRows?.length) return [];
 
-  const authorIds = [...new Set(messageRows.map((row) => String(row.author_id)))];
-  const messageIds = messageRows.map((row) => String(row.id));
+  const allMessageIds = messageRows.map((row) => String(row.id));
+  const hiddenIds = new Set<string>();
+
+  try {
+    const { data: hiddenRows, error: hiddenError } = await client
+      .from("hidden_direct_messages")
+      .select("message_id")
+      .in("message_id", allMessageIds);
+    if (!hiddenError) {
+      for (const row of hiddenRows ?? []) hiddenIds.add(String(row.message_id));
+    }
+  } catch {
+    // Ambientes anteriores à migração continuam funcionando com fallback local.
+  }
+
+  try {
+    const { data: { session } } = await client.auth.getSession();
+    for (const id of readLocalHiddenDirect(session?.user.id ?? "")) hiddenIds.add(id);
+  } catch {
+    // Falha ao ler sessão não impede o carregamento das mensagens.
+  }
+
+  const visibleMessageRows = messageRows.filter((row) => !hiddenIds.has(String(row.id)));
+  if (!visibleMessageRows.length) return [];
+
+  const authorIds = [...new Set(visibleMessageRows.map((row) => String(row.author_id)))];
+  const messageIds = visibleMessageRows.map((row) => String(row.id));
 
   const [memberResult, attachmentResult] = await Promise.all([
     client
@@ -154,7 +202,7 @@ export async function listDirectMessages(threadId: string): Promise<DirectMessag
     }
   }
 
-  return Promise.all(messageRows.map(async (row) => {
+  return Promise.all(visibleMessageRows.map(async (row) => {
     const authorId = String(row.author_id);
     const authorRow = authorsById.get(authorId) ?? null;
     const avatarPath = String(authorRow?.avatar_path ?? "");
@@ -257,6 +305,29 @@ export async function editDirectMessage(messageId: string, body: string) {
 export async function pinDirectMessage(messageId: string, isPinned: boolean) {
   const { error } = await requireClient().from("direct_messages").update({ is_pinned: isPinned }).eq("id", messageId);
   if (error) throw error;
+}
+
+export async function hideDirectMessageForMe(messageId: string) {
+  const client = requireClient();
+  const { data: { session } } = await client.auth.getSession();
+  const authUserId = session?.user.id ?? "";
+
+  let persisted = false;
+  try {
+    const { data: memberId, error: memberError } = await client.rpc("current_member_id");
+    if (!memberError && memberId) {
+      const { error } = await client.from("hidden_direct_messages").upsert({
+        member_id: String(memberId),
+        message_id: messageId,
+      });
+      persisted = !error;
+    }
+  } catch {
+    // Fallback local abaixo mantém a ação funcional durante rollout da migração.
+  }
+
+  rememberLocalHiddenDirect(authUserId, messageId);
+  return persisted;
 }
 
 export async function deleteDirectMessage(messageId: string) {
