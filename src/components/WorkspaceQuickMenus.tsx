@@ -1,12 +1,20 @@
-import { Copy, Search, Settings2, Users, Webhook, X } from "lucide-react";
+import { Copy, LoaderCircle, Pin, Search, Settings2, Trash2, Users, Webhook, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { clearChannelChat, clearDirectConversation } from "../lib/chatMaintenance";
+import { listDirectThreads } from "../lib/directMessages";
+import { listMembers, loadCollaboration } from "../lib/supabase";
 
 type Menu =
   | { kind: "channel"; x: number; y: number; button: HTMLButtonElement; name: string }
   | { kind: "space"; x: number; y: number; button: HTMLButtonElement; name: string }
+  | { kind: "direct"; x: number; y: number; name: string }
   | null;
 
+type ClearState = "idle" | "confirm" | "working";
+
 const TRIGGER_ATTRIBUTE = "data-labstar-channel-menu-trigger";
+const DIRECT_TRIGGER_ATTRIBUTE = "data-labstar-direct-menu-trigger";
+const MENU_WIDTH = 245;
 
 async function copyText(value: string) {
   try {
@@ -28,18 +36,58 @@ function channelName(button: HTMLButtonElement) {
   return label?.textContent?.trim() || "canal";
 }
 
+function clampMenuX(value: number) {
+  return Math.max(8, Math.min(value, window.innerWidth - MENU_WIDTH - 8));
+}
+
+function clampMenuY(value: number, height = 330) {
+  return Math.max(8, Math.min(value, window.innerHeight - height - 8));
+}
+
+function friendlyMaintenanceError(error: unknown) {
+  const message = error instanceof Error ? error.message : String(error ?? "");
+  if (/clear_channel_chat|clear_direct_conversation|function .* does not exist|PGRST202/i.test(message)) {
+    return "A atualização de manutenção do banco ainda não foi aplicada neste ambiente.";
+  }
+  if (/manage_channels|required|permission|denied|42501/i.test(message)) {
+    return "Você não tem permissão para limpar este chat.";
+  }
+  if (/ambiguous/i.test(message)) {
+    return "Não consegui identificar essa conversa com segurança.";
+  }
+  return "Não foi possível limpar o chat agora.";
+}
+
 export function WorkspaceQuickMenus() {
   const [menu, setMenu] = useState<Menu>(null);
+  const [clearState, setClearState] = useState<ClearState>("idle");
+  const [notice, setNotice] = useState("");
   const ref = useRef<HTMLElement>(null);
+
+  function showMenu(next: Exclude<Menu, null>) {
+    setClearState("idle");
+    setNotice("");
+    setMenu(next);
+  }
 
   useEffect(() => {
     const openChannelMenu = (button: HTMLButtonElement, x: number, y: number) => {
-      setMenu({
+      showMenu({
         kind: "channel",
-        x: Math.max(8, Math.min(x, window.innerWidth - 245)),
-        y: Math.max(8, Math.min(y, window.innerHeight - 250)),
+        x: clampMenuX(x),
+        y: clampMenuY(y),
         button,
         name: channelName(button),
+      });
+    };
+
+    const openDirectMenu = (x: number, y: number) => {
+      const name = document.querySelector<HTMLElement>(".dm-conversation-person strong")?.textContent?.trim() || "Conversa privada";
+      showMenu({
+        kind: "direct",
+        x: clampMenuX(x),
+        y: clampMenuY(y, 280),
+        name,
       });
     };
 
@@ -60,7 +108,7 @@ export function WorkspaceQuickMenus() {
           event.preventDefault();
           event.stopPropagation();
           const rect = trigger.getBoundingClientRect();
-          openChannelMenu(button, rect.right - 225, rect.bottom + 6);
+          openChannelMenu(button, rect.right - MENU_WIDTH, rect.bottom + 6);
         });
 
         trigger.addEventListener("keydown", (event) => {
@@ -68,11 +116,31 @@ export function WorkspaceQuickMenus() {
           event.preventDefault();
           event.stopPropagation();
           const rect = trigger.getBoundingClientRect();
-          openChannelMenu(button, rect.right - 225, rect.bottom + 6);
+          openChannelMenu(button, rect.right - MENU_WIDTH, rect.bottom + 6);
         });
 
         button.appendChild(trigger);
       });
+    };
+
+    const decorateDirectConversation = () => {
+      const actions = document.querySelector<HTMLElement>(".dm-conversation-actions");
+      if (!actions || actions.querySelector(`[${DIRECT_TRIGGER_ATTRIBUTE}]`)) return;
+
+      const trigger = document.createElement("button");
+      trigger.type = "button";
+      trigger.className = "dm-conversation-more";
+      trigger.setAttribute(DIRECT_TRIGGER_ATTRIBUTE, "true");
+      trigger.setAttribute("aria-label", "Mais ações da conversa privada");
+      trigger.setAttribute("title", "Mais ações da conversa");
+      trigger.textContent = "•••";
+      trigger.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        const rect = trigger.getBoundingClientRect();
+        openDirectMenu(rect.right - MENU_WIDTH, rect.bottom + 7);
+      });
+      actions.appendChild(trigger);
     };
 
     const open = (event: MouseEvent) => {
@@ -84,13 +152,20 @@ export function WorkspaceQuickMenus() {
         return;
       }
 
+      const direct = target?.closest<HTMLElement>(".dm-conversation");
+      if (direct && !target?.closest(".dm-message")) {
+        event.preventDefault();
+        openDirectMenu(event.clientX, event.clientY);
+        return;
+      }
+
       const space = target?.closest<HTMLButtonElement>(".space-list button");
       if (space) {
         event.preventDefault();
-        setMenu({
+        showMenu({
           kind: "space",
-          x: Math.max(8, Math.min(event.clientX, window.innerWidth - 245)),
-          y: Math.max(8, Math.min(event.clientY, window.innerHeight - 200)),
+          x: clampMenuX(event.clientX),
+          y: clampMenuY(event.clientY, 220),
           button: space,
           name: space.getAttribute("title")?.trim() || "Espaço",
         });
@@ -103,7 +178,11 @@ export function WorkspaceQuickMenus() {
     const escape = (event: KeyboardEvent) => event.key === "Escape" && setMenu(null);
 
     decorateChannels();
-    const observer = new MutationObserver(decorateChannels);
+    decorateDirectConversation();
+    const observer = new MutationObserver(() => {
+      decorateChannels();
+      decorateDirectConversation();
+    });
     observer.observe(document.body, { childList: true, subtree: true });
     document.addEventListener("contextmenu", open, true);
     document.addEventListener("pointerdown", close);
@@ -113,52 +192,135 @@ export function WorkspaceQuickMenus() {
       document.removeEventListener("contextmenu", open, true);
       document.removeEventListener("pointerdown", close);
       window.removeEventListener("keydown", escape);
-      document.querySelectorAll(`[${TRIGGER_ATTRIBUTE}]`).forEach((trigger) => trigger.remove());
+      document.querySelectorAll(`[${TRIGGER_ATTRIBUTE}], [${DIRECT_TRIGGER_ATTRIBUTE}]`).forEach((trigger) => trigger.remove());
     };
   }, []);
 
   if (!menu) return null;
   const activeMenu = menu;
+  const canClearChannel = activeMenu.kind === "channel" && Boolean(document.querySelector(".add-space"));
 
   function openSelected() {
+    if (activeMenu.kind === "direct") return;
     activeMenu.button.click();
     setMenu(null);
   }
 
   function openSpaceSettings() {
+    if (activeMenu.kind !== "space") return;
     activeMenu.button.click();
     window.setTimeout(() => document.querySelector<HTMLButtonElement>('button[aria-label="Configurar espaço"]')?.click(), 30);
     setMenu(null);
   }
 
   function focusChannelSearch() {
+    if (activeMenu.kind !== "channel") return;
     activeMenu.button.click();
     window.setTimeout(() => document.querySelector<HTMLInputElement>(".message-toolbar input")?.focus(), 30);
     setMenu(null);
   }
 
+  function focusDirectSearch() {
+    document.querySelector<HTMLInputElement>(".dm-conversation-actions input")?.focus();
+    setMenu(null);
+  }
+
+  function toggleDirectPinned() {
+    document.querySelector<HTMLButtonElement>('.dm-conversation-actions button[title="Mostrar fixadas"], .dm-conversation-actions button[title="Mostrar todas"]')?.click();
+    setMenu(null);
+  }
+
   function toggleMembers() {
+    if (activeMenu.kind !== "channel") return;
     activeMenu.button.click();
     window.setTimeout(() => document.querySelector<HTMLButtonElement>('.channel-head-actions button[title="Mostrar membros"]')?.click(), 30);
     setMenu(null);
   }
 
   function openIntegrations() {
+    if (activeMenu.kind !== "channel") return;
     activeMenu.button.click();
     window.setTimeout(() => document.querySelector<HTMLButtonElement>('.channel-head-actions button[title="Integrações e automações"]')?.click(), 30);
     setMenu(null);
   }
 
+  async function resolveChannelId() {
+    if (activeMenu.kind !== "channel") throw new Error("channel_required");
+    const collaboration = await loadCollaboration();
+    const visibleSpaceName = document.querySelector<HTMLElement>(".space-title strong")?.textContent?.trim().toLocaleLowerCase() || "";
+    const currentSpace = collaboration.spaces.find((space) => space.name.trim().toLocaleLowerCase() === visibleSpaceName);
+    const candidates = collaboration.channels.filter((channel) =>
+      channel.name.trim().toLocaleLowerCase() === activeMenu.name.trim().toLocaleLowerCase()
+      && (!currentSpace || channel.spaceId === currentSpace.id)
+    );
+    if (candidates.length !== 1) throw new Error("channel_ambiguous");
+    return candidates[0].id;
+  }
+
+  async function resolveDirectThreadId() {
+    if (activeMenu.kind !== "direct") throw new Error("direct_required");
+    const [team, threads] = await Promise.all([listMembers(), listDirectThreads()]);
+    const normalizedName = activeMenu.name.trim().toLocaleLowerCase();
+    const candidates = team.members.filter((member) => member.name.trim().toLocaleLowerCase() === normalizedName);
+    const candidateIds = new Set(candidates.map((member) => member.id));
+    const matchingThreads = threads.filter((thread) => candidateIds.has(thread.otherMemberId));
+    if (matchingThreads.length !== 1) throw new Error("direct_thread_ambiguous");
+    return matchingThreads[0].threadId;
+  }
+
+  async function clearCurrentChat() {
+    if (clearState === "working") return;
+    if (clearState !== "confirm") {
+      setClearState("confirm");
+      setNotice(activeMenu.kind === "direct"
+        ? "A conversa será apagada para os dois participantes. Clique novamente para confirmar."
+        : "O histórico deste canal será apagado para todos. Clique novamente para confirmar.");
+      return;
+    }
+
+    setClearState("working");
+    setNotice("");
+    try {
+      const count = activeMenu.kind === "direct"
+        ? await clearDirectConversation(await resolveDirectThreadId())
+        : await clearChannelChat(await resolveChannelId());
+      setClearState("idle");
+      setNotice(count > 0 ? `${count} mensagem(ns) removida(s).` : "O chat já estava vazio.");
+      window.setTimeout(() => setMenu(null), 900);
+    } catch (error) {
+      setClearState("idle");
+      setNotice(friendlyMaintenanceError(error));
+    }
+  }
+
   return (
-    <aside ref={ref} className="workspace-quick-menu" style={{ left: activeMenu.x, top: activeMenu.y }} onClick={(event) => event.stopPropagation()}>
-      <header><strong>{activeMenu.kind === "channel" ? `# ${activeMenu.name}` : activeMenu.name}</strong><button type="button" onClick={() => setMenu(null)} aria-label="Fechar"><X size={12}/></button></header>
+    <aside ref={ref} className={`workspace-quick-menu ${activeMenu.kind}`} style={{ left: activeMenu.x, top: activeMenu.y }} onClick={(event) => event.stopPropagation()}>
+      <header>
+        <strong>{activeMenu.kind === "channel" ? `# ${activeMenu.name}` : activeMenu.name}</strong>
+        <button type="button" onClick={() => setMenu(null)} aria-label="Fechar"><X size={12}/></button>
+      </header>
       <div>
-        <button type="button" onClick={openSelected}>{activeMenu.kind === "channel" ? <Search size={14}/> : <Settings2 size={14}/>} Abrir {activeMenu.kind === "channel" ? "canal" : "Espaço"}</button>
+        {activeMenu.kind !== "direct" && <button type="button" onClick={openSelected}>{activeMenu.kind === "channel" ? <Search size={14}/> : <Settings2 size={14}/>} Abrir {activeMenu.kind === "channel" ? "canal" : "Espaço"}</button>}
         {activeMenu.kind === "channel" && <button type="button" onClick={focusChannelSearch}><Search size={14}/> Buscar neste canal</button>}
+        {activeMenu.kind === "direct" && <button type="button" onClick={focusDirectSearch}><Search size={14}/> Buscar nesta conversa</button>}
+        {activeMenu.kind === "direct" && <button type="button" onClick={toggleDirectPinned}><Pin size={14}/> Mostrar fixadas</button>}
         <button type="button" onClick={() => { void copyText(activeMenu.kind === "channel" ? `#${activeMenu.name}` : activeMenu.name); setMenu(null); }}><Copy size={14}/> Copiar nome</button>
         {activeMenu.kind === "channel" && <button type="button" onClick={toggleMembers}><Users size={14}/> Alternar membros</button>}
         {activeMenu.kind === "channel" && <button type="button" onClick={openIntegrations}><Webhook size={14}/> Integrações</button>}
         {activeMenu.kind === "space" && <button type="button" onClick={openSpaceSettings}><Settings2 size={14}/> Configurações do Espaço</button>}
+
+        {(activeMenu.kind === "direct" || canClearChannel) && <i className="workspace-menu-separator" />}
+        {(activeMenu.kind === "direct" || canClearChannel) && (
+          <button type="button" className={`danger ${clearState === "confirm" ? "confirm" : ""}`} disabled={clearState === "working"} onClick={() => void clearCurrentChat()}>
+            {clearState === "working" ? <LoaderCircle className="spin" size={14}/> : <Trash2 size={14}/>}
+            {clearState === "working"
+              ? "Limpando chat…"
+              : clearState === "confirm"
+                ? activeMenu.kind === "direct" ? "Confirmar: apagar para os dois" : "Confirmar limpeza do canal"
+                : activeMenu.kind === "direct" ? "Limpar conversa" : "Limpar chat"}
+          </button>
+        )}
+        {notice && <p className={clearState === "confirm" ? "warning" : ""}>{notice}</p>}
       </div>
     </aside>
   );
