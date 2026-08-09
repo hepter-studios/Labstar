@@ -1,0 +1,35 @@
+.access-screen:not(.brand-intro) > p {
+  width: 46px !important;
+  height: 46px !important;
+  margin: 0 !important;
+  position: relative !important;
+  z-index: 2 !important;
+  display: grid !important;
+  place-items: center !important;
+  overflow: visible !important;
+  color: transparent !important;
+  font-size: 0 !important;
+  letter-spacing: 0 !important;
+  animation: none !important;
+}
+
+.access-screen:not(.brand-intro) > p::before {
+  content: "★";
+  display: block;
+  color: #e6edff;
+  font-size: 31px;
+  line-height: 1;
+  transform-origin: 50% 50%;
+  filter: drop-shadow(0 0 9px rgba(139, 174, 255, .48));
+  animation: labstar-access-star-spin 1s linear infinite;
+}
+
+@keyframes labstar-access-star-spin {
+  to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .access-screen:not(.brand-intro) > p::before {
+    animation-duration: 2.4s;
+  }
+}
