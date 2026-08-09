@@ -88,9 +88,8 @@ pub fn request_main_window_attention(app: AppHandle, critical: bool) -> Result<(
         .get_webview_window("main")
         .ok_or_else(|| "main_window_not_found".to_string())?;
 
-    window
-        .show()
-        .map_err(|error| format!("main_window_show_failed: {error}"))?;
+    // A notificação nativa chama a atenção sem reabrir a janela que o usuário fechou.
+    // O clique explícito na notificação ou na bandeja continua usando focus_main_window.
     window
         .request_user_attention(Some(if critical {
             UserAttentionType::Critical
