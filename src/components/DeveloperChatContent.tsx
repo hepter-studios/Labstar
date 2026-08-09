@@ -1,7 +1,29 @@
-import { Check, ChevronDown, Copy, Download, FileArchive, FileCode2, FileText, LoaderCircle, WrapText, X } from "lucide-react";
-import { useState, type CSSProperties } from "react";
+import {
+  Check,
+  ChevronDown,
+  Copy,
+  Download,
+  ExternalLink,
+  FileArchive,
+  FileCode2,
+  FileText,
+  Github,
+  Link2,
+  LoaderCircle,
+  WrapText,
+  X,
+} from "lucide-react";
+import { Children, isValidElement, useMemo, useState, type CSSProperties, type ReactElement, type ReactNode } from "react";
+import ReactMarkdown, { defaultUrlTransform } from "react-markdown";
+import remarkGfm from "remark-gfm";
 import "../programmer-chat.css";
 import { MAX_INLINE_PREVIEW_BYTES, describeDeveloperFile, formatChatBytes, inferProgrammingLanguage } from "../lib/programmer-files";
+
+export type MarkdownAttachment = { fileName: string; url: string; mimeType?: string };
+
+export function markdownAttachmentReference(fileName: string) {
+  return `labstar-attachment:${encodeURIComponent(fileName)}`;
+}
 
 async function copyText(value: string) {
   try {
@@ -61,23 +83,80 @@ function CodeBlock({ language, code }: { language: string; code: string }) {
   );
 }
 
-export function DeveloperMessageBody({ body }: { body: string }) {
-  const parts: Array<{ type: "text" | "code"; value: string; language?: string }> = [];
-  const fenced = /```([\w#+.-]*)\s*\n([\s\S]*?)```/g;
-  let cursor = 0;
-  let match: RegExpExecArray | null;
-  while ((match = fenced.exec(body))) {
-    if (match.index > cursor) parts.push({ type: "text", value: body.slice(cursor, match.index) });
-    parts.push({ type: "code", language: match[1], value: match[2] });
-    cursor = match.index + match[0].length;
-  }
-  if (cursor < body.length) parts.push({ type: "text", value: body.slice(cursor) });
-  if (!parts.length) parts.push({ type: "text", value: body });
+function codeFromPre(children: ReactNode) {
+  const child = Children.count(children) === 1 ? Children.only(children) : null;
+  if (!isValidElement(child)) return { language: "", code: String(children ?? "") };
+  const element = child as ReactElement<{ className?: string; children?: ReactNode }>;
+  return {
+    language: /language-([\w#+.-]+)/.exec(element.props.className ?? "")?.[1] ?? "",
+    code: String(element.props.children ?? ""),
+  };
+}
+
+function extractLinks(body: string) {
+  const withoutMarkdownImages = body.replace(/!\[[^\]]*\]\([^)]*\)/g, "");
+  const urls = withoutMarkdownImages.match(/https?:\/\/[^\s)\]}>"']+/gi) ?? [];
+  return [...new Set(urls)].slice(0, 3);
+}
+
+function DeveloperLinkCard({ url }: { url: string }) {
+  let parsed: URL;
+  try { parsed = new URL(url); } catch { return null; }
+  const github = parsed.hostname === "github.com" || parsed.hostname.endsWith(".github.com");
+  const segments = parsed.pathname.split("/").filter(Boolean);
+  const title = github && segments.length >= 2 ? `${segments[0]} / ${segments[1]}` : parsed.hostname;
+  const detail = github
+    ? segments.includes("pull") ? `Pull request #${segments[segments.indexOf("pull") + 1] ?? ""}`
+      : segments.includes("issues") ? `Issue #${segments[segments.indexOf("issues") + 1] ?? ""}`
+      : segments.includes("commit") ? `Commit ${segments[segments.indexOf("commit") + 1]?.slice(0, 7) ?? ""}`
+      : "Repositório ou arquivo no GitHub"
+    : parsed.pathname === "/" ? "Link externo" : decodeURIComponent(parsed.pathname).slice(0, 90);
   return (
-    <div className="developer-message-body">
-      {parts.map((part, index) => part.type === "code"
-        ? <CodeBlock key={`code-${index}`} language={part.language ?? ""} code={part.value} />
-        : part.value && <p key={`text-${index}`}>{part.value}</p>)}
+    <a className={`developer-link-card ${github ? "github" : ""}`} href={url} target="_blank" rel="noreferrer noopener">
+      <span>{github ? <Github size={18} /> : <Link2 size={18} />}</span>
+      <div><small>{github ? "GITHUB" : parsed.hostname.toUpperCase()}</small><strong>{title}</strong><p>{detail}</p></div>
+      <ExternalLink size={15} />
+    </a>
+  );
+}
+
+export function DeveloperMessageBody({ body, attachments = [] }: { body: string; attachments?: MarkdownAttachment[] }) {
+  const attachmentUrls = useMemo(() => new Map(attachments.map((item) => [item.fileName, item.url])), [attachments]);
+  const links = useMemo(() => extractLinks(body), [body]);
+  const transformUrl = (url: string) => {
+    if (url.startsWith("labstar-attachment:")) {
+      const name = decodeURIComponent(url.slice("labstar-attachment:".length));
+      return attachmentUrls.get(name) ?? "";
+    }
+    return defaultUrlTransform(url);
+  };
+
+  return (
+    <div className="developer-message-body markdown-body">
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
+        skipHtml
+        urlTransform={transformUrl}
+        components={{
+          pre({ children }) {
+            const block = codeFromPre(children);
+            return <CodeBlock language={block.language} code={block.code} />;
+          },
+          code({ children, className }) {
+            return <code className={className}>{children}</code>;
+          },
+          a({ href, children }) {
+            return <a href={href} target="_blank" rel="noreferrer noopener">{children}<ExternalLink size={11} /></a>;
+          },
+          img({ src, alt }) {
+            return src ? <a className="markdown-image" href={src} target="_blank" rel="noreferrer"><img src={src} alt={alt || "Imagem do documento"} loading="lazy" referrerPolicy="no-referrer" /><span>{alt || "Abrir imagem"}</span></a> : <span className="markdown-image-missing">Imagem ainda não enviada</span>;
+          },
+          input({ type, checked }) {
+            return type === "checkbox" ? <input type="checkbox" checked={Boolean(checked)} readOnly aria-label={checked ? "Concluído" : "Pendente"} /> : null;
+          },
+        }}
+      >{body}</ReactMarkdown>
+      {!!links.length && <div className="developer-link-grid">{links.map((url) => <DeveloperLinkCard key={url} url={url} />)}</div>}
     </div>
   );
 }
@@ -129,7 +208,7 @@ export function DeveloperAttachmentCard({ fileName, mimeType, sizeBytes, url }: 
       {expanded && canPreview && (
         <div className="developer-attachment-preview">
           <header><span>{descriptor.language}</span>{content !== null && <button type="button" onClick={() => void copyPreview()}>{copied ? <Check size={11} /> : <Copy size={11} />}{copied ? "Copiado" : "Copiar"}</button>}</header>
-          {loading ? <p><LoaderCircle className="spin" size={14} /> Carregando preview…</p> : previewError ? <p>{previewError}</p> : <pre><code>{content}</code></pre>}
+          {loading ? <p><LoaderCircle className="spin" size={14} /> Carregando preview…</p> : previewError ? <p>{previewError}</p> : mimeType === "text/markdown" && content !== null ? <DeveloperMessageBody body={content} /> : <pre><code>{content}</code></pre>}
         </div>
       )}
     </article>
