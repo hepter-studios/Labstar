@@ -14,6 +14,7 @@ type CollaborationHubProps = {
 type WorkSurface = "home" | "workspace" | "direct";
 type OpenChannelDetail = { channelId?: string; query?: string };
 type OpenDirectDetail = { query?: string };
+type RefreshCollaborationDetail = { channelId?: string };
 
 type StoredCommunicationPosition = {
   surface: WorkSurface;
@@ -64,6 +65,7 @@ export function CollaborationHub({ member, initialChannelId, soundEnabled = true
   const [initialPosition] = useState(() => readPosition(member.id));
   const [surface, setSurface] = useState<WorkSurface>(() => initialChannelId ? "workspace" : initialPosition.surface);
   const [workspaceChannelId, setWorkspaceChannelId] = useState<string | null>(() => initialChannelId ?? initialPosition.workspaceChannelId);
+  const [workspaceVersion, setWorkspaceVersion] = useState(0);
 
   useEffect(() => {
     savePosition(member.id, { surface, workspaceChannelId });
@@ -116,14 +118,25 @@ export function CollaborationHub({ member, initialChannelId, soundEnabled = true
     };
 
     const openHome = () => setSurface("home");
+    const refreshCollaboration = (event: Event) => {
+      const detail = (event as CustomEvent<RefreshCollaborationDetail>).detail ?? {};
+      if (detail.channelId) setWorkspaceChannelId(detail.channelId);
+      setSurface("workspace");
+      setWorkspaceVersion((value) => value + 1);
+      window.setTimeout(() => {
+        window.dispatchEvent(new CustomEvent("labstar:collaboration-refreshed"));
+      }, 80);
+    };
 
     window.addEventListener("labstar:open-channel", openChannel);
     window.addEventListener("labstar:open-direct", openDirect);
     window.addEventListener("labstar:open-work-home", openHome);
+    window.addEventListener("labstar:refresh-collaboration", refreshCollaboration);
     return () => {
       window.removeEventListener("labstar:open-channel", openChannel);
       window.removeEventListener("labstar:open-direct", openDirect);
       window.removeEventListener("labstar:open-work-home", openHome);
+      window.removeEventListener("labstar:refresh-collaboration", refreshCollaboration);
     };
   }, []);
 
@@ -169,6 +182,7 @@ export function CollaborationHub({ member, initialChannelId, soundEnabled = true
 
       <div className="communication-workspace-stage" style={{ display: surface === "direct" ? "none" : "contents" }} aria-hidden={surface === "direct"}>
         <LegacyCollaborationHub
+          key={workspaceVersion}
           member={member}
           initialChannelId={workspaceChannelId}
           soundEnabled={soundEnabled}
