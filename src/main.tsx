@@ -9,9 +9,11 @@ import {
 import { createRoot } from "react-dom/client";
 import App from "./App";
 import { AccessControl } from "./components/AccessControl";
+import { ChannelAccessPortal } from "./components/ChannelAccessPortal";
 import { ChannelMessageActionsBridge } from "./components/ChannelMessageActionsBridge";
 import { CommandPalette } from "./components/CommandPalette";
 import { DashboardWorkSurface } from "./components/DashboardWorkSurface";
+import { DirectMessageDeleteOptionsBridge } from "./components/DirectMessageDeleteOptionsBridge";
 import { GlobalDirectCallBridge } from "./components/GlobalDirectCallBridge";
 import { GlobalSearchBridge } from "./components/GlobalSearchBridge";
 import { GlobalSettingsPortal } from "./components/GlobalSettingsPortal";
@@ -64,6 +66,8 @@ import "./direct-messages-v6.css";
 import "./direct-messages-v7.css";
 import "./direct-messages-height-guard.css";
 import "./project-enhancements.css";
+import "./channel-access.css";
+import "./role-professional-polish.css";
 import "./brand-home-navigation";
 
 const BRAND_INTRO_DURATION_MS = 2350;
@@ -157,10 +161,12 @@ function RootSurfaces() {
       {introFinished && <OptionalSurface name="ações rápidas de membro"><MemberQuickActions /></OptionalSurface>}
       {introFinished && <OptionalSurface name="ferramentas do painel de membros"><MemberPanelTools /></OptionalSurface>}
       {introFinished && <OptionalSurface name="menus rápidos do espaço"><WorkspaceQuickMenus /></OptionalSurface>}
+      {introFinished && <OptionalSurface name="canais privados e permissões"><ChannelAccessPortal /></OptionalSurface>}
       {introFinished && <OptionalSurface name="central de comandos"><CommandPalette /></OptionalSurface>}
       {introFinished && <OptionalSurface name="tarefas e decisões"><WorkItemsCenter /></OptionalSurface>}
       {introFinished && <OptionalSurface name="mensagens para trabalho"><MessageWorkItemBridge /></OptionalSurface>}
       {introFinished && <OptionalSurface name="ações das mensagens em canais"><ChannelMessageActionsBridge /></OptionalSurface>}
+      {introFinished && <OptionalSurface name="exclusão individual de mensagens privadas"><DirectMessageDeleteOptionsBridge /></OptionalSurface>}
       {introFinished && <OptionalSurface name="busca global"><GlobalSearchBridge /></OptionalSurface>}
       {introFinished && <OptionalSurface name="projetos avançados"><ProjectEnhancementsPortal /></OptionalSurface>}
       {introFinished && <OptionalSurface name="instalação web"><InstallApp /></OptionalSurface>}
