@@ -113,9 +113,18 @@ jobs:
           DATABASE_URL: ${{ secrets.SUPABASE_DATABASE_URL }}
         run: |
           set -Eeuo pipefail
-          pg_dump "$DATABASE_URL" --schema-only --no-owner --no-privileges \
+          # The hosted Supabase project runs PostgreSQL 17.  ubuntu-latest
+          # currently exposes pg_dump 16, which refuses to back up a newer
+          # server.  The official PostgreSQL 17 image supplies the matching
+          # client without altering the runner's system packages.
+          docker run --rm \
+            --env DATABASE_URL \
+            --volume "$RUNNER_TEMP:/backup" \
+            postgres:17 \
+            pg_dump "$DATABASE_URL" --schema-only --no-owner --no-privileges \
             --table=public.notifications --table=public.members \
-            --file="$RUNNER_TEMP/phase5-before.sql"
+            --file=/backup/phase5-before.sql
+          test -s "$RUNNER_TEMP/phase5-before.sql"
 
       - name: Apply Phase 5 database migration
         env:
