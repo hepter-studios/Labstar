@@ -1,6 +1,6 @@
 .access-screen:not(.brand-intro) > p {
-  width: 46px !important;
-  height: 46px !important;
+  width: 58px !important;
+  height: 58px !important;
   margin: 0 !important;
   position: relative !important;
   z-index: 2 !important;
@@ -10,26 +10,116 @@
   color: transparent !important;
   font-size: 0 !important;
   letter-spacing: 0 !important;
-  animation: none !important;
+  transform-origin: 50% 50% !important;
+  will-change: transform, opacity;
+  animation: labstar-access-star-flight .72s cubic-bezier(.16,.84,.28,1) both !important;
 }
 
+/*
+ * Usa a mesma silhueta da estrela do wordmark LABSTAR (Lucide Star):
+ * cinco pontas, preenchida e com o mesmo peso visual do símbolo da marca.
+ */
 .access-screen:not(.brand-intro) > p::before {
-  content: "★";
+  content: "";
+  width: 36px;
+  height: 36px;
+  position: relative;
+  z-index: 2;
   display: block;
-  color: #e6edff;
-  font-size: 31px;
-  line-height: 1;
+  background: center / contain no-repeat url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23eaf0ff' stroke='%23eaf0ff' stroke-width='1.25' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolygon points='12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2'/%3E%3C/svg%3E");
   transform-origin: 50% 50%;
-  filter: drop-shadow(0 0 9px rgba(139, 174, 255, .48));
-  animation: labstar-access-star-spin 1s linear infinite;
+  filter:
+    drop-shadow(0 0 5px rgba(255,255,255,.30))
+    drop-shadow(0 0 13px rgba(139,174,255,.58));
+  animation: labstar-access-star-spin 1.05s linear .72s infinite;
+}
+
+/* Rastro curto: acompanha a entrada e desaparece quando a estrela chega ao centro. */
+.access-screen:not(.brand-intro) > p::after {
+  content: "";
+  width: clamp(92px, 13vw, 154px);
+  height: 2px;
+  position: absolute;
+  z-index: 1;
+  right: calc(50% + 9px);
+  top: 50%;
+  border-radius: 999px;
+  pointer-events: none;
+  opacity: 0;
+  transform-origin: 100% 50%;
+  transform: translateY(-50%) rotate(35deg) scaleX(.72);
+  background: linear-gradient(90deg, transparent 0%, rgba(111,150,242,.10) 28%, rgba(158,187,255,.48) 70%, rgba(242,247,255,.96) 100%);
+  box-shadow: 0 0 8px rgba(139,174,255,.22);
+  filter: blur(.15px);
+  animation: labstar-access-star-trail .72s ease-out both;
+}
+
+@keyframes labstar-access-star-flight {
+  0% {
+    opacity: 0;
+    transform: translate3d(-42vw, -31vh, 0) scale(.68) rotate(-28deg);
+  }
+  18% {
+    opacity: 1;
+  }
+  78% {
+    transform: translate3d(8px, 6px, 0) scale(1.08) rotate(7deg);
+  }
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1) rotate(0deg);
+  }
+}
+
+@keyframes labstar-access-star-trail {
+  0% {
+    opacity: 0;
+    transform: translateY(-50%) rotate(35deg) scaleX(.22);
+  }
+  18% {
+    opacity: .95;
+    transform: translateY(-50%) rotate(35deg) scaleX(.86);
+  }
+  62% {
+    opacity: .62;
+    transform: translateY(-50%) rotate(35deg) scaleX(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-50%) rotate(35deg) scaleX(.35);
+  }
 }
 
 @keyframes labstar-access-star-spin {
   to { transform: rotate(360deg); }
 }
 
-@media (prefers-reduced-motion: reduce) {
+@media (max-width: 760px) {
+  .access-screen:not(.brand-intro) > p {
+    animation-duration: .62s !important;
+  }
+
   .access-screen:not(.brand-intro) > p::before {
-    animation-duration: 2.4s;
+    width: 34px;
+    height: 34px;
+    animation-delay: .62s;
+  }
+
+  .access-screen:not(.brand-intro) > p::after {
+    animation-duration: .62s;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .access-screen:not(.brand-intro) > p {
+    animation: none !important;
+  }
+
+  .access-screen:not(.brand-intro) > p::after {
+    display: none;
+  }
+
+  .access-screen:not(.brand-intro) > p::before {
+    animation: labstar-access-star-spin 2.4s linear infinite;
   }
 }
