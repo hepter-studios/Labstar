@@ -9,6 +9,7 @@ import {
 import { createRoot } from "react-dom/client";
 import App from "./App";
 import { AccessControl } from "./components/AccessControl";
+import { ChannelMessageActionsBridge } from "./components/ChannelMessageActionsBridge";
 import { CommandPalette } from "./components/CommandPalette";
 import { DashboardWorkSurface } from "./components/DashboardWorkSurface";
 import { GlobalDirectCallBridge } from "./components/GlobalDirectCallBridge";
@@ -47,6 +48,7 @@ import "./member-quick-actions.css";
 import "./member-panel-tools.css";
 import "./system-diagnostics.css";
 import "./workspace-quick-menus.css";
+import "./channel-message-actions.css";
 import "./identity-assets-fix.css";
 import "./command-palette.css";
 import "./workspace-intelligence.css";
@@ -156,6 +158,7 @@ function RootSurfaces() {
       {introFinished && <OptionalSurface name="dashboard operacional"><DashboardWorkSurface /></OptionalSurface>}
       {introFinished && <OptionalSurface name="tarefas e decisões"><WorkItemsCenter /></OptionalSurface>}
       {introFinished && <OptionalSurface name="mensagens para trabalho"><MessageWorkItemBridge /></OptionalSurface>}
+      {introFinished && <OptionalSurface name="ações das mensagens em canais"><ChannelMessageActionsBridge /></OptionalSurface>}
       {introFinished && <OptionalSurface name="busca global"><GlobalSearchBridge /></OptionalSurface>}
       {introFinished && <OptionalSurface name="instalação web"><InstallApp /></OptionalSurface>}
     </>

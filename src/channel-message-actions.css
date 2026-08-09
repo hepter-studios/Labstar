@@ -1,0 +1,143 @@
+.channel-message-actions-menu {
+  position: fixed;
+  z-index: 14500;
+  width: min(300px, calc(100vw - 24px));
+  max-height: min(520px, calc(100vh - 24px));
+  padding: 8px;
+  overflow-y: auto;
+  border: 1px solid rgba(140, 166, 224, .20);
+  border-radius: 14px;
+  color: #dce5f3;
+  background: linear-gradient(180deg, rgba(13, 19, 29, .995), rgba(7, 11, 18, .995));
+  box-shadow: 0 28px 90px rgba(0, 0, 0, .82), inset 0 1px rgba(255, 255, 255, .04);
+  backdrop-filter: blur(18px);
+  scrollbar-width: thin;
+  scrollbar-color: #26344a transparent;
+  animation: channel-message-menu-enter .14s ease-out;
+}
+
+.channel-message-actions-menu > header {
+  min-height: 46px;
+  padding: 4px 8px 8px;
+  display: grid;
+  align-content: center;
+  gap: 3px;
+  border-bottom: 1px solid rgba(140, 166, 224, .10);
+}
+
+.channel-message-actions-menu > header strong,
+.channel-message-actions-menu > header small {
+  display: block;
+}
+
+.channel-message-actions-menu > header strong {
+  color: #eef3fb;
+  font-size: 11px;
+  font-weight: 760;
+}
+
+.channel-message-actions-menu > header small {
+  color: #66748a;
+  font-size: 8px;
+}
+
+.channel-message-actions-menu > button {
+  width: 100%;
+  min-height: 38px;
+  padding: 0 10px;
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  align-items: center;
+  gap: 9px;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  color: #9ba9bd;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.channel-message-actions-menu > button svg {
+  color: #8291a8;
+}
+
+.channel-message-actions-menu > button span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 10px;
+  font-weight: 560;
+}
+
+.channel-message-actions-menu > button:hover,
+.channel-message-actions-menu > button:focus-visible {
+  color: #edf3fc;
+  border-color: rgba(91, 137, 235, .13);
+  background: rgba(77, 132, 255, .075);
+  outline: none;
+}
+
+.channel-message-actions-menu > button:hover svg,
+.channel-message-actions-menu > button:focus-visible svg {
+  color: #a9beef;
+}
+
+.channel-message-actions-menu > button.danger {
+  color: #e27d88;
+}
+
+.channel-message-actions-menu > button.danger svg {
+  color: #d96d79;
+}
+
+.channel-message-actions-menu > button.danger:hover,
+.channel-message-actions-menu > button.danger:focus-visible {
+  color: #ff9da6;
+  border-color: rgba(225, 87, 102, .14);
+  background: rgba(198, 58, 72, .08);
+}
+
+.channel-message-menu-separator {
+  height: 1px;
+  margin: 6px 5px;
+  display: block;
+  background: rgba(140, 166, 224, .10);
+}
+
+.channel-message-menu-error {
+  margin: 7px 4px 2px;
+  padding: 8px 9px;
+  display: grid;
+  grid-template-columns: 15px minmax(0, 1fr);
+  align-items: start;
+  gap: 7px;
+  border: 1px solid rgba(218, 92, 104, .18);
+  border-radius: 9px;
+  color: #e5929b;
+  background: rgba(157, 45, 57, .08);
+  font-size: 9px;
+  line-height: 1.45;
+}
+
+@keyframes channel-message-menu-enter {
+  from { opacity: 0; transform: translateY(-4px) scale(.985); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@media (max-width: 760px) {
+  .channel-message-actions-menu {
+    width: min(300px, calc(100vw - 16px));
+    border-radius: 13px;
+  }
+
+  .channel-message-actions-menu > button {
+    min-height: 42px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .channel-message-actions-menu {
+    animation: none;
+  }
+}
