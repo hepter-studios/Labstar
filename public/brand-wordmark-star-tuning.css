@@ -2,6 +2,6 @@
  * Mantém a estrela visualmente proporcional à altura e presença das letras.
  */
 html body .wordmark .star-letter {
-  width: .82em !important;
-  height: .82em !important;
+  width: .90em !important;
+  height: .90em !important;
 }
