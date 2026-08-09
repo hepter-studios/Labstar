@@ -4,14 +4,17 @@ import {
   Bell,
   Check,
   Clock3,
+  Copy,
   Download,
   Edit3,
   File,
+  FileCode2,
   FileImage,
   Inbox,
   LoaderCircle,
+  Link2,
   MessageSquare,
-  Paperclip,
+  MoreHorizontal,
   Pencil,
   Phone,
   Pin,
@@ -26,6 +29,7 @@ import {
   UserPlus,
   Users,
   Video,
+  Volume2,
   X,
 } from "lucide-react";
 import {
@@ -82,9 +86,11 @@ import {
   DeveloperAttachmentCard,
   DeveloperFileQueue,
   DeveloperMessageBody,
+  markdownAttachmentReference,
 } from "./DeveloperChatContent";
 import { PrivateCallOverlay } from "./PrivateCallOverlay";
 import { DeveloperComposerTools, handleDeveloperComposerKeyDown } from "./DeveloperComposerTools";
+import { DeveloperCreateMenu, DeveloperMarkdownStudio, README_TEMPLATE } from "./DeveloperMarkdownStudio";
 
 const dmEmojiSet = [
   "😀", "😃", "😄", "😁", "😂", "🤣", "😊", "🥹",
@@ -683,10 +689,15 @@ function DirectConversation({
   const [replying, setReplying] = useState<DirectMessage | null>(null);
   const [editing, setEditing] = useState<DirectMessage | null>(null);
   const [emojiOpen, setEmojiOpen] = useState(false);
+  const [createMenuOpen, setCreateMenuOpen] = useState(false);
+  const [codeMode, setCodeMode] = useState(false);
+  const [markdownStudio, setMarkdownStudio] = useState<{ mode: "compose" | "edit"; value: string } | null>(null);
   const [uploadNotice, setUploadNotice] = useState("");
   const [uploadNoticeError, setUploadNoticeError] = useState(false);
   const [dragActive, setDragActive] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  const imageRef = useRef<HTMLInputElement>(null);
+  const imageTargetRef = useRef<"composer" | "studio">("composer");
   const composerRef = useRef<HTMLTextAreaElement>(null);
   const messageScrollRef = useRef<HTMLDivElement>(null);
   const emojiRef = useRef<HTMLDivElement>(null);
@@ -722,6 +733,9 @@ function DirectConversation({
     setReplying(null);
     setEditing(null);
     setEmojiOpen(false);
+    setCreateMenuOpen(false);
+    setCodeMode(false);
+    setMarkdownStudio(null);
     setUploadNotice("");
     setUploadNoticeError(false);
     setDragActive(false);
@@ -750,6 +764,24 @@ function DirectConversation({
       window.removeEventListener("keydown", escape);
     };
   }, [emojiOpen]);
+
+  useEffect(() => {
+    if (!createMenuOpen) return undefined;
+    const close = (event: PointerEvent) => {
+      const target = event.target as HTMLElement;
+      if (target.closest(".developer-create-menu") || target.closest("[data-developer-create-trigger]")) return;
+      setCreateMenuOpen(false);
+    };
+    const escape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setCreateMenuOpen(false);
+    };
+    document.addEventListener("pointerdown", close, true);
+    window.addEventListener("keydown", escape);
+    return () => {
+      document.removeEventListener("pointerdown", close, true);
+      window.removeEventListener("keydown", escape);
+    };
+  }, [createMenuOpen]);
 
   const visibleMessages = messages.filter((message) => (
     (!pinnedOnly || message.isPinned)
@@ -815,6 +847,7 @@ function DirectConversation({
   function beginReply(message: DirectMessage) {
     setReplying(message);
     setEditing(null);
+    setMarkdownStudio(null);
     setDraft("");
     window.requestAnimationFrame(() => composerRef.current?.focus());
   }
@@ -825,13 +858,75 @@ function DirectConversation({
     setFiles([]);
     setUploadNotice("");
     setDraft(message.body);
-    window.requestAnimationFrame(() => composerRef.current?.focus());
+    setMarkdownStudio({ mode: "edit", value: message.body });
   }
 
   function clearContext() {
     setEditing(null);
     setReplying(null);
+    setMarkdownStudio(null);
     setDraft("");
+  }
+
+  function appendTemplate(value: string) {
+    setDraft((current) => `${current}${current.trim() ? "\n" : ""}${value.trimStart()}`);
+    window.requestAnimationFrame(() => composerRef.current?.focus());
+  }
+
+  function openMarkdownStudio() {
+    setMarkdownStudio({ mode: "compose", value: draft.trim() ? draft : README_TEMPLATE });
+  }
+
+  function requestMarkdownImage(target: "composer" | "studio") {
+    if (editing) {
+      onToast("Durante a edição, os anexos originais são preservados.");
+      return;
+    }
+    imageTargetRef.current = target;
+    imageRef.current?.click();
+  }
+
+  function addMarkdownImages(incoming: File[]) {
+    if (!incoming.length || editing) return;
+    addFiles(incoming, `${incoming.length} imagem(ns) anexada(s) e inserida(s) no Markdown.`);
+    const markdown = incoming.map((file) => {
+      const alt = file.name.replace(/\.[^.]+$/, "").replace(/[-_]+/g, " ");
+      return `![${alt || "Imagem"}](${markdownAttachmentReference(file.name)})`;
+    }).join("\n\n");
+    if (imageTargetRef.current === "studio") {
+      setMarkdownStudio((current) => current ? { ...current, value: `${current.value}${current.value.trim() ? "\n\n" : ""}${markdown}` } : current);
+    } else {
+      setDraft((current) => `${current}${current.trim() ? "\n\n" : ""}${markdown}`);
+      window.requestAnimationFrame(() => composerRef.current?.focus());
+    }
+  }
+
+  async function confirmMarkdownStudio(attachReadme: boolean) {
+    if (!markdownStudio || sending) return;
+    if (markdownStudio.mode === "edit" && editing) {
+      setSending(true);
+      setError("");
+      try {
+        await editDirectMessage(editing.id, markdownStudio.value);
+        setDraft("");
+        setEditing(null);
+        setMarkdownStudio(null);
+        await refresh();
+        onThreadsChanged();
+      } catch {
+        setError("Não foi possível salvar a edição em Markdown.");
+      } finally {
+        setSending(false);
+      }
+      return;
+    }
+
+    setDraft(markdownStudio.value);
+    if (attachReadme) {
+      addFiles([new globalThis.File([markdownStudio.value], "README.md", { type: "text/markdown" })], "README.md preparado para envio.");
+    }
+    setMarkdownStudio(null);
+    window.requestAnimationFrame(() => composerRef.current?.focus());
   }
 
   function saveNote(value: string) {
@@ -911,7 +1006,29 @@ function DirectConversation({
           {error && <div className="dm-composer-notice error">{error}</div>}
           {!dmAvailable && <div className="dm-composer-notice error">Mensagens privadas aguardam a migração segura do banco.</div>}
 
-          <DeveloperComposerTools textareaRef={composerRef} value={draft} onChange={setDraft} disabled={sending || !threadId || !dmAvailable} />
+          {createMenuOpen && (
+            <DeveloperCreateMenu
+              onUpload={() => fileRef.current?.click()}
+              onImage={() => requestMarkdownImage("composer")}
+              onCode={() => {
+                setCodeMode(true);
+                window.requestAnimationFrame(() => composerRef.current?.focus());
+              }}
+              onMarkdown={openMarkdownStudio}
+              onTemplate={appendTemplate}
+              onClose={() => setCreateMenuOpen(false)}
+            />
+          )}
+
+          {codeMode && (
+            <DeveloperComposerTools
+              textareaRef={composerRef}
+              value={draft}
+              onChange={setDraft}
+              disabled={sending || !threadId || !dmAvailable}
+              onClose={() => setCodeMode(false)}
+            />
+          )}
 
           {emojiOpen && (
             <div ref={emojiRef} className="dm-emoji-picker" role="listbox" aria-label="Emojis disponíveis">
@@ -933,7 +1050,7 @@ function DirectConversation({
           )}
 
           <div>
-            <button type="button" disabled={Boolean(editing)} onClick={() => fileRef.current?.click()} title={editing ? "Anexos não mudam durante edição" : `Anexar até ${MAX_CHAT_FILES} arquivos de ${formatChatBytes(MAX_CHAT_FILE_BYTES)}`}><Paperclip size={18} /></button>
+            <button data-developer-create-trigger type="button" className={createMenuOpen ? "active" : ""} disabled={Boolean(editing)} aria-expanded={createMenuOpen} onClick={() => setCreateMenuOpen((value) => !value)} title={editing ? "Anexos não mudam durante edição" : `Criar ou anexar até ${MAX_CHAT_FILES} arquivos de ${formatChatBytes(MAX_CHAT_FILE_BYTES)}`}><Plus size={20} /></button>
             <textarea
               ref={composerRef}
               rows={1}
@@ -941,7 +1058,7 @@ function DirectConversation({
               onChange={(event) => setDraft(event.target.value)}
               onPaste={pasteIntoComposer}
               onKeyDown={(event) => {
-                if (handleDeveloperComposerKeyDown(event, draft, setDraft)) return;
+                if (codeMode && handleDeveloperComposerKeyDown(event, draft, setDraft)) return;
                 if (event.key === "Enter" && !event.shiftKey) {
                   event.preventDefault();
                   event.currentTarget.form?.requestSubmit();
@@ -957,8 +1074,29 @@ function DirectConversation({
             addFiles(Array.from(event.target.files ?? []));
             event.currentTarget.value = "";
           }} />
+          <input ref={imageRef} hidden multiple type="file" accept="image/*" onChange={(event) => {
+            addMarkdownImages(Array.from(event.target.files ?? []));
+            event.currentTarget.value = "";
+          }} />
         </form>
       </main>
+
+      {markdownStudio && (
+        <DeveloperMarkdownStudio
+          value={markdownStudio.value}
+          files={files}
+          attachments={editing?.attachments ?? []}
+          mode={markdownStudio.mode}
+          busy={sending}
+          onChange={(value) => setMarkdownStudio((current) => current ? { ...current, value } : current)}
+          onRequestImage={() => requestMarkdownImage("studio")}
+          onCancel={() => {
+            if (markdownStudio.mode === "edit") clearContext();
+            else setMarkdownStudio(null);
+          }}
+          onConfirm={(attachReadme) => void confirmMarkdownStudio(attachReadme)}
+        />
+      )}
 
       <aside className="dm-profile-panel">
         <div className="dm-profile-hero">
@@ -1001,11 +1139,66 @@ function DirectMessageRow({
   onError: (message: string) => void;
 }) {
   const primaryRole = message.author?.jobRoles[0];
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const embeddedAttachmentNames = new Set(
+    message.attachments
+      .filter((attachment) => message.body.includes(markdownAttachmentReference(attachment.fileName)))
+      .map((attachment) => attachment.fileName),
+  );
+  const visibleAttachments = message.attachments.filter((attachment) => !embeddedAttachmentNames.has(attachment.fileName));
+
+  useEffect(() => {
+    if (!menuOpen) return undefined;
+    const close = (event: PointerEvent) => {
+      if (!menuRef.current?.contains(event.target as Node)) setMenuOpen(false);
+    };
+    const escape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setMenuOpen(false);
+    };
+    document.addEventListener("pointerdown", close, true);
+    window.addEventListener("keydown", escape);
+    return () => {
+      document.removeEventListener("pointerdown", close, true);
+      window.removeEventListener("keydown", escape);
+    };
+  }, [menuOpen]);
+
+  async function copyValue(value: string, successMessage: string) {
+    try {
+      await navigator.clipboard.writeText(value);
+      setMenuOpen(false);
+    } catch {
+      onError(`Não foi possível ${successMessage.toLocaleLowerCase()}.`);
+    }
+  }
+
+  function downloadMarkdownMessage() {
+    const blob = new Blob([message.body], { type: "text/markdown;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = `mensagem-${message.id.slice(0, 8)}.md`;
+    anchor.click();
+    window.setTimeout(() => URL.revokeObjectURL(url), 0);
+    setMenuOpen(false);
+  }
+
+  function speakMessage() {
+    if (!("speechSynthesis" in window)) {
+      onError("A leitura de mensagens não está disponível neste navegador.");
+      return;
+    }
+    window.speechSynthesis.cancel();
+    window.speechSynthesis.speak(new SpeechSynthesisUtterance(message.body));
+    setMenuOpen(false);
+  }
 
   async function togglePin() {
     try {
       await pinDirectMessage(message.id, !message.isPinned);
       await onRefresh();
+      setMenuOpen(false);
     } catch {
       onError("Não foi possível alterar a fixação desta mensagem.");
     }
@@ -1016,6 +1209,7 @@ function DirectMessageRow({
       await deleteDirectMessage(message.id);
       await onRefresh();
       onThreadsChanged();
+      setMenuOpen(false);
     } catch {
       onError("Não foi possível excluir esta mensagem.");
     }
@@ -1036,10 +1230,10 @@ function DirectMessageRow({
           <time>{formatMessageDate(message.createdAt)}</time>
           {message.editedAt && <em>(editada)</em>}
         </header>
-        <DeveloperMessageBody body={message.body} />
-        {!!message.attachments.length && (
+        <DeveloperMessageBody body={message.body} attachments={message.attachments} />
+        {!!visibleAttachments.length && (
           <div className="dm-attachments">
-            {message.attachments.map((attachment) => attachment.mimeType.startsWith("image/")
+            {visibleAttachments.map((attachment) => attachment.mimeType.startsWith("image/")
               ? <a key={attachment.id} href={attachment.url} target="_blank" rel="noreferrer" className="dm-image-attachment"><img src={attachment.url} alt={attachment.fileName} /><span><FileImage size={13} />{attachment.fileName}</span></a>
               : <DeveloperAttachmentCard
                   key={attachment.id}
@@ -1054,8 +1248,21 @@ function DirectMessageRow({
       <div className="dm-message-actions">
         <button title="Responder" onClick={onReply}><Reply size={13} /></button>
         {own && <button title="Editar" onClick={onEdit}><Pencil size={13} /></button>}
-        <button title={message.isPinned ? "Desafixar" : "Fixar"} onClick={() => void togglePin()}><Pin size={13} /></button>
-        {own && <button title="Excluir mensagem" data-destructive="true" onClick={() => void remove()}><X size={13} /></button>}
+        <button className={menuOpen ? "active" : ""} title="Mais ações" aria-expanded={menuOpen} onClick={() => setMenuOpen((value) => !value)}><MoreHorizontal size={14} /></button>
+        {menuOpen && (
+          <div ref={menuRef} className="dm-message-menu" role="menu">
+            <header><strong>Ações da mensagem</strong><small>{formatMessageDate(message.createdAt)}</small></header>
+            <button type="button" role="menuitem" onClick={() => { setMenuOpen(false); onReply(); }}><Reply size={15} /><span>Responder</span></button>
+            {own && <button type="button" role="menuitem" onClick={() => { setMenuOpen(false); onEdit(); }}><Pencil size={15} /><span>Editar em Markdown</span></button>}
+            <button type="button" role="menuitem" onClick={() => void togglePin()}><Pin size={15} /><span>{message.isPinned ? "Desafixar mensagem" : "Fixar mensagem"}</span></button>
+            <i />
+            <button type="button" role="menuitem" onClick={() => void copyValue(message.body, "copiar o texto")}><Copy size={15} /><span>Copiar texto</span></button>
+            <button type="button" role="menuitem" onClick={() => void copyValue(`${window.location.origin}${window.location.pathname}#dm-message-${message.id}`, "copiar o link")}><Link2 size={15} /><span>Copiar link da mensagem</span></button>
+            <button type="button" role="menuitem" onClick={downloadMarkdownMessage}><FileCode2 size={15} /><span>Baixar como Markdown</span></button>
+            <button type="button" role="menuitem" onClick={speakMessage}><Volume2 size={15} /><span>Ler mensagem</span></button>
+            {own && <><i /><button className="danger" type="button" role="menuitem" data-destructive="true" onClick={() => void remove()}><X size={15} /><span>Excluir mensagem</span></button></>}
+          </div>
+        )}
       </div>
     </article>
   );
