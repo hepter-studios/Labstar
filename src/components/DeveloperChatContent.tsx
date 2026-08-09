@@ -120,13 +120,18 @@ function DeveloperLinkCard({ url }: { url: string }) {
   );
 }
 
+function registeredProjectAssetUrl(name: string) {
+  const registry = (window as typeof window & { __LABSTAR_PROJECT_ASSET_URLS__?: Record<string, string> }).__LABSTAR_PROJECT_ASSET_URLS__;
+  return registry?.[name] ?? "";
+}
+
 export function DeveloperMessageBody({ body, attachments = [] }: { body: string; attachments?: MarkdownAttachment[] }) {
   const attachmentUrls = useMemo(() => new Map(attachments.map((item) => [item.fileName, item.url])), [attachments]);
   const links = useMemo(() => extractLinks(body), [body]);
   const transformUrl = (url: string) => {
     if (url.startsWith("labstar-attachment:")) {
       const name = decodeURIComponent(url.slice("labstar-attachment:".length));
-      return attachmentUrls.get(name) ?? "";
+      return attachmentUrls.get(name) ?? registeredProjectAssetUrl(name);
     }
     return defaultUrlTransform(url);
   };
