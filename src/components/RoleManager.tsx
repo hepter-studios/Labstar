@@ -21,11 +21,11 @@ import {
 } from "../lib/supabase";
 
 const permissionOptions = [
-  { permission: "manage_members", label: "Gerenciar membros", detail: "Editar dados organizacionais, atribuições e acesso de pessoas." },
+  { permission: "manage_members", label: "Gerenciar membros", detail: "Editar dados organizacionais e acesso de pessoas comuns. Owner e administradores continuam protegidos." },
   { permission: "manage_roles", label: "Gerenciar cargos profissionais", detail: "Criar, editar, ordenar e remover cargos da empresa." },
   { permission: "create_channels", label: "Criar canais", detail: "Criar canais e categorias sem receber administração total." },
-  { permission: "manage_channels", label: "Gerenciar canais", detail: "Editar canais, integrações, histórico e configurações gerais." },
-  { permission: "manage_private_channels", label: "Gerenciar canais privados", detail: "Configurar quem pode ver canais restritos e privados." },
+  { permission: "manage_channels", label: "Gerenciar canais", detail: "Editar canais, categorias, integrações e configurações gerais." },
+  { permission: "manage_private_channels", label: "Gerenciar acesso privado", detail: "Configurar quem pode ver categorias e canais restritos." },
   { permission: "moderate_content", label: "Moderar mensagens", detail: "Fixar, remover ou organizar conteúdo de outras pessoas." },
   { permission: "manage_projects", label: "Editar projetos e mapa", detail: "Alterar projetos, núcleos, progresso e documentação." },
   { permission: "publish_social", label: "Aprovar e publicar conteúdo", detail: "Gerenciar o planejamento social e suas aprovações." },
@@ -70,6 +70,7 @@ export function RoleManager() {
   const [search, setSearch] = useState("");
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
+  const [deleteConfirm, setDeleteConfirm] = useState(false);
 
   async function refresh(preferredId?: string) {
     const data = await listJobRoles();
@@ -94,6 +95,7 @@ export function RoleManager() {
     setSelectedId(role.id);
     setDraft({ ...role, permissions: [...role.permissions] });
     setMessage("");
+    setDeleteConfirm(false);
   }
 
   function startNew() {
@@ -107,6 +109,7 @@ export function RoleManager() {
       permissions: [],
     });
     setMessage("");
+    setDeleteConfirm(false);
   }
 
   function duplicateCurrent() {
@@ -118,12 +121,14 @@ export function RoleManager() {
       position: Math.max(100, ...roles.map((role) => role.position)) + 1,
       permissions: [...current.permissions],
     }));
+    setDeleteConfirm(false);
     setMessage("Cópia preparada. Revise e salve como um novo cargo.");
   }
 
   async function save() {
     setSaving(true);
     setMessage("");
+    setDeleteConfirm(false);
     try {
       if (selectedId) {
         await updateJobRole(selectedId, draft);
@@ -154,6 +159,29 @@ export function RoleManager() {
     await refresh(selectedId);
   }
 
+  async function removeSelectedRole() {
+    if (!selectedId || saving) return;
+    if (!deleteConfirm) {
+      setDeleteConfirm(true);
+      setMessage("Clique novamente para excluir este cargo. As pessoas permanecem na equipe e apenas perdem a atribuição.");
+      return;
+    }
+    setSaving(true);
+    setMessage("Excluindo cargo…");
+    try {
+      await deleteJobRole(selectedId);
+      setSelectedId("");
+      setDeleteConfirm(false);
+      setMessage("Cargo removido.");
+      await refresh();
+    } catch {
+      setDeleteConfirm(false);
+      setMessage("Não foi possível excluir este cargo.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
   return (
     <section className="roles-manager professional-roles-manager">
       <aside className="roles-list-panel">
@@ -181,7 +209,7 @@ export function RoleManager() {
         <header>
           <div>
             <span className="role-preview-icon" style={{ "--role-color": draft.color } as React.CSSProperties}><Shield size={26} fill="currentColor" /><Star size={12} fill="#080a0f" /></span>
-            <div><small>{selectedId ? "EDITAR CARGO PROFISSIONAL" : "NOVO CARGO PROFISSIONAL"}</small><strong>{draft.name || "Sem nome"}</strong></div>
+            <div><small>{selectedId ? "Editar cargo" : "Novo cargo"}</small><strong>{draft.name || "Sem nome"}</strong></div>
           </div>
           <div className="role-order">
             {selectedId && <button onClick={duplicateCurrent} title="Duplicar este cargo"><Copy size={15} /></button>}
@@ -192,7 +220,7 @@ export function RoleManager() {
 
         <div className="professional-role-explainer">
           <ShieldCheckCopy />
-          <div><strong>Cargo profissional não é o nível de acesso da conta.</strong><p>O cargo define função, cor, escudo e permissões extras. “Administrador”, “Gestor”, “Membro” e “Convidado” continuam sendo controlados separadamente no perfil do membro pela liderança.</p></div>
+          <div><strong>Cargo profissional e nível de acesso são coisas diferentes.</strong><p>O cargo representa função, cor e permissões extras. Administrador, Gestor, Membro e Convidado continuam sendo níveis técnicos da conta.</p></div>
         </div>
 
         <div className="role-preview">
@@ -209,7 +237,7 @@ export function RoleManager() {
 
         <fieldset className="permission-grid professional-permission-grid">
           <legend>Permissões adicionais do cargo</legend>
-          <p>Deixe tudo desmarcado para um cargo apenas visual. Marque somente o que essa função realmente precisa fazer.</p>
+          <p>Deixe tudo desmarcado quando o cargo for apenas visual. Ative somente o que a função realmente precisa fazer.</p>
           {permissionOptions.map(({ permission, label, detail }) => (
             <label key={permission} className={draft.permissions.includes(permission) ? "active" : ""}>
               <input type="checkbox" checked={draft.permissions.includes(permission)} onChange={() => setDraft({
@@ -224,12 +252,7 @@ export function RoleManager() {
         </fieldset>
 
         <footer>
-          {selectedId && <button className="danger-text" onClick={async () => {
-            if (!window.confirm("Excluir este cargo profissional? As pessoas não serão excluídas; apenas perderão esta atribuição.")) return;
-            await deleteJobRole(selectedId);
-            setSelectedId("");
-            await refresh();
-          }}><Trash2 size={14} /> Excluir cargo</button>}
+          {selectedId && <button className={`danger-text ${deleteConfirm ? "confirm" : ""}`} disabled={saving} onClick={() => void removeSelectedRole()}><Trash2 size={14} /> {deleteConfirm ? "Confirmar exclusão" : "Excluir cargo"}</button>}
           <span>{message}</span>
           <button className="primary" disabled={saving || draft.name.trim().length < 2} onClick={() => void save()}>
             {saving ? <LoaderCircle className="spin" size={15} /> : message === "Cargo profissional salvo" ? <Check size={15} /> : <Save size={15} />}
