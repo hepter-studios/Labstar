@@ -22,6 +22,7 @@ import {
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { DeveloperMessageBody } from "./DeveloperChatContent";
+import { ProjectReadmeAssetTools } from "./ProjectReadmeAssetTools";
 import {
   listProjectProfiles,
   removeProjectLogo,
@@ -554,6 +555,7 @@ function ProjectDetailsModal({ node, profile, onClose, onSave }: {
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const markdownRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     const close = (event: KeyboardEvent) => event.key === "Escape" && !saving && onClose();
@@ -612,7 +614,18 @@ function ProjectDetailsModal({ node, profile, onClose, onSave }: {
             <p className="project-section-help">Sem conteúdo manual ou URL específica, o Labstar tenta buscar automaticamente o README do repositório GitHub.</p>
             <label className="full">Nome exibido<input value={draft.documentTitle} onChange={(event) => update("documentTitle", event.target.value)} placeholder="README, Visão técnica, Briefing…" /></label>
             <label className="full">URL específica do documento <input type="url" value={draft.documentUrl} onChange={(event) => update("documentUrl", event.target.value)} placeholder="Opcional: GitHub blob/raw ou outro Markdown acessível" /></label>
-            <label className="full">Conteúdo manual em Markdown <textarea className="project-markdown-input" rows={8} value={draft.documentMarkdown} onChange={(event) => update("documentMarkdown", event.target.value)} placeholder="# Projeto\n\nUse isto quando não houver GitHub ou quando quiser um documento próprio no Labstar." /><small>Opcional. Se preenchido, este conteúdo tem prioridade sobre GitHub e URL.</small></label>
+            <div className="project-readme-editor">
+              <label className="full">Conteúdo manual em Markdown <textarea ref={markdownRef} className="project-markdown-input" rows={10} value={draft.documentMarkdown} onChange={(event) => update("documentMarkdown", event.target.value)} placeholder="# Projeto\n\nUse isto quando não houver GitHub ou quando quiser um documento próprio no Labstar." /><small>Opcional. Se preenchido, este conteúdo tem prioridade sobre GitHub e URL.</small></label>
+              <ProjectReadmeAssetTools nodeId={node.id} value={draft.documentMarkdown} onChange={(value) => update("documentMarkdown", value)} textareaRef={markdownRef} />
+              <div className="project-readme-live-preview" aria-live="polite">
+                <div className="project-readme-live-preview-head"><strong>Prévia imediata</strong><span>Markdown, imagens e arquivos</span></div>
+                <div className="project-readme-live-preview-body">
+                  {draft.documentMarkdown.trim()
+                    ? <DeveloperMessageBody body={draft.documentMarkdown} />
+                    : <p>Comece a escrever ou insira um arquivo para visualizar o README.</p>}
+                </div>
+              </div>
+            </div>
           </section>
         </div>
 

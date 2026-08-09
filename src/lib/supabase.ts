@@ -48,6 +48,7 @@ export type AccountDeletionResult = {
   outcome: "deleted";
   memberId: string | null;
   authIdentityDeleted: boolean;
+  cleanupWarning: string | null;
 };
 
 type MemberRow = {
@@ -451,22 +452,6 @@ export async function removeTeamMember(id: string): Promise<MemberRemovalResult>
   };
 }
 
-function accountDeletionError(error: { code?: string; message?: string }) {
-  const text = `${error.code ?? ""} ${error.message ?? ""}`.toLocaleLowerCase();
-  const knownCodes = [
-    "self_deletion_forbidden",
-    "owner_deletion_forbidden",
-    "owner_required",
-    "member_must_be_suspended",
-    "confirmation_email_mismatch",
-    "account_not_found",
-    "permission_denied",
-    "member_not_authorized",
-  ];
-  const known = knownCodes.find((code) => text.includes(code));
-  return memberRemovalError(known ?? error.code ?? "account_deletion_failed");
-}
-
 export async function permanentlyDeleteTeamAccount(
   email: string,
   confirmationEmail: string,
@@ -477,22 +462,52 @@ export async function permanentlyDeleteTeamAccount(
     throw memberRemovalError("confirmation_email_mismatch");
   }
 
-  const { data, error } = await requireClient().rpc("delete_labstar_account", {
-    target_email: normalizedEmail,
-    confirmation_email: normalizedConfirmation,
-  });
-  if (error) throw accountDeletionError(error);
+  const apiBaseUrl = import.meta.env.VITE_LABSTAR_API_URL?.trim().replace(/\/$/, "");
+  if (!apiBaseUrl) throw memberRemovalError("admin_api_unavailable");
 
-  const row = (Array.isArray(data) ? data[0] : data) as {
+  const { data: sessionData, error: sessionError } = await requireClient().auth.getSession();
+  if (sessionError || !sessionData.session?.access_token) {
+    throw memberRemovalError("authentication_failed");
+  }
+
+  const controller = new AbortController();
+  const timeout = window.setTimeout(() => controller.abort(), 35_000);
+  let response: Response;
+  try {
+    response = await fetch(`${apiBaseUrl}/v1/admin/accounts`, {
+      method: "DELETE",
+      headers: {
+        Authorization: `Bearer ${sessionData.session.access_token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        email: normalizedEmail,
+        confirmation_email: normalizedConfirmation,
+      }),
+      signal: controller.signal,
+    });
+  } catch {
+    throw memberRemovalError("admin_api_unavailable");
+  } finally {
+    window.clearTimeout(timeout);
+  }
+
+  const payload = await response.json().catch(() => null) as {
     outcome?: string;
     member_id?: string | null;
     auth_identity_deleted?: boolean;
+    cleanup_warning?: string | null;
+    error?: { code?: string; message?: string };
   } | null;
-  if (row?.outcome !== "deleted") throw memberRemovalError("invalid_account_deletion_response");
+  if (!response.ok) {
+    throw memberRemovalError(payload?.error?.code || "account_deletion_failed");
+  }
+  if (payload?.outcome !== "deleted") throw memberRemovalError("invalid_account_deletion_response");
   return {
     outcome: "deleted",
-    memberId: row.member_id ?? null,
-    authIdentityDeleted: Boolean(row.auth_identity_deleted),
+    memberId: payload.member_id ?? null,
+    authIdentityDeleted: Boolean(payload.auth_identity_deleted),
+    cleanupWarning: payload.cleanup_warning ?? null,
   };
 }
 

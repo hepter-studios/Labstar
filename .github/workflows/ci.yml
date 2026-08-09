@@ -30,3 +30,30 @@ jobs:
 
       - name: Validar build de produção
         run: npm run build
+
+  admin-api:
+    name: Validar API administrativa Rust
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Baixar código
+        uses: actions/checkout@v4
+
+      - name: Instalar Rust estável
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Restaurar cache do Cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: backend
+
+      - name: Verificar formatação
+        run: cargo fmt --manifest-path backend/Cargo.toml --all -- --check
+
+      - name: Executar Clippy sem avisos
+        run: cargo clippy --locked --manifest-path backend/Cargo.toml --all-targets -- -D warnings
+
+      - name: Executar testes
+        run: cargo test --locked --manifest-path backend/Cargo.toml

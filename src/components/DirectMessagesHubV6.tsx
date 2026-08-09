@@ -48,6 +48,7 @@ import {
   type DirectCallKind,
   type DirectCallSession,
 } from "../lib/directCalls";
+import { CHAT_CLEARED_EVENT, type ChatClearedDetail } from "../lib/chatMaintenance";
 import {
   deleteDirectMessage,
   editDirectMessage,
@@ -743,6 +744,15 @@ function DirectConversation({
     const subscription = subscribeToDirectThread(threadId, () => void refresh());
     return () => unsubscribeDirect(subscription);
   }, [contact.id, refresh, threadId]);
+
+  useEffect(() => {
+    const handleCleared = (event: Event) => {
+      const detail = (event as CustomEvent<ChatClearedDetail>).detail;
+      if (detail?.kind === "direct" && detail.threadId === threadId) void refresh();
+    };
+    window.addEventListener(CHAT_CLEARED_EVENT, handleCleared);
+    return () => window.removeEventListener(CHAT_CLEARED_EVENT, handleCleared);
+  }, [refresh, threadId]);
 
   useEffect(() => {
     if (!emojiOpen) return undefined;

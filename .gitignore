@@ -2,6 +2,7 @@
 node_modules/
 dist/
 coverage/
+target/
 .npm-cache/
 *.tsbuildinfo
 vite.config.js

@@ -27,7 +27,6 @@ import { MemberQuickActions } from "./components/MemberQuickActions";
 import { MessageWorkItemBridge } from "./components/MessageWorkItemBridge";
 import { ProfessionalPermissionBridge } from "./components/ProfessionalPermissionBridge";
 import { ProjectEnhancementsPortal } from "./components/ProjectEnhancementsPortal";
-import { ProjectReadmeAssetsBridge } from "./components/ProjectReadmeAssetsBridge";
 import { PushNotificationBridge } from "./components/PushNotificationBridge";
 import { RuntimeReliability } from "./components/RuntimeReliability";
 import { SafetyGuards } from "./components/SafetyGuards";
@@ -180,7 +179,6 @@ function RootSurfaces() {
       {introFinished && <OptionalSurface name="exclusão individual de mensagens privadas"><DirectMessageDeleteOptionsBridge /></OptionalSurface>}
       {introFinished && <OptionalSurface name="busca global"><GlobalSearchBridge /></OptionalSurface>}
       {introFinished && <OptionalSurface name="projetos avançados"><ProjectEnhancementsPortal /></OptionalSurface>}
-      {introFinished && <OptionalSurface name="arquivos do README de projetos"><ProjectReadmeAssetsBridge /></OptionalSurface>}
       {introFinished && <OptionalSurface name="instalação web"><InstallApp /></OptionalSurface>}
     </>
   );

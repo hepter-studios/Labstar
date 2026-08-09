@@ -1,1 +1,35 @@
-.project-readme-assets-host{display:block}.project-readme-assets{margin-top:2px;border-top:1px solid rgba(255,255,255,.08);padding-top:12px;display:grid;gap:10px}.project-readme-assets-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}.project-readme-assets-head>div:first-child{display:grid;gap:3px}.project-readme-assets-head strong{font-size:11px;color:#e3e8f2}.project-readme-assets-head span,.project-readme-assets-hint{font-size:9px;line-height:1.45;color:#69758d}.project-readme-assets-head>div:last-child{display:flex;gap:6px}.project-readme-assets button,.project-readme-assets a{height:30px;padding:0 9px;border:1px solid rgba(255,255,255,.1);border-radius:7px;background:#0a0e15;color:#aab5c9;display:inline-flex;align-items:center;justify-content:center;gap:6px;text-decoration:none;font:600 10px/1 inherit;cursor:pointer}.project-readme-assets button:hover,.project-readme-assets a:hover{border-color:rgba(139,174,255,.28);color:#e3e9f7;background:#0d121c}.project-readme-assets button:disabled{opacity:.55;cursor:wait}.project-readme-assets-status{min-height:28px;border:1px solid rgba(139,174,255,.12);background:rgba(139,174,255,.04);border-radius:7px;padding:6px 8px;display:flex;align-items:center;gap:7px;color:#8394b4;font-size:9px}.project-readme-assets-list{display:grid;border-top:1px solid rgba(255,255,255,.06)}.project-readme-assets-list article{min-height:46px;display:grid;grid-template-columns:34px minmax(0,1fr) 30px 30px 30px;align-items:center;gap:6px;border-bottom:1px solid rgba(255,255,255,.055);padding:6px 0}.project-readme-asset-preview{width:32px;height:32px;border:1px solid rgba(255,255,255,.08);border-radius:6px;background:#080b10;display:grid;place-items:center;color:#76859f;overflow:hidden}.project-readme-asset-preview img{width:100%;height:100%;object-fit:cover}.project-readme-assets-list article>div{min-width:0;display:grid;gap:2px}.project-readme-assets-list article strong{font-size:10px;color:#ccd4e3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.project-readme-assets-list article small{font-size:8px;color:#68758c}.project-readme-assets-list article>button,.project-readme-assets-list article>a{width:30px;padding:0}.project-readme-assets-list .danger:hover{color:#ef7780;border-color:rgba(239,119,128,.24);background:rgba(239,119,128,.06)}.project-markdown-input{min-height:190px}.project-readme-assets.dragging{border-color:#8baeff}@media(max-width:720px){.project-readme-assets-head{align-items:stretch;flex-direction:column}.project-readme-assets-head>div:last-child{width:100%}.project-readme-assets-head>div:last-child button{flex:1}.project-readme-assets-list article{grid-template-columns:34px minmax(0,1fr) 30px 30px 30px}}
+.project-readme-editor { display: grid; gap: 12px; }
+.project-readme-assets { margin-top: 2px; padding-top: 12px; display: grid; gap: 10px; border-top: 1px solid rgba(255,255,255,.08); }
+.project-readme-assets-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.project-readme-assets-head > div:first-child { display: grid; gap: 3px; }
+.project-readme-assets-head strong { color: #e3e8f2; font-size: 11px; }
+.project-readme-assets-head span,.project-readme-assets-hint { color: #69758d; font-size: 9px; line-height: 1.45; }
+.project-readme-assets-head > div:last-child { display: flex; gap: 6px; }
+.project-readme-assets button,.project-readme-assets a { height: 30px; padding: 0 9px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; border: 1px solid rgba(255,255,255,.1); border-radius: 7px; color: #aab5c9; background: #0a0e15; text-decoration: none; font: 600 10px/1 inherit; cursor: pointer; }
+.project-readme-assets button:hover,.project-readme-assets a:hover { border-color: rgba(139,174,255,.28); color: #e3e9f7; background: #0d121c; }
+.project-readme-assets button:disabled { opacity: .55; cursor: wait; }
+.project-readme-assets-status { min-height: 28px; padding: 6px 8px; display: flex; align-items: center; gap: 7px; border: 1px solid rgba(139,174,255,.12); border-radius: 7px; color: #8394b4; background: rgba(139,174,255,.04); font-size: 9px; }
+.project-readme-assets-status.error { border-color: rgba(239,119,128,.2); color: #ef9da4; background: rgba(239,119,128,.06); }
+.project-readme-assets-list { display: grid; border-top: 1px solid rgba(255,255,255,.06); }
+.project-readme-assets-list article { min-height: 46px; padding: 6px 0; display: grid; grid-template-columns: 34px minmax(0,1fr) 30px 30px 30px; align-items: center; gap: 6px; border-bottom: 1px solid rgba(255,255,255,.055); }
+.project-readme-asset-preview { width: 32px; height: 32px; display: grid; place-items: center; overflow: hidden; border: 1px solid rgba(255,255,255,.08); border-radius: 6px; color: #76859f; background: #080b10; }
+.project-readme-asset-preview img { width: 100%; height: 100%; object-fit: cover; }
+.project-readme-assets-list article > div { min-width: 0; display: grid; gap: 2px; }
+.project-readme-assets-list article strong { overflow: hidden; color: #ccd4e3; font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+.project-readme-assets-list article small { color: #68758c; font-size: 8px; }
+.project-readme-assets-list article > button,.project-readme-assets-list article > a { width: 30px; padding: 0; }
+.project-readme-assets-list .danger:hover { border-color: rgba(239,119,128,.24); color: #ef7780; background: rgba(239,119,128,.06); }
+.project-markdown-input { min-height: 220px; font-family: "SFMono-Regular", Consolas, monospace !important; }
+.project-readme-live-preview { min-height: 220px; overflow: hidden; border: 1px solid rgba(139,174,255,.13); border-radius: 11px; background: #070a10; }
+.project-readme-live-preview-head { min-height: 38px; padding: 0 11px; display: flex; align-items: center; justify-content: space-between; gap: 10px; border-bottom: 1px solid rgba(139,174,255,.1); background: rgba(139,174,255,.035); }
+.project-readme-live-preview-head strong { color: #d8e2f7; font-size: 10px; }
+.project-readme-live-preview-head span { color: #687894; font-size: 9px; }
+.project-readme-live-preview-body { max-height: 360px; padding: 15px; overflow: auto; }
+.project-readme-live-preview-body > p { margin: 0; color: #66748d; font-size: 10px; }
+.project-readme-live-preview-body .developer-message-body { max-width: none; }
+
+@media (max-width: 720px) {
+  .project-readme-assets-head { align-items: stretch; flex-direction: column; }
+  .project-readme-assets-head > div:last-child { width: 100%; }
+  .project-readme-assets-head > div:last-child button { flex: 1; }
+}

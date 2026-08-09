@@ -824,6 +824,7 @@ function TeamDirectory({ nodes, currentMember, onMemberUpdated }: { nodes: Struc
   const [accountDeletionTarget, setAccountDeletionTarget] = useState<Member | "manual" | null>(null);
   const [accountDeletionEmail, setAccountDeletionEmail] = useState("");
   const [accountDeletionConfirmation, setAccountDeletionConfirmation] = useState("");
+  const [accountDeletionError, setAccountDeletionError] = useState("");
   const [deletingAccount, setDeletingAccount] = useState(false);
   const [editingMemberId, setEditingMemberId] = useState<string | null>(null);
   const [memberDraft, setMemberDraft] = useState<Member | null>(null);
@@ -956,6 +957,7 @@ function TeamDirectory({ nodes, currentMember, onMemberUpdated }: { nodes: Struc
     setAccountDeletionTarget(target);
     setAccountDeletionEmail(target === "manual" ? "" : target.email);
     setAccountDeletionConfirmation("");
+    setAccountDeletionError("");
     setMessage("");
   }
 
@@ -964,18 +966,19 @@ function TeamDirectory({ nodes, currentMember, onMemberUpdated }: { nodes: Struc
     setAccountDeletionTarget(null);
     setAccountDeletionEmail("");
     setAccountDeletionConfirmation("");
+    setAccountDeletionError("");
   }
 
   async function confirmAccountDeletion() {
     if (!accountDeletionTarget || deletingAccount) return;
     const normalizedEmail = accountDeletionEmail.trim().toLocaleLowerCase();
     if (!normalizedEmail || normalizedEmail !== accountDeletionConfirmation.trim().toLocaleLowerCase()) {
-      setMessage("Digite exatamente o mesmo e-mail para confirmar a exclusão.");
+      setAccountDeletionError("Digite exatamente o mesmo e-mail para confirmar a exclusão.");
       return;
     }
 
     setDeletingAccount(true);
-    setMessage("Excluindo a conta e o login do Labstar…");
+    setAccountDeletionError("");
     try {
       const result = await permanentlyDeleteTeamAccount(normalizedEmail, accountDeletionConfirmation);
       setMembers((current) => {
@@ -987,12 +990,16 @@ function TeamDirectory({ nodes, currentMember, onMemberUpdated }: { nodes: Struc
           : remaining[0]?.id ?? null);
         return remaining;
       });
-      setMessage(result.authIdentityDeleted
+      const successMessage = result.authIdentityDeleted
         ? `A conta ${normalizedEmail} e o login correspondente foram excluídos do Labstar.`
-        : `O cadastro ${normalizedEmail} foi encerrado. Não existia mais um login Auth vinculado.`);
+        : `O cadastro ${normalizedEmail} foi encerrado. Não existia mais um login Auth vinculado.`;
+      setMessage(result.cleanupWarning
+        ? `${successMessage} A limpeza do avatar ficou pendente e pode ser repetida sem reativar o acesso.`
+        : successMessage);
       setAccountDeletionTarget(null);
       setAccountDeletionEmail("");
       setAccountDeletionConfirmation("");
+      setAccountDeletionError("");
     } catch (error) {
       const code = (error as { code?: string }).code;
       const errors: Record<string, string> = {
@@ -1004,9 +1011,13 @@ function TeamDirectory({ nodes, currentMember, onMemberUpdated }: { nodes: Struc
         account_not_found: "Nenhum membro ou login do Labstar foi encontrado com este e-mail.",
         permission_denied: "Sua conta não tem permissão para excluir este login.",
         member_not_authorized: "Sua sessão não possui autorização administrativa válida.",
-        PGRST202: "A migração de exclusão permanente ainda não foi aplicada no Supabase publicado.",
+        authentication_failed: "Sua sessão expirou. Entre novamente antes de repetir a exclusão.",
+        admin_api_unavailable: "O serviço administrativo está indisponível. Nada foi anonimizado; tente novamente em instantes.",
+        auth_identity_delete_failed: "O Supabase Auth não concluiu a exclusão. O cadastro interno não foi anonimizado.",
+        account_cleanup_incomplete: "O login foi removido, mas a anonimização do cadastro precisa ser repetida. Mantenha este membro suspenso.",
+        invalid_account_deletion_response: "O serviço respondeu sem confirmar a exclusão. Recarregue a equipe antes de tentar novamente.",
       };
-      setMessage(errors[code ?? ""] ?? "Não foi possível excluir a conta. Nada foi alterado.");
+      setAccountDeletionError(errors[code ?? ""] ?? "Não foi possível excluir a conta. Nada foi alterado.");
     } finally {
       setDeletingAccount(false);
     }
@@ -1196,12 +1207,14 @@ function TeamDirectory({ nodes, currentMember, onMemberUpdated }: { nodes: Struc
 
       {accountDeletionTarget && (
         <div className="modal-backdrop" onMouseDown={closeAccountDeletion}>
-          <section className="invite-modal removal-modal permanent-deletion-modal" role="alertdialog" aria-modal="true" aria-labelledby="account-deletion-title" onMouseDown={(event) => event.stopPropagation()}>
+          <section className="invite-modal removal-modal permanent-deletion-modal" role="alertdialog" aria-modal="true" aria-labelledby="account-deletion-title" aria-describedby="account-deletion-description" onMouseDown={(event) => event.stopPropagation()}>
             <div className="modal-head"><span><Trash2 size={17} /></span><div><strong id="account-deletion-title">Excluir conta e login permanentemente?</strong><small>Esta ação não poderá ser desfeita.</small></div><button type="button" disabled={deletingAccount} onClick={closeAccountDeletion} aria-label="Fechar"><X size={16} /></button></div>
-            <p>O acesso do Labstar e a identidade correspondente no Supabase Auth serão apagados. A conta Google/Gmail real da pessoa não será alterada, e o nome continuará apenas nas mensagens antigas para preservar o histórico.</p>
+            <p id="account-deletion-description">O acesso do Labstar e a identidade correspondente no Supabase Auth serão apagados. A conta Google/Gmail real da pessoa não será alterada, e o nome continuará apenas nas mensagens antigas para preservar o histórico.</p>
             {accountDeletionTarget !== "manual" && <div className="removal-identity"><Avatar name={accountDeletionTarget.name} url={accountDeletionTarget.avatarUrl} size="sm" /><span><strong>{accountDeletionTarget.name}</strong><small>{accountDeletionTarget.email}</small></span></div>}
-            <label>E-mail da conta<input type="email" autoComplete="off" readOnly={accountDeletionTarget !== "manual"} value={accountDeletionEmail} onChange={(event) => setAccountDeletionEmail(event.target.value)} placeholder="pessoa@email.com" /></label>
-            <label>Digite o e-mail novamente para confirmar<input type="email" autoComplete="off" value={accountDeletionConfirmation} onChange={(event) => setAccountDeletionConfirmation(event.target.value)} placeholder={accountDeletionEmail || "pessoa@email.com"} /></label>
+            <label>E-mail da conta<input type="email" autoComplete="off" disabled={deletingAccount} readOnly={accountDeletionTarget !== "manual"} value={accountDeletionEmail} onChange={(event) => { setAccountDeletionEmail(event.target.value); setAccountDeletionError(""); }} placeholder="pessoa@email.com" /></label>
+            <label>Digite o e-mail novamente para confirmar<input type="email" autoComplete="off" disabled={deletingAccount} value={accountDeletionConfirmation} onChange={(event) => { setAccountDeletionConfirmation(event.target.value); setAccountDeletionError(""); }} placeholder={accountDeletionEmail || "pessoa@email.com"} /></label>
+            {accountDeletionError && <div className="modal-inline-error" role="alert"><AlertTriangle size={15} /><span>{accountDeletionError}</span></div>}
+            {deletingAccount && <div className="modal-inline-status" role="status" aria-live="polite"><LoaderCircle className="spin" size={14} />Excluindo o login com segurança…</div>}
             <div className="removal-actions"><button type="button" disabled={deletingAccount} onClick={closeAccountDeletion}>Cancelar</button><button className="confirm" type="button" disabled={deletingAccount || !accountDeletionEmail.trim() || accountDeletionEmail.trim().toLocaleLowerCase() !== accountDeletionConfirmation.trim().toLocaleLowerCase()} onClick={() => void confirmAccountDeletion()}>{deletingAccount ? <LoaderCircle className="spin" size={14} /> : <Trash2 size={14} />} Excluir conta e login</button></div>
           </section>
         </div>

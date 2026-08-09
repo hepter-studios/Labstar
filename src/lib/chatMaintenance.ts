@@ -1,5 +1,15 @@
 import { supabaseClient } from "./supabase";
 
+export const CHAT_CLEARED_EVENT = "labstar:chat-cleared";
+
+export type ChatClearedDetail =
+  | { kind: "channel"; channelId: string }
+  | { kind: "direct"; threadId: string };
+
+export function notifyChatCleared(detail: ChatClearedDetail) {
+  window.dispatchEvent(new CustomEvent<ChatClearedDetail>(CHAT_CLEARED_EVENT, { detail }));
+}
+
 function requireClient() {
   if (!supabaseClient) throw new Error("supabase_not_configured");
   return supabaseClient;
