@@ -28,6 +28,11 @@ import {
 } from "../lib/app-settings";
 import { secureSignOut } from "../lib/access";
 import {
+  deviceNotificationStateMessage,
+  disableDeviceNotifications,
+  enableDeviceNotifications,
+} from "../lib/push-notifications";
+import {
   removeOwnAvatar,
   updateOwnProfile,
   uploadOwnAvatar,
@@ -150,15 +155,23 @@ export function GlobalSettings({
   }
 
   async function requestNotificationPermission() {
-    if (!("Notification" in window)) {
-      setStatus("Este dispositivo não oferece notificações do navegador");
-      return;
+    try {
+      const result = await enableDeviceNotifications();
+      const next = { ...draft, desktopNotifications: result === "active" };
+      setDraft(next);
+      if (result === "active") await persist(next);
+      setStatus(deviceNotificationStateMessage(result));
+    } catch {
+      setStatus("Não foi possível conectar este dispositivo às notificações externas");
     }
-    const result = await Notification.requestPermission();
-    const next = { ...draft, desktopNotifications: result === "granted" };
+  }
+
+  async function turnOffDeviceNotifications() {
+    await disableDeviceNotifications().catch(() => undefined);
+    const next = { ...draft, desktopNotifications: false };
     setDraft(next);
     await persist(next);
-    setStatus(result === "granted" ? "Notificações do dispositivo liberadas" : "Notificações do dispositivo não foram liberadas");
+    setStatus("Alertas externos desativados neste dispositivo");
   }
 
   async function loadMediaDevices() {
@@ -309,9 +322,9 @@ export function GlobalSettings({
           {tab === "notifications" && (
             <div className="settings-sections">
               <SettingsSection title="Alertas" description="Controle o que pode chamar sua atenção fora da conversa atual.">
-                <Toggle label="Notificações do dispositivo" description="Permite alertas nativos quando o sistema autorizar." checked={draft.desktopNotifications} onChange={(value) => update("desktopNotifications", value)} />
+                <Toggle label="Notificações do dispositivo" description="Exibe a estrela do Labstar no celular e no computador, mesmo fora da janela." checked={draft.desktopNotifications} onChange={(value) => value ? void requestNotificationPermission() : void turnOffDeviceNotifications()} />
                 <Toggle label="Menções" description="Destacar notificações que citam você diretamente." checked={draft.mentionNotifications} onChange={(value) => update("mentionNotifications", value)} />
-                <div className="settings-inline-actions"><button type="button" onClick={() => void requestNotificationPermission()}><Bell size={14} /> Verificar permissão do dispositivo</button></div>
+                <div className="settings-inline-actions"><button type="button" onClick={() => void requestNotificationPermission()}><Bell size={14} /> Ativar e testar neste dispositivo</button></div>
               </SettingsSection>
             </div>
           )}
