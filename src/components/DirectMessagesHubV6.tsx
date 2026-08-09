@@ -1,5 +1,6 @@
 import {
   AtSign,
+  ArrowLeft,
   Bell,
   Check,
   Clock3,
@@ -524,6 +525,7 @@ export function DirectMessagesHub({ member, onOpenWorkspace }: Props) {
           onToggleFavorite={() => toggleFavorite(selectedContact.member.id)}
           onThreadsChanged={() => refreshThreads(true)}
           onStartCall={(kind) => void startPrivateCall(selectedContact.member, selectedThreadId, kind)}
+          onBack={goHome}
           onToast={showToast}
         />
       ) : (
@@ -654,6 +656,7 @@ function DirectConversation({
   onToggleFavorite,
   onThreadsChanged,
   onStartCall,
+  onBack,
   onToast,
 }: {
   member: Member;
@@ -665,6 +668,7 @@ function DirectConversation({
   onToggleFavorite: () => void;
   onThreadsChanged: () => void;
   onStartCall: (kind: DirectCallKind) => void;
+  onBack: () => void;
   onToast: (message: string, tone?: NonNullable<ToastState>["tone"]) => void;
 }) {
   const [messages, setMessages] = useState<DirectMessage[]>([]);
@@ -839,6 +843,7 @@ function DirectConversation({
     <>
       <main className="dm-conversation">
         <header className="dm-conversation-header">
+          <button className="dm-mobile-back" type="button" onClick={onBack} aria-label="Voltar para mensagens diretas"><ArrowLeft size={19} /></button>
           <div className="dm-conversation-person">
             <Avatar name={contact.name} url={contact.avatarUrl} size="sm" status={contactOnline ? "online" : "offline"} />
             <span><strong>{contact.name}</strong><small><i /> {contactOnline ? "Online no Labstar" : "Offline"} {contact.jobRoles[0]?.name && <b>{contact.jobRoles[0].name}</b>}</small></span>
