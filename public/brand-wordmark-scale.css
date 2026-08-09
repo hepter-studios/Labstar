@@ -1,0 +1,5 @@
+/* Ajuste fino do símbolo no wordmark Anurati. */
+html body .wordmark .star-letter {
+  width: .90em !important;
+  height: .90em !important;
+}
