@@ -1,10 +1,15 @@
-import { Braces, Code2, FileDiff, Terminal } from "lucide-react";
+import { Braces, Code2, FileDiff, Terminal, X } from "lucide-react";
 import { useState, type KeyboardEvent, type RefObject } from "react";
 
 const languages = [
   ["typescript", "TypeScript"], ["javascript", "JavaScript"], ["tsx", "React TSX"],
-  ["python", "Python"], ["rust", "Rust"], ["go", "Go"], ["sql", "SQL"],
-  ["json", "JSON"], ["bash", "Terminal"], ["html", "HTML"], ["css", "CSS"],
+  ["jsx", "React JSX"], ["python", "Python"], ["rust", "Rust"], ["go", "Go"],
+  ["sql", "SQL"], ["json", "JSON"], ["bash", "Bash"], ["powershell", "PowerShell"],
+  ["java", "Java"], ["kotlin", "Kotlin"], ["csharp", "C#"], ["c", "C"],
+  ["cpp", "C++"], ["php", "PHP"], ["ruby", "Ruby"], ["swift", "Swift"],
+  ["dart", "Dart"], ["vue", "Vue"], ["svelte", "Svelte"], ["html", "HTML"],
+  ["css", "CSS"], ["scss", "SCSS"], ["yaml", "YAML"], ["toml", "TOML"],
+  ["dockerfile", "Dockerfile"], ["graphql", "GraphQL"], ["markdown", "Markdown"],
 ] as const;
 
 type Props = {
@@ -12,6 +17,7 @@ type Props = {
   value: string;
   onChange: (value: string) => void;
   disabled?: boolean;
+  onClose?: () => void;
 };
 
 function replaceSelection(
@@ -63,7 +69,7 @@ export function handleDeveloperComposerKeyDown(
   return false;
 }
 
-export function DeveloperComposerTools({ textareaRef, value, onChange, disabled = false }: Props) {
+export function DeveloperComposerTools({ textareaRef, value, onChange, disabled = false, onClose }: Props) {
   const [language, setLanguage] = useState("typescript");
 
   function insertFence(kind = language) {
@@ -93,6 +99,7 @@ export function DeveloperComposerTools({ textareaRef, value, onChange, disabled 
       <button type="button" disabled={disabled} onClick={() => insertFence("diff")} title="Inserir patch ou diff"><FileDiff size={13} /> Diff</button>
       <button type="button" disabled={disabled} onClick={() => insertFence("bash")} title="Inserir comando de terminal"><Terminal size={13} /> Terminal</button>
       <small>Tab indenta · Shift+Tab recua · Shift+Enter quebra linha</small>
+      {onClose && <button className="developer-code-close" type="button" onClick={onClose} title="Fechar modo de código" aria-label="Fechar modo de código"><X size={14} /></button>}
     </div>
   );
 }
