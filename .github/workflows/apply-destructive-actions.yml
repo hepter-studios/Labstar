@@ -5,7 +5,7 @@ on:
     branches:
       - main
     paths:
-      - "supabase/migrations/20260809181500_destructive_actions_reliability.sql"
+      - "supabase/migrations/20260809193000_destructive_actions_v3.sql"
       - ".github/workflows/apply-destructive-actions.yml"
   workflow_dispatch:
 
@@ -68,7 +68,7 @@ jobs:
             '
           sha256sum backup/*.dump > backup/SHA256SUMS.txt
 
-      - name: Aplicar rotinas destrutivas seguras
+      - name: Aplicar rotinas destrutivas seguras v3
         shell: bash
         env:
           SUPABASE_DATABASE_URL: ${{ secrets.SUPABASE_DATABASE_URL }}
@@ -81,9 +81,9 @@ jobs:
             postgres:17-bookworm \
             psql "${SUPABASE_DATABASE_URL}" \
               --set ON_ERROR_STOP=1 \
-              --file /workspace/supabase/migrations/20260809181500_destructive_actions_reliability.sql
+              --file /workspace/supabase/migrations/20260809193000_destructive_actions_v3.sql
 
-      - name: Auditar funções e permissões
+      - name: Auditar funções, privilégios e contratos
         shell: bash
         env:
           SUPABASE_DATABASE_URL: ${{ secrets.SUPABASE_DATABASE_URL }}
@@ -100,9 +100,43 @@ jobs:
                 and to_regprocedure('public.delete_labstar_account(text,text)') is not null
                 and has_function_privilege('authenticated', 'public.clear_channel_chat(uuid)', 'EXECUTE')
                 and has_function_privilege('authenticated', 'public.clear_direct_conversation(uuid)', 'EXECUTE')
-                and has_function_privilege('authenticated', 'public.delete_labstar_account(text,text)', 'EXECUTE');
+                and has_function_privilege('authenticated', 'public.delete_labstar_account(text,text)', 'EXECUTE')
+                and pg_get_function_result('public.clear_channel_chat(uuid)'::regprocedure) = 'integer'
+                and pg_get_function_result('public.clear_direct_conversation(uuid)'::regprocedure) = 'integer';
             " | tee destructive-actions-audit.txt
           grep -qx 't' destructive-actions-audit.txt
+
+      - name: Verificar erros de contrato sem tocar em dados reais
+        shell: bash
+        env:
+          SUPABASE_DATABASE_URL: ${{ secrets.SUPABASE_DATABASE_URL }}
+        run: |
+          set -euo pipefail
+          docker run --rm \
+            -e SUPABASE_DATABASE_URL \
+            -e PGSSLMODE=require \
+            postgres:17-bookworm \
+            psql "${SUPABASE_DATABASE_URL}" --set ON_ERROR_STOP=1 --command "
+              do \$\$
+              begin
+                begin
+                  perform public.clear_channel_chat(null);
+                  raise exception 'clear_channel_chat accepted null unexpectedly';
+                exception when sqlstate '22023' then null;
+                end;
+                begin
+                  perform public.clear_direct_conversation(null);
+                  raise exception 'clear_direct_conversation accepted null unexpectedly';
+                exception when sqlstate '22023' then null;
+                end;
+                begin
+                  perform public.delete_labstar_account('a@example.com', 'b@example.com');
+                  raise exception 'delete_labstar_account accepted mismatched confirmation unexpectedly';
+                exception when sqlstate '22023' then null;
+                end;
+              end
+              \$\$;
+            "
 
       - name: Guardar backup privado
         if: always()

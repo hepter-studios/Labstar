@@ -5,9 +5,9 @@ import { listDirectThreads } from "../lib/directMessages";
 import { listMembers, loadCollaboration } from "../lib/supabase";
 
 type Menu =
-  | { kind: "channel"; x: number; y: number; button: HTMLButtonElement; name: string }
+  | { kind: "channel"; x: number; y: number; button: HTMLButtonElement; name: string; channelId: string }
   | { kind: "space"; x: number; y: number; button: HTMLButtonElement; name: string }
-  | { kind: "direct"; x: number; y: number; name: string }
+  | { kind: "direct"; x: number; y: number; name: string; threadId: string | null }
   | null;
 
 type ClearState = "idle" | "confirm" | "working";
@@ -72,6 +72,9 @@ function friendlyMaintenanceError(error: unknown) {
   if (/ambiguous/i.test(message)) {
     return "Não consegui identificar essa conversa com segurança.";
   }
+  if (/channel_required|direct_thread_required/i.test(message)) {
+    return "O Labstar não encontrou o identificador desta conversa. Reabra o canal ou a DM e tente novamente.";
+  }
   return "Não foi possível limpar o chat agora.";
 }
 
@@ -123,16 +126,19 @@ export function WorkspaceQuickMenus() {
         y: clampMenuY(y),
         button,
         name: channelName(button),
+        channelId: button.dataset.channelId ?? "",
       });
     };
 
     const openDirectMenu = (x: number, y: number) => {
+      const conversation = document.querySelector<HTMLElement>(".dm-conversation");
       const name = document.querySelector<HTMLElement>(".dm-conversation-person strong")?.textContent?.trim() || "Conversa privada";
       showMenu({
         kind: "direct",
         x: clampMenuX(x),
         y: clampMenuY(y, 280),
         name,
+        threadId: conversation?.dataset.threadId || null,
       });
     };
 
@@ -243,6 +249,7 @@ export function WorkspaceQuickMenus() {
 
   const activeMenu = menu;
   const canClearChannel = activeMenu?.kind === "channel" && Boolean(document.querySelector(".add-space"));
+  const canClearDirect = activeMenu?.kind === "direct";
 
   function openSelected() {
     if (!activeMenu || activeMenu.kind === "direct") return;
@@ -289,6 +296,7 @@ export function WorkspaceQuickMenus() {
   }
 
   async function resolveChannelId(target: Extract<Exclude<Menu, null>, { kind: "channel" }>) {
+    if (target.channelId) return target.channelId;
     const collaboration = await loadCollaboration();
     const visibleSpaceName = document.querySelector<HTMLElement>(".space-title strong")?.textContent?.trim().toLocaleLowerCase() || "";
     const currentSpace = collaboration.spaces.find((space) => space.name.trim().toLocaleLowerCase() === visibleSpaceName);
@@ -301,6 +309,7 @@ export function WorkspaceQuickMenus() {
   }
 
   async function resolveDirectThreadId(target: Extract<Exclude<Menu, null>, { kind: "direct" }>) {
+    if (target.threadId) return target.threadId;
     const [team, threads] = await Promise.all([listMembers(), listDirectThreads()]);
     const normalizedName = target.name.trim().toLocaleLowerCase();
     const candidates = team.members.filter((member) => member.name.trim().toLocaleLowerCase() === normalizedName);
@@ -323,6 +332,7 @@ export function WorkspaceQuickMenus() {
   async function clearCurrentChat() {
     if (!activeMenu || activeMenu.kind === "space" || clearState === "working") return;
     const target = activeMenu;
+
     if (clearState !== "confirm") {
       setClearState("confirm");
       setNotice(target.kind === "direct"
@@ -336,13 +346,13 @@ export function WorkspaceQuickMenus() {
     showProgress({
       tone: "working",
       title: target.kind === "direct" ? "Limpando conversa" : "Limpando canal",
-      detail: "Aguarde. O Labstar está removendo mensagens e arquivos do banco.",
+      detail: "Aguarde. O Labstar está removendo as mensagens do banco.",
     });
 
     try {
       const count = target.kind === "direct"
-        ? await withActionTimeout((async () => clearDirectConversation(await resolveDirectThreadId(target)))())
-        : await withActionTimeout((async () => clearChannelChat(await resolveChannelId(target)))());
+        ? await withActionTimeout(clearDirectConversation(await resolveDirectThreadId(target)))
+        : await withActionTimeout(clearChannelChat(await resolveChannelId(target)));
 
       removeVisibleMessagesAfterSuccess(target);
       setClearState("idle");
@@ -368,7 +378,13 @@ export function WorkspaceQuickMenus() {
   return (
     <>
       {activeMenu && (
-        <aside ref={ref} className={`workspace-quick-menu ${activeMenu.kind}`} style={{ left: activeMenu.x, top: activeMenu.y }} onClick={(event) => event.stopPropagation()}>
+        <aside
+          ref={ref}
+          data-labstar-destructive-confirmation="true"
+          className={`workspace-quick-menu ${activeMenu.kind}`}
+          style={{ left: activeMenu.x, top: activeMenu.y }}
+          onClick={(event) => event.stopPropagation()}
+        >
           <header>
             <strong>{activeMenu.kind === "channel" ? `# ${activeMenu.name}` : activeMenu.name}</strong>
             <button type="button" onClick={() => setMenu(null)} aria-label="Fechar"><X size={12}/></button>
@@ -383,8 +399,8 @@ export function WorkspaceQuickMenus() {
             {activeMenu.kind === "channel" && <button type="button" onClick={openIntegrations}><Webhook size={14}/> Integrações</button>}
             {activeMenu.kind === "space" && <button type="button" onClick={openSpaceSettings}><Settings2 size={14}/> Configurações do Espaço</button>}
 
-            {(activeMenu.kind === "direct" || canClearChannel) && <i className="workspace-menu-separator" />}
-            {(activeMenu.kind === "direct" || canClearChannel) && (
+            {(canClearDirect || canClearChannel) && <i className="workspace-menu-separator" />}
+            {(canClearDirect || canClearChannel) && (
               <button type="button" className={`danger ${clearState === "confirm" ? "confirm" : ""}`} disabled={clearState === "working"} onClick={() => void clearCurrentChat()}>
                 {clearState === "working" ? <LoaderCircle className="spin" size={14}/> : <Trash2 size={14}/>}
                 {clearState === "working"

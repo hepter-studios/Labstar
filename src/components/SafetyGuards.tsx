@@ -34,6 +34,12 @@ export function SafetyGuards() {
       const button = target?.closest<HTMLButtonElement>("button");
       if (!button || button.disabled || button.dataset.skipDestructiveGuard === "true") return;
 
+      // Fluxos que já possuem uma confirmação própria não podem abrir uma
+      // segunda confirmação global. Em menus/portais isso desmontava o botão
+      // original antes de `button.click()` ser reenviado, fazendo a ação parecer
+      // completamente quebrada.
+      if (button.closest('[data-labstar-destructive-confirmation="true"], [role="alertdialog"]')) return;
+
       const label = [
         button.getAttribute("aria-label"),
         button.getAttribute("title"),
@@ -77,7 +83,7 @@ export function SafetyGuards() {
     setPending(null);
     button.dataset.skipDestructiveGuard = "true";
     window.requestAnimationFrame(() => {
-      button.click();
+      if (button.isConnected) button.click();
       window.setTimeout(() => delete button.dataset.skipDestructiveGuard, 0);
     });
   }
