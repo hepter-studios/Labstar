@@ -6,6 +6,8 @@ type Menu =
   | { kind: "space"; x: number; y: number; button: HTMLButtonElement; name: string }
   | null;
 
+const TRIGGER_ATTRIBUTE = "data-labstar-channel-menu-trigger";
+
 async function copyText(value: string) {
   try {
     await navigator.clipboard.writeText(value);
@@ -21,23 +23,64 @@ async function copyText(value: string) {
   }
 }
 
+function channelName(button: HTMLButtonElement) {
+  const label = Array.from(button.children).find((child) => child.tagName === "SPAN");
+  return label?.textContent?.trim() || "canal";
+}
+
 export function WorkspaceQuickMenus() {
   const [menu, setMenu] = useState<Menu>(null);
   const ref = useRef<HTMLElement>(null);
 
   useEffect(() => {
+    const openChannelMenu = (button: HTMLButtonElement, x: number, y: number) => {
+      setMenu({
+        kind: "channel",
+        x: Math.max(8, Math.min(x, window.innerWidth - 245)),
+        y: Math.max(8, Math.min(y, window.innerHeight - 250)),
+        button,
+        name: channelName(button),
+      });
+    };
+
+    const decorateChannels = () => {
+      document.querySelectorAll<HTMLButtonElement>(".channel-list > button").forEach((button) => {
+        if (button.querySelector(`[${TRIGGER_ATTRIBUTE}]`)) return;
+
+        const trigger = document.createElement("i");
+        trigger.className = "channel-quick-menu-trigger";
+        trigger.setAttribute(TRIGGER_ATTRIBUTE, "true");
+        trigger.setAttribute("role", "button");
+        trigger.setAttribute("tabindex", "0");
+        trigger.setAttribute("aria-label", `Ações do canal ${channelName(button)}`);
+        trigger.setAttribute("title", "Mais ações do canal");
+        trigger.textContent = "•••";
+
+        trigger.addEventListener("click", (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          const rect = trigger.getBoundingClientRect();
+          openChannelMenu(button, rect.right - 225, rect.bottom + 6);
+        });
+
+        trigger.addEventListener("keydown", (event) => {
+          if (event.key !== "Enter" && event.key !== " ") return;
+          event.preventDefault();
+          event.stopPropagation();
+          const rect = trigger.getBoundingClientRect();
+          openChannelMenu(button, rect.right - 225, rect.bottom + 6);
+        });
+
+        button.appendChild(trigger);
+      });
+    };
+
     const open = (event: MouseEvent) => {
       const target = event.target as HTMLElement | null;
-      const channel = target?.closest<HTMLButtonElement>(".channel-list button");
+      const channel = target?.closest<HTMLButtonElement>(".channel-list > button");
       if (channel) {
         event.preventDefault();
-        setMenu({
-          kind: "channel",
-          x: Math.min(event.clientX, window.innerWidth - 245),
-          y: Math.min(event.clientY, window.innerHeight - 245),
-          button: channel,
-          name: channel.querySelector("span")?.textContent?.trim() || "canal",
-        });
+        openChannelMenu(channel, event.clientX, event.clientY);
         return;
       }
 
@@ -46,8 +89,8 @@ export function WorkspaceQuickMenus() {
         event.preventDefault();
         setMenu({
           kind: "space",
-          x: Math.min(event.clientX, window.innerWidth - 245),
-          y: Math.min(event.clientY, window.innerHeight - 200),
+          x: Math.max(8, Math.min(event.clientX, window.innerWidth - 245)),
+          y: Math.max(8, Math.min(event.clientY, window.innerHeight - 200)),
           button: space,
           name: space.getAttribute("title")?.trim() || "Espaço",
         });
@@ -59,13 +102,18 @@ export function WorkspaceQuickMenus() {
     };
     const escape = (event: KeyboardEvent) => event.key === "Escape" && setMenu(null);
 
+    decorateChannels();
+    const observer = new MutationObserver(decorateChannels);
+    observer.observe(document.body, { childList: true, subtree: true });
     document.addEventListener("contextmenu", open, true);
     document.addEventListener("pointerdown", close);
     window.addEventListener("keydown", escape);
     return () => {
+      observer.disconnect();
       document.removeEventListener("contextmenu", open, true);
       document.removeEventListener("pointerdown", close);
       window.removeEventListener("keydown", escape);
+      document.querySelectorAll(`[${TRIGGER_ATTRIBUTE}]`).forEach((trigger) => trigger.remove());
     };
   }, []);
 

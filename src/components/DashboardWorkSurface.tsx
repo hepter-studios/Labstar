@@ -1,4 +1,4 @@
-import { ArrowRight, LayoutDashboard, LoaderCircle, Server } from "lucide-react";
+import { ArrowRight, LoaderCircle, Server } from "lucide-react";
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { createPortal } from "react-dom";
 import {
@@ -123,14 +123,6 @@ export function DashboardWorkSurface() {
 
   return createPortal(
     <section className="dashboard-work-shell">
-      <header className="dashboard-work-header">
-        <div>
-          <span><LayoutDashboard size={14} /> Dashboard</span>
-          <strong>Visão central do Labstar</strong>
-          <small>Prioridades, tarefas, decisões, reuniões e atividade ficam aqui. Servidores e canais continuam na Central de trabalho.</small>
-        </div>
-      </header>
-
       <section className="dashboard-server-strip" aria-label="Servidores e espaços de trabalho">
         <div><Server size={15} /><span><strong>Servidores</strong><small>Acesso direto aos espaços principais</small></span></div>
         <div className="dashboard-server-list">
