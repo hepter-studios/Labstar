@@ -1,4 +1,6 @@
 import { isTauriApp } from "./native";
+import { enableDeviceNotifications, hasActivePushSubscription } from "./push-notifications";
+import { loadAppSettings } from "./app-settings";
 
 export type CommunicationNotificationPermission = "granted" | "denied" | "default" | "unsupported";
 
@@ -88,11 +90,13 @@ export async function requestCommunicationNotifications(): Promise<Communication
     }).catch(() => undefined);
     return "granted";
   }
-  if (!("Notification" in window)) return "unsupported";
   try {
-    return await Notification.requestPermission();
+    const result = await enableDeviceNotifications();
+    if (result === "active") return "granted";
+    if (result === "blocked") return "denied";
+    return result === "available" ? "default" : "unsupported";
   } catch {
-    return Notification.permission;
+    return "Notification" in window ? Notification.permission : "unsupported";
   }
 }
 
@@ -109,6 +113,7 @@ function focusCommunication(contactName?: string) {
 
 async function showBrowserNotification(notification: CommunicationNotification) {
   if (!("Notification" in window) || Notification.permission !== "granted") return false;
+  if (await hasActivePushSubscription()) return true;
   const options: NotificationOptions = {
     body: notification.body,
     tag: notification.tag,
@@ -120,11 +125,13 @@ async function showBrowserNotification(notification: CommunicationNotification) 
   };
 
   try {
+    const registration = await navigator.serviceWorker?.ready;
+    if (registration) {
+      await registration.showNotification(notification.title, options);
+      return true;
+    }
     const item = new Notification(notification.title, options);
-    item.onclick = () => {
-      item.close();
-      focusCommunication(notification.contactName);
-    };
+    item.onclick = () => { item.close(); focusCommunication(notification.contactName); };
     return true;
   } catch {
     try {
@@ -142,6 +149,8 @@ export async function showCommunicationNotification(notification: CommunicationN
   window.dispatchEvent(new CustomEvent("labstar:communication-notification", {
     detail: notification,
   }));
+
+  if (!(await loadAppSettings()).desktopNotifications) return false;
 
   if (isTauriApp()) {
     await Promise.allSettled([
