@@ -148,6 +148,7 @@ function RootSurfaces() {
       <OptionalSurface name="ponte de ações legadas"><LegacyActionBridge /></OptionalSurface>
       <OptionalSurface name="confiabilidade de runtime"><RuntimeReliability /></OptionalSurface>
       <OptionalSurface name="preferências de mídia"><MediaPreferenceBridge /></OptionalSurface>
+      <OptionalSurface name="dashboard operacional"><DashboardWorkSurface /></OptionalSurface>
       {introFinished && <OptionalSurface name="configurações globais"><GlobalSettingsPortal /></OptionalSurface>}
       {introFinished && <OptionalSurface name="diagnóstico do sistema"><SystemDiagnosticsAddon /></OptionalSurface>}
       {introFinished && <OptionalSurface name="configurações do espaço"><WorkspaceSettingsPortal /></OptionalSurface>}
@@ -155,7 +156,6 @@ function RootSurfaces() {
       {introFinished && <OptionalSurface name="ferramentas do painel de membros"><MemberPanelTools /></OptionalSurface>}
       {introFinished && <OptionalSurface name="menus rápidos do espaço"><WorkspaceQuickMenus /></OptionalSurface>}
       {introFinished && <OptionalSurface name="central de comandos"><CommandPalette /></OptionalSurface>}
-      {introFinished && <OptionalSurface name="dashboard operacional"><DashboardWorkSurface /></OptionalSurface>}
       {introFinished && <OptionalSurface name="tarefas e decisões"><WorkItemsCenter /></OptionalSurface>}
       {introFinished && <OptionalSurface name="mensagens para trabalho"><MessageWorkItemBridge /></OptionalSurface>}
       {introFinished && <OptionalSurface name="ações das mensagens em canais"><ChannelMessageActionsBridge /></OptionalSurface>}
