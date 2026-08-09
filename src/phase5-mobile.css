@@ -1,0 +1,201 @@
+/* Fase 5: acabamento móvel final, carregado depois de todas as folhas legadas. */
+.dm-mobile-back { display: none; }
+
+.notification-kind.general {
+  color: #ffe9a8 !important;
+  background: radial-gradient(circle at 35% 30%, rgba(255, 226, 126, .28), rgba(98, 73, 20, .16)) !important;
+  box-shadow: inset 0 0 0 1px rgba(255, 223, 111, .16);
+}
+
+.communication-runtime-toast > span {
+  color: #ffe398 !important;
+  background: radial-gradient(circle at 34% 28%, rgba(255, 224, 119, .24), rgba(73, 98, 173, .12)) !important;
+  box-shadow: inset 0 0 0 1px rgba(255, 225, 131, .16), 0 0 26px rgba(245, 204, 86, .1);
+}
+
+@media (max-width: 760px) {
+  :root {
+    --phase5-safe-top: max(8px, env(safe-area-inset-top));
+    --phase5-safe-bottom: max(10px, env(safe-area-inset-bottom));
+    --phase5-touch: 44px;
+  }
+
+  html, body, #root { min-height: 100%; min-height: 100dvh; }
+  body { overscroll-behavior-y: none; -webkit-tap-highlight-color: transparent; }
+  button, [role="button"], select { touch-action: manipulation; }
+  input, textarea, select { font-size: max(16px, 1em); }
+
+  .header {
+    padding-top: var(--phase5-safe-top) !important;
+    min-height: calc(54px + var(--phase5-safe-top)) !important;
+  }
+
+  .header-actions .icon-button,
+  .header-actions .avatar-button {
+    min-width: var(--phase5-touch) !important;
+    min-height: var(--phase5-touch) !important;
+  }
+
+  .notification-button::after {
+    content: "★";
+    position: absolute;
+    right: 5px;
+    bottom: 4px;
+    color: #ffe18a;
+    font-size: 7px;
+    filter: drop-shadow(0 0 5px rgba(255, 218, 105, .65));
+  }
+
+  .notifications-panel {
+    top: calc(54px + var(--phase5-safe-top) + 6px) !important;
+    bottom: var(--phase5-safe-bottom) !important;
+    grid-template-rows: auto auto auto minmax(0, 1fr) !important;
+    border-color: rgba(143, 169, 224, .2) !important;
+    background: linear-gradient(180deg, rgba(11, 15, 24, .995), rgba(5, 8, 14, .995)) !important;
+    box-shadow: 0 24px 80px rgba(0, 0, 0, .82), inset 0 1px rgba(255, 255, 255, .04) !important;
+  }
+
+  .notifications-panel > header { min-height: 66px; }
+  .notifications-head-actions button,
+  .notification-tabs button,
+  .notification-permission { min-height: var(--phase5-touch) !important; }
+  .notification-tabs { overflow-x: auto; scrollbar-width: none; }
+  .notification-tabs::-webkit-scrollbar { display: none; }
+  .notification-tabs button { flex: 0 0 auto; }
+  .notification-permission { margin: 8px 10px 0 !important; border-radius: 12px !important; }
+  .notifications-list > button { min-height: 76px; padding: 12px !important; }
+
+  .global-settings-backdrop {
+    padding: 0 !important;
+    align-items: stretch !important;
+  }
+
+  .global-settings {
+    width: 100vw !important;
+    height: 100dvh !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    grid-template-rows: auto minmax(0, 1fr) !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+  }
+
+  .global-settings-nav {
+    min-width: 0 !important;
+    padding: var(--phase5-safe-top) 8px 7px !important;
+    display: grid !important;
+    grid-template-columns: auto minmax(0, 1fr) !important;
+    grid-template-rows: auto !important;
+    align-items: center !important;
+    gap: 8px !important;
+    border-right: 0 !important;
+    border-bottom: 1px solid rgba(137, 165, 222, .1) !important;
+  }
+
+  .global-settings-brand { width: var(--phase5-touch); margin: 0 !important; justify-content: center !important; }
+  .global-settings-brand div, .global-settings-nav-foot { display: none !important; }
+  .global-settings-nav nav {
+    min-width: 0;
+    display: flex !important;
+    gap: 4px !important;
+    overflow-x: auto;
+    scroll-snap-type: x proximity;
+    scrollbar-width: none;
+  }
+  .global-settings-nav nav::-webkit-scrollbar { display: none; }
+  .global-settings-nav nav button {
+    width: var(--phase5-touch) !important;
+    min-width: var(--phase5-touch) !important;
+    height: var(--phase5-touch) !important;
+    min-height: var(--phase5-touch) !important;
+    padding: 0 !important;
+    justify-content: center !important;
+    scroll-snap-align: center;
+    font-size: 0 !important;
+  }
+  .global-settings-nav nav button svg { width: 18px !important; height: 18px !important; }
+  .global-settings-content { min-height: 0 !important; }
+  .global-settings-head { min-height: 62px; padding: 10px 14px !important; }
+  .global-settings-head > button { width: var(--phase5-touch) !important; height: var(--phase5-touch) !important; }
+  .settings-sections { padding: 12px !important; }
+  .settings-section { border-radius: 14px !important; }
+  .settings-section-body { padding: 12px !important; }
+  .settings-toggle { min-height: 58px; gap: 10px; }
+  .settings-inline-actions { display: grid !important; grid-template-columns: minmax(0, 1fr) !important; }
+  .settings-inline-actions button { min-height: var(--phase5-touch) !important; justify-content: center; }
+  .global-settings-footer {
+    padding: 9px 12px var(--phase5-safe-bottom) !important;
+    gap: 8px !important;
+  }
+  .global-settings-footer > button { min-height: var(--phase5-touch) !important; }
+
+  body.mobile-direct-active .dm-mobile-back {
+    display: grid !important;
+    place-items: center;
+    flex: 0 0 var(--phase5-touch) !important;
+    width: var(--phase5-touch) !important;
+    height: var(--phase5-touch) !important;
+    margin-right: 2px;
+  }
+  body.mobile-direct-active .dm-conversation-header {
+    min-height: 62px !important;
+    padding: 7px 8px !important;
+  }
+  body.mobile-direct-active .dm-conversation-person { min-width: 0; flex: 1 1 auto; }
+  body.mobile-direct-active .dm-conversation-person span { min-width: 0; }
+  body.mobile-direct-active .dm-conversation-person strong {
+    display: block;
+    max-width: 39vw;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  body.mobile-direct-active .dm-conversation-actions > button { width: var(--phase5-touch) !important; height: var(--phase5-touch) !important; }
+  body.mobile-direct-active .dm-message-scroll { overscroll-behavior: contain; }
+  body.mobile-direct-active .dm-composer { padding-bottom: var(--phase5-safe-bottom) !important; }
+  body.mobile-direct-active .developer-composer-tools { scroll-snap-type: x proximity; }
+  body.mobile-direct-active .developer-composer-tools button,
+  body.mobile-direct-active .developer-composer-tools select { min-height: 38px !important; scroll-snap-align: start; }
+
+  .mobile-workspace-switcher {
+    padding-bottom: var(--phase5-safe-bottom) !important;
+    min-height: calc(58px + var(--phase5-safe-bottom)) !important;
+    background: rgba(6, 9, 15, .97) !important;
+    backdrop-filter: blur(22px) saturate(1.25);
+  }
+  .mobile-workspace-switcher button { min-height: 50px !important; }
+
+  .communication-permission-card,
+  .communication-runtime-toast {
+    bottom: var(--phase5-safe-bottom) !important;
+    min-height: 84px !important;
+    grid-template-columns: 42px minmax(0, 1fr) auto !important;
+    border-color: rgba(255, 221, 116, .16) !important;
+    background: linear-gradient(135deg, rgba(13, 17, 28, .99), rgba(6, 10, 17, .99)) !important;
+  }
+  .communication-runtime-toast > span { width: 42px; height: 42px; }
+  .communication-permission-card > button:not(.close),
+  .communication-runtime-toast > button:not(.close) { min-height: var(--phase5-touch) !important; }
+
+  .private-call-backdrop { padding: 0 !important; }
+  .private-call-card,
+  .private-call-card.video {
+    width: 100vw !important;
+    height: 100dvh !important;
+    max-height: 100dvh !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    padding-top: var(--phase5-safe-top) !important;
+    padding-bottom: var(--phase5-safe-bottom) !important;
+  }
+  .private-call-controls button,
+  .private-call-answer-actions button { min-width: 56px; min-height: 56px; }
+}
+
+@media (max-width: 760px) and (orientation: landscape) and (max-height: 520px) {
+  .communication-permission-card,
+  .communication-runtime-toast { min-height: 66px !important; }
+  .private-call-card,
+  .private-call-card.video { grid-template-rows: auto minmax(0, 1fr) auto !important; }
+  .global-settings-head { min-height: 52px; }
+  .settings-sections { padding: 8px 12px !important; }
+}
