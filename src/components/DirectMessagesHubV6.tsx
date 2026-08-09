@@ -369,9 +369,7 @@ export function DirectMessagesHub({ member, onOpenWorkspace }: Props) {
   }
 
   function openSecureInvite() {
-    const button = document.querySelector<HTMLButtonElement>(".secure-invite-button");
-    if (button) button.click();
-    else showToast("Abra a área Equipe para criar um convite seguro.", "info");
+    window.dispatchEvent(new CustomEvent("labstar:open-secure-invite"));
   }
 
   async function markInboxRead() {
@@ -540,8 +538,7 @@ export function DirectMessagesHub({ member, onOpenWorkspace }: Props) {
             <header className="dm-home-header">
               <div><Users size={20} /><strong>Mensagens diretas</strong></div>
               <div>
-                <button title="Escrever nova mensagem" onClick={startNewMessage}><Pencil size={16} /></button>
-                <button title="Convidar pessoa com segurança" onClick={openSecureInvite}><UserPlus size={16} /></button>
+                <button type="button" aria-label="Convidar pessoa com segurança" title="Convidar pessoa com segurança" onClick={openSecureInvite}><UserPlus size={16} /></button>
               </div>
             </header>
 

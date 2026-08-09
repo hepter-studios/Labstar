@@ -318,14 +318,21 @@ function InvitePortal() {
     return () => observer.disconnect();
   }, []);
 
-  if (!target) return null;
-  return createPortal(
+  useEffect(() => {
+    const openInvite = () => setOpen(true);
+    window.addEventListener("labstar:open-secure-invite", openInvite);
+    return () => window.removeEventListener("labstar:open-secure-invite", openInvite);
+  }, []);
+
+  return <>
+    {target && createPortal(
     <>
       <button className="secure-invite-button" type="button" onClick={() => setOpen(true)}><UserPlus size={14} /> Criar convite</button>
-      {open && <InviteModal onClose={() => setOpen(false)} />}
     </>,
     target,
-  );
+    )}
+    {open && <InviteModal onClose={() => setOpen(false)} />}
+  </>;
 }
 
 function InviteModal({ onClose }: { onClose: () => void }) {

@@ -896,7 +896,11 @@ function MessageRoom({ channel, space, member }: { channel: LabstarChannel; spac
               <div className="message-actions">
                 <button title="Responder" onClick={() => { setReplying(message); setEditing(null); }}><Reply size={14} /></button>
                 {(own || member.role === "owner" || member.role === "admin") && <button title="Editar" onClick={() => beginEdit(message)}><Pencil size={13} /></button>}
-                <button type="button" title="Mais ações" aria-label="Mais ações da mensagem" onClick={(event) => openMessageMenu(message, event.clientX - 170, event.clientY + 8)}><MoreHorizontal size={15} /></button>
+                <button type="button" title="Mais ações" aria-label="Mais ações da mensagem" onClick={(event) => {
+                  // O clique não pode alcançar o listener global que fecha o menu.
+                  event.stopPropagation();
+                  openMessageMenu(message, event.clientX - 170, event.clientY + 8);
+                }}><MoreHorizontal size={15} /></button>
               </div>
             </article>
           );

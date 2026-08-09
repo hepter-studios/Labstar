@@ -39,10 +39,7 @@ export function MemberPanelTools() {
   }, [target, query]);
 
   function invite() {
-    document.querySelector<HTMLButtonElement>('button[aria-label="Equipe"]')?.click();
-    window.setTimeout(() => {
-      document.querySelector<HTMLButtonElement>(".secure-invite-button")?.click();
-    }, 120);
+    window.dispatchEvent(new CustomEvent("labstar:open-secure-invite"));
   }
 
   const tools = target ? createPortal(

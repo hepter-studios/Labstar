@@ -1,4 +1,4 @@
-import { ArrowRight, LayoutDashboard, LoaderCircle, Network, Server, Sparkles } from "lucide-react";
+import { ArrowRight, LayoutDashboard, LoaderCircle, Server } from "lucide-react";
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { createPortal } from "react-dom";
 import {
@@ -119,10 +119,6 @@ export function DashboardWorkSurface() {
     window.setTimeout(() => window.dispatchEvent(new CustomEvent("labstar:open-direct")), 80);
   }
 
-  function openSummary() {
-    document.querySelector<HTMLButtonElement>(".overview .overview-head > button")?.click();
-  }
-
   if (!mount) return null;
 
   return createPortal(
@@ -132,11 +128,6 @@ export function DashboardWorkSurface() {
           <span><LayoutDashboard size={14} /> Dashboard</span>
           <strong>Visão central do Labstar</strong>
           <small>Prioridades, tarefas, decisões, reuniões e atividade ficam aqui. Servidores e canais continuam na Central de trabalho.</small>
-        </div>
-        <div>
-          <button type="button" onClick={openSummary}><Sparkles size={14} /> Resumo executivo</button>
-          <button type="button" onClick={() => clickView("Mapa da organização")}><Network size={14} /> Abrir mapa</button>
-          <button type="button" className="primary" onClick={() => openChannel(data.channels[0]?.id)}><Server size={14} /> Abrir servidores</button>
         </div>
       </header>
 
