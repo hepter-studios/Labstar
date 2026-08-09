@@ -5,8 +5,33 @@ const RAIL_SELECTOR = ".rail-group";
 const HOME_LABEL = "Visão geral";
 const READY_ATTRIBUTE = "data-labstar-home-ready";
 const NAV_READY_ATTRIBUTE = "data-labstar-navigation-ready";
+const VIEW_SESSION_KEY = "labstar-main-view-v3";
+const VALID_MAIN_VIEWS = new Set([
+  "Visão geral",
+  "Mapa da organização",
+  "Central de trabalho",
+  "Equipe",
+]);
 
-let activeMainView = HOME_LABEL;
+function readSavedView() {
+  try {
+    const value = window.sessionStorage.getItem(VIEW_SESSION_KEY)?.trim() ?? "";
+    return VALID_MAIN_VIEWS.has(value) ? value : HOME_LABEL;
+  } catch {
+    return HOME_LABEL;
+  }
+}
+
+function saveActiveView(label: string) {
+  if (!VALID_MAIN_VIEWS.has(label)) return;
+  try {
+    window.sessionStorage.setItem(VIEW_SESSION_KEY, label);
+  } catch {
+    // A navegação continua funcionando mesmo quando o armazenamento da sessão é bloqueado.
+  }
+}
+
+let activeMainView = readSavedView();
 let currentRail: HTMLElement | null = null;
 let navigationInitialized = false;
 let restoringNavigation = false;
@@ -20,7 +45,9 @@ function rememberActiveView(rail: HTMLElement) {
   if (restoringNavigation) return;
   const active = rail.querySelector<HTMLButtonElement>("button.active[aria-label]");
   const label = active?.getAttribute("aria-label")?.trim();
-  if (label) activeMainView = label;
+  if (!label || !VALID_MAIN_VIEWS.has(label)) return;
+  activeMainView = label;
+  saveActiveView(label);
 }
 
 function prepareNavigationButton(button: HTMLButtonElement) {
@@ -28,16 +55,22 @@ function prepareNavigationButton(button: HTMLButtonElement) {
   button.setAttribute(NAV_READY_ATTRIBUTE, "true");
   button.addEventListener("click", () => {
     const label = button.getAttribute("aria-label")?.trim();
-    if (label) activeMainView = label;
+    if (!label || !VALID_MAIN_VIEWS.has(label)) return;
+    activeMainView = label;
+    saveActiveView(label);
   });
 }
 
 function restoreMainView(rail: HTMLElement) {
-  const targetLabel = navigationInitialized ? activeMainView : HOME_LABEL;
+  // Em uma sessão nova não existe valor salvo, então a primeira tela é sempre
+  // o Dashboard (Visão geral). Depois que o usuário troca de aba, a escolha fica
+  // preservada nesta mesma sessão mesmo se o React remontar ou a página voltar
+  // do cache do navegador.
+  const targetLabel = navigationInitialized ? activeMainView : readSavedView();
   navigationInitialized = true;
-  activeMainView = targetLabel;
+  activeMainView = VALID_MAIN_VIEWS.has(targetLabel) ? targetLabel : HOME_LABEL;
 
-  const button = findViewButton(targetLabel, rail) ?? findViewButton(HOME_LABEL, rail);
+  const button = findViewButton(activeMainView, rail) ?? findViewButton(HOME_LABEL, rail);
   if (!button || button.classList.contains("active")) {
     rememberActiveView(rail);
     return;
@@ -68,13 +101,14 @@ function syncMainNavigation() {
 
 function goToHome() {
   activeMainView = HOME_LABEL;
+  saveActiveView(HOME_LABEL);
   const homeButton = findViewButton(HOME_LABEL, currentRail);
   if (!homeButton) return;
 
   homeButton.click();
 
-  // Voltar ao início usa apenas a navegação interna do React. Nada de reload:
-  // o mesmo comportamento vale para a Web e para o shell desktop do Tauri.
+  // Voltar ao início usa somente a navegação interna do React. Não há reload,
+  // troca de URL nem reconstrução proposital da aplicação.
   (document.activeElement as HTMLElement | null)?.blur?.();
   window.requestAnimationFrame(() => {
     document.querySelector<HTMLElement>(".dashboard-work-surface, .overview")?.scrollTo({ top: 0, behavior: "smooth" });
@@ -114,6 +148,10 @@ function startBrandHomeNavigation() {
     attributes: true,
     attributeFilter: ["class"],
   });
+
+  // pageshow também cobre retorno pelo histórico/BFCache. Apenas restauramos a
+  // tela já escolhida; nunca chamamos location.reload().
+  window.addEventListener("pageshow", syncBrandHomeNavigation);
   syncBrandHomeNavigation();
 }
 
