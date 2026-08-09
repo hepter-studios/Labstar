@@ -38,7 +38,7 @@ export function SafetyGuards() {
       // segunda confirmação global. Em menus/portais isso desmontava o botão
       // original antes de `button.click()` ser reenviado, fazendo a ação parecer
       // completamente quebrada.
-      if (button.closest('[data-labstar-destructive-confirmation="true"]')) return;
+      if (button.closest('[data-labstar-destructive-confirmation="true"], [role="alertdialog"]')) return;
 
       const label = [
         button.getAttribute("aria-label"),
@@ -83,8 +83,6 @@ export function SafetyGuards() {
     setPending(null);
     button.dataset.skipDestructiveGuard = "true";
     window.requestAnimationFrame(() => {
-      // Só reenvia o clique se o botão ainda estiver realmente montado. Isso
-      // evita cliques em referências DOM órfãs de portais já desmontados.
       if (button.isConnected) button.click();
       window.setTimeout(() => delete button.dataset.skipDestructiveGuard, 0);
     });
