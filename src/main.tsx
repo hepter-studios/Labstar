@@ -20,6 +20,7 @@ import { MediaPreferenceBridge } from "./components/MediaPreferenceBridge";
 import { MemberPanelTools } from "./components/MemberPanelTools";
 import { MemberQuickActions } from "./components/MemberQuickActions";
 import { MessageWorkItemBridge } from "./components/MessageWorkItemBridge";
+import { PushNotificationBridge } from "./components/PushNotificationBridge";
 import { RuntimeReliability } from "./components/RuntimeReliability";
 import { SafetyGuards } from "./components/SafetyGuards";
 import { SystemDiagnosticsAddon } from "./components/SystemDiagnostics";
@@ -141,6 +142,7 @@ function RootSurfaces() {
       <SurfaceBoundary name="interface principal" critical><App /></SurfaceBoundary>
       <OptionalSurface name="proteções de segurança"><SafetyGuards /></OptionalSurface>
       <OptionalSurface name="chamadas privadas globais"><GlobalDirectCallBridge /></OptionalSurface>
+      <OptionalSurface name="notificações externas"><PushNotificationBridge /></OptionalSurface>
       <OptionalSurface name="ponte de ações legadas"><LegacyActionBridge /></OptionalSurface>
       <OptionalSurface name="confiabilidade de runtime"><RuntimeReliability /></OptionalSurface>
       <OptionalSurface name="preferências de mídia"><MediaPreferenceBridge /></OptionalSurface>
