@@ -1,6 +1,7 @@
-import { Bell, Check, MessageSquare, PhoneIncoming, Video, X } from "lucide-react";
+import { Bell, Check, Star, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { getCurrentAccessIdentity, subscribeToAccessChanges } from "../lib/access";
+import { loadAppSettings, saveAppSettings } from "../lib/app-settings";
 import {
   armCommunicationAudio,
   getCommunicationNotificationPermission,
@@ -188,6 +189,8 @@ export function GlobalDirectCallBridge() {
     const result = await requestCommunicationNotifications();
     setPermission(result);
     if (result === "granted") {
+      const settings = await loadAppSettings();
+      await saveAppSettings({ ...settings, desktopNotifications: true }).catch(() => undefined);
       void showCommunicationNotification({
         title: "Notificações ativadas",
         body: "O Labstar avisará sobre mensagens e chamadas privadas.",
@@ -221,7 +224,7 @@ export function GlobalDirectCallBridge() {
 
       {toast && (
         <aside className={`communication-runtime-toast ${toast.kind}`} role="status">
-          <span>{toast.kind === "video-call" ? <Video size={18} /> : toast.kind === "audio-call" ? <PhoneIncoming size={18} /> : <MessageSquare size={18} />}</span>
+          <span><Star size={18} fill="currentColor" /></span>
           <div><strong>{toast.title}</strong><small>{toast.body}</small></div>
           <button type="button" onClick={openToast}>{toast.kind === "message" ? "Abrir" : "Ver chamada"}</button>
           <button className="close" type="button" aria-label="Fechar" onClick={() => setToast(null)}><X size={14} /></button>
