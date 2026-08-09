@@ -6,6 +6,7 @@ import {
   type ChannelAccessConfig,
   type ChannelAccessDirectory,
 } from "../lib/channel-access";
+import { supabaseClient } from "../lib/supabase";
 
 const CREATE_TRIGGER = "data-labstar-professional-create-channel";
 const READ_ONLY_NOTICE = "data-labstar-read-only-notice";
@@ -18,12 +19,6 @@ function lockSvg() {
   return `<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="11" x="3" y="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>`;
 }
 
-function canPostReadOnly(directory: ChannelAccessDirectory) {
-  return directory.member.role === "owner"
-    || directory.member.role === "admin"
-    || directory.member.jobRoles.some((role) => role.permissions.includes("manage_channels") || role.permissions.includes("moderate_content"));
-}
-
 function categoryName(header: HTMLElement) {
   return header.querySelector<HTMLElement>("span")?.textContent?.trim() || "categoria";
 }
@@ -32,11 +27,11 @@ function activeChannelId() {
   return document.querySelector<HTMLButtonElement>(".channel-list > button.active")?.dataset.channelId ?? "";
 }
 
-function applyReadOnlyState(directory: ChannelAccessDirectory, channels: ChannelAccessConfig[]) {
+function applyReadOnlyState(channels: ChannelAccessConfig[], posting: Map<string, boolean>) {
   const room = document.querySelector<HTMLElement>(".message-room");
   if (!room) return;
   const channel = channels.find((item) => item.id === activeChannelId());
-  const restricted = Boolean(channel?.readOnly) && !canPostReadOnly(directory);
+  const restricted = Boolean(channel && posting.get(channel.id) === false);
   room.classList.toggle("labstar-professional-read-only", restricted);
 
   const currentNotice = room.querySelector<HTMLElement>(`[${READ_ONLY_NOTICE}]`);
@@ -49,7 +44,7 @@ function applyReadOnlyState(directory: ChannelAccessDirectory, channels: Channel
     const notice = document.createElement("div");
     notice.className = "read-only-notice professional-read-only-notice";
     notice.setAttribute(READ_ONLY_NOTICE, "true");
-    notice.innerHTML = `${lockSvg()} <span>Este canal é somente leitura. Você pode acompanhar o conteúdo, mas não publicar mensagens.</span>`;
+    notice.innerHTML = `${lockSvg()} <span>Você pode ler este canal, mas as regras do canal ou da categoria não permitem publicar aqui.</span>`;
     const composer = room.querySelector(".message-composer");
     room.insertBefore(notice, composer ?? null);
   }
@@ -70,17 +65,36 @@ function injectCreateButtons(directory: ChannelAccessDirectory) {
   });
 }
 
+async function postingDirectory(channels: ChannelAccessConfig[]) {
+  const result = new Map<string, boolean>();
+  if (!supabaseClient) return result;
+  await Promise.all(channels.map(async (channel) => {
+    try {
+      const { data, error } = await supabaseClient.rpc("member_can_post_labstar_channel", { target_channel_id: channel.id });
+      if (!error) result.set(channel.id, Boolean(data));
+    } catch {
+      // Em rollout antigo o campo read_only local continua sendo usado abaixo.
+    }
+  }));
+  return result;
+}
+
 export function ChannelRuntimeAccessBridge() {
   useEffect(() => {
     let disposed = false;
     let directory: ChannelAccessDirectory | null = null;
     let channels: ChannelAccessConfig[] = [];
+    let posting = new Map<string, boolean>();
     let refreshTimer = 0;
 
     const apply = () => {
       if (disposed || !directory) return;
       injectCreateButtons(directory);
-      applyReadOnlyState(directory, channels);
+      // Se o RPC ainda não existir, preserva o comportamento do read_only do canal.
+      if (!posting.size) {
+        posting = new Map(channels.map((channel) => [channel.id, !channel.readOnly]));
+      }
+      applyReadOnlyState(channels, posting);
     };
 
     const refresh = async () => {
@@ -90,9 +104,11 @@ export function ChannelRuntimeAccessBridge() {
           loadChannelAccessDirectory(),
           listManagedChannels().catch(() => []),
         ]);
+        const nextPosting = await postingDirectory(nextChannels);
         if (disposed) return;
         directory = nextDirectory;
         channels = nextChannels;
+        posting = nextPosting;
         apply();
       } catch {
         // A interface antiga continua disponível durante rollout da migração.
