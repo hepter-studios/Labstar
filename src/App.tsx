@@ -178,6 +178,24 @@ export default function Home() {
   }, [githubConnectionResult]);
 
   useEffect(() => {
+    const open = (event: Event) => {
+      const detail = (event as CustomEvent<{ channelId?: string | null; eventType?: string | null }>).detail ?? {};
+      setQuickPanel(null);
+      setView("colaboracao");
+      if (detail.channelId) setNotificationChannelId(detail.channelId);
+      window.setTimeout(() => {
+        if (detail.channelId) {
+          window.dispatchEvent(new CustomEvent("labstar:open-channel", { detail: { channelId: detail.channelId } }));
+        } else if (/direct|call/i.test(detail.eventType ?? "")) {
+          window.dispatchEvent(new CustomEvent("labstar:open-direct", { detail: {} }));
+        }
+      }, 180);
+    };
+    window.addEventListener("labstar:open-notification", open);
+    return () => window.removeEventListener("labstar:open-notification", open);
+  }, []);
+
+  useEffect(() => {
     zoomRef.current = zoom;
   }, [zoom]);
 
