@@ -11,6 +11,7 @@ import App from "./App";
 import { AccessControl } from "./components/AccessControl";
 import { ChannelAccessPortal } from "./components/ChannelAccessPortal";
 import { ChannelMessageActionsBridge } from "./components/ChannelMessageActionsBridge";
+import { ChannelRuntimeAccessBridge } from "./components/ChannelRuntimeAccessBridge";
 import { CommandPalette } from "./components/CommandPalette";
 import { DashboardWorkSurface } from "./components/DashboardWorkSurface";
 import { DirectMessageDeleteOptionsBridge } from "./components/DirectMessageDeleteOptionsBridge";
@@ -162,6 +163,7 @@ function RootSurfaces() {
       {introFinished && <OptionalSurface name="ferramentas do painel de membros"><MemberPanelTools /></OptionalSurface>}
       {introFinished && <OptionalSurface name="menus rápidos do espaço"><WorkspaceQuickMenus /></OptionalSurface>}
       {introFinished && <OptionalSurface name="canais privados e permissões"><ChannelAccessPortal /></OptionalSurface>}
+      {introFinished && <OptionalSurface name="permissões dos canais em tempo real"><ChannelRuntimeAccessBridge /></OptionalSurface>}
       {introFinished && <OptionalSurface name="central de comandos"><CommandPalette /></OptionalSurface>}
       {introFinished && <OptionalSurface name="tarefas e decisões"><WorkItemsCenter /></OptionalSurface>}
       {introFinished && <OptionalSurface name="mensagens para trabalho"><MessageWorkItemBridge /></OptionalSurface>}
