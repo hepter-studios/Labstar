@@ -32,6 +32,11 @@
   content: none !important;
 }
 
+/* A abertura mostra apenas o wordmark animado: sem a linha de progresso embaixo. */
+.brand-intro .intro-progress {
+  display: none !important;
+}
+
 @keyframes labstar-access-star-spin {
   to { transform: rotate(360deg); }
 }
