@@ -15,6 +15,44 @@ type WorkSurface = "home" | "workspace" | "direct";
 type OpenChannelDetail = { channelId?: string; query?: string };
 type OpenDirectDetail = { query?: string };
 
+type StoredCommunicationPosition = {
+  surface: WorkSurface;
+  workspaceChannelId: string | null;
+};
+
+const POSITION_KEY_PREFIX = "labstar-communication-position-v2:";
+
+function storageKey(memberId: string) {
+  return `${POSITION_KEY_PREFIX}${memberId}`;
+}
+
+function readPosition(memberId: string): StoredCommunicationPosition {
+  try {
+    const raw = window.sessionStorage.getItem(storageKey(memberId));
+    if (!raw) return { surface: "home", workspaceChannelId: null };
+    const value = JSON.parse(raw) as Partial<StoredCommunicationPosition>;
+    const surface: WorkSurface = value.surface === "workspace" || value.surface === "direct" || value.surface === "home"
+      ? value.surface
+      : "home";
+    return {
+      surface,
+      workspaceChannelId: typeof value.workspaceChannelId === "string" && value.workspaceChannelId
+        ? value.workspaceChannelId
+        : null,
+    };
+  } catch {
+    return { surface: "home", workspaceChannelId: null };
+  }
+}
+
+function savePosition(memberId: string, position: StoredCommunicationPosition) {
+  try {
+    window.sessionStorage.setItem(storageKey(memberId), JSON.stringify(position));
+  } catch {
+    // O estado em memória continua funcionando quando o armazenamento é bloqueado.
+  }
+}
+
 function setNativeInputValue(input: HTMLInputElement, value: string) {
   const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set;
   setter?.call(input, value);
@@ -23,8 +61,13 @@ function setNativeInputValue(input: HTMLInputElement, value: string) {
 }
 
 export function CollaborationHub({ member, initialChannelId, soundEnabled = true }: CollaborationHubProps) {
-  const [surface, setSurface] = useState<WorkSurface>(initialChannelId ? "workspace" : "home");
-  const [workspaceChannelId, setWorkspaceChannelId] = useState<string | null>(initialChannelId ?? null);
+  const [initialPosition] = useState(() => readPosition(member.id));
+  const [surface, setSurface] = useState<WorkSurface>(() => initialChannelId ? "workspace" : initialPosition.surface);
+  const [workspaceChannelId, setWorkspaceChannelId] = useState<string | null>(() => initialChannelId ?? initialPosition.workspaceChannelId);
+
+  useEffect(() => {
+    savePosition(member.id, { surface, workspaceChannelId });
+  }, [member.id, surface, workspaceChannelId]);
 
   useEffect(() => {
     if (!initialChannelId) return;
@@ -84,65 +127,59 @@ export function CollaborationHub({ member, initialChannelId, soundEnabled = true
     };
   }, []);
 
-  if (surface === "direct") {
-    return (
-      <DirectMessagesHub
-        member={member}
-        onOpenWorkspace={(channelId) => {
-          setWorkspaceChannelId(channelId ?? null);
-          setSurface(channelId ? "workspace" : "home");
-        }}
-      />
-    );
-  }
-
   const openWorkspaceChannel = (channelId: string) => {
     setWorkspaceChannelId(channelId);
     setSurface("workspace");
   };
 
   return (
-    <div
-      className={`collaboration-server-mode ${surface === "home" ? "communication-home-active" : ""}`}
-      onClickCapture={(event) => {
-        const target = event.target as HTMLElement;
-        if (target.closest(".space-list button, .add-space")) setSurface("workspace");
-      }}
-    >
-      <button
-        type="button"
-        className={`workspace-home-entry ${surface === "home" ? "active" : ""}`}
-        onClick={() => setSurface("home")}
-        title="Home da Central de trabalho"
-        aria-label="Abrir Home da Central de trabalho"
-      >
-        <Home size={21} />
-        <i />
-      </button>
-      <button
-        type="button"
-        className="workspace-dm-entry"
-        onClick={() => setSurface("direct")}
-        title="Mensagens diretas"
-        aria-label="Abrir mensagens diretas"
-      >
-        <MessageSquare size={21} />
-        <i />
-      </button>
-      <LegacyCollaborationHub
-        member={member}
-        initialChannelId={workspaceChannelId}
-        soundEnabled={soundEnabled}
-      />
-      {surface === "home" && (
-        <div className="communication-home-overlay">
-          <CommunicationHome
-            member={member}
-            onOpenChannel={openWorkspaceChannel}
-            onOpenDirect={() => setSurface("direct")}
-          />
-        </div>
-      )}
+    <div className={`collaboration-server-mode ${surface === "home" ? "communication-home-active" : ""} ${surface === "direct" ? "communication-direct-active" : ""}`}>
+      <div style={{ display: surface === "direct" ? "none" : "contents" }} aria-hidden={surface === "direct"}>
+        <button
+          type="button"
+          className={`workspace-home-entry ${surface === "home" ? "active" : ""}`}
+          onClick={() => setSurface("home")}
+          title="Home da Central de trabalho"
+          aria-label="Abrir Home da Central de trabalho"
+        >
+          <Home size={21} />
+          <i />
+        </button>
+        <button
+          type="button"
+          className="workspace-dm-entry"
+          onClick={() => setSurface("direct")}
+          title="Mensagens diretas"
+          aria-label="Abrir mensagens diretas"
+        >
+          <MessageSquare size={21} />
+          <i />
+        </button>
+        <LegacyCollaborationHub
+          member={member}
+          initialChannelId={workspaceChannelId}
+          soundEnabled={soundEnabled}
+        />
+        {surface === "home" && (
+          <div className="communication-home-overlay">
+            <CommunicationHome
+              member={member}
+              onOpenChannel={openWorkspaceChannel}
+              onOpenDirect={() => setSurface("direct")}
+            />
+          </div>
+        )}
+      </div>
+
+      <div style={{ display: surface === "direct" ? "contents" : "none" }} aria-hidden={surface !== "direct"}>
+        <DirectMessagesHub
+          member={member}
+          onOpenWorkspace={(channelId) => {
+            setWorkspaceChannelId(channelId ?? null);
+            setSurface(channelId ? "workspace" : "home");
+          }}
+        />
+      </div>
     </div>
   );
 }
