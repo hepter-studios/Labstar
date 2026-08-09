@@ -1,4 +1,4 @@
-import { Home, MessageSquare } from "lucide-react";
+import { Home, MessageSquare, Server } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { Member } from "../lib/supabase";
 import { CommunicationHome } from "./CommunicationHome";
@@ -14,6 +14,7 @@ type CollaborationHubProps = {
 type WorkSurface = "home" | "workspace" | "direct";
 type OpenChannelDetail = { channelId?: string; query?: string };
 type OpenDirectDetail = { query?: string };
+type RefreshCollaborationDetail = { channelId?: string };
 
 type StoredCommunicationPosition = {
   surface: WorkSurface;
@@ -64,6 +65,7 @@ export function CollaborationHub({ member, initialChannelId, soundEnabled = true
   const [initialPosition] = useState(() => readPosition(member.id));
   const [surface, setSurface] = useState<WorkSurface>(() => initialChannelId ? "workspace" : initialPosition.surface);
   const [workspaceChannelId, setWorkspaceChannelId] = useState<string | null>(() => initialChannelId ?? initialPosition.workspaceChannelId);
+  const [workspaceVersion, setWorkspaceVersion] = useState(0);
 
   useEffect(() => {
     savePosition(member.id, { surface, workspaceChannelId });
@@ -116,14 +118,25 @@ export function CollaborationHub({ member, initialChannelId, soundEnabled = true
     };
 
     const openHome = () => setSurface("home");
+    const refreshCollaboration = (event: Event) => {
+      const detail = (event as CustomEvent<RefreshCollaborationDetail>).detail ?? {};
+      if (detail.channelId) setWorkspaceChannelId(detail.channelId);
+      setSurface("workspace");
+      setWorkspaceVersion((value) => value + 1);
+      window.setTimeout(() => {
+        window.dispatchEvent(new CustomEvent("labstar:collaboration-refreshed"));
+      }, 80);
+    };
 
     window.addEventListener("labstar:open-channel", openChannel);
     window.addEventListener("labstar:open-direct", openDirect);
     window.addEventListener("labstar:open-work-home", openHome);
+    window.addEventListener("labstar:refresh-collaboration", refreshCollaboration);
     return () => {
       window.removeEventListener("labstar:open-channel", openChannel);
       window.removeEventListener("labstar:open-direct", openDirect);
       window.removeEventListener("labstar:open-work-home", openHome);
+      window.removeEventListener("labstar:refresh-collaboration", refreshCollaboration);
     };
   }, []);
 
@@ -133,8 +146,8 @@ export function CollaborationHub({ member, initialChannelId, soundEnabled = true
   };
 
   return (
-    <div className={`collaboration-server-mode ${surface === "home" ? "communication-home-active" : ""} ${surface === "direct" ? "communication-direct-active" : ""}`}>
-      <div style={{ display: surface === "direct" ? "none" : "contents" }} aria-hidden={surface === "direct"}>
+    <div className={`collaboration-server-mode ${surface === "home" ? "communication-home-active" : ""} ${surface === "direct" ? "communication-direct-active" : ""} ${surface === "workspace" ? "communication-channels-active" : ""}`}>
+      <nav className="workspace-surface-rail" aria-label="Áreas da Central de trabalho">
         <button
           type="button"
           className={`workspace-home-entry ${surface === "home" ? "active" : ""}`}
@@ -147,7 +160,7 @@ export function CollaborationHub({ member, initialChannelId, soundEnabled = true
         </button>
         <button
           type="button"
-          className="workspace-dm-entry"
+          className={`workspace-dm-entry ${surface === "direct" ? "active" : ""}`}
           onClick={() => setSurface("direct")}
           title="Mensagens diretas"
           aria-label="Abrir mensagens diretas"
@@ -155,7 +168,21 @@ export function CollaborationHub({ member, initialChannelId, soundEnabled = true
           <MessageSquare size={21} />
           <i />
         </button>
+        <button
+          type="button"
+          className={`workspace-channel-entry ${surface === "workspace" ? "active" : ""}`}
+          onClick={() => setSurface("workspace")}
+          title="Canais e servidores"
+          aria-label="Abrir canais e servidores"
+        >
+          <Server size={21} />
+          <i />
+        </button>
+      </nav>
+
+      <div className="communication-workspace-stage" style={{ display: surface === "direct" ? "none" : "contents" }} aria-hidden={surface === "direct"}>
         <LegacyCollaborationHub
+          key={workspaceVersion}
           member={member}
           initialChannelId={workspaceChannelId}
           soundEnabled={soundEnabled}
@@ -171,7 +198,7 @@ export function CollaborationHub({ member, initialChannelId, soundEnabled = true
         )}
       </div>
 
-      <div style={{ display: surface === "direct" ? "contents" : "none" }} aria-hidden={surface !== "direct"}>
+      <div className="communication-direct-stage" style={{ display: surface === "direct" ? "contents" : "none" }} aria-hidden={surface !== "direct"}>
         <DirectMessagesHub
           member={member}
           onOpenWorkspace={(channelId) => {

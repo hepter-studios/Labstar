@@ -1,5 +1,6 @@
 import {
   Copy,
+  EyeOff,
   FileCode2,
   Link2,
   Pencil,
@@ -10,6 +11,7 @@ import {
   X,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { deleteMessage, supabaseClient } from "../lib/supabase";
 
 type ChannelMessageTarget = {
   article: HTMLElement;
@@ -23,7 +25,8 @@ type ChannelMessageTarget = {
 };
 
 const MENU_WIDTH = 300;
-const MENU_HEIGHT = 430;
+const MENU_HEIGHT = 470;
+const LOCAL_HIDDEN_CHANNEL_KEY = "labstar-hidden-channel-messages-v1";
 
 function clamp(value: number, minimum: number, maximum: number) {
   return Math.max(minimum, Math.min(value, maximum));
@@ -47,6 +50,50 @@ function messageDateFromArticle(article: HTMLElement) {
   return article.querySelector<HTMLElement>(".message-body > header time")?.textContent?.trim() || "Mensagem do canal";
 }
 
+function readLocallyHiddenChannelMessages() {
+  try {
+    const value = JSON.parse(window.localStorage.getItem(LOCAL_HIDDEN_CHANNEL_KEY) ?? "[]") as unknown;
+    return new Set(Array.isArray(value) ? value.map(String) : []);
+  } catch {
+    return new Set<string>();
+  }
+}
+
+function rememberLocallyHiddenChannelMessage(messageId: string) {
+  const hidden = readLocallyHiddenChannelMessages();
+  hidden.add(messageId);
+  try {
+    window.localStorage.setItem(LOCAL_HIDDEN_CHANNEL_KEY, JSON.stringify([...hidden].slice(-2500)));
+  } catch {
+    // O fallback visual da sessão atual continua funcionando mesmo sem localStorage.
+  }
+}
+
+function hideStoredChannelMessages() {
+  const hidden = readLocallyHiddenChannelMessages();
+  if (!hidden.size) return;
+  document.querySelectorAll<HTMLElement>(".chat-message").forEach((article) => {
+    const id = messageIdFromArticle(article);
+    if (id && hidden.has(id)) article.style.display = "none";
+  });
+}
+
+async function persistHiddenChannelMessage(messageId: string) {
+  const client = supabaseClient;
+  if (!client) return false;
+  try {
+    const { data: memberId, error: memberError } = await client.rpc("current_member_id");
+    if (memberError || !memberId) return false;
+    const { error } = await client.from("hidden_channel_messages").upsert({
+      member_id: String(memberId),
+      message_id: messageId,
+    });
+    return !error;
+  } catch {
+    return false;
+  }
+}
+
 async function copyText(value: string) {
   if (navigator.clipboard?.writeText) {
     await navigator.clipboard.writeText(value);
@@ -66,7 +113,15 @@ async function copyText(value: string) {
 export function ChannelMessageActionsBridge() {
   const [menu, setMenu] = useState<ChannelMessageTarget | null>(null);
   const [error, setError] = useState("");
+  const [confirmDeleteForEveryone, setConfirmDeleteForEveryone] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    hideStoredChannelMessages();
+    const observer = new MutationObserver(() => hideStoredChannelMessages());
+    observer.observe(document.body, { childList: true, subtree: true });
+    return () => observer.disconnect();
+  }, []);
 
   useEffect(() => {
     const openForArticle = (article: HTMLElement, preferredX: number, preferredY: number) => {
@@ -78,6 +133,7 @@ export function ChannelMessageActionsBridge() {
       const height = Math.min(MENU_HEIGHT, Math.max(260, window.innerHeight - 24));
 
       setError("");
+      setConfirmDeleteForEveryone(false);
       setMenu({
         article,
         id,
@@ -205,11 +261,38 @@ export function ChannelMessageActionsBridge() {
     }, 0);
   }
 
+  async function hideForMe() {
+    try {
+      rememberLocallyHiddenChannelMessage(activeMenu.id);
+      activeMenu.article.style.display = "none";
+      setMenu(null);
+      void persistHiddenChannelMessage(activeMenu.id);
+    } catch {
+      setError("Não foi possível ocultar esta mensagem para você.");
+    }
+  }
+
+  async function deleteForEveryone() {
+    if (!confirmDeleteForEveryone) {
+      setConfirmDeleteForEveryone(true);
+      return;
+    }
+    try {
+      await deleteMessage(activeMenu.id);
+      activeMenu.article.remove();
+      setMenu(null);
+    } catch {
+      setConfirmDeleteForEveryone(false);
+      setError("Não foi possível apagar esta mensagem para todos.");
+    }
+  }
+
   return (
     <div
       ref={menuRef}
       className="channel-message-actions-menu"
       role="menu"
+      data-labstar-destructive-confirmation="true"
       style={{ left: activeMenu.x, top: activeMenu.y }}
       onClick={(event) => event.stopPropagation()}
     >
@@ -229,10 +312,13 @@ export function ChannelMessageActionsBridge() {
       <button type="button" role="menuitem" onClick={downloadMarkdown}><FileCode2 size={15} /><span>Baixar como Markdown</span></button>
       <button type="button" role="menuitem" onClick={speak}><Volume2 size={15} /><span>Ler mensagem</span></button>
 
-      {activeMenu.canManage && <>
-        <i className="channel-message-menu-separator" />
-        <button className="danger" type="button" role="menuitem" onClick={() => runExistingChannelAction(/Excluir mensagem/i)}><Trash2 size={15} /><span>Excluir mensagem</span></button>
-      </>}
+      <i className="channel-message-menu-separator" />
+      <button type="button" role="menuitem" onClick={() => void hideForMe()}><EyeOff size={15} /><span>Apagar para mim</span></button>
+      {activeMenu.canManage && (
+        <button className={`danger ${confirmDeleteForEveryone ? "confirm" : ""}`} type="button" role="menuitem" onClick={() => void deleteForEveryone()}>
+          <Trash2 size={15} /><span>{confirmDeleteForEveryone ? "Confirmar: apagar para todos" : "Apagar para todos"}</span>
+        </button>
+      )}
 
       {error && <div className="channel-message-menu-error"><X size={13} /><span>{error}</span></div>}
     </div>
