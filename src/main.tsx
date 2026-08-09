@@ -9,6 +9,7 @@ import {
 import { createRoot } from "react-dom/client";
 import App from "./App";
 import { AccessControl } from "./components/AccessControl";
+import { CategoryAccessPortal } from "./components/CategoryAccessPortal";
 import { ChannelAccessPortal } from "./components/ChannelAccessPortal";
 import { ChannelMessageActionsBridge } from "./components/ChannelMessageActionsBridge";
 import { ChannelRuntimeAccessBridge } from "./components/ChannelRuntimeAccessBridge";
@@ -68,8 +69,10 @@ import "./direct-messages-v7.css";
 import "./direct-messages-height-guard.css";
 import "./project-enhancements.css";
 import "./channel-access.css";
+import "./category-access-polish.css";
 import "./role-professional-polish.css";
 import "./brand-home-navigation";
+import "./product-polish.css";
 
 const BRAND_INTRO_DURATION_MS = 2350;
 const NATIVE_BRIDGE_TIMEOUT_MS = 4000;
@@ -163,6 +166,7 @@ function RootSurfaces() {
       {introFinished && <OptionalSurface name="ferramentas do painel de membros"><MemberPanelTools /></OptionalSurface>}
       {introFinished && <OptionalSurface name="menus rápidos do espaço"><WorkspaceQuickMenus /></OptionalSurface>}
       {introFinished && <OptionalSurface name="canais privados e permissões"><ChannelAccessPortal /></OptionalSurface>}
+      {introFinished && <OptionalSurface name="categorias privadas e herança"><CategoryAccessPortal /></OptionalSurface>}
       {introFinished && <OptionalSurface name="permissões dos canais em tempo real"><ChannelRuntimeAccessBridge /></OptionalSurface>}
       {introFinished && <OptionalSurface name="central de comandos"><CommandPalette /></OptionalSurface>}
       {introFinished && <OptionalSurface name="tarefas e decisões"><WorkItemsCenter /></OptionalSurface>}
