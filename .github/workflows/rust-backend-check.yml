@@ -1,0 +1,67 @@
+name: Validar backend Rust
+
+on:
+  push:
+    branches:
+      - main
+      - "feat/rust-backend-clean"
+    paths:
+      - "backend/**"
+      - ".dockerignore"
+      - ".github/workflows/rust-backend-check.yml"
+  pull_request:
+    paths:
+      - "backend/**"
+      - ".dockerignore"
+      - ".github/workflows/rust-backend-check.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: rust-backend-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  validate:
+    name: Backend Rust
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Baixar código
+        uses: actions/checkout@v4
+
+      - name: Instalar Rust estável
+        shell: bash
+        run: |
+          rustup toolchain install stable --profile minimal --component rustfmt,clippy
+          rustup default stable
+          rustc --version
+          cargo --version
+
+      - name: Restaurar cache do Cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            backend/target
+          key: backend-cargo-${{ runner.os }}-${{ hashFiles('backend/Cargo.toml', 'backend/Cargo.lock') }}
+          restore-keys: |
+            backend-cargo-${{ runner.os }}-
+
+      - name: Verificar formatação
+        run: cargo fmt --manifest-path backend/Cargo.toml -- --check
+
+      - name: Executar Clippy sem avisos
+        run: cargo clippy --locked --manifest-path backend/Cargo.toml --all-targets --all-features -- -D warnings
+
+      - name: Executar testes
+        run: cargo test --locked --manifest-path backend/Cargo.toml --all-features
+
+      - name: Construir imagem de produção
+        run: docker build --file backend/Dockerfile --tag labstar-backend:test .
