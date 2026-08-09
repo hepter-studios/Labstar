@@ -400,7 +400,7 @@ export function WorkspaceQuickMenus() {
             {activeMenu.kind === "space" && <button type="button" onClick={openSpaceSettings}><Settings2 size={14}/> Configurações do Espaço</button>}
 
             {(canClearDirect || canClearChannel) && <i className="workspace-menu-separator" />}
-            {(canClearDirect || canClearChannel) && activeMenu.kind !== "space" && (
+            {(canClearDirect || canClearChannel) && (
               <button type="button" className={`danger ${clearState === "confirm" ? "confirm" : ""}`} disabled={clearState === "working"} onClick={() => void clearCurrentChat()}>
                 {clearState === "working" ? <LoaderCircle className="spin" size={14}/> : <Trash2 size={14}/>}
                 {clearState === "working"
