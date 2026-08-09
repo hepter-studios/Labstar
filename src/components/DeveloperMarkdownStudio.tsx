@@ -25,6 +25,7 @@ import {
   X,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { DeveloperMessageBody, type MarkdownAttachment } from "./DeveloperChatContent";
 
 export const README_TEMPLATE = `# Nome do projeto
@@ -104,6 +105,22 @@ export function DeveloperMarkdownStudio({ value, files, attachments = [], mode, 
     return () => previews.forEach((item) => URL.revokeObjectURL(item.url));
   }, [files]);
 
+  useEffect(() => {
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, []);
+
+  useEffect(() => {
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onCancel();
+    };
+    window.addEventListener("keydown", closeOnEscape);
+    return () => window.removeEventListener("keydown", closeOnEscape);
+  }, [onCancel]);
+
   const statistics = useMemo(() => ({
     words: value.trim() ? value.trim().split(/\s+/).length : 0,
     lines: value ? value.split(/\r?\n/).length : 1,
@@ -130,7 +147,7 @@ export function DeveloperMarkdownStudio({ value, files, attachments = [], mode, 
     window.setTimeout(() => URL.revokeObjectURL(url), 0);
   }
 
-  return (
+  return createPortal(
     <div className="markdown-studio-backdrop" role="presentation" onMouseDown={onCancel}>
       <section className="markdown-studio" role="dialog" aria-modal="true" aria-label={mode === "edit" ? "Editar mensagem Markdown" : "Criar documento Markdown"} onMouseDown={(event) => event.stopPropagation()}>
         <header className="markdown-studio-head">
@@ -184,7 +201,8 @@ export function DeveloperMarkdownStudio({ value, files, attachments = [], mode, 
           </div>
         </footer>
       </section>
-    </div>
+    </div>,
+    document.body,
   );
 }
 

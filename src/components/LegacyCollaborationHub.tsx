@@ -22,7 +22,6 @@ import {
   Mic,
   MicOff,
   MoreHorizontal,
-  Paperclip,
   Pencil,
   PictureInPicture2,
   Pin,
@@ -94,10 +93,12 @@ import {
   DeveloperAttachmentCard,
   DeveloperFileQueue,
   DeveloperMessageBody,
+  markdownAttachmentReference,
 } from "./DeveloperChatContent";
 import { MeetingRoomV2 } from "./MeetingRoomV2";
 import { GithubWebhookSettings } from "./IntegrationWebhookBridge";
 import { DeveloperComposerTools, handleDeveloperComposerKeyDown } from "./DeveloperComposerTools";
+import { DeveloperCreateMenu, DeveloperMarkdownStudio, README_TEMPLATE } from "./DeveloperMarkdownStudio";
 import {
   GithubIntegrationMessage,
   normalizeIntegrationMessageBody,
@@ -568,9 +569,14 @@ function MessageRoom({ channel, space, member }: { channel: LabstarChannel; spac
   const [uploadNotice, setUploadNotice] = useState("");
   const [uploadNoticeError, setUploadNoticeError] = useState(false);
   const [dragActive, setDragActive] = useState(false);
+  const [createMenuOpen, setCreateMenuOpen] = useState(false);
+  const [codeMode, setCodeMode] = useState(false);
+  const [markdownStudio, setMarkdownStudio] = useState<{ mode: "compose" | "edit"; value: string } | null>(null);
   const messageScrollRef = useRef<HTMLDivElement>(null);
   const composerRef = useRef<HTMLTextAreaElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const imageRef = useRef<HTMLInputElement>(null);
+  const imageTargetRef = useRef<"composer" | "studio">("composer");
   const stickerRef = useRef<HTMLInputElement>(null);
 
   async function refreshMessages(scroll = false) {
@@ -601,6 +607,9 @@ function MessageRoom({ channel, space, member }: { channel: LabstarChannel; spac
     setUploadNotice("");
     setUploadNoticeError(false);
     setDragActive(false);
+    setCreateMenuOpen(false);
+    setCodeMode(false);
+    setMarkdownStudio(null);
     void refreshMessages(true);
     const messageSubscription = subscribeToTable("channel_messages", `channel_id=eq.${channel.id}`, () => void refreshMessages());
     const attachmentSubscription = subscribeToTable("channel_message_attachments", "", () => void refreshMessages());
@@ -629,6 +638,24 @@ function MessageRoom({ channel, space, member }: { channel: LabstarChannel; spac
     return () => window.removeEventListener("keydown", closeOnEscape);
   }, [imagePreview]);
 
+  useEffect(() => {
+    if (!createMenuOpen) return undefined;
+    const close = (event: PointerEvent) => {
+      const target = event.target as HTMLElement;
+      if (target.closest(".developer-create-menu") || target.closest("[data-developer-create-trigger]")) return;
+      setCreateMenuOpen(false);
+    };
+    const escape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setCreateMenuOpen(false);
+    };
+    document.addEventListener("pointerdown", close, true);
+    window.addEventListener("keydown", escape);
+    return () => {
+      document.removeEventListener("pointerdown", close, true);
+      window.removeEventListener("keydown", escape);
+    };
+  }, [createMenuOpen]);
+
   async function submit(event: React.FormEvent) {
     event.preventDefault();
     if (!draft.trim() && !files.length) return;
@@ -652,6 +679,7 @@ function MessageRoom({ channel, space, member }: { channel: LabstarChannel; spac
       setFiles([]);
       setEditing(null);
       setReplying(null);
+      setMarkdownStudio(null);
       await refreshMessages(true);
     } catch (error) {
       setUploadNotice(chatFileErrorMessage(error));
@@ -703,7 +731,78 @@ function MessageRoom({ channel, space, member }: { channel: LabstarChannel; spac
     setFiles([]);
     setUploadNotice("");
     setDraft(message.body);
+    setMarkdownStudio({ mode: "edit", value: message.body });
     setContextMenu(null);
+  }
+
+  function clearComposerContext() {
+    setEditing(null);
+    setReplying(null);
+    setMarkdownStudio(null);
+    setDraft("");
+  }
+
+  function appendTemplate(value: string) {
+    setDraft((current) => `${current}${current.trim() ? "\n" : ""}${value.trimStart()}`);
+    window.requestAnimationFrame(() => composerRef.current?.focus());
+  }
+
+  function openMarkdownStudio() {
+    setMarkdownStudio({ mode: "compose", value: draft.trim() ? draft : README_TEMPLATE });
+  }
+
+  function requestMarkdownImage(target: "composer" | "studio") {
+    if (editing) {
+      setUploadNotice("Durante a edição, os anexos originais são preservados.");
+      setUploadNoticeError(false);
+      return;
+    }
+    imageTargetRef.current = target;
+    imageRef.current?.click();
+  }
+
+  function addMarkdownImages(incoming: File[]) {
+    if (!incoming.length || editing) return;
+    addFiles(incoming, `${incoming.length} imagem(ns) anexada(s) e inserida(s) no Markdown.`);
+    const markdown = incoming.map((file) => {
+      const alt = file.name.replace(/\.[^.]+$/, "").replace(/[-_]+/g, " ");
+      return `![${alt || "Imagem"}](${markdownAttachmentReference(file.name)})`;
+    }).join("\n\n");
+    if (imageTargetRef.current === "studio") {
+      setMarkdownStudio((current) => current ? { ...current, value: `${current.value}${current.value.trim() ? "\n\n" : ""}${markdown}` } : current);
+    } else {
+      setDraft((current) => `${current}${current.trim() ? "\n\n" : ""}${markdown}`);
+      window.requestAnimationFrame(() => composerRef.current?.focus());
+    }
+  }
+
+  async function confirmMarkdownStudio(attachReadme: boolean) {
+    if (!markdownStudio || sending) return;
+    if (markdownStudio.mode === "edit" && editing) {
+      setSending(true);
+      setUploadNotice("");
+      setUploadNoticeError(false);
+      try {
+        await editMessage(editing.id, markdownStudio.value);
+        setDraft("");
+        setEditing(null);
+        setMarkdownStudio(null);
+        await refreshMessages();
+      } catch {
+        setUploadNotice("Não foi possível salvar a edição em Markdown.");
+        setUploadNoticeError(true);
+      } finally {
+        setSending(false);
+      }
+      return;
+    }
+
+    setDraft(markdownStudio.value);
+    if (attachReadme) {
+      addFiles([new globalThis.File([markdownStudio.value], "README.md", { type: "text/markdown" })], "README.md preparado para envio.");
+    }
+    setMarkdownStudio(null);
+    window.requestAnimationFrame(() => composerRef.current?.focus());
   }
 
   const filtered = messages.filter((message) =>
@@ -736,6 +835,12 @@ function MessageRoom({ channel, space, member }: { channel: LabstarChannel; spac
           const githubMessage = message.author?.name === "Labstar Integrations"
             ? parseGithubIntegrationMessage(integrationBody)
             : null;
+          const embeddedAttachmentNames = new Set(
+            message.attachments
+              .filter((attachment) => integrationBody.includes(markdownAttachmentReference(attachment.fileName)))
+              .map((attachment) => attachment.fileName),
+          );
+          const visibleAttachments = message.attachments.filter((attachment) => !embeddedAttachmentNames.has(attachment.fileName));
           return (
             <article
               key={message.id}
@@ -757,10 +862,10 @@ function MessageRoom({ channel, space, member }: { channel: LabstarChannel; spac
                 </header>
                 {githubMessage
                   ? <GithubIntegrationMessage message={githubMessage} />
-                  : <DeveloperMessageBody body={integrationBody} />}
-                {!!message.attachments.length && (
+                  : <DeveloperMessageBody body={integrationBody} attachments={message.attachments} />}
+                {!!visibleAttachments.length && (
                   <div className="message-attachments">
-                    {message.attachments.map((attachment) => attachment.mimeType.startsWith("image/") ? (
+                    {visibleAttachments.map((attachment) => attachment.mimeType.startsWith("image/") ? (
                       <button
                         key={attachment.id}
                         className={`image-attachment ${brokenImages.has(attachment.id) ? "is-broken" : ""}`}
@@ -817,14 +922,27 @@ function MessageRoom({ channel, space, member }: { channel: LabstarChannel; spac
             <div className="composer-context">
               {editing ? <Edit3 size={13} /> : <Reply size={13} />}
               <span>{editing ? "Editando sua mensagem" : <>Respondendo a <b>{replying?.author?.name}</b></>}</span>
-              <button type="button" onClick={() => { setEditing(null); setReplying(null); setDraft(""); }}><X size={14} /></button>
+              <button type="button" onClick={clearComposerContext}><X size={14} /></button>
             </div>
           )}
           {!!files.length && <DeveloperFileQueue files={files} onRemove={(index) => setFiles((current) => current.filter((_, itemIndex) => itemIndex !== index))} />}
           {uploadNotice && <p className={`developer-composer-notice ${uploadNoticeError ? "error" : ""}`}>{uploadNotice}</p>}
-          <DeveloperComposerTools textareaRef={composerRef} value={draft} onChange={setDraft} disabled={sending} />
+          {createMenuOpen && (
+            <DeveloperCreateMenu
+              onUpload={() => fileRef.current?.click()}
+              onImage={() => requestMarkdownImage("composer")}
+              onCode={() => {
+                setCodeMode(true);
+                window.requestAnimationFrame(() => composerRef.current?.focus());
+              }}
+              onMarkdown={openMarkdownStudio}
+              onTemplate={appendTemplate}
+              onClose={() => setCreateMenuOpen(false)}
+            />
+          )}
+          {codeMode && <DeveloperComposerTools textareaRef={composerRef} value={draft} onChange={setDraft} disabled={sending} onClose={() => setCodeMode(false)} />}
           <div className="composer-row">
-            <button type="button" disabled={Boolean(editing)} onClick={() => fileRef.current?.click()} title={editing ? "Anexos não mudam durante edição" : `Anexar até ${MAX_CHAT_FILES} arquivos de ${formatChatBytes(MAX_CHAT_FILE_BYTES)}`}><Paperclip size={18} /></button>
+            <button data-developer-create-trigger type="button" className={createMenuOpen ? "active" : ""} disabled={Boolean(editing)} aria-expanded={createMenuOpen} onClick={() => setCreateMenuOpen((value) => !value)} title={editing ? "Anexos não mudam durante edição" : `Criar ou anexar até ${MAX_CHAT_FILES} arquivos de ${formatChatBytes(MAX_CHAT_FILE_BYTES)}`}><Plus size={20} /></button>
             <textarea
               ref={composerRef}
               rows={1}
@@ -832,7 +950,7 @@ function MessageRoom({ channel, space, member }: { channel: LabstarChannel; spac
               onChange={(event) => setDraft(event.target.value)}
               onPaste={pasteIntoComposer}
               onKeyDown={(event) => {
-                if (handleDeveloperComposerKeyDown(event, draft, setDraft)) return;
+                if (codeMode && handleDeveloperComposerKeyDown(event, draft, setDraft)) return;
                 if (event.key === "Enter" && !event.shiftKey) {
                   event.preventDefault();
                   event.currentTarget.form?.requestSubmit();
@@ -851,6 +969,10 @@ function MessageRoom({ channel, space, member }: { channel: LabstarChannel; spac
             addFiles(Array.from(event.target.files ?? []));
             event.currentTarget.value = "";
           }} />
+          <input ref={imageRef} hidden multiple type="file" accept="image/*" onChange={(event) => {
+            addMarkdownImages(Array.from(event.target.files ?? []));
+            event.currentTarget.value = "";
+          }} />
           <input ref={stickerRef} hidden type="file" accept="image/*,.gif,.webp" onChange={(event) => {
             const file = event.target.files?.[0];
             if (file) addFiles([file]);
@@ -858,6 +980,23 @@ function MessageRoom({ channel, space, member }: { channel: LabstarChannel; spac
           }} />
         </form>
       ) : <div className="read-only-notice"><LockKeyhole size={14} /> Este canal é somente leitura para o seu nível de acesso.</div>}
+
+      {markdownStudio && (
+        <DeveloperMarkdownStudio
+          value={markdownStudio.value}
+          files={files}
+          attachments={editing?.attachments ?? []}
+          mode={markdownStudio.mode}
+          busy={sending}
+          onChange={(value) => setMarkdownStudio((current) => current ? { ...current, value } : current)}
+          onRequestImage={() => requestMarkdownImage("studio")}
+          onCancel={() => {
+            if (markdownStudio.mode === "edit") clearComposerContext();
+            else setMarkdownStudio(null);
+          }}
+          onConfirm={(attachReadme) => void confirmMarkdownStudio(attachReadme)}
+        />
+      )}
 
       {contextMenu && (
         <div className="context-menu" style={{ left: contextMenu.x, top: contextMenu.y }} onClick={(event) => event.stopPropagation()}>
