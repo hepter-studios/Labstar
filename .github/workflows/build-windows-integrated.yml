@@ -2,31 +2,6 @@ name: Gerar instalador Windows integrado
 run-name: Instalador Windows integrado — ${{ github.head_ref || github.ref_name }} @ ${{ github.event.pull_request.head.sha || github.sha }}
 
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - "src/**"
-      - "src-tauri/**"
-      - "public/**"
-      - "package.json"
-      - "package-lock.json"
-      - "vite.config.ts"
-      - ".env.example"
-      - ".github/workflows/build-windows-integrated.yml"
-  pull_request:
-    branches:
-      - "feat/tauri2-rust-foundation"
-    types: [opened, synchronize, reopened]
-    paths:
-      - "src/**"
-      - "src-tauri/**"
-      - "public/**"
-      - "package.json"
-      - "package-lock.json"
-      - "vite.config.ts"
-      - ".env.example"
-      - ".github/workflows/build-windows-integrated.yml"
   workflow_dispatch:
 
 permissions:
