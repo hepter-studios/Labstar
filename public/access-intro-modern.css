@@ -1,0 +1,125 @@
+/* Abertura Labstar — mesma identidade visual da tela de login atual. */
+html body .access-screen.brand-intro {
+  position: fixed !important;
+  inset: 0 !important;
+  display: grid !important;
+  place-items: center !important;
+  overflow: hidden !important;
+  background-color: #010207 !important;
+  background-image:
+    radial-gradient(circle at 16% 24%, rgba(255,255,255,.75) 0 .6px, transparent 1px),
+    radial-gradient(circle at 74% 17%, rgba(139,174,255,.72) 0 .7px, transparent 1.1px),
+    radial-gradient(circle at 31% 76%, rgba(255,255,255,.48) 0 .55px, transparent 1px),
+    radial-gradient(circle at 85% 71%, rgba(255,255,255,.62) 0 .6px, transparent 1px),
+    radial-gradient(ellipse at 50% 45%, rgba(35,57,119,.18), transparent 34%) !important;
+  background-size: 151px 143px, 207px 191px, 239px 223px, 293px 271px, auto !important;
+}
+
+html body .access-screen.brand-intro::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(135deg, rgba(4,6,12,.12), rgba(0,0,0,.46));
+}
+
+html body .access-screen.brand-intro::after {
+  content: "";
+  position: absolute;
+  inset: -8%;
+  pointer-events: none;
+  opacity: .5;
+  background-image:
+    radial-gradient(circle at 9% 24%, #fff 0 .65px, transparent 1.15px),
+    radial-gradient(circle at 34% 13%, #a9c0ff 0 .75px, transparent 1.25px),
+    radial-gradient(circle at 61% 76%, #fff 0 .6px, transparent 1.05px),
+    radial-gradient(circle at 88% 45%, #dfe8ff 0 .7px, transparent 1.2px),
+    radial-gradient(circle at 47% 51%, #fff 0 .5px, transparent 1px);
+  background-size: 251px 229px, 317px 281px, 373px 347px, 421px 389px, 487px 433px;
+  animation: labstar-intro-stars 3.8s ease-in-out infinite alternate;
+}
+
+html body .access-screen.brand-intro .intro-mark {
+  position: relative !important;
+  z-index: 2 !important;
+  display: grid !important;
+  justify-items: center !important;
+  align-items: center !important;
+  gap: 0 !important;
+  padding: 0 !important;
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+}
+
+/* Estrela oficial acima da marca, como no login. */
+html body .access-screen.brand-intro .intro-mark::before {
+  content: "";
+  width: 28px;
+  height: 28px;
+  display: block;
+  margin: 0 auto 7px;
+  background: center / contain no-repeat url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23eaf0ff' stroke='%23eaf0ff' stroke-width='1.25' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolygon points='12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2'/%3E%3C/svg%3E");
+  filter: drop-shadow(0 0 10px rgba(139,174,255,.5));
+  animation: labstar-intro-star-breathe 1.8s ease-in-out infinite alternate;
+}
+
+/* Força a tipografia oficial nova na abertura, independentemente das regras legadas. */
+html body .access-screen.brand-intro .wordmark.large,
+html body .access-screen.brand-intro .wordmark.large .word-letter,
+html body .access-screen.brand-intro .wordmark.large .letter-a {
+  font-family: "Labstar Anurati", Inter, ui-sans-serif, system-ui, sans-serif !important;
+  font-weight: 400 !important;
+  font-synthesis: none !important;
+}
+
+html body .access-screen.brand-intro .wordmark.large {
+  margin: 0 !important;
+  gap: .17em !important;
+  color: #f2f5fb !important;
+  font-size: 31px !important;
+  letter-spacing: .018em !important;
+  line-height: 1 !important;
+}
+
+html body .access-screen.brand-intro .transform-letter {
+  width: .92em !important;
+}
+
+html body .access-screen.brand-intro .star-letter {
+  width: .90em !important;
+  height: .90em !important;
+}
+
+html body .access-screen.brand-intro .intro-progress {
+  display: none !important;
+}
+
+@keyframes labstar-intro-stars {
+  from { opacity: .34; }
+  to { opacity: .62; }
+}
+
+@keyframes labstar-intro-star-breathe {
+  from { opacity: .82; transform: scale(.96); }
+  to { opacity: 1; transform: scale(1.04); }
+}
+
+@media (max-width: 760px) {
+  html body .access-screen.brand-intro .intro-mark::before {
+    width: 30px;
+    height: 30px;
+    margin-bottom: 7px;
+  }
+
+  html body .access-screen.brand-intro .wordmark.large {
+    font-size: 34px !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html body .access-screen.brand-intro::after,
+  html body .access-screen.brand-intro .intro-mark::before {
+    animation: none !important;
+  }
+}
