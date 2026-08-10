@@ -1,6 +1,6 @@
 # Plano interno para lançamento internacional do Labstar
 
-Atualizado em 31 de julho de 2026.
+Atualizado em 10 de agosto de 2026.
 
 O lançamento internacional só deve acontecer depois que o produto estiver seguro, testado, operável e documentado internamente. Este plano evita publicar uma base ainda instável apenas porque o instalador já existe.
 
@@ -11,6 +11,7 @@ O lançamento internacional só deve acontecer depois que o produto estiver segu
 - isolamento real entre empresas;
 - documentação e recuperação antes de escala;
 - tradução não substitui internacionalização;
+- inglês é a língua-fonte e fallback do produto;
 - nenhum lançamento público sem assinatura digital e plano de rollback.
 
 ## Fase 0 — Fundação técnica
@@ -79,13 +80,26 @@ Objetivo: permitir uso diário pela equipe sem perda de acesso ou dados.
 
 ## Fase 4 — Internacionalização real
 
+Estratégia de resolução de idioma:
+
+```text
+preferência do usuário
+→ padrão da organização
+→ idioma do sistema/navegador
+→ inglês
+```
+
 - introduzir biblioteca e estrutura de i18n;
 - retirar textos fixos dos componentes;
-- português e inglês como idiomas iniciais;
+- usar inglês (`en`) como língua-fonte e fallback canônico;
+- português brasileiro (`pt-BR`) como primeira tradução completa;
+- detectar automaticamente idioma suportado no primeiro acesso;
 - seletor de idioma por usuário;
+- idioma padrão configurável por organização;
+- preferência do usuário sempre prevalece sobre a organização;
 - datas, horas, números e moedas por localidade;
-- suporte consistente a fusos horários;
-- mensagens de e-mail localizadas;
+- suporte consistente a fusos horários, independente do idioma;
+- mensagens de e-mail e notificações localizadas;
 - cargos e áreas com nomes personalizáveis;
 - layouts preparados para textos maiores;
 - testes com caracteres internacionais;
@@ -164,8 +178,8 @@ A documentação jurídica exige revisão profissional nas jurisdições de lan�
 - instaladores sem assinatura digital;
 - updater ainda não configurado;
 - falta de teste de restauração completa;
-- falta de isolamento multiempresa revisado;
-- internacionalização ainda não implementada;
+- isolamento multiempresa ainda em implementação;
+- internacionalização estrutural ainda não implementada;
 - documentação jurídica ainda inexistente;
 - observabilidade e suporte ainda incompletos.
 
