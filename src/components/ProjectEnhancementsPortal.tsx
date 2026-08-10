@@ -22,6 +22,7 @@ import {
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { DeveloperMessageBody } from "./DeveloperChatContent";
+import { ProjectReadmeAssetTools } from "./ProjectReadmeAssetTools";
 import {
   listProjectProfiles,
   removeProjectLogo,
@@ -202,7 +203,7 @@ export function ProjectEnhancementsPortal() {
   const [notice, setNotice] = useState("");
   const [logoBusy, setLogoBusy] = useState<string | null>(null);
   const lastWorkspaceRef = useRef("");
-  const syncFrameRef = useRef<number | null>(null);
+  const syncTimerRef = useRef<number | null>(null);
 
   const profileMap = useMemo(() => new Map(profiles.map((profile) => [profile.nodeId, profile])), [profiles]);
   const nodeMap = useMemo(() => new Map(nodes.map((node) => [node.id, node])), [nodes]);
@@ -219,6 +220,15 @@ export function ProjectEnhancementsPortal() {
 
   useEffect(() => {
     void refreshProfiles();
+  }, []);
+
+  useEffect(() => {
+    const syncWorkspace = (event: Event) => {
+      const incoming = (event as CustomEvent<{ nodes?: WorkspaceNode[] }>).detail?.nodes;
+      if (Array.isArray(incoming)) setNodes(incoming);
+    };
+    window.addEventListener("labstar:workspace-nodes-changed", syncWorkspace);
+    return () => window.removeEventListener("labstar:workspace-nodes-changed", syncWorkspace);
   }, []);
 
   useEffect(() => {
@@ -241,7 +251,7 @@ export function ProjectEnhancementsPortal() {
 
   useEffect(() => {
     const syncDom = () => {
-      syncFrameRef.current = null;
+      syncTimerRef.current = null;
       const workspaceRaw = window.localStorage.getItem(WORKSPACE_KEY) ?? "";
       let snapshot = nodes;
       if (workspaceRaw !== lastWorkspaceRef.current) {
@@ -252,10 +262,9 @@ export function ProjectEnhancementsPortal() {
 
       const domCards = Array.from(document.querySelectorAll<HTMLElement>(".node-card"));
       const nextTargets: CardTarget[] = [];
-      domCards.forEach((card, index) => {
-        const node = snapshot[index];
-        if (!node) return;
-        card.dataset.projectNodeId = node.id;
+      domCards.forEach((card) => {
+        const nodeId = card.dataset.projectNodeId;
+        if (!nodeId) return;
         let meta = card.querySelector<HTMLElement>(":scope > .project-card-meta-host");
         if (!meta) {
           meta = document.createElement("div");
@@ -264,7 +273,7 @@ export function ProjectEnhancementsPortal() {
           card.insertBefore(meta, footer ?? null);
         }
         nextTargets.push({
-          nodeId: node.id,
+          nodeId,
           card,
           actions: card.querySelector<HTMLElement>(".node-actions"),
           symbol: card.querySelector<HTMLElement>(".node-symbol"),
@@ -294,8 +303,8 @@ export function ProjectEnhancementsPortal() {
     };
 
     const schedule = () => {
-      if (syncFrameRef.current !== null) return;
-      syncFrameRef.current = window.requestAnimationFrame(syncDom);
+      if (syncTimerRef.current !== null) return;
+      syncTimerRef.current = window.setTimeout(syncDom, 0);
     };
 
     schedule();
@@ -305,7 +314,10 @@ export function ProjectEnhancementsPortal() {
     return () => {
       observer.disconnect();
       window.clearInterval(interval);
-      if (syncFrameRef.current !== null) window.cancelAnimationFrame(syncFrameRef.current);
+      if (syncTimerRef.current !== null) {
+        window.clearTimeout(syncTimerRef.current);
+        syncTimerRef.current = null;
+      }
     };
   }, []);
 
@@ -554,6 +566,7 @@ function ProjectDetailsModal({ node, profile, onClose, onSave }: {
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const markdownRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     const close = (event: KeyboardEvent) => event.key === "Escape" && !saving && onClose();
@@ -612,7 +625,18 @@ function ProjectDetailsModal({ node, profile, onClose, onSave }: {
             <p className="project-section-help">Sem conteúdo manual ou URL específica, o Labstar tenta buscar automaticamente o README do repositório GitHub.</p>
             <label className="full">Nome exibido<input value={draft.documentTitle} onChange={(event) => update("documentTitle", event.target.value)} placeholder="README, Visão técnica, Briefing…" /></label>
             <label className="full">URL específica do documento <input type="url" value={draft.documentUrl} onChange={(event) => update("documentUrl", event.target.value)} placeholder="Opcional: GitHub blob/raw ou outro Markdown acessível" /></label>
-            <label className="full">Conteúdo manual em Markdown <textarea className="project-markdown-input" rows={8} value={draft.documentMarkdown} onChange={(event) => update("documentMarkdown", event.target.value)} placeholder="# Projeto\n\nUse isto quando não houver GitHub ou quando quiser um documento próprio no Labstar." /><small>Opcional. Se preenchido, este conteúdo tem prioridade sobre GitHub e URL.</small></label>
+            <div className="project-readme-editor">
+              <label className="full">Conteúdo manual em Markdown <textarea ref={markdownRef} className="project-markdown-input" rows={10} value={draft.documentMarkdown} onChange={(event) => update("documentMarkdown", event.target.value)} placeholder="# Projeto\n\nUse isto quando não houver GitHub ou quando quiser um documento próprio no Labstar." /><small>Opcional. Se preenchido, este conteúdo tem prioridade sobre GitHub e URL.</small></label>
+              <ProjectReadmeAssetTools nodeId={node.id} value={draft.documentMarkdown} onChange={(value) => update("documentMarkdown", value)} textareaRef={markdownRef} />
+              <div className="project-readme-live-preview" aria-live="polite">
+                <div className="project-readme-live-preview-head"><strong>Prévia imediata</strong><span>Markdown, imagens e arquivos</span></div>
+                <div className="project-readme-live-preview-body">
+                  {draft.documentMarkdown.trim()
+                    ? <DeveloperMessageBody body={draft.documentMarkdown} />
+                    : <p>Comece a escrever ou insira um arquivo para visualizar o README.</p>}
+                </div>
+              </div>
+            </div>
           </section>
         </div>
 

@@ -3,6 +3,13 @@
     --mobile-header-height: calc(56px + env(safe-area-inset-top));
   }
 
+  /* A barra inferior ocupa uma faixa própria: controles da tela nunca ficam
+     visíveis, mas impossíveis de tocar, atrás da navegação fixa. */
+  .workspace:not(.collaboration-workspace) {
+    box-sizing: border-box !important;
+    padding-bottom: calc(var(--mobile-nav-height) + var(--mobile-safe-bottom) + 8px) !important;
+  }
+
   .workspace:not(.collaboration-workspace) > .rail {
     position: fixed !important;
     z-index: 900 !important;
@@ -13,6 +20,15 @@
     height: 50px !important;
     min-height: 50px !important;
     display: flex !important;
+  }
+
+  .workspace-surface-rail > .workspace-home-entry,
+  .workspace-surface-rail > .workspace-dm-entry,
+  .workspace-surface-rail > .workspace-channel-entry {
+    top: auto !important;
+    right: auto !important;
+    bottom: auto !important;
+    left: auto !important;
   }
 
   .collaboration-server-mode .space-rail {
@@ -37,6 +53,8 @@
     right: 8px !important;
     top: calc(var(--mobile-header-height) + 8px) !important;
     bottom: calc(var(--mobile-safe-bottom) + 8px) !important;
+    height: calc(100dvh - var(--mobile-header-height) - var(--mobile-safe-bottom) - 16px) !important;
+    min-height: 0 !important;
     width: auto !important;
     max-height: none !important;
     border-radius: 17px !important;

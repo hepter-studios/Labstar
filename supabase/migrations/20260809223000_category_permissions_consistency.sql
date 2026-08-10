@@ -222,11 +222,7 @@ begin
 
   if exists (
     select 1
-    from jsonb_array_elements_text(
-      case when jsonb_typeof(coalesce(actor.assignments, '[]'::jsonb)) = 'array'
-        then coalesce(actor.assignments, '[]'::jsonb)
-        else '[]'::jsonb end
-    ) assignment(value)
+    from unnest(coalesce(actor.assignments, '{}'::text[])) assignment(value)
     where assignment.value = any(coalesce(target.allowed_assignments, '{}'::text[]))
   ) then return true; end if;
 

@@ -216,9 +216,9 @@ Tudo com prefixo `VITE_` é incorporado ao aplicativo e não pode conter segredo
 
 ### Backend
 
-- `DATABASE_URL`
 - `SUPABASE_URL`
 - `SUPABASE_PUBLISHABLE_KEY`
+- `SUPABASE_SERVICE_ROLE_KEY` (somente no gerenciador de secrets da API Rust)
 - `LABSTAR_ALLOWED_ORIGINS`
 - `LABSTAR_REQUEST_TIMEOUT_SECONDS`
 

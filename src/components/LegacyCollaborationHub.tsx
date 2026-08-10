@@ -79,6 +79,7 @@ import {
   type SocialPost,
   type IntegrationRule,
 } from "../lib/supabase";
+import { CHAT_CLEARED_EVENT, type ChatClearedDetail } from "../lib/chatMaintenance";
 import { memberPresenceStatus, useMemberPresence } from "../lib/presence";
 import {
   MAX_CHAT_FILE_BYTES,
@@ -617,6 +618,15 @@ function MessageRoom({ channel, space, member }: { channel: LabstarChannel; spac
       unsubscribe(messageSubscription);
       unsubscribe(attachmentSubscription);
     };
+  }, [channel.id]);
+
+  useEffect(() => {
+    const handleCleared = (event: Event) => {
+      const detail = (event as CustomEvent<ChatClearedDetail>).detail;
+      if (detail?.kind === "channel" && detail.channelId === channel.id) void refreshMessages();
+    };
+    window.addEventListener(CHAT_CLEARED_EVENT, handleCleared);
+    return () => window.removeEventListener(CHAT_CLEARED_EVENT, handleCleared);
   }, [channel.id]);
 
   useEffect(() => {

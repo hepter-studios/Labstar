@@ -1,8 +1,8 @@
 import { CheckCircle2, Copy, LoaderCircle, Pin, Search, Settings2, Trash2, Users, Webhook, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { clearChannelChat, clearDirectConversation } from "../lib/chatMaintenance";
+import { clearChannelChat, clearDirectConversation, notifyChatCleared } from "../lib/chatMaintenance";
 import { listDirectThreads } from "../lib/directMessages";
-import { listMembers, loadCollaboration } from "../lib/supabase";
+import { getCurrentIdentity, listMembers, loadCollaboration } from "../lib/supabase";
 
 type Menu =
   | { kind: "channel"; x: number; y: number; button: HTMLButtonElement; name: string; channelId: string }
@@ -61,7 +61,7 @@ function maintenanceErrorText(error: unknown) {
 function friendlyMaintenanceError(error: unknown) {
   const message = maintenanceErrorText(error);
   if (/action_timeout/i.test(message)) {
-    return "A operação demorou mais que o esperado. Nada será escondido: tente novamente em alguns segundos.";
+    return "A operação demorou mais que o esperado. Nenhuma mudança foi confirmada; tente novamente em alguns segundos.";
   }
   if (/clear_channel_chat|clear_direct_conversation|function .* does not exist|PGRST202|schema cache/i.test(message)) {
     return "A rotina de limpeza ainda não está ativa no banco publicado.";
@@ -99,6 +99,7 @@ export function WorkspaceQuickMenus() {
   const [clearState, setClearState] = useState<ClearState>("idle");
   const [notice, setNotice] = useState("");
   const [actionProgress, setActionProgress] = useState<ActionProgress>(null);
+  const [canClearChannels, setCanClearChannels] = useState(false);
   const progressTimerRef = useRef(0);
   const ref = useRef<HTMLElement>(null);
 
@@ -117,6 +118,27 @@ export function WorkspaceQuickMenus() {
   }
 
   useEffect(() => () => window.clearTimeout(progressTimerRef.current), []);
+
+  useEffect(() => {
+    const previewMode = import.meta.env.DEV && new URLSearchParams(window.location.search).has("preview");
+    if (previewMode) {
+      setCanClearChannels(true);
+      return;
+    }
+    let active = true;
+    void getCurrentIdentity()
+      .then((identity) => {
+        if (!active) return;
+        const member = identity?.member;
+        setCanClearChannels(Boolean(member && (
+          member.role === "owner"
+          || member.role === "admin"
+          || member.jobRoles.some((role) => role.permissions.includes("manage_channels") || role.permissions.includes("manage_private_channels"))
+        )));
+      })
+      .catch(() => { if (active) setCanClearChannels(false); });
+    return () => { active = false; };
+  }, []);
 
   useEffect(() => {
     const openChannelMenu = (button: HTMLButtonElement, x: number, y: number) => {
@@ -248,7 +270,7 @@ export function WorkspaceQuickMenus() {
   }, []);
 
   const activeMenu = menu;
-  const canClearChannel = activeMenu?.kind === "channel" && Boolean(document.querySelector(".add-space"));
+  const canClearChannel = activeMenu?.kind === "channel" && canClearChannels;
   const canClearDirect = activeMenu?.kind === "direct";
 
   function openSelected() {
@@ -319,16 +341,6 @@ export function WorkspaceQuickMenus() {
     return matchingThreads[0].threadId;
   }
 
-  function removeVisibleMessagesAfterSuccess(target: Exclude<Menu, null>) {
-    if (target.kind === "direct") {
-      document.querySelectorAll(".dm-message").forEach((node) => node.remove());
-      return;
-    }
-    if (target.kind === "channel" && target.button.classList.contains("active")) {
-      document.querySelectorAll(".chat-message").forEach((node) => node.remove());
-    }
-  }
-
   async function clearCurrentChat() {
     if (!activeMenu || activeMenu.kind === "space" || clearState === "working") return;
     const target = activeMenu;
@@ -336,7 +348,7 @@ export function WorkspaceQuickMenus() {
     if (clearState !== "confirm") {
       setClearState("confirm");
       setNotice(target.kind === "direct"
-        ? "A conversa será apagada para os dois participantes. Clique novamente para confirmar."
+        ? "O histórico será ocultado somente para você. A outra pessoa continuará vendo as mensagens. Clique novamente para confirmar."
         : "O histórico deste canal será apagado para todos. Clique novamente para confirmar.");
       return;
     }
@@ -345,22 +357,33 @@ export function WorkspaceQuickMenus() {
     setNotice("");
     showProgress({
       tone: "working",
-      title: target.kind === "direct" ? "Limpando conversa" : "Limpando canal",
-      detail: "Aguarde. O Labstar está removendo as mensagens do banco.",
+      title: target.kind === "direct" ? "Ocultando conversa" : "Limpando canal",
+      detail: target.kind === "direct"
+        ? "Aguarde. O Labstar está ocultando seu histórico sem afetar o outro participante."
+        : "Aguarde. O Labstar está removendo as mensagens do canal.",
     });
 
     try {
-      const count = target.kind === "direct"
-        ? await withActionTimeout(clearDirectConversation(await resolveDirectThreadId(target)))
-        : await withActionTimeout(clearChannelChat(await resolveChannelId(target)));
-
-      removeVisibleMessagesAfterSuccess(target);
+      let count: number;
+      if (target.kind === "direct") {
+        const threadId = await resolveDirectThreadId(target);
+        count = await withActionTimeout(clearDirectConversation(threadId));
+        notifyChatCleared({ kind: "direct", threadId });
+      } else {
+        const channelId = await resolveChannelId(target);
+        count = await withActionTimeout(clearChannelChat(channelId));
+        notifyChatCleared({ kind: "channel", channelId });
+      }
       setClearState("idle");
-      setNotice(count > 0 ? `${count} mensagem(ns) removida(s).` : "O chat já estava vazio.");
+      setNotice(count > 0
+        ? target.kind === "direct" ? `${count} mensagem(ns) ocultada(s) para você.` : `${count} mensagem(ns) removida(s).`
+        : "O chat já estava vazio.");
       showProgress({
         tone: "success",
-        title: target.kind === "direct" ? "Conversa limpa" : "Canal limpo",
-        detail: count > 0 ? `${count} mensagem(ns) removida(s) com sucesso.` : "Esse chat já estava vazio.",
+        title: target.kind === "direct" ? "Conversa ocultada" : "Canal limpo",
+        detail: count > 0
+          ? target.kind === "direct" ? `${count} mensagem(ns) ocultada(s) somente para você.` : `${count} mensagem(ns) removida(s) com sucesso.`
+          : "Esse chat já estava vazio.",
       }, 1800);
       window.setTimeout(() => setMenu(null), 450);
     } catch (error) {
@@ -406,7 +429,7 @@ export function WorkspaceQuickMenus() {
                 {clearState === "working"
                   ? "Limpando…"
                   : clearState === "confirm"
-                    ? activeMenu.kind === "direct" ? "Confirmar: apagar para os dois" : "Confirmar limpeza do canal"
+                    ? activeMenu.kind === "direct" ? "Confirmar: ocultar para mim" : "Confirmar limpeza do canal"
                     : activeMenu.kind === "direct" ? "Limpar conversa" : "Limpar chat"}
               </button>
             )}

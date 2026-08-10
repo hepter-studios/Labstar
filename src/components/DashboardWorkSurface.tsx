@@ -22,6 +22,18 @@ const EMPTY_DATA: DashboardData = {
   channels: [],
 };
 
+const DASHBOARD_LOAD_TIMEOUT_MS = 10_000;
+
+function withDashboardTimeout<T>(promise: Promise<T>) {
+  return new Promise<T>((resolve, reject) => {
+    const timer = window.setTimeout(() => reject(new Error("dashboard_load_timeout")), DASHBOARD_LOAD_TIMEOUT_MS);
+    promise.then(
+      (value) => { window.clearTimeout(timer); resolve(value); },
+      (error) => { window.clearTimeout(timer); reject(error); },
+    );
+  });
+}
+
 function clickView(label: string) {
   document.querySelector<HTMLButtonElement>(`button[aria-label="${label}"]`)?.click();
 }
@@ -30,13 +42,39 @@ export function DashboardWorkSurface() {
   const [mount, setMount] = useState<HTMLElement | null>(null);
   const [data, setData] = useState<DashboardData>(EMPTY_DATA);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
 
   useEffect(() => {
+    const previewMode = import.meta.env.DEV && new URLSearchParams(window.location.search).has("preview");
+    if (previewMode) {
+      const timestamp = new Date().toISOString();
+      setData({
+        member: {
+          id: "preview-member",
+          email: "preview@labstar.local",
+          name: "Mackson Victor",
+          status: "active",
+          role: "owner",
+          jobTitle: "CEO",
+          area: "Direção",
+          assignments: ["labstar"],
+          createdAt: timestamp,
+          lastSeenAt: timestamp,
+          avatarPath: "",
+          avatarUrl: "",
+          jobRoles: [],
+        },
+        spaces: [],
+        channels: [],
+      });
+      setLoading(false);
+      return;
+    }
     let cancelled = false;
     void (async () => {
       const [identityResult, collaborationResult] = await Promise.allSettled([
-        getCurrentIdentity(),
-        loadCollaboration(),
+        withDashboardTimeout(getCurrentIdentity()),
+        withDashboardTimeout(loadCollaboration()),
       ]);
       if (cancelled) return;
       const collaboration = collaborationResult.status === "fulfilled"
@@ -47,6 +85,9 @@ export function DashboardWorkSurface() {
         spaces: collaboration.spaces,
         channels: collaboration.channels,
       });
+      setLoadError(identityResult.status === "rejected"
+        ? "Não foi possível carregar sua identidade para o Dashboard. Use a navegação principal e tente novamente."
+        : "");
       setLoading(false);
     })();
     return () => {
@@ -146,8 +187,10 @@ export function DashboardWorkSurface() {
 
       {data.member ? (
         <WorkHome member={data.member} onOpenChannel={openChannel} onOpenDirect={openDirect} />
-      ) : (
+      ) : loading ? (
         <div className="dashboard-work-loading"><LoaderCircle className="spin" size={22} /><strong>Carregando o Dashboard</strong><span>Preparando os dados compartilhados da Web e do aplicativo.</span></div>
+      ) : (
+        <div className="dashboard-work-loading" role="alert"><Server size={22} /><strong>Dashboard indisponível</strong><span>{loadError || "Sua identidade não está disponível para esta superfície."}</span></div>
       )}
     </section>,
     mount,

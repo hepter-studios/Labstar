@@ -27,7 +27,6 @@ import { MemberQuickActions } from "./components/MemberQuickActions";
 import { MessageWorkItemBridge } from "./components/MessageWorkItemBridge";
 import { ProfessionalPermissionBridge } from "./components/ProfessionalPermissionBridge";
 import { ProjectEnhancementsPortal } from "./components/ProjectEnhancementsPortal";
-import { ProjectReadmeAssetsBridge } from "./components/ProjectReadmeAssetsBridge";
 import { PushNotificationBridge } from "./components/PushNotificationBridge";
 import { RuntimeReliability } from "./components/RuntimeReliability";
 import { SafetyGuards } from "./components/SafetyGuards";
@@ -81,6 +80,10 @@ import "./product-polish.css";
 const BRAND_INTRO_DURATION_MS = 2350;
 const NATIVE_BRIDGE_TIMEOUT_MS = 4000;
 
+function isDevPreviewMode() {
+  return import.meta.env.DEV && new URLSearchParams(window.location.search).has("preview");
+}
+
 declare global {
   interface Window {
     __LABSTAR_BOOT_GUARD__?: {
@@ -114,7 +117,16 @@ class SurfaceBoundary extends Component<SurfaceBoundaryProps, SurfaceBoundarySta
   render() {
     const { error } = this.state;
     if (!error) return this.props.children;
-    if (!this.props.critical) return null;
+    if (!this.props.critical) {
+      const previewMode = isDevPreviewMode();
+      if (!previewMode) return null;
+      return (
+        <aside role="alert" style={{ position: "fixed", zIndex: 20000, right: 14, bottom: 14, width: "min(420px, calc(100vw - 28px))", padding: 12, border: "1px solid rgba(239,119,128,.3)", borderRadius: 10, color: "#efadb3", background: "#160b0eeF", boxShadow: "0 16px 55px #000b", font: "11px/1.45 Inter, system-ui, sans-serif" }}>
+          <strong style={{ display: "block", marginBottom: 4 }}>Falha em {this.props.name}</strong>
+          <span>{error.message}</span>
+        </aside>
+      );
+    }
 
     const details = `${error.message}\n\n${error.stack ?? "Stack indisponível"}`;
     return (
@@ -144,10 +156,11 @@ function OptionalSurface({ name, children }: { name: string; children: ReactNode
 }
 
 function RootSurfaces() {
-  const [introFinished, setIntroFinished] = useState(false);
+  const [introFinished, setIntroFinished] = useState(isDevPreviewMode);
 
   useEffect(() => {
     void prewarmRustBackend();
+    if (isDevPreviewMode()) return;
     const timer = window.setTimeout(() => setIntroFinished(true), BRAND_INTRO_DURATION_MS);
     return () => window.clearTimeout(timer);
   }, []);
@@ -180,15 +193,13 @@ function RootSurfaces() {
       {introFinished && <OptionalSurface name="exclusão individual de mensagens privadas"><DirectMessageDeleteOptionsBridge /></OptionalSurface>}
       {introFinished && <OptionalSurface name="busca global"><GlobalSearchBridge /></OptionalSurface>}
       {introFinished && <OptionalSurface name="projetos avançados"><ProjectEnhancementsPortal /></OptionalSurface>}
-      {introFinished && <OptionalSurface name="arquivos do README de projetos"><ProjectReadmeAssetsBridge /></OptionalSurface>}
       {introFinished && <OptionalSurface name="instalação web"><InstallApp /></OptionalSurface>}
     </>
   );
 }
 
 function ApplicationRoot() {
-  const previewMode = import.meta.env.DEV
-    && new URLSearchParams(window.location.search).has("preview");
+  const previewMode = isDevPreviewMode();
 
   if (previewMode) return <RootSurfaces />;
 

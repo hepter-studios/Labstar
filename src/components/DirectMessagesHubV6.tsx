@@ -48,6 +48,7 @@ import {
   type DirectCallKind,
   type DirectCallSession,
 } from "../lib/directCalls";
+import { CHAT_CLEARED_EVENT, type ChatClearedDetail } from "../lib/chatMaintenance";
 import {
   deleteDirectMessage,
   editDirectMessage,
@@ -450,7 +451,7 @@ export function DirectMessagesHub({ member, onOpenWorkspace }: Props) {
             </button>
           ))}
         </div>
-        <button className="dm-add-space" onClick={() => onOpenWorkspace()} title="Abrir espaços"><Plus size={20} /></button>
+        <button className="dm-add-space" onClick={() => onOpenWorkspace()} title="Abrir espaços" aria-label="Abrir espaços"><Plus size={20} /></button>
       </aside>
 
       <aside className="dm-sidebar">
@@ -461,16 +462,16 @@ export function DirectMessagesHub({ member, onOpenWorkspace }: Props) {
         </label>
 
         <nav className="dm-navigation" aria-label="Mensagens diretas">
-          <button className={directoryTab === "friends" && !selectedContact ? "active" : ""} onClick={() => { goHome(); setDirectoryTab("friends"); }}><Users size={17} /><span>Amigos</span><b>{friendContacts.length}</b></button>
-          <button className={directoryTab === "all" && !selectedContact ? "active" : ""} onClick={() => { goHome(); setDirectoryTab("all"); }}><Users size={17} /><span>Todos</span><b>{activeContacts.length}</b></button>
-          <button className={directoryTab === "pending" && !selectedContact ? "active" : ""} onClick={() => { goHome(); setDirectoryTab("pending"); }}><Clock3 size={17} /><span>Pendentes</span>{pendingContacts.length > 0 && <b>{pendingContacts.length}</b>}</button>
-          <button onClick={startNewMessage}><UserPlus size={17} /><span>Nova conversa</span></button>
+          <button aria-label={`Amigos (${friendContacts.length})`} className={directoryTab === "friends" && !selectedContact ? "active" : ""} onClick={() => { goHome(); setDirectoryTab("friends"); }}><Users size={17} /><span>Amigos</span><b>{friendContacts.length}</b></button>
+          <button aria-label={`Todos (${activeContacts.length})`} className={directoryTab === "all" && !selectedContact ? "active" : ""} onClick={() => { goHome(); setDirectoryTab("all"); }}><Users size={17} /><span>Todos</span><b>{activeContacts.length}</b></button>
+          <button aria-label={`Pendentes (${pendingContacts.length})`} className={directoryTab === "pending" && !selectedContact ? "active" : ""} onClick={() => { goHome(); setDirectoryTab("pending"); }}><Clock3 size={17} /><span>Pendentes</span>{pendingContacts.length > 0 && <b>{pendingContacts.length}</b>}</button>
+          <button aria-label="Nova conversa" onClick={startNewMessage}><UserPlus size={17} /><span>Nova conversa</span></button>
         </nav>
 
         <div className="dm-divider" />
         <div className="dm-list-heading">
           <span>{directoryTab === "pending" ? "ACESSOS PENDENTES" : "MENSAGENS DIRETAS"}</span>
-          <button onClick={startNewMessage} title="Nova mensagem"><Plus size={15} /></button>
+          <button onClick={startNewMessage} title="Nova mensagem" aria-label="Nova mensagem"><Plus size={15} /></button>
         </div>
 
         <div className="dm-contact-list">
@@ -743,6 +744,15 @@ function DirectConversation({
     const subscription = subscribeToDirectThread(threadId, () => void refresh());
     return () => unsubscribeDirect(subscription);
   }, [contact.id, refresh, threadId]);
+
+  useEffect(() => {
+    const handleCleared = (event: Event) => {
+      const detail = (event as CustomEvent<ChatClearedDetail>).detail;
+      if (detail?.kind === "direct" && detail.threadId === threadId) void refresh();
+    };
+    window.addEventListener(CHAT_CLEARED_EVENT, handleCleared);
+    return () => window.removeEventListener(CHAT_CLEARED_EVENT, handleCleared);
+  }, [refresh, threadId]);
 
   useEffect(() => {
     if (!emojiOpen) return undefined;

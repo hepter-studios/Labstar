@@ -30,8 +30,12 @@ impl fmt::Display for ProfileConnectionError {
             Self::UnsupportedScheme => formatter.write_str("profile_connection_scheme_invalid"),
             Self::UnsupportedHost => formatter.write_str("profile_connection_host_invalid"),
             Self::UnsupportedPath => formatter.write_str("profile_connection_path_invalid"),
-            Self::UnsupportedParameter => formatter.write_str("profile_connection_parameter_invalid"),
-            Self::MissingParameter(parameter) => write!(formatter, "profile_connection_missing:{parameter}"),
+            Self::UnsupportedParameter => {
+                formatter.write_str("profile_connection_parameter_invalid")
+            }
+            Self::MissingParameter(parameter) => {
+                write!(formatter, "profile_connection_missing:{parameter}")
+            }
             Self::InvalidCallback => formatter.write_str("profile_connection_callback_invalid"),
             Self::InvalidValue => formatter.write_str("profile_connection_value_invalid"),
         }
@@ -115,7 +119,10 @@ mod tests {
     fn accepts_only_the_profile_connection_flow() {
         assert!(validate_github_authorization_url(&valid_url()).is_ok());
         assert!(validate_github_authorization_url("https://github.com/login").is_err());
-        assert!(validate_github_authorization_url("https://example.invalid/login/oauth/authorize").is_err());
+        assert!(
+            validate_github_authorization_url("https://example.invalid/login/oauth/authorize")
+                .is_err()
+        );
     }
 
     #[test]

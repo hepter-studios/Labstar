@@ -69,7 +69,7 @@ for each row execute function public.stamp_project_document_asset();
 -- Cargo profissional solicitado para a diretoria. Sem permissões administrativas
 -- extras por padrão: a liderança pode concedê-las depois, se necessário.
 insert into public.job_roles (name, department, color, icon, position, permissions)
-select 'CSO', 'Diretoria', '#9d8cff', 'star', 16, '{}'::text[]
+select 'CSO', 'Diretoria Científica', '#8B1E3F', 'star', 16, '{}'::text[]
 where not exists (
   select 1 from public.job_roles where lower(trim(name)) = 'cso'
 );
