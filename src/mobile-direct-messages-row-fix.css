@@ -1,0 +1,74 @@
+/* Correção cirúrgica da lista de DMs no mobile.
+ * O botão de favorito com height:100% criava um ciclo de altura no grid e
+ * podia esticar o primeiro contato até ocupar praticamente toda a lista.
+ */
+@media (max-width: 760px) {
+  .communication-direct-active .direct-hub:not(.conversation-open) .dm-contact-list {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    grid-auto-rows: 62px !important;
+    align-content: start !important;
+    align-items: stretch !important;
+    gap: 6px !important;
+    height: 100% !important;
+    min-height: 0 !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+  }
+
+  .communication-direct-active .direct-hub:not(.conversation-open) .dm-contact-entry {
+    position: relative !important;
+    inset: auto !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    height: 62px !important;
+    min-height: 62px !important;
+    max-height: 62px !important;
+    margin: 0 !important;
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) 38px !important;
+    align-items: center !important;
+    overflow: hidden !important;
+    transform: none !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    z-index: 1 !important;
+  }
+
+  .communication-direct-active .direct-hub:not(.conversation-open) .dm-contact-main {
+    position: relative !important;
+    inset: auto !important;
+    width: 100% !important;
+    height: 60px !important;
+    min-height: 60px !important;
+    max-height: 60px !important;
+    align-self: center !important;
+    overflow: hidden !important;
+    pointer-events: auto !important;
+    z-index: 2 !important;
+  }
+
+  .communication-direct-active .direct-hub:not(.conversation-open) .dm-favorite-contact {
+    position: relative !important;
+    inset: auto !important;
+    width: 38px !important;
+    min-width: 38px !important;
+    max-width: 38px !important;
+    height: 60px !important;
+    min-height: 60px !important;
+    max-height: 60px !important;
+    align-self: center !important;
+    margin: 0 !important;
+    pointer-events: auto !important;
+    z-index: 2 !important;
+  }
+
+  .communication-direct-active .direct-hub:not(.conversation-open) .dm-contact-entry::before,
+  .communication-direct-active .direct-hub:not(.conversation-open) .dm-contact-entry::after,
+  .communication-direct-active .direct-hub:not(.conversation-open) .dm-contact-main::before,
+  .communication-direct-active .direct-hub:not(.conversation-open) .dm-contact-main::after {
+    content: none !important;
+    display: none !important;
+  }
+}
