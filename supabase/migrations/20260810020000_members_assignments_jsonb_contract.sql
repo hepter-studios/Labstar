@@ -1,10 +1,26 @@
--- Labstar — exclusão de conta somente pelo serviço Rust e correções finais de acesso.
--- A service role permanece fora do frontend/Tauri. Esta migração remove a RPC
--- antiga que permitia ao cliente alcançar auth.users por SECURITY DEFINER.
+-- Corrige o contrato confirmado pelo banco publicado: members.assignments é
+-- jsonb. A migração anterior tratava a coluna como text[], o que só aparecia
+-- em tempo de execução nas rotinas SECURITY DEFINER.
 
 begin;
 
-drop function if exists public.delete_labstar_account(text, text);
+do $$
+declare
+  assignments_type text;
+begin
+  select c.udt_name
+    into assignments_type
+    from information_schema.columns as c
+   where c.table_schema = 'public'
+     and c.table_name = 'members'
+     and c.column_name = 'assignments';
+
+  if assignments_type is distinct from 'jsonb' then
+    raise exception 'unexpected_members_assignments_type: %', coalesce(assignments_type, '<missing>')
+      using errcode = '42804';
+  end if;
+end;
+$$;
 
 create or replace function public.finalize_labstar_account_deletion(
   target_member_id uuid,
@@ -67,105 +83,6 @@ revoke all on function public.finalize_labstar_account_deletion(uuid, text)
 grant execute on function public.finalize_labstar_account_deletion(uuid, text)
   to service_role;
 
-comment on function public.finalize_labstar_account_deletion(uuid, text) is
-  'Finaliza a anonimização depois que a API Rust remove a identidade no Supabase Auth; executável apenas por service_role.';
-
--- Limpar um canal continua sendo uma ação compartilhada e administrativa.
-create or replace function public.clear_channel_chat(target_channel_id uuid)
-returns integer
-language plpgsql
-security definer
-set search_path = public, storage, pg_temp
-as $$
-declare
-  target_space_id uuid;
-  deleted_count integer := 0;
-begin
-  if target_channel_id is null then
-    raise exception 'channel_required' using errcode = '22023';
-  end if;
-  if public.labstar_current_member_id() is null then
-    raise exception 'active_member_required' using errcode = '42501';
-  end if;
-  if not public.can_manage_labstar_channels() then
-    raise exception 'manage_channels_required' using errcode = '42501';
-  end if;
-
-  select channel.space_id
-    into target_space_id
-    from public.channels as channel
-   where channel.id = target_channel_id;
-  if target_space_id is null then
-    raise exception 'channel_not_found' using errcode = 'P0002';
-  end if;
-
-  delete from public.channel_messages
-   where channel_id = target_channel_id;
-  get diagnostics deleted_count = row_count;
-
-  begin
-    delete from storage.objects
-     where bucket_id = 'labstar-files'
-       and name like 'spaces/' || target_space_id::text || '/channels/' || target_channel_id::text || '/%';
-  exception when others then
-    raise warning 'labstar_channel_storage_cleanup_failed: %', sqlerrm;
-  end;
-
-  return deleted_count;
-end;
-$$;
-
-revoke all on function public.clear_channel_chat(uuid) from public, anon;
-grant execute on function public.clear_channel_chat(uuid) to authenticated;
-
--- Limpar DM passa a significar ocultar o histórico apenas para quem solicitou.
--- Nenhum participante pode apagar unilateralmente o histórico do outro.
-create or replace function public.clear_direct_conversation(target_thread_id uuid)
-returns integer
-language plpgsql
-security definer
-set search_path = public, pg_temp
-as $$
-declare
-  actor_id uuid;
-  hidden_count integer := 0;
-begin
-  if target_thread_id is null then
-    raise exception 'direct_thread_required' using errcode = '22023';
-  end if;
-
-  actor_id := public.labstar_current_member_id();
-  if actor_id is null then
-    raise exception 'active_member_required' using errcode = '42501';
-  end if;
-  if not exists (
-    select 1
-      from public.direct_thread_members as membership
-     where membership.thread_id = target_thread_id
-       and membership.member_id = actor_id
-  ) then
-    raise exception 'direct_thread_access_denied' using errcode = '42501';
-  end if;
-
-  insert into public.hidden_direct_messages (member_id, message_id)
-  select actor_id, message.id
-    from public.direct_messages as message
-   where message.thread_id = target_thread_id
-  on conflict (member_id, message_id) do nothing;
-  get diagnostics hidden_count = row_count;
-
-  return hidden_count;
-end;
-$$;
-
-revoke all on function public.clear_direct_conversation(uuid) from public, anon;
-grant execute on function public.clear_direct_conversation(uuid) to authenticated;
-
-comment on function public.clear_direct_conversation(uuid) is
-  'Oculta o histórico da conversa direta somente para o participante autenticado.';
-
--- Reinstala a função com o tipo real de members.assignments (jsonb) e mantém
--- a herança categoria -> canal como regra obrigatória para canais privados.
 create or replace function public.member_can_access_labstar_channel(target_channel_id uuid)
 returns boolean
 language plpgsql
@@ -232,12 +149,4 @@ $$;
 revoke all on function public.member_can_access_labstar_channel(uuid) from public, anon;
 grant execute on function public.member_can_access_labstar_channel(uuid) to authenticated;
 
--- CSO = Chief Scientific Officer / Diretora Científica. O carmesim é de
--- identidade do cargo e deliberadamente difere do vermelho destrutivo da UI.
-update public.job_roles
-   set department = 'Diretoria Científica',
-       color = '#8B1E3F'
- where lower(trim(name)) = 'cso';
-
-notify pgrst, 'reload schema';
 commit;

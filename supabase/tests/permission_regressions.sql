@@ -3,7 +3,7 @@ begin;
 create extension if not exists pgtap with schema extensions;
 set local search_path = public, extensions, pg_catalog;
 
-select plan(19);
+select plan(20);
 
 select ok(
   to_regprocedure('public.delete_labstar_account(text,text)') is null,
@@ -25,6 +25,10 @@ select ok(
   has_function_privilege('service_role', 'public.finalize_labstar_account_deletion(uuid,text)', 'EXECUTE'),
   'somente o serviço administrativo pode finalizar a exclusão'
 );
+select ok(
+  lower(pg_get_functiondef('public.finalize_labstar_account_deletion(uuid,text)'::regprocedure)) like '%assignments = ''[]''::jsonb%',
+  'a finalização limpa assignments usando o tipo jsonb real'
+);
 
 select ok((select relrowsecurity from pg_class where oid = 'public.channels'::regclass), 'RLS está ativa em canais');
 select ok((select relrowsecurity from pg_class where oid = 'public.channel_messages'::regclass), 'RLS está ativa em mensagens de canal');
@@ -45,12 +49,12 @@ select ok(
 
 select is(
   (select data_type from information_schema.columns where table_schema = 'public' and table_name = 'members' and column_name = 'assignments'),
-  'ARRAY',
-  'members.assignments permanece um array PostgreSQL'
+  'jsonb',
+  'members.assignments preserva o contrato jsonb publicado'
 );
 select ok(
-  lower(pg_get_functiondef('public.member_can_access_labstar_channel(uuid)'::regprocedure)) like '%unnest(coalesce(actor.assignments, %',
-  'acesso a canais lê assignments como text[]'
+  lower(pg_get_functiondef('public.member_can_access_labstar_channel(uuid)'::regprocedure)) like '%jsonb_array_elements_text%actor.assignments%',
+  'acesso a canais normaliza assignments jsonb com segurança'
 );
 select ok(
   lower(pg_get_functiondef('public.member_can_access_labstar_channel(uuid)'::regprocedure)) like '%member_can_access_labstar_category(target.category_id)%',

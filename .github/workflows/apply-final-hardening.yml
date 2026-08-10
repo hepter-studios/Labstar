@@ -6,6 +6,7 @@ on:
       - main
     paths:
       - "supabase/migrations/20260810010000_server_side_account_deletion_and_permission_hardening.sql"
+      - "supabase/migrations/20260810020000_members_assignments_jsonb_contract.sql"
       - "supabase/tests/permission_regressions.sql"
       - ".github/workflows/apply-final-hardening.yml"
   workflow_dispatch:
@@ -74,6 +75,13 @@ jobs:
             postgres:17-bookworm \
             psql "${SUPABASE_DATABASE_URL}" --set ON_ERROR_STOP=1 \
               --file /workspace/supabase/migrations/20260810010000_server_side_account_deletion_and_permission_hardening.sql
+          docker run --rm \
+            -e SUPABASE_DATABASE_URL \
+            -e PGSSLMODE=require \
+            -v "${PWD}:/workspace:ro" \
+            postgres:17-bookworm \
+            psql "${SUPABASE_DATABASE_URL}" --set ON_ERROR_STOP=1 \
+              --file /workspace/supabase/migrations/20260810020000_members_assignments_jsonb_contract.sql
 
       - name: Testar grants, RLS e contratos
         shell: bash
@@ -89,7 +97,7 @@ jobs:
             psql "${SUPABASE_DATABASE_URL}" --set ON_ERROR_STOP=1 \
               --file /workspace/supabase/tests/permission_regressions.sql \
               | tee final-hardening-audit.txt
-          grep -q "1\.\.19" final-hardening-audit.txt
+          grep -q "1\.\.20" final-hardening-audit.txt
           ! grep -q "not ok" final-hardening-audit.txt
 
       - name: Guardar backup privado e auditoria
