@@ -10,8 +10,11 @@ import { getCurrentAccessIdentity } from "../lib/access";
 import { getCurrentIdentity, type Member } from "../lib/supabase";
 import { GlobalSettings } from "./GlobalSettings";
 
+const MOBILE_SETTINGS_QUERY = "(max-width: 760px)";
+
 export function GlobalSettingsPortal() {
   const [target, setTarget] = useState<Element | null>(null);
+  const [mobileLauncher, setMobileLauncher] = useState(false);
   const [open, setOpen] = useState(false);
   const [member, setMember] = useState<Member | null>(null);
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_APP_SETTINGS);
@@ -19,11 +22,20 @@ export function GlobalSettingsPortal() {
   const startupApplied = useRef(false);
 
   useEffect(() => {
-    const find = () => setTarget(document.querySelector(".rail-bottom"));
+    const media = window.matchMedia(MOBILE_SETTINGS_QUERY);
+    const find = () => {
+      const mobile = media.matches;
+      setMobileLauncher(mobile);
+      setTarget(document.querySelector(mobile ? ".header-actions" : ".rail-bottom"));
+    };
     find();
     const observer = new MutationObserver(find);
     observer.observe(document.body, { childList: true, subtree: true });
-    return () => observer.disconnect();
+    media.addEventListener("change", find);
+    return () => {
+      observer.disconnect();
+      media.removeEventListener("change", find);
+    };
   }, []);
 
   useEffect(() => {
@@ -86,7 +98,7 @@ export function GlobalSettingsPortal() {
       type="button"
       data-tooltip="Configurações"
       aria-label="Configurações do Labstar"
-      className={open ? "active" : ""}
+      className={`${mobileLauncher ? "mobile-settings-button" : ""} ${open ? "active" : ""}`.trim()}
       onClick={() => setOpen((value) => !value)}
     >
       <Settings size={17} />
