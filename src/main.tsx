@@ -25,6 +25,7 @@ import { MediaPreferenceBridge } from "./components/MediaPreferenceBridge";
 import { MemberPanelTools } from "./components/MemberPanelTools";
 import { MemberQuickActions } from "./components/MemberQuickActions";
 import { MessageWorkItemBridge } from "./components/MessageWorkItemBridge";
+import { OrganizationSwitcherPortal } from "./components/OrganizationSwitcherPortal";
 import { ProfessionalPermissionBridge } from "./components/ProfessionalPermissionBridge";
 import { ProjectEnhancementsPortal } from "./components/ProjectEnhancementsPortal";
 import { PushNotificationBridge } from "./components/PushNotificationBridge";
@@ -78,6 +79,7 @@ import "./professional-permission-bridge.css";
 import "./brand-home-navigation";
 import "./product-polish.css";
 import "./universal-profile-mention.css";
+import "./organization-switcher.css";
 
 const BRAND_INTRO_DURATION_MS = 2350;
 const NATIVE_BRIDGE_TIMEOUT_MS = 4000;
@@ -177,6 +179,7 @@ function RootSurfaces() {
       <OptionalSurface name="confiabilidade de runtime"><RuntimeReliability /></OptionalSurface>
       <OptionalSurface name="preferências de mídia"><MediaPreferenceBridge /></OptionalSurface>
       <OptionalSurface name="dashboard operacional"><DashboardWorkSurface /></OptionalSurface>
+      {introFinished && <OptionalSurface name="organizações"><OrganizationSwitcherPortal /></OptionalSurface>}
       {introFinished && <OptionalSurface name="configurações globais"><GlobalSettingsPortal /></OptionalSurface>}
       {introFinished && <OptionalSurface name="diagnóstico do sistema"><SystemDiagnosticsAddon /></OptionalSurface>}
       {introFinished && <OptionalSurface name="configurações do espaço"><WorkspaceSettingsPortal /></OptionalSurface>}

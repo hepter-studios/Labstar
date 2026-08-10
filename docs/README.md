@@ -8,6 +8,7 @@ Comece pelo `README.md` da raiz e use este índice para encontrar a documentaç�
 | [`ENVIRONMENT_SETUP.md`](ENVIRONMENT_SETUP.md) | configurar variáveis, secrets, OAuth, CORS e ambientes sem expor credenciais |
 | [`DATABASE_BOOTSTRAP.md`](DATABASE_BOOTSTRAP.md) | preparar/restaurar banco e aplicar migrações na ordem correta |
 | [`PROJECT_MAP.md`](PROJECT_MAP.md) | entender onde estão frontend, Tauri, Rust, backend, banco, branches e serviços |
+| [`PRODUCT_COMPLETION_MAP.md`](PRODUCT_COMPLETION_MAP.md) | mapa completo do produto: organizações, idiomas, superfícies de programação, integrações, mobile, desktop e caminho comercial |
 | [`TEAM_ONBOARDING.md`](TEAM_ONBOARDING.md) | integrar uma pessoa nova ou orientar o Codex antes de alterar código |
 | [`ARCHITECTURE_DECISIONS.md`](ARCHITECTURE_DECISIONS.md) | conferir decisões que não devem ser revertidas sem discussão |
 | [`OPERATIONS.md`](OPERATIONS.md) | diagnosticar API, login, deploy, backup, incidente e rollback |
@@ -22,13 +23,14 @@ Comece pelo `README.md` da raiz e use este índice para encontrar a documentaç�
 1. `README.md`;
 2. `BUILD_FROM_SOURCE.md`;
 3. `PROJECT_MAP.md`;
-4. `ENVIRONMENT_SETUP.md`;
-5. `DATABASE_BOOTSTRAP.md` quando houver trabalho de banco;
-6. `TEAM_ONBOARDING.md`;
-7. `ARCHITECTURE_DECISIONS.md`;
-8. `CONTRIBUTING.md`;
-9. issue e PR da tarefa;
-10. documento operacional ou de release aplicável.
+4. `PRODUCT_COMPLETION_MAP.md`;
+5. `ENVIRONMENT_SETUP.md`;
+6. `DATABASE_BOOTSTRAP.md` quando houver trabalho de banco;
+7. `TEAM_ONBOARDING.md`;
+8. `ARCHITECTURE_DECISIONS.md`;
+9. `CONTRIBUTING.md`;
+10. issue e PR da tarefa;
+11. documento operacional ou de release aplicável.
 
 ## Fonte de verdade
 
@@ -36,6 +38,7 @@ Comece pelo `README.md` da raiz e use este índice para encontrar a documentaç�
 - reconstrução: `BUILD_FROM_SOURCE.md`;
 - ambientes/secrets: `ENVIRONMENT_SETUP.md`;
 - banco/migrações: `DATABASE_BOOTSTRAP.md` e arquivos SQL versionados;
+- direção e ordem do produto: `PRODUCT_COMPLETION_MAP.md`;
 - estado da integração: PR #7;
 - tarefas e matriz de testes: Issue #8;
 - backend: PR #5 e branch `feat/rust-backend-clean`;
