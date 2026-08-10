@@ -1,5 +1,6 @@
-/* Abertura Labstar — mesma identidade visual da tela de login atual. */
-html body .access-screen.brand-intro {
+/* Abertura e validação do Labstar — mesma identidade visual da tela de login atual. */
+html body .access-screen.brand-intro,
+html body .access-screen:not(.brand-intro) {
   position: fixed !important;
   inset: 0 !important;
   display: grid !important;
@@ -15,7 +16,8 @@ html body .access-screen.brand-intro {
   background-size: 151px 143px, 207px 191px, 239px 223px, 293px 271px, auto !important;
 }
 
-html body .access-screen.brand-intro::before {
+html body .access-screen.brand-intro::before,
+html body .access-screen:not(.brand-intro)::before {
   content: "";
   position: absolute;
   inset: 0;
@@ -23,7 +25,8 @@ html body .access-screen.brand-intro::before {
   background: linear-gradient(135deg, rgba(4,6,12,.12), rgba(0,0,0,.46));
 }
 
-html body .access-screen.brand-intro::after {
+html body .access-screen.brand-intro::after,
+html body .access-screen:not(.brand-intro)::after {
   content: "";
   position: absolute;
   inset: -8%;
@@ -67,13 +70,17 @@ html body .access-screen.brand-intro .intro-mark::before {
 /* Força a tipografia oficial nova na abertura, independentemente das regras legadas. */
 html body .access-screen.brand-intro .wordmark.large,
 html body .access-screen.brand-intro .wordmark.large .word-letter,
-html body .access-screen.brand-intro .wordmark.large .letter-a {
+html body .access-screen.brand-intro .wordmark.large .letter-a,
+html body .access-screen:not(.brand-intro) .wordmark.large,
+html body .access-screen:not(.brand-intro) .wordmark.large .word-letter,
+html body .access-screen:not(.brand-intro) .wordmark.large .letter-a {
   font-family: "Labstar Anurati", Inter, ui-sans-serif, system-ui, sans-serif !important;
   font-weight: 400 !important;
   font-synthesis: none !important;
 }
 
-html body .access-screen.brand-intro .wordmark.large {
+html body .access-screen.brand-intro .wordmark.large,
+html body .access-screen:not(.brand-intro) .wordmark.large {
   margin: 0 !important;
   gap: .17em !important;
   color: #f2f5fb !important;
@@ -82,17 +89,83 @@ html body .access-screen.brand-intro .wordmark.large {
   line-height: 1 !important;
 }
 
-html body .access-screen.brand-intro .transform-letter {
+html body .access-screen.brand-intro .transform-letter,
+html body .access-screen:not(.brand-intro) .transform-letter {
   width: .92em !important;
 }
 
-html body .access-screen.brand-intro .star-letter {
+html body .access-screen.brand-intro .star-letter,
+html body .access-screen:not(.brand-intro) .star-letter {
   width: .90em !important;
   height: .90em !important;
 }
 
 html body .access-screen.brand-intro .intro-progress {
   display: none !important;
+}
+
+/*
+ * O App ainda possui um segundo estado de validação legado. Enquanto ele é removido
+ * definitivamente da arquitetura, essa tela não pode piscar o layout antigo.
+ * O <p> vira um lockup de marca: estrela oficial + LABSTAR em Anurati.
+ */
+html body .access-screen:not(.brand-intro) > p {
+  width: max-content !important;
+  height: auto !important;
+  min-width: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  position: relative !important;
+  z-index: 2 !important;
+  display: grid !important;
+  justify-items: center !important;
+  gap: 7px !important;
+  color: transparent !important;
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  font-size: 0 !important;
+  letter-spacing: 0 !important;
+  animation: none !important;
+}
+
+html body .access-screen:not(.brand-intro) > p::before {
+  content: "";
+  width: 28px;
+  height: 28px;
+  display: block;
+  background: center / contain no-repeat url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23eaf0ff' stroke='%23eaf0ff' stroke-width='1.25' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolygon points='12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2'/%3E%3C/svg%3E");
+  filter: drop-shadow(0 0 10px rgba(139,174,255,.5));
+  animation: labstar-intro-star-breathe 1.8s ease-in-out infinite alternate;
+}
+
+html body .access-screen:not(.brand-intro) > p::after {
+  content: "LABSTAR";
+  display: block;
+  color: #f2f5fb;
+  font-family: "Labstar Anurati", Inter, ui-sans-serif, system-ui, sans-serif;
+  font-size: 31px;
+  font-weight: 400;
+  font-synthesis: none;
+  letter-spacing: .018em;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+/* O login legado que pode aparecer durante o logout recebe a mesma estrela acima do wordmark. */
+html body .access-screen:not(.brand-intro) .access-card {
+  position: relative !important;
+  z-index: 2 !important;
+}
+
+html body .access-screen:not(.brand-intro) .access-card::before {
+  content: "";
+  width: 28px;
+  height: 28px;
+  display: block;
+  margin: 0 auto 7px;
+  background: center / contain no-repeat url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23eaf0ff' stroke='%23eaf0ff' stroke-width='1.25' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolygon points='12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2'/%3E%3C/svg%3E");
+  filter: drop-shadow(0 0 10px rgba(139,174,255,.5));
 }
 
 @keyframes labstar-intro-stars {
@@ -106,20 +179,26 @@ html body .access-screen.brand-intro .intro-progress {
 }
 
 @media (max-width: 760px) {
-  html body .access-screen.brand-intro .intro-mark::before {
+  html body .access-screen.brand-intro .intro-mark::before,
+  html body .access-screen:not(.brand-intro) > p::before,
+  html body .access-screen:not(.brand-intro) .access-card::before {
     width: 30px;
     height: 30px;
     margin-bottom: 7px;
   }
 
-  html body .access-screen.brand-intro .wordmark.large {
+  html body .access-screen.brand-intro .wordmark.large,
+  html body .access-screen:not(.brand-intro) .wordmark.large,
+  html body .access-screen:not(.brand-intro) > p::after {
     font-size: 34px !important;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
   html body .access-screen.brand-intro::after,
-  html body .access-screen.brand-intro .intro-mark::before {
+  html body .access-screen:not(.brand-intro)::after,
+  html body .access-screen.brand-intro .intro-mark::before,
+  html body .access-screen:not(.brand-intro) > p::before {
     animation: none !important;
   }
 }
