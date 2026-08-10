@@ -9,19 +9,7 @@ html body .access-v2-card.login {
   backdrop-filter: none !important;
 }
 
-/* No login, a estrela oficial assume o lugar do rótulo textual antigo acima da marca. */
-html body .access-v2-card.login::before {
-  content: "";
-  width: 28px;
-  height: 28px;
-  display: block;
-  margin: 0 auto 7px;
-  background: center / contain no-repeat url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23eaf0ff' stroke='%23eaf0ff' stroke-width='1.25' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolygon points='12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2'/%3E%3C/svg%3E");
-  filter: drop-shadow(0 0 10px rgba(139, 174, 255, .5));
-}
-
-/* O login antigo escrevia L★BSTAR como texto comum. Mantemos o DOM e
- * reconstruímos a marca com Anurati + a estrela oficial do wordmark. */
+/* A estrela oficial substitui o A dentro do wordmark. Ela nunca aparece solta acima da marca. */
 html body .access-v2-card.login .access-v2-wordmark {
   margin: 0 auto 22px !important;
   display: flex !important;
@@ -43,21 +31,22 @@ html body .access-v2-card.login .access-v2-wordmark > span {
   width: .92em !important;
   height: .92em !important;
   flex: 0 0 .92em !important;
-  display: inline-grid !important;
-  place-items: center !important;
+  display: inline-block !important;
   overflow: visible !important;
   color: transparent !important;
-  font-size: 0 !important;
+  font-size: 1em !important;
+  line-height: 1 !important;
   filter: none !important;
 }
 
 html body .access-v2-card.login .access-v2-wordmark > span::before {
   content: "";
-  width: .92em;
-  height: .92em;
+  position: absolute;
+  inset: 0;
   display: block;
   background: center / contain no-repeat url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23eaf0ff' stroke='%23eaf0ff' stroke-width='1.25' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolygon points='12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2'/%3E%3C/svg%3E");
   filter: drop-shadow(0 0 7px rgba(139, 174, 255, .42));
+  transform: translateY(-.025em);
 }
 
 html body .access-v2-card.login .access-v2-provider-list {
@@ -132,12 +121,6 @@ html body .access-v2-card.login .access-v2-invite-copy {
     margin: 0 !important;
     padding: 16px 20px 18px !important;
     border-radius: 0 !important;
-  }
-
-  html body .access-v2-card.login::before {
-    width: 30px;
-    height: 30px;
-    margin-bottom: 7px;
   }
 
   html body .access-v2-card.login .access-v2-wordmark {
