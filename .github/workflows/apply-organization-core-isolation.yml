@@ -1,0 +1,113 @@
+name: Aplicar isolamento organizacional
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "supabase/migrations/20260810204500_organization_core_isolation.sql"
+      - ".github/workflows/apply-organization-core-isolation.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: labstar-organization-core-isolation
+  cancel-in-progress: false
+
+jobs:
+  migrate:
+    name: Backup, migração e auditoria organizacional
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Baixar código oficial
+        uses: actions/checkout@v4
+
+      - name: Validar conexão protegida
+        shell: bash
+        env:
+          SUPABASE_DATABASE_URL: ${{ secrets.SUPABASE_DATABASE_URL }}
+        run: |
+          set -euo pipefail
+          test -n "${SUPABASE_DATABASE_URL:-}" || (echo "SUPABASE_DATABASE_URL não configurado" && exit 1)
+
+      - name: Preparar PostgreSQL 17
+        run: docker pull postgres:17-bookworm
+
+      - name: Backup antes da migração
+        shell: bash
+        env:
+          SUPABASE_DATABASE_URL: ${{ secrets.SUPABASE_DATABASE_URL }}
+        run: |
+          set -euo pipefail
+          mkdir -p backup
+          stamp="$(date -u +'%Y-%m-%dT%H-%M-%SZ')"
+          docker run --rm \
+            -e SUPABASE_DATABASE_URL \
+            -e PGSSLMODE=require \
+            -v "${PWD}/backup:/backup" \
+            postgres:17-bookworm \
+            bash -euo pipefail -c 'pg_dump --dbname="${SUPABASE_DATABASE_URL}" --format=custom --no-owner --no-privileges --file="/backup/labstar-before-org-isolation.dump"'
+          sha256sum backup/*.dump > backup/SHA256SUMS.txt
+          echo "${stamp}" > backup/CREATED_AT.txt
+
+      - name: Aplicar migração
+        shell: bash
+        env:
+          SUPABASE_DATABASE_URL: ${{ secrets.SUPABASE_DATABASE_URL }}
+        run: |
+          set -euo pipefail
+          docker run --rm \
+            -e SUPABASE_DATABASE_URL \
+            -e PGSSLMODE=require \
+            -v "${PWD}:/workspace:ro" \
+            postgres:17-bookworm \
+            psql "${SUPABASE_DATABASE_URL}" --set ON_ERROR_STOP=1 --file /workspace/supabase/migrations/20260810204500_organization_core_isolation.sql
+
+      - name: Auditar preservação da Hepter Studios
+        shell: bash
+        env:
+          SUPABASE_DATABASE_URL: ${{ secrets.SUPABASE_DATABASE_URL }}
+        run: |
+          set -euo pipefail
+          docker run --rm \
+            -e SUPABASE_DATABASE_URL \
+            -e PGSSLMODE=require \
+            postgres:17-bookworm \
+            psql "${SUPABASE_DATABASE_URL}" --set ON_ERROR_STOP=1 --tuples-only --no-align --command "
+              select
+                exists (
+                  select 1 from public.organizations
+                  where id='00000000-0000-4000-8000-000000000001'::uuid
+                    and is_primary_legacy
+                    and name='Hepter Studios'
+                )
+                and exists (
+                  select 1 from public.workspaces
+                  where id='labstar-main'
+                    and organization_id='00000000-0000-4000-8000-000000000001'::uuid
+                )
+                and not exists (
+                  select 1 from public.collaboration_spaces
+                  where organization_id is null
+                )
+                and not exists (
+                  select 1 from public.channels
+                  where organization_id is null
+                );
+            " | tee organization-isolation-audit.txt
+          grep -qx 't' organization-isolation-audit.txt
+
+      - name: Guardar backup privado
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: labstar-before-org-isolation-${{ github.run_number }}
+          path: |
+            backup/
+            organization-isolation-audit.txt
+          if-no-files-found: warn
+          retention-days: 7
+          compression-level: 6
