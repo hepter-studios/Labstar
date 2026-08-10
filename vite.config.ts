@@ -11,8 +11,13 @@ const runtimeEnvironment = (
 const isDesktopBuild = runtimeEnvironment.LABSTAR_DESKTOP_BUILD === "1"
   || Boolean(runtimeEnvironment.TAURI_ENV_PLATFORM);
 
-const labstarApiUrl = runtimeEnvironment.VITE_LABSTAR_API_URL?.trim()
+const upstreamLabstarApiUrl = runtimeEnvironment.VITE_LABSTAR_API_URL?.trim()
   || "https://labstar-api-mackson.fly.dev";
+
+// No navegador, chamadas administrativas passam pelo mesmo domínio do Labstar.
+// Isso evita que CORS/DNS do navegador transforme um backend saudável em
+// "serviço indisponível". O desktop continua chamando a API Rust diretamente.
+const labstarApiUrl = isDesktopBuild ? upstreamLabstarApiUrl : "/api/admin";
 
 export default defineConfig({
   define: {
@@ -61,6 +66,13 @@ export default defineConfig({
   server: {
     host: "0.0.0.0",
     allowedHosts: ["terminal.local"],
+    proxy: !isDesktopBuild ? {
+      "/api/admin": {
+        target: upstreamLabstarApiUrl,
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/admin/, ""),
+      },
+    } : undefined,
   },
   build: {
     target: "es2022",
