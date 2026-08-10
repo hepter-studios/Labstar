@@ -1,0 +1,409 @@
+/* Correção final e isolada das mensagens diretas no mobile.
+ * A tela deixa de depender das grades antigas: lista OU conversa ocupa toda
+ * a área útil abaixo do seletor Home/DM/Canais.
+ */
+@media (max-width: 760px) {
+  .communication-direct-active {
+    position: relative !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    overflow: hidden !important;
+  }
+
+  .communication-direct-active .direct-hub,
+  .communication-direct-active .direct-hub.conversation-open {
+    position: absolute !important;
+    z-index: 1 !important;
+    top: 52px !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    inset: 52px 0 0 !important;
+    width: 100% !important;
+    height: auto !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    display: block !important;
+    overflow: hidden !important;
+    isolation: isolate !important;
+    background: #05070b !important;
+  }
+
+  /* No telefone a nebulosa decorativa não pode virar uma camada sobre a UI. */
+  .communication-direct-active .direct-hub::before,
+  .communication-direct-active .direct-hub::after {
+    content: none !important;
+    display: none !important;
+  }
+
+  .communication-direct-active .dm-space-rail,
+  .communication-direct-active .dm-home-main,
+  .communication-direct-active .dm-inbox,
+  .communication-direct-active .dm-profile-panel {
+    display: none !important;
+  }
+
+  /* ---------------------------- LISTA ---------------------------------- */
+  .communication-direct-active .direct-hub:not(.conversation-open) .dm-sidebar {
+    position: absolute !important;
+    inset: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    max-width: 100% !important;
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    grid-template-rows: 44px 46px 1px 30px minmax(0, 1fr) !important;
+    overflow: hidden !important;
+    border: 0 !important;
+    background: #070a10 !important;
+  }
+
+  .communication-direct-active .direct-hub:not(.conversation-open) .dm-search {
+    width: auto !important;
+    height: 36px !important;
+    min-width: 0 !important;
+    margin: 4px 10px !important;
+    padding: 0 10px !important;
+    box-sizing: border-box !important;
+  }
+
+  .communication-direct-active .direct-hub:not(.conversation-open) .dm-navigation {
+    width: 100% !important;
+    min-width: 0 !important;
+    height: 46px !important;
+    padding: 4px 10px 5px !important;
+    display: grid !important;
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+    align-items: stretch !important;
+    gap: 5px !important;
+    overflow: hidden !important;
+  }
+
+  .communication-direct-active .direct-hub:not(.conversation-open) .dm-navigation button {
+    width: 100% !important;
+    min-width: 0 !important;
+    min-height: 36px !important;
+    height: 36px !important;
+    padding: 0 6px !important;
+    display: grid !important;
+    grid-template-columns: auto minmax(0, 1fr) auto !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 5px !important;
+    overflow: hidden !important;
+  }
+
+  .communication-direct-active .direct-hub:not(.conversation-open) .dm-navigation button span {
+    min-width: 0 !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+  }
+
+  .communication-direct-active .direct-hub:not(.conversation-open) .dm-divider {
+    width: auto !important;
+    height: 1px !important;
+    margin: 0 10px !important;
+  }
+
+  .communication-direct-active .direct-hub:not(.conversation-open) .dm-list-heading {
+    width: 100% !important;
+    height: 30px !important;
+    min-width: 0 !important;
+    padding: 0 12px !important;
+  }
+
+  .communication-direct-active .direct-hub:not(.conversation-open) .dm-contact-list {
+    width: 100% !important;
+    height: 100% !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    max-width: 100% !important;
+    padding: 6px 10px 16px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 6px !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    overscroll-behavior: contain !important;
+    scrollbar-width: thin;
+    background: #070a10 !important;
+  }
+
+  .communication-direct-active .direct-hub:not(.conversation-open) .dm-contact-entry {
+    position: relative !important;
+    inset: auto !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    height: auto !important;
+    min-height: 62px !important;
+    flex: 0 0 auto !important;
+    margin: 0 !important;
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) 38px !important;
+    align-items: stretch !important;
+    transform: none !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    overflow: hidden !important;
+    border: 1px solid rgba(139, 174, 255, .08) !important;
+    border-radius: 12px !important;
+    background: #090d14 !important;
+  }
+
+  .communication-direct-active .direct-hub:not(.conversation-open) .dm-contact-entry.active {
+    border-color: rgba(91, 138, 246, .24) !important;
+    background: rgba(51, 84, 155, .12) !important;
+    box-shadow: inset 2px 0 #4d84ff !important;
+  }
+
+  .communication-direct-active .direct-hub:not(.conversation-open) .dm-contact-main {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    min-height: 60px !important;
+    height: auto !important;
+    padding: 8px 6px 8px 9px !important;
+    display: grid !important;
+    grid-template-columns: 38px minmax(0, 1fr) auto !important;
+    align-items: center !important;
+    gap: 9px !important;
+    overflow: hidden !important;
+  }
+
+  .communication-direct-active .direct-hub:not(.conversation-open) .dm-contact-main > span,
+  .communication-direct-active .direct-hub:not(.conversation-open) .dm-contact-main strong,
+  .communication-direct-active .direct-hub:not(.conversation-open) .dm-contact-main small {
+    min-width: 0 !important;
+    max-width: 100% !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+  }
+
+  .communication-direct-active .direct-hub:not(.conversation-open) .dm-contact-main strong {
+    color: #e8edf7 !important;
+    font-size: 12px !important;
+  }
+
+  .communication-direct-active .direct-hub:not(.conversation-open) .dm-contact-main small {
+    display: block !important;
+    margin-top: 3px !important;
+    color: #758197 !important;
+    font-size: 9px !important;
+  }
+
+  .communication-direct-active .direct-hub:not(.conversation-open) .dm-favorite-contact {
+    position: static !important;
+    inset: auto !important;
+    width: 38px !important;
+    min-width: 38px !important;
+    height: 100% !important;
+    min-height: 60px !important;
+    margin: 0 !important;
+    align-self: stretch !important;
+    border-radius: 0 !important;
+  }
+
+  .communication-direct-active .direct-hub:not(.conversation-open) .dm-own-profile {
+    display: none !important;
+  }
+
+  /* --------------------------- CONVERSA -------------------------------- */
+  .communication-direct-active .direct-hub.conversation-open .dm-sidebar {
+    display: none !important;
+  }
+
+  .communication-direct-active .direct-hub:not(.conversation-open) .dm-conversation {
+    display: none !important;
+  }
+
+  .communication-direct-active .direct-hub.conversation-open .dm-conversation {
+    position: absolute !important;
+    inset: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    max-width: 100% !important;
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    grid-template-rows: 58px minmax(0, 1fr) auto !important;
+    overflow: hidden !important;
+    border: 0 !important;
+    background: #05070b !important;
+  }
+
+  .communication-direct-active .direct-hub.conversation-open .dm-conversation-header {
+    grid-row: 1 !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    min-height: 58px !important;
+    height: 58px !important;
+    padding: 0 8px !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 7px !important;
+    overflow: hidden !important;
+    border-bottom: 1px solid rgba(255, 255, 255, .07) !important;
+    background: #080c12 !important;
+  }
+
+  .communication-direct-active .direct-hub.conversation-open .dm-mobile-back {
+    width: 36px !important;
+    min-width: 36px !important;
+    height: 36px !important;
+    min-height: 36px !important;
+    flex: 0 0 36px !important;
+    display: grid !important;
+    place-items: center !important;
+  }
+
+  .communication-direct-active .direct-hub.conversation-open .dm-conversation-person {
+    min-width: 0 !important;
+    max-width: none !important;
+    flex: 1 1 auto !important;
+    overflow: hidden !important;
+  }
+
+  .communication-direct-active .direct-hub.conversation-open .dm-conversation-person > span {
+    min-width: 0 !important;
+    overflow: hidden !important;
+  }
+
+  .communication-direct-active .direct-hub.conversation-open .dm-conversation-person strong {
+    max-width: 100% !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+  }
+
+  .communication-direct-active .direct-hub.conversation-open .dm-conversation-actions {
+    min-width: 0 !important;
+    flex: 0 0 auto !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 3px !important;
+  }
+
+  .communication-direct-active .direct-hub.conversation-open .dm-conversation-actions > button {
+    width: 34px !important;
+    min-width: 34px !important;
+    height: 34px !important;
+    min-height: 34px !important;
+    flex: 0 0 34px !important;
+  }
+
+  .communication-direct-active .direct-hub.conversation-open .dm-conversation-actions > button:first-child,
+  .communication-direct-active .direct-hub.conversation-open .dm-conversation-actions > button:nth-child(4),
+  .communication-direct-active .direct-hub.conversation-open .dm-conversation-actions label {
+    display: none !important;
+  }
+
+  .communication-direct-active .direct-hub.conversation-open .dm-message-scroll {
+    grid-row: 2 !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    max-width: 100% !important;
+    padding: 6px 0 10px !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    overscroll-behavior: contain !important;
+    background: #05070b !important;
+  }
+
+  .communication-direct-active .direct-hub.conversation-open .dm-thread-intro {
+    width: 100% !important;
+    min-width: 0 !important;
+    padding: 18px 12px 16px !important;
+  }
+
+  .communication-direct-active .direct-hub.conversation-open .dm-message {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    padding: 9px 10px !important;
+    display: grid !important;
+    grid-template-columns: 36px minmax(0, 1fr) !important;
+    gap: 8px !important;
+    overflow: visible !important;
+  }
+
+  .communication-direct-active .direct-hub.conversation-open .dm-message-body,
+  .communication-direct-active .direct-hub.conversation-open .developer-message-body,
+  .communication-direct-active .direct-hub.conversation-open .dm-attachments {
+    min-width: 0 !important;
+    max-width: 100% !important;
+  }
+
+  .communication-direct-active .direct-hub.conversation-open .dm-composer {
+    grid-row: 3 !important;
+    position: relative !important;
+    inset: auto !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 6px 8px calc(max(7px, env(safe-area-inset-bottom)) + 4px) !important;
+    overflow: visible !important;
+    border-top: 1px solid rgba(255, 255, 255, .07) !important;
+    background: #070a10 !important;
+  }
+
+  .communication-direct-active .direct-hub.conversation-open .dm-composer > div:last-of-type {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    min-height: 50px !important;
+    display: grid !important;
+    grid-template-columns: 38px minmax(0, 1fr) 36px 42px !important;
+    gap: 3px !important;
+    overflow: hidden !important;
+  }
+
+  .communication-direct-active .direct-hub.conversation-open .dm-composer textarea {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    min-height: 48px !important;
+    max-height: 120px !important;
+    padding: 13px 5px !important;
+    font-size: 12px !important;
+  }
+
+  .communication-direct-active .direct-hub.conversation-open .dm-send {
+    width: 36px !important;
+    min-width: 36px !important;
+    height: 38px !important;
+    min-height: 38px !important;
+    margin: 5px 3px !important;
+  }
+
+  .communication-direct-active .direct-hub.conversation-open .dm-emoji-picker {
+    z-index: 1500 !important;
+  }
+
+  @media (max-width: 430px) {
+    .communication-direct-active .direct-hub:not(.conversation-open) .dm-navigation button {
+      grid-template-columns: auto !important;
+      place-items: center !important;
+    }
+
+    .communication-direct-active .direct-hub:not(.conversation-open) .dm-navigation button span,
+    .communication-direct-active .direct-hub:not(.conversation-open) .dm-navigation button b {
+      display: none !important;
+    }
+
+    .communication-direct-active .direct-hub.conversation-open .dm-conversation-actions > button:nth-child(2) {
+      display: none !important;
+    }
+  }
+}
