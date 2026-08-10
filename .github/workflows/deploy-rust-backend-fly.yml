@@ -67,11 +67,12 @@ jobs:
           fi
 
       - name: Publicar contêiner Rust
+        working-directory: backend
         run: >-
           flyctl deploy
           --app labstar-api-mackson
-          --config backend/fly.toml
-          --dockerfile backend/Dockerfile
+          --config fly.toml
+          --dockerfile Dockerfile
           --remote-only
           --ha=false
           --wait-timeout 10m
