@@ -25,8 +25,9 @@ function isMobile() {
 
 function activeWorkspaceShell() {
   const mode = document.querySelector<HTMLElement>(".collaboration-server-mode");
-  if (!mode || mode.classList.contains("communication-home-active")) return null;
-  return mode.querySelector<HTMLElement>(":scope > .collaboration-shell");
+  if (!mode || !mode.classList.contains("communication-channels-active")) return null;
+  return mode.querySelector<HTMLElement>(".communication-workspace-stage > .collaboration-shell")
+    ?? mode.querySelector<HTMLElement>(".collaboration-shell");
 }
 
 function setWorkspacePane(shell: HTMLElement, pane: WorkspacePane) {
