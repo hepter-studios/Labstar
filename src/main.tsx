@@ -167,7 +167,6 @@ function RootSurfaces() {
 
   return (
     <>
-      <BootReadySignal />
       <SurfaceBoundary name="interface principal" critical><App /></SurfaceBoundary>
       <OptionalSurface name="proteções de segurança"><SafetyGuards /></OptionalSurface>
       <OptionalSurface name="chamadas privadas globais"><GlobalDirectCallBridge /></OptionalSurface>
@@ -201,12 +200,13 @@ function RootSurfaces() {
 function ApplicationRoot() {
   const previewMode = isDevPreviewMode();
 
-  if (previewMode) return <RootSurfaces />;
-
   return (
-    <AccessControl>
-      <RootSurfaces />
-    </AccessControl>
+    <>
+      <BootReadySignal />
+      {previewMode
+        ? <RootSurfaces />
+        : <AccessControl><RootSurfaces /></AccessControl>}
+    </>
   );
 }
 
