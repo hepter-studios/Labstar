@@ -6,5 +6,6 @@ import "./channel-chat-stability.css";
 import "./phase5-mobile.css";
 import "./mobile-layout-audit.css";
 import "./mobile-stability-final.css";
+import "./mobile-dashboard-settings-tight.css";
 import "./reference-autocomplete-intelligence";
 import "./mobile-workspace-v2";
