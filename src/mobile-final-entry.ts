@@ -4,4 +4,6 @@ import "./mobile-workspace-v2.css";
 import "./mobile-workspace-v2-patch.css";
 import "./channel-chat-stability.css";
 import "./phase5-mobile.css";
+import "./mobile-layout-audit.css";
+import "./reference-autocomplete-intelligence";
 import "./mobile-workspace-v2";
