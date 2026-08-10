@@ -1,0 +1,142 @@
+/* Login Labstar — usa a mesma identidade do produto, sem alterar os estados de acesso. */
+html body .access-v2-card.login {
+  width: min(92vw, 420px) !important;
+  padding: 30px 28px 24px !important;
+  border: 1px solid rgba(139, 174, 255, .14) !important;
+  border-radius: 16px !important;
+  background: rgba(5, 8, 13, .94) !important;
+  box-shadow: 0 28px 90px rgba(0, 0, 0, .72), inset 0 1px rgba(255, 255, 255, .025) !important;
+  backdrop-filter: blur(18px) saturate(1.04) !important;
+}
+
+html body .access-v2-card.login::before {
+  content: "IDENTIDADE LABSTAR";
+  display: block;
+  margin: 0 0 14px;
+  color: #66738a;
+  font-size: 8px;
+  font-weight: 760;
+  letter-spacing: .18em;
+  text-align: center;
+}
+
+/* O login antigo escrevia L★BSTAR como texto comum. Mantemos o DOM e
+ * reconstruímos a marca com Anurati + a estrela oficial do wordmark. */
+html body .access-v2-card.login .access-v2-wordmark {
+  margin: 0 auto 22px !important;
+  display: flex !important;
+  width: max-content !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: .17em !important;
+  color: #f2f5fb !important;
+  font-family: "Labstar Anurati", Inter, ui-sans-serif, system-ui, sans-serif !important;
+  font-size: 29px !important;
+  font-weight: 400 !important;
+  font-synthesis: none !important;
+  letter-spacing: .018em !important;
+  line-height: 1 !important;
+}
+
+html body .access-v2-card.login .access-v2-wordmark > span {
+  position: relative !important;
+  width: .92em !important;
+  height: .92em !important;
+  flex: 0 0 .92em !important;
+  display: inline-grid !important;
+  place-items: center !important;
+  overflow: visible !important;
+  color: transparent !important;
+  font-size: 0 !important;
+  filter: none !important;
+}
+
+html body .access-v2-card.login .access-v2-wordmark > span::before {
+  content: "";
+  width: .92em;
+  height: .92em;
+  display: block;
+  background: center / contain no-repeat url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23eaf0ff' stroke='%23eaf0ff' stroke-width='1.25' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolygon points='12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2'/%3E%3C/svg%3E");
+  filter: drop-shadow(0 0 7px rgba(139, 174, 255, .42));
+}
+
+html body .access-v2-card.login .access-v2-provider-list {
+  gap: 8px !important;
+  margin-top: 0 !important;
+}
+
+html body .access-v2-card.login .access-v2-provider-list button {
+  min-height: 44px !important;
+  border-radius: 10px !important;
+  font-size: 11px !important;
+  box-shadow: none !important;
+  transform: none !important;
+}
+
+html body .access-v2-card.login .access-v2-provider-list button:first-child {
+  border-color: rgba(255, 255, 255, .82) !important;
+  background: #eef1f6 !important;
+}
+
+html body .access-v2-card.login .access-v2-provider-list button:not(:first-child) {
+  border-color: rgba(255, 255, 255, .095) !important;
+  background: #0b0f16 !important;
+}
+
+html body .access-v2-card.login .access-v2-provider-list button:hover:not(:disabled) {
+  border-color: rgba(139, 174, 255, .28) !important;
+  background-image: linear-gradient(rgba(139, 174, 255, .035), rgba(139, 174, 255, .035)) !important;
+}
+
+html body .access-v2-card.login .access-v2-email-toggle {
+  margin-top: 12px !important;
+  color: #657084 !important;
+  font-size: 9px !important;
+}
+
+html body .access-v2-card.login .access-v2-email-form {
+  margin-top: 10px !important;
+}
+
+html body .access-v2-card.login .access-v2-email-form input {
+  border-radius: 9px !important;
+  background: #05080d !important;
+}
+
+html body .access-v2-card.login .access-v2-security {
+  margin-top: 18px !important;
+  padding-top: 14px !important;
+  color: #485264 !important;
+  font-size: 8px !important;
+}
+
+html body .access-v2-card.login .access-v2-invite-copy {
+  margin: -4px auto 14px !important;
+  max-width: 330px;
+  color: #79859a !important;
+  font-size: 10px !important;
+  line-height: 1.55 !important;
+}
+
+@media (max-width: 620px) {
+  html body .access-v2-screen {
+    padding: 16px !important;
+    place-items: center !important;
+  }
+
+  html body .access-v2-card.login {
+    width: min(100%, 390px) !important;
+    margin: 0 !important;
+    padding: 26px 20px 20px !important;
+    border-radius: 14px !important;
+  }
+
+  html body .access-v2-card.login .access-v2-wordmark {
+    font-size: 31px !important;
+    margin-bottom: 20px !important;
+  }
+
+  html body .access-v2-card.login .access-v2-provider-list button {
+    min-height: 46px !important;
+  }
+}
