@@ -213,6 +213,106 @@ html body .access-v2-screen > .access-v2-card:not(.login) .access-v2-security {
   font-size: 8px !important;
 }
 
+/*
+ * Estado “sem acesso” — hierarquia mais parecida com um produto corporativo:
+ * status discreto, mensagem objetiva e uma única ação. O e-mail autenticado
+ * continua sendo exibido pelo React, sem perder contexto para o usuário.
+ */
+html body .access-v2-screen > .access-v2-card:not(.login):has(.access-v2-icon.amber):not(:has(.access-v2-identity)) {
+  width: min(92vw, 460px) !important;
+  padding-inline: 20px !important;
+}
+
+html body .access-v2-screen > .access-v2-card:not(.login):has(.access-v2-icon.amber):not(:has(.access-v2-identity)) .access-v2-wordmark {
+  margin-bottom: 30px !important;
+}
+
+html body .access-v2-screen > .access-v2-card:not(.login):has(.access-v2-icon.amber):not(:has(.access-v2-identity)) .access-v2-icon {
+  width: 28px !important;
+  height: 28px !important;
+  margin: 0 auto 10px !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  color: #b88d58 !important;
+  background: transparent !important;
+}
+
+html body .access-v2-screen > .access-v2-card:not(.login):has(.access-v2-icon.amber):not(:has(.access-v2-identity)) .access-v2-icon svg {
+  width: 17px !important;
+  height: 17px !important;
+  stroke-width: 1.7 !important;
+}
+
+html body .access-v2-screen > .access-v2-card:not(.login):has(.access-v2-icon.amber):not(:has(.access-v2-identity)) > small {
+  width: max-content !important;
+  margin: 0 auto 14px !important;
+  padding: 5px 8px !important;
+  border: 1px solid rgba(139, 174, 255, .12) !important;
+  border-radius: 999px !important;
+  color: #8390a8 !important;
+  background: rgba(139, 174, 255, .035) !important;
+  font-size: 0 !important;
+  line-height: 1 !important;
+  letter-spacing: 0 !important;
+}
+
+html body .access-v2-screen > .access-v2-card:not(.login):has(.access-v2-icon.amber):not(:has(.access-v2-identity)) > small::after {
+  content: "ACESSO RESTRITO";
+  font-size: 8px !important;
+  font-weight: 800 !important;
+  letter-spacing: .14em !important;
+}
+
+html body .access-v2-screen > .access-v2-card:not(.login):has(.access-v2-icon.amber):not(:has(.access-v2-identity)) h1 {
+  max-width: 420px !important;
+  margin: 0 auto 12px !important;
+  font-size: 0 !important;
+  line-height: 1 !important;
+}
+
+html body .access-v2-screen > .access-v2-card:not(.login):has(.access-v2-icon.amber):not(:has(.access-v2-identity)) h1::before {
+  content: "Esta conta não tem acesso ao Labstar.";
+  display: block;
+  color: #f4f6fb;
+  font-size: clamp(27px, 3.2vw, 32px);
+  font-weight: 760;
+  line-height: 1.08;
+  letter-spacing: -.045em;
+}
+
+html body .access-v2-screen > .access-v2-card:not(.login):has(.access-v2-icon.amber):not(:has(.access-v2-identity)) p {
+  max-width: 410px !important;
+  margin-bottom: 20px !important;
+  color: #7f8ba1 !important;
+  font-size: 12px !important;
+  line-height: 1.6 !important;
+}
+
+html body .access-v2-screen > .access-v2-card:not(.login):has(.access-v2-icon.amber):not(:has(.access-v2-identity)) p b {
+  color: #d7dfef !important;
+  font-weight: 650 !important;
+}
+
+html body .access-v2-screen > .access-v2-card:not(.login):has(.access-v2-icon.amber):not(:has(.access-v2-identity)) > .access-v2-secondary {
+  min-height: 42px !important;
+  padding: 0 15px !important;
+  border-color: rgba(255, 255, 255, .09) !important;
+  color: #aeb8ca !important;
+  background: rgba(5, 8, 13, .48) !important;
+  font-size: 0 !important;
+}
+
+html body .access-v2-screen > .access-v2-card:not(.login):has(.access-v2-icon.amber):not(:has(.access-v2-identity)) > .access-v2-secondary::after {
+  content: "Usar outra conta";
+  font-size: 11px !important;
+  font-weight: 750 !important;
+}
+
+html body .access-v2-screen > .access-v2-card:not(.login):has(.access-v2-icon.amber):not(:has(.access-v2-identity)) .access-v2-security {
+  margin-top: 18px !important;
+  color: #485263 !important;
+}
+
 @media (max-width: 620px) {
   html body .access-v2-screen {
     padding: 16px !important;
@@ -239,5 +339,13 @@ html body .access-v2-screen > .access-v2-card:not(.login) .access-v2-security {
 
   html body .access-v2-screen > .access-v2-card:not(.login) h1 {
     font-size: clamp(25px, 8vw, 32px) !important;
+  }
+
+  html body .access-v2-screen > .access-v2-card:not(.login):has(.access-v2-icon.amber):not(:has(.access-v2-identity)) .access-v2-wordmark {
+    margin-bottom: 24px !important;
+  }
+
+  html body .access-v2-screen > .access-v2-card:not(.login):has(.access-v2-icon.amber):not(:has(.access-v2-identity)) h1::before {
+    font-size: clamp(25px, 7.6vw, 30px) !important;
   }
 }
