@@ -110,25 +110,134 @@ html body .access-v2-card.login .access-v2-invite-copy {
   line-height: 1.55 !important;
 }
 
+/*
+ * Estados de autenticação (não autorizado, pendente, suspenso e erro).
+ * Eles usam a mesma superfície limpa do login: sem painel, sem moldura pesada
+ * e com o wordmark Anurati oficial.
+ */
+html body .access-v2-screen > .access-v2-card:not(.login) {
+  width: min(92vw, 500px) !important;
+  padding: 20px 28px !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+}
+
+html body .access-v2-screen > .access-v2-card:not(.login) .access-v2-wordmark {
+  margin: 0 auto 28px !important;
+  display: flex !important;
+  width: max-content !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: .17em !important;
+  color: #f2f5fb !important;
+  font-family: "Labstar Anurati", Inter, ui-sans-serif, system-ui, sans-serif !important;
+  font-size: 29px !important;
+  font-weight: 400 !important;
+  font-synthesis: none !important;
+  letter-spacing: .018em !important;
+  line-height: 1 !important;
+}
+
+html body .access-v2-screen > .access-v2-card:not(.login) .access-v2-wordmark > span {
+  position: relative !important;
+  width: .92em !important;
+  height: .92em !important;
+  flex: 0 0 .92em !important;
+  display: inline-block !important;
+  overflow: visible !important;
+  color: transparent !important;
+  font-size: 1em !important;
+  line-height: 1 !important;
+  filter: none !important;
+}
+
+html body .access-v2-screen > .access-v2-card:not(.login) .access-v2-wordmark > span::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  display: block;
+  background: center / contain no-repeat url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23eaf0ff' stroke='%23eaf0ff' stroke-width='1.25' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolygon points='12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2'/%3E%3C/svg%3E");
+  filter: drop-shadow(0 0 7px rgba(139, 174, 255, .42));
+  transform: translateY(-.025em);
+}
+
+html body .access-v2-screen > .access-v2-card:not(.login) .access-v2-icon {
+  width: 44px !important;
+  height: 44px !important;
+  margin: 0 auto 14px !important;
+  border-radius: 14px !important;
+  background: rgba(214, 162, 96, .035) !important;
+  box-shadow: none !important;
+}
+
+html body .access-v2-screen > .access-v2-card:not(.login) > small {
+  margin: 10px 0 8px !important;
+  color: #74829c !important;
+  font-size: 9px !important;
+  letter-spacing: .15em !important;
+}
+
+html body .access-v2-screen > .access-v2-card:not(.login) h1 {
+  max-width: 470px !important;
+  margin: 10px auto 12px !important;
+  color: #f4f6fb !important;
+  font-size: clamp(27px, 4vw, 35px) !important;
+  line-height: 1.08 !important;
+  letter-spacing: -.048em !important;
+}
+
+html body .access-v2-screen > .access-v2-card:not(.login) p {
+  max-width: 430px !important;
+  margin: 0 auto 22px !important;
+  color: #8793aa !important;
+  font-size: 13px !important;
+  line-height: 1.65 !important;
+}
+
+html body .access-v2-screen > .access-v2-card:not(.login) .access-v2-secondary,
+html body .access-v2-screen > .access-v2-card:not(.login) .access-v2-actions > button {
+  min-height: 44px !important;
+  border-radius: 10px !important;
+  background: rgba(5, 8, 13, .58) !important;
+  backdrop-filter: blur(8px) !important;
+}
+
+html body .access-v2-screen > .access-v2-card:not(.login) .access-v2-security {
+  margin-top: 20px !important;
+  padding-top: 0 !important;
+  border-top: 0 !important;
+  color: #4f596b !important;
+  font-size: 8px !important;
+}
+
 @media (max-width: 620px) {
   html body .access-v2-screen {
     padding: 16px !important;
     place-items: center !important;
   }
 
-  html body .access-v2-card.login {
+  html body .access-v2-card.login,
+  html body .access-v2-screen > .access-v2-card:not(.login) {
     width: min(100%, 390px) !important;
     margin: 0 !important;
     padding: 16px 20px 18px !important;
     border-radius: 0 !important;
   }
 
-  html body .access-v2-card.login .access-v2-wordmark {
+  html body .access-v2-card.login .access-v2-wordmark,
+  html body .access-v2-screen > .access-v2-card:not(.login) .access-v2-wordmark {
     font-size: 31px !important;
     margin-bottom: 20px !important;
   }
 
   html body .access-v2-card.login .access-v2-provider-list button {
     min-height: 46px !important;
+  }
+
+  html body .access-v2-screen > .access-v2-card:not(.login) h1 {
+    font-size: clamp(25px, 8vw, 32px) !important;
   }
 }
