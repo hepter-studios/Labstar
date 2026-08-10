@@ -1,0 +1,8 @@
+/* Abertura mobile: o override geral de .wordmark para o header não deve
+ * encolher o logo central da intro. Mantém o logo centralizado e só amplia
+ * sua escala visual em telas pequenas. */
+@media (max-width: 760px) {
+  .access-screen.brand-intro .intro-mark .wordmark.large {
+    font-size: clamp(34px, 10vw, 46px) !important;
+  }
+}
