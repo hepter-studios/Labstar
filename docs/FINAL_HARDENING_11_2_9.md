@@ -20,7 +20,7 @@ cadastro falhou. Erros permanecem no modal e informam qual etapa não concluiu.
 - Limpar canal exige membro ativo e `can_manage_labstar_channels()` no banco.
 - Limpar DM grava preferências em `hidden_direct_messages`; não apaga o histórico do outro participante.
 - A atualização da tela ocorre por evento de dados e nova leitura, sem remover nós de mensagem manualmente do DOM.
-- `members.assignments` é tratado como `text[]` em todas as versões reaplicáveis da função de acesso.
+- `members.assignments` preserva o contrato `jsonb` do banco publicado e é normalizado com `jsonb_array_elements_text` nas verificações de acesso.
 - Categorias privadas continuam sendo herdadas pelos canais.
 - O teste SQL transacional verifica grants, RLS, políticas, contratos e CSO.
 
@@ -46,8 +46,14 @@ O checkout local não possui Supabase CLI nem um PostgreSQL/Supabase local com o
 schema completo. Portanto, a migração e o teste pgTAP foram revisados e
 versionados, mas a validação contra o banco publicado deve ocorrer pelo workflow
 `Aplicar endurecimento final de segurança`, que faz backup, usa
-`ON_ERROR_STOP=1`, aplica a migração e falha se qualquer um dos 19 testes não
+`ON_ERROR_STOP=1`, aplica a migração e falha se qualquer um dos 20 testes não
 passar.
+
+O primeiro ensaio após o merge confirmou que a coluna publicada é `jsonb`, e
+não `text[]` como uma migração intermediária pressupunha. A migração de
+compatibilidade `20260810020000_members_assignments_jsonb_contract.sql` corrige
+tanto a autorização por atribuição quanto a limpeza final da conta e impede que
+o workflow aceite novamente um contrato de tipo divergente.
 
 ## CSO
 
