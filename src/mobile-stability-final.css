@@ -1,0 +1,471 @@
+/*
+ * Estabilidade mobile final.
+ *
+ * Esta folha e carregada por ultimo e so atua abaixo de 760px. Ela corrige
+ * disputas entre camadas responsivas antigas sem alterar o desktop.
+ */
+@media (max-width: 760px) {
+  :root {
+    --labstar-mobile-pane-top: 52px;
+    --labstar-mobile-bottom-nav: 66px;
+    --labstar-mobile-safe-bottom: max(8px, env(safe-area-inset-bottom));
+  }
+
+  /* -----------------------------------------------------------------------
+   * Dashboard: havia uma terceira linha vazia no grid. O componente possui
+   * apenas a faixa de servidores e a WorkHome; a linha fantasma criava o
+   * grande retangulo preto acima da navegacao inferior.
+   * --------------------------------------------------------------------- */
+  .dashboard-work-shell {
+    grid-template-rows: auto minmax(0, 1fr) !important;
+  }
+
+  .dashboard-work-shell > .work-home {
+    grid-row: 2 !important;
+    width: 100% !important;
+    height: 100% !important;
+    min-height: 0 !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    overscroll-behavior: contain;
+  }
+
+  .overview.dashboard-work-surface,
+  .overview.dashboard-work-surface > [data-labstar-dashboard-work],
+  .dashboard-work-shell {
+    min-height: 0 !important;
+    height: 100% !important;
+  }
+
+  /* -----------------------------------------------------------------------
+   * Perfil proprio: o painel deve ser um sheet compacto e rolavel, nao uma
+   * superficie que cobre praticamente o telefone inteiro.
+   * --------------------------------------------------------------------- */
+  .quick-panel.profile {
+    left: 10px !important;
+    right: 10px !important;
+    top: auto !important;
+    bottom: calc(var(--mobile-nav-height, 58px) + var(--labstar-mobile-safe-bottom) + 10px) !important;
+    width: auto !important;
+    height: auto !important;
+    max-width: none !important;
+    max-height: min(72dvh, 570px) !important;
+    padding: 13px !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    border-radius: 18px !important;
+  }
+
+  .quick-panel.profile .profile-card,
+  .quick-panel.profile .profile-connection-card,
+  .quick-panel.profile .profile-connections,
+  .quick-panel.profile .profile-connections-mount {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+  }
+
+  /* O breakpoint antigo jogava os botoes do GitHub para uma linha inferior. */
+  .quick-panel.profile .github-connected-row {
+    grid-template-columns: 36px minmax(0, 1fr) auto !important;
+    gap: 7px !important;
+  }
+
+  .quick-panel.profile .connection-actions {
+    grid-column: auto !important;
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    justify-content: flex-end !important;
+    align-items: center !important;
+    gap: 5px !important;
+  }
+
+  .quick-panel.profile .connection-actions button {
+    width: 32px !important;
+    min-width: 32px !important;
+    height: 32px !important;
+    min-height: 32px !important;
+  }
+
+  .quick-panel.profile .github-public-link {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+  }
+
+  /* Configuracoes passam a morar no cabecalho no mobile. */
+  .header-actions .mobile-settings-button {
+    width: 36px !important;
+    min-width: 36px !important;
+    height: 36px !important;
+    min-height: 36px !important;
+    padding: 0 !important;
+    display: grid !important;
+    place-items: center !important;
+    flex: 0 0 36px !important;
+    border: 1px solid rgba(139, 174, 255, .13) !important;
+    border-radius: 10px !important;
+    color: #96a5be !important;
+    background: #090d14 !important;
+  }
+
+  .header-actions .mobile-settings-button.active,
+  .header-actions .mobile-settings-button:active {
+    color: #dce7ff !important;
+    border-color: rgba(112, 151, 242, .28) !important;
+    background: rgba(86, 131, 238, .14) !important;
+  }
+
+  /* -----------------------------------------------------------------------
+   * Mensagens privadas: no telefone existe uma unica superficie por vez.
+   * Lista de contatos OU conversa. Isso remove a antiga faixa azul/vazia e
+   * garante que a barra de mensagem sempre tenha uma linha propria.
+   * --------------------------------------------------------------------- */
+  body.mobile-direct-active .direct-hub,
+  body.mobile-direct-active .direct-hub.conversation-open,
+  body.mobile-direct-active .direct-hub.dm-v6,
+  body.mobile-direct-active .direct-hub.dm-v6.conversation-open {
+    width: 100% !important;
+    height: 100% !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    grid-template-rows: 54px minmax(0, 1fr) !important;
+    overflow: hidden !important;
+    background: #05070b !important;
+  }
+
+  body.mobile-direct-active .dm-space-rail {
+    grid-column: 1 !important;
+    grid-row: 1 !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+  }
+
+  body.mobile-direct-active .direct-hub:not(.conversation-open) .dm-sidebar {
+    grid-column: 1 !important;
+    grid-row: 2 !important;
+    width: 100% !important;
+    height: 100% !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    display: grid !important;
+    grid-template-rows: 42px auto 1px 30px minmax(0, 1fr) !important;
+    overflow: hidden !important;
+    border-right: 0 !important;
+    border-bottom: 0 !important;
+    background: #070a10 !important;
+  }
+
+  body.mobile-direct-active .direct-hub:not(.conversation-open) .dm-contact-list {
+    width: 100% !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    padding: 5px 8px 14px !important;
+    display: block !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    overscroll-behavior: contain;
+    background: #070a10 !important;
+  }
+
+  body.mobile-direct-active .direct-hub:not(.conversation-open) .dm-contact-entry {
+    position: relative !important;
+    inset: auto !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    height: auto !important;
+    min-height: 58px !important;
+    margin: 0 0 5px !important;
+    transform: none !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+  }
+
+  body.mobile-direct-active .direct-hub:not(.conversation-open) .dm-contact-main {
+    width: 100% !important;
+    min-width: 0 !important;
+    min-height: 56px !important;
+    grid-template-columns: 36px minmax(0, 1fr) auto !important;
+  }
+
+  body.mobile-direct-active .dm-home-main,
+  body.mobile-direct-active .dm-inbox,
+  body.mobile-direct-active .dm-profile-panel {
+    display: none !important;
+  }
+
+  body.mobile-direct-active .direct-hub.conversation-open .dm-sidebar {
+    display: none !important;
+  }
+
+  body.mobile-direct-active .direct-hub.conversation-open .dm-conversation {
+    grid-column: 1 !important;
+    grid-row: 2 !important;
+    width: 100% !important;
+    height: 100% !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    grid-template-rows: auto minmax(0, 1fr) auto !important;
+    overflow: hidden !important;
+    background: #05070b !important;
+  }
+
+  body.mobile-direct-active .dm-conversation-header {
+    grid-row: 1 !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    min-height: 58px !important;
+    overflow: hidden !important;
+  }
+
+  body.mobile-direct-active .dm-conversation-person {
+    min-width: 0 !important;
+    flex: 1 1 auto !important;
+  }
+
+  body.mobile-direct-active .dm-conversation-actions {
+    flex: 0 0 auto !important;
+    min-width: 0 !important;
+    gap: 3px !important;
+  }
+
+  body.mobile-direct-active .dm-conversation-actions > button {
+    width: 34px !important;
+    min-width: 34px !important;
+    height: 34px !important;
+    min-height: 34px !important;
+    flex: 0 0 34px !important;
+  }
+
+  body.mobile-direct-active .dm-conversation-actions label {
+    display: none !important;
+  }
+
+  body.mobile-direct-active .dm-message-scroll {
+    grid-row: 2 !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    overscroll-behavior: contain;
+  }
+
+  body.mobile-direct-active .dm-composer {
+    grid-row: 3 !important;
+    position: relative !important;
+    inset: auto !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 6px 8px calc(var(--labstar-mobile-safe-bottom) + 6px) !important;
+    overflow: visible !important;
+    border-top: 1px solid rgba(255, 255, 255, .07) !important;
+    background: rgba(6, 9, 14, .99) !important;
+  }
+
+  body.mobile-direct-active .dm-composer > div:last-of-type {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    grid-template-columns: 38px minmax(0, 1fr) 36px 40px !important;
+    gap: 3px !important;
+  }
+
+  body.mobile-direct-active .dm-composer textarea {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+  }
+
+  /* -----------------------------------------------------------------------
+   * Canais: uma superficie por vez e compositor sempre dentro da area util.
+   * --------------------------------------------------------------------- */
+  body.mobile-workspace-active .communication-workspace-stage {
+    position: relative !important;
+    width: 100% !important;
+    height: 100% !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    overflow: hidden !important;
+  }
+
+  body.mobile-workspace-active .collaboration-server-mode > .communication-workspace-stage > .collaboration-shell,
+  body.mobile-workspace-active .collaboration-server-mode > .collaboration-shell {
+    position: absolute !important;
+    inset: 0 0 calc(var(--labstar-mobile-bottom-nav) + var(--labstar-mobile-safe-bottom)) 0 !important;
+    width: 100% !important;
+    height: auto !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    display: block !important;
+    overflow: hidden !important;
+    background: #05070b !important;
+  }
+
+  body.mobile-workspace-active .collaboration-shell > .space-rail,
+  body.mobile-workspace-active .collaboration-shell > .channel-sidebar,
+  body.mobile-workspace-active .collaboration-shell > .channel-content,
+  body.mobile-workspace-active .collaboration-shell > .channel-members {
+    position: absolute !important;
+    left: 0 !important;
+    right: 0 !important;
+    top: var(--labstar-mobile-pane-top) !important;
+    bottom: 0 !important;
+    inset-inline: 0 !important;
+    width: 100% !important;
+    height: auto !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    max-width: none !important;
+    display: none !important;
+    overflow: hidden !important;
+    border: 0 !important;
+  }
+
+  body.mobile-workspace-active .collaboration-shell[data-mobile-pane="spaces"] > .space-rail {
+    display: flex !important;
+    overflow-y: auto !important;
+  }
+
+  body.mobile-workspace-active .collaboration-shell[data-mobile-pane="channels"] > .channel-sidebar {
+    display: grid !important;
+    grid-template-rows: 56px 44px minmax(0, 1fr) !important;
+  }
+
+  body.mobile-workspace-active .collaboration-shell[data-mobile-pane="content"] > .channel-content {
+    display: grid !important;
+    grid-template-rows: 56px minmax(0, 1fr) !important;
+  }
+
+  body.mobile-workspace-active .collaboration-shell[data-mobile-pane="members"] > .channel-members {
+    display: block !important;
+    overflow-y: auto !important;
+  }
+
+  body.mobile-workspace-active .channel-sidebar,
+  body.mobile-workspace-active .channel-content,
+  body.mobile-workspace-active .channel-members,
+  body.mobile-workspace-active .message-room,
+  body.mobile-workspace-active .message-scroll,
+  body.mobile-workspace-active .message-composer,
+  body.mobile-workspace-active .composer-row {
+    min-width: 0 !important;
+    max-width: 100% !important;
+  }
+
+  body.mobile-workspace-active .channel-scroll {
+    min-height: 0 !important;
+    display: block !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+  }
+
+  body.mobile-workspace-active .channel-category {
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  body.mobile-workspace-active .channel-list {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  body.mobile-workspace-active .channel-list > button {
+    width: 100% !important;
+    min-width: 0 !important;
+    min-height: 44px !important;
+  }
+
+  body.mobile-workspace-active .message-room {
+    width: 100% !important;
+    height: 100% !important;
+    min-height: 0 !important;
+    display: grid !important;
+    grid-template-rows: 40px minmax(0, 1fr) auto !important;
+    overflow: hidden !important;
+  }
+
+  body.mobile-workspace-active .message-toolbar {
+    min-width: 0 !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+  }
+
+  body.mobile-workspace-active .message-scroll {
+    min-height: 0 !important;
+    padding: 8px 0 10px !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    overscroll-behavior: contain;
+  }
+
+  body.mobile-workspace-active .chat-message,
+  body.mobile-workspace-active .message-item {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    grid-template-columns: 34px minmax(0, 1fr) !important;
+  }
+
+  body.mobile-workspace-active .message-composer {
+    position: relative !important;
+    inset: auto !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    margin: 0 !important;
+    padding: 6px 8px calc(var(--labstar-mobile-safe-bottom) + 6px) !important;
+    border-top: 1px solid rgba(255, 255, 255, .07) !important;
+    background: rgba(6, 9, 14, .99) !important;
+  }
+
+  body.mobile-workspace-active .composer-row {
+    width: 100% !important;
+    grid-template-columns: 38px minmax(0, 1fr) 36px 40px !important;
+    gap: 3px !important;
+  }
+
+  body.mobile-workspace-active .composer-row textarea {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+  }
+
+  .mobile-workspace-switcher {
+    left: 8px !important;
+    right: 8px !important;
+    bottom: var(--labstar-mobile-safe-bottom) !important;
+    width: auto !important;
+    height: 58px !important;
+    min-height: 58px !important;
+    padding: 5px !important;
+    box-sizing: border-box !important;
+  }
+}
+
+@media (max-width: 420px) {
+  .header-actions .mobile-settings-button {
+    width: 34px !important;
+    min-width: 34px !important;
+    height: 34px !important;
+    min-height: 34px !important;
+    flex-basis: 34px !important;
+  }
+
+  .quick-panel.profile {
+    max-height: min(70dvh, 530px) !important;
+  }
+
+  body.mobile-direct-active .dm-conversation-actions > button:nth-of-type(4) {
+    display: none !important;
+  }
+}
