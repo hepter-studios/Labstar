@@ -11,7 +11,13 @@ const runtimeEnvironment = (
 const isDesktopBuild = runtimeEnvironment.LABSTAR_DESKTOP_BUILD === "1"
   || Boolean(runtimeEnvironment.TAURI_ENV_PLATFORM);
 
+const labstarApiUrl = runtimeEnvironment.VITE_LABSTAR_API_URL?.trim()
+  || "https://labstar-api-mackson.fly.dev";
+
 export default defineConfig({
+  define: {
+    "import.meta.env.VITE_LABSTAR_API_URL": JSON.stringify(labstarApiUrl),
+  },
   plugins: [
     react(),
     ...(!isDesktopBuild ? [VitePWA({
