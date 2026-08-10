@@ -90,7 +90,7 @@ function syncMobileWorkspace() {
 
   const nav = ensureWorkspaceNav();
   const shell = activeWorkspaceShell();
-  const directHub = document.querySelector<HTMLElement>(".workspace.collaboration-workspace > .direct-hub");
+  const directHub = document.querySelector<HTMLElement>(".workspace.collaboration-workspace .direct-hub");
   const communicationHome = document.querySelector<HTMLElement>(".communication-home-overlay");
 
   document.body.classList.toggle("mobile-workspace-active", Boolean(mobile && shell));
@@ -126,13 +126,13 @@ function handleWorkspaceClick(event: Event) {
 }
 
 function startMobileWorkspaceV2() {
-  let frame: number | null = null;
+  let timer: number | null = null;
   const scheduleSync = () => {
-    if (frame !== null) return;
-    frame = window.requestAnimationFrame(() => {
-      frame = null;
+    if (timer !== null) return;
+    timer = window.setTimeout(() => {
+      timer = null;
       syncMobileWorkspace();
-    });
+    }, 0);
   };
   const observer = new MutationObserver(scheduleSync);
   observer.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ["class"] });

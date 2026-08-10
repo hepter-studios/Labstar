@@ -203,7 +203,7 @@ export function ProjectEnhancementsPortal() {
   const [notice, setNotice] = useState("");
   const [logoBusy, setLogoBusy] = useState<string | null>(null);
   const lastWorkspaceRef = useRef("");
-  const syncFrameRef = useRef<number | null>(null);
+  const syncTimerRef = useRef<number | null>(null);
 
   const profileMap = useMemo(() => new Map(profiles.map((profile) => [profile.nodeId, profile])), [profiles]);
   const nodeMap = useMemo(() => new Map(nodes.map((node) => [node.id, node])), [nodes]);
@@ -220,6 +220,15 @@ export function ProjectEnhancementsPortal() {
 
   useEffect(() => {
     void refreshProfiles();
+  }, []);
+
+  useEffect(() => {
+    const syncWorkspace = (event: Event) => {
+      const incoming = (event as CustomEvent<{ nodes?: WorkspaceNode[] }>).detail?.nodes;
+      if (Array.isArray(incoming)) setNodes(incoming);
+    };
+    window.addEventListener("labstar:workspace-nodes-changed", syncWorkspace);
+    return () => window.removeEventListener("labstar:workspace-nodes-changed", syncWorkspace);
   }, []);
 
   useEffect(() => {
@@ -242,7 +251,7 @@ export function ProjectEnhancementsPortal() {
 
   useEffect(() => {
     const syncDom = () => {
-      syncFrameRef.current = null;
+      syncTimerRef.current = null;
       const workspaceRaw = window.localStorage.getItem(WORKSPACE_KEY) ?? "";
       let snapshot = nodes;
       if (workspaceRaw !== lastWorkspaceRef.current) {
@@ -253,10 +262,9 @@ export function ProjectEnhancementsPortal() {
 
       const domCards = Array.from(document.querySelectorAll<HTMLElement>(".node-card"));
       const nextTargets: CardTarget[] = [];
-      domCards.forEach((card, index) => {
-        const node = snapshot[index];
-        if (!node) return;
-        card.dataset.projectNodeId = node.id;
+      domCards.forEach((card) => {
+        const nodeId = card.dataset.projectNodeId;
+        if (!nodeId) return;
         let meta = card.querySelector<HTMLElement>(":scope > .project-card-meta-host");
         if (!meta) {
           meta = document.createElement("div");
@@ -265,7 +273,7 @@ export function ProjectEnhancementsPortal() {
           card.insertBefore(meta, footer ?? null);
         }
         nextTargets.push({
-          nodeId: node.id,
+          nodeId,
           card,
           actions: card.querySelector<HTMLElement>(".node-actions"),
           symbol: card.querySelector<HTMLElement>(".node-symbol"),
@@ -295,8 +303,8 @@ export function ProjectEnhancementsPortal() {
     };
 
     const schedule = () => {
-      if (syncFrameRef.current !== null) return;
-      syncFrameRef.current = window.requestAnimationFrame(syncDom);
+      if (syncTimerRef.current !== null) return;
+      syncTimerRef.current = window.setTimeout(syncDom, 0);
     };
 
     schedule();
@@ -306,7 +314,10 @@ export function ProjectEnhancementsPortal() {
     return () => {
       observer.disconnect();
       window.clearInterval(interval);
-      if (syncFrameRef.current !== null) window.cancelAnimationFrame(syncFrameRef.current);
+      if (syncTimerRef.current !== null) {
+        window.clearTimeout(syncTimerRef.current);
+        syncTimerRef.current = null;
+      }
     };
   }, []);
 

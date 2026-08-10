@@ -65,6 +65,7 @@ pub async fn delete_account(
     if email.is_empty() || email != normalize_email(&input.confirmation_email) {
         return Err(ApiError::ConfirmationEmailMismatch);
     }
+    validate_email(&email)?;
 
     let actor = find_member_by_auth_id(&state, identity.id)
         .await?
@@ -117,6 +118,30 @@ pub async fn delete_account(
 
 fn normalize_email(value: &str) -> String {
     value.trim().to_ascii_lowercase()
+}
+
+fn validate_email(email: &str) -> Result<(), ApiError> {
+    if email.len() > 254
+        || email.chars().any(|character| {
+            !character.is_ascii_alphanumeric() && !matches!(character, '.' | '_' | '+' | '-' | '@')
+        })
+    {
+        return Err(ApiError::InvalidEmail);
+    }
+
+    let mut parts = email.split('@');
+    let local = parts.next().unwrap_or_default();
+    let domain = parts.next().unwrap_or_default();
+    if local.is_empty()
+        || domain.is_empty()
+        || parts.next().is_some()
+        || domain.starts_with('.')
+        || domain.ends_with('.')
+        || !domain.contains('.')
+    {
+        return Err(ApiError::InvalidEmail);
+    }
+    Ok(())
 }
 
 fn validate_deletion(
@@ -413,5 +438,22 @@ mod tests {
             )
             .is_ok()
         );
+    }
+
+    #[test]
+    fn accepts_normal_emails_and_rejects_postgrest_filter_characters() {
+        assert!(validate_email("cientista+lab@labstar.example").is_ok());
+        assert!(matches!(
+            validate_email("*@labstar.example"),
+            Err(ApiError::InvalidEmail)
+        ));
+        assert!(matches!(
+            validate_email("membro@example.com,role.eq.owner"),
+            Err(ApiError::InvalidEmail)
+        ));
+        assert!(matches!(
+            validate_email("sem-dominio@localhost"),
+            Err(ApiError::InvalidEmail)
+        ));
     }
 }

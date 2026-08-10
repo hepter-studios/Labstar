@@ -56,11 +56,11 @@ Secrets necessários no ambiente do backend:
 
 | Secret | Finalidade |
 | --- | --- |
-| `DATABASE_URL` | conexão PostgreSQL/Supabase com SSL |
 | `SUPABASE_URL` | endpoint do projeto para validação de Auth |
 | `SUPABASE_PUBLISHABLE_KEY` | chave usada nas chamadas apropriadas ao Supabase Auth |
+| `SUPABASE_SERVICE_ROLE_KEY` | Admin API do Auth e RPC final acessível somente ao serviço |
 
-Configuração não secreta de produção fica em `backend/fly.toml`, incluindo bind, origens permitidas, timeout, pool e logs.
+Configuração não secreta de produção fica em `backend/fly.toml`, incluindo bind, origens permitidas, timeout e logs.
 
 ## Origens CORS oficiais
 

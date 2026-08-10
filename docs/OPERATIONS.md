@@ -90,22 +90,23 @@ Depois:
 
 ## Deploy da API Rust
 
-Branch de referência: `feat/rust-backend-clean`.
-
-Workflow: `Publicar backend Rust na Fly.io`.
+Código de referência: diretório `backend/` da `main`.
 
 Secrets necessários:
 
 - `FLY_API_TOKEN` no GitHub;
-- `DATABASE_URL`, `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY` e origens permitidas na Fly.io.
+- `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SERVICE_ROLE_KEY` e origens permitidas na Fly.io.
+
+`SUPABASE_SERVICE_ROLE_KEY` deve existir somente no gerenciador de secrets da
+Fly.io. Ela nunca entra em variável `VITE_*`, no Tauri ou em logs do workflow.
 
 Depois do deploy:
 
 1. verificar logs do workflow;
-2. abrir `health/live`;
-3. abrir `health/ready`;
-4. testar `/v1/me` com sessão válida;
-5. testar um cenário de permissão negada.
+2. abrir `/health/live`;
+3. testar `DELETE /v1/admin/accounts` com sessão administrativa válida e conta suspensa de teste;
+4. confirmar que membro comum, admin contra admin e conta ativa recebem negação;
+5. confirmar que a resposta de erro aparece dentro do modal.
 
 ## Build do Windows
 

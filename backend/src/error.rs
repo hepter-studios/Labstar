@@ -16,6 +16,8 @@ pub enum ApiError {
     PermissionDenied,
     #[error("confirmation_email_mismatch")]
     ConfirmationEmailMismatch,
+    #[error("invalid_email")]
+    InvalidEmail,
     #[error("account_not_found")]
     AccountNotFound,
     #[error("self_deletion_forbidden")]
@@ -69,6 +71,11 @@ impl IntoResponse for ApiError {
                 StatusCode::BAD_REQUEST,
                 "confirmation_email_mismatch",
                 "O e-mail de confirmação não corresponde à conta escolhida.",
+            ),
+            Self::InvalidEmail => (
+                StatusCode::BAD_REQUEST,
+                "invalid_email",
+                "Informe um endereço de e-mail válido.",
             ),
             Self::AccountNotFound => (
                 StatusCode::NOT_FOUND,

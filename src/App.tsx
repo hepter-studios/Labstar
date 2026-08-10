@@ -144,6 +144,10 @@ function playTone() {
   });
 }
 
+function isDevPreviewMode() {
+  return import.meta.env.DEV && new URLSearchParams(window.location.search).has("preview");
+}
+
 export default function Home() {
   const [sessionState, setSessionState] = useState<SessionState>("carregando");
   const [session, setSession] = useState<SessionData | null>(null);
@@ -202,7 +206,7 @@ export default function Home() {
   useEffect(() => {
     let cancelled = false;
     async function loadSession() {
-      if (import.meta.env.DEV && new URLSearchParams(window.location.search).has("preview")) {
+      if (isDevPreviewMode()) {
         setSession({
           user: { displayName: "Mackson Victor", email: "preview@labstar.local", fullName: "Mackson Victor" },
           member: {
@@ -276,6 +280,11 @@ export default function Home() {
       if (local) {
         try { setNodes(JSON.parse(local)); } catch { /* use initial workspace */ }
       }
+      if (isDevPreviewMode()) {
+        setSync("local");
+        setReady(true);
+        return;
+      }
       try {
         const remoteNodes = await loadRemoteWorkspace<StructureNode[]>();
         if (!cancelled && Array.isArray(remoteNodes) && remoteNodes.length) {
@@ -297,6 +306,13 @@ export default function Home() {
   useEffect(() => {
     if (!ready) return;
     localStorage.setItem("labstar-workspace-v1", JSON.stringify(nodes));
+    window.dispatchEvent(new CustomEvent("labstar:workspace-nodes-changed", {
+      detail: { nodes },
+    }));
+    if (isDevPreviewMode()) {
+      setSync("local");
+      return;
+    }
     setSync("salvando");
     const timer = window.setTimeout(async () => {
       try {
@@ -594,6 +610,7 @@ export default function Home() {
                   return (
                     <article
                       key={node.id}
+                      data-project-node-id={node.id}
                       className={`node-card ${selectedId === node.id ? "selected" : ""} ${draggingId === node.id ? "dragging" : ""} ${matches ? "" : "search-muted"}`}
                       style={{ left: node.x, top: node.y, "--accent": meta.color, "--status": status.color } as React.CSSProperties}
                       onPointerDown={(event) => {
@@ -837,6 +854,38 @@ function TeamDirectory({ nodes, currentMember, onMemberUpdated }: { nodes: Struc
 
   async function loadMembers() {
     setLoading(true);
+    if (isDevPreviewMode()) {
+      const csoRole: JobRole = {
+        id: "preview-cso",
+        name: "CSO",
+        department: "Diretoria Científica",
+        color: "#8B1E3F",
+        icon: "star",
+        position: 16,
+        permissions: [],
+      };
+      const suspendedScientist: Member = {
+        id: "preview-suspended-member",
+        email: "cientista.preview@labstar.local",
+        name: "Dra. Helena Preview",
+        status: "suspended",
+        role: "member",
+        jobTitle: "Chief Scientific Officer",
+        area: "Diretoria Científica",
+        assignments: ["labstar"],
+        createdAt: new Date().toISOString(),
+        lastSeenAt: new Date().toISOString(),
+        avatarPath: "",
+        avatarUrl: "",
+        jobRoles: [csoRole],
+      };
+      setMembers([currentMember, suspendedScientist]);
+      setJobRoles([...currentMember.jobRoles, csoRole]);
+      setCanManage(true);
+      setSelectedId((current) => current ?? suspendedScientist.id);
+      setLoading(false);
+      return;
+    }
     try {
       const [data, roles] = await Promise.all([listMembers(), listJobRoles()]);
       setMembers(data.members);
@@ -1300,7 +1349,7 @@ function QuickPanel({
     <div ref={panelRef} className={`quick-panel ${type}`} role="dialog" aria-label={type === "help" ? "Central de ajuda" : type === "profile" ? "Sua conta" : "Resumo executivo"}>
       <div className="quick-head">
         <strong>{type === "profile" ? "Sua conta" : type === "help" ? "Central de ajuda" : "Resumo executivo"}</strong>
-        <button onClick={onClose}><X size={14} /></button>
+        <button type="button" onClick={onClose} aria-label="Fechar painel"><X size={14} /></button>
       </div>
       {type === "profile" && <>
         <div className="profile-card">
@@ -1316,7 +1365,7 @@ function QuickPanel({
             event.target.value = "";
           }} />
         </div>
-        <label className="profile-name-field">Nome exibido<div><input value={profileName} onChange={(event) => setProfileName(event.target.value)} /><button type="button" onClick={() => void saveProfileName()}><Save size={13} /></button></div></label>
+        <label className="profile-name-field">Nome exibido<div><input value={profileName} onChange={(event) => setProfileName(event.target.value)} /><button type="button" onClick={() => void saveProfileName()} aria-label="Salvar nome exibido"><Save size={13} /></button></div></label>
         <div className="profile-info">
           <span>Cargo<b>{session.member.jobRoles[0]?.name || session.member.jobTitle || "Não definido"}</b></span>
           <span>Acesso<b>{roleLabel(session.member.role)}</b></span>

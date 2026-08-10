@@ -13,12 +13,18 @@
 
   function renderFailure(title, details) {
     if (state.ready) return;
-    const root = document.getElementById("root");
-    if (!root) return;
     state.rendered = true;
     const elapsed = Date.now() - startedAt;
-    root.innerHTML = `
-      <main style="min-height:100vh;display:grid;place-items:center;padding:28px;background:#030407;color:#f5f7ff;font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif">
+    let diagnostic = document.getElementById("labstar-boot-diagnostic");
+    if (!diagnostic) {
+      diagnostic = document.createElement("div");
+      diagnostic.id = "labstar-boot-diagnostic";
+      diagnostic.setAttribute("role", "alert");
+      diagnostic.style.cssText = "position:fixed;z-index:2147483647;inset:0;overflow:auto;background:#030407";
+      document.body.appendChild(diagnostic);
+    }
+    diagnostic.innerHTML = `
+      <main style="min-height:100vh;display:grid;place-items:center;padding:28px;box-sizing:border-box;background:#030407;color:#f5f7ff;font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif">
         <section style="width:min(680px,100%);padding:28px;border:1px solid rgba(255,255,255,.12);border-radius:18px;background:#090c13;box-shadow:0 30px 100px #000c">
           <strong style="display:block;margin-bottom:18px;font-size:20px;letter-spacing:.18em">L★BSTAR</strong>
           <small style="color:#ffb16f;font-weight:750;letter-spacing:.12em">DIAGNÓSTICO DE INICIALIZAÇÃO</small>
@@ -35,6 +41,7 @@
     ready() {
       state.ready = true;
       document.documentElement.dataset.labstarBoot = "ready";
+      document.getElementById("labstar-boot-diagnostic")?.remove();
     },
     fail(title, details) {
       renderFailure(title, details);

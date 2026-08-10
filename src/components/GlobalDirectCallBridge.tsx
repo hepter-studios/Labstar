@@ -25,7 +25,7 @@ import {
   type DirectThreadSummary,
 } from "../lib/directMessages";
 import { useMemberPresence } from "../lib/presence";
-import { listMembers, type Member } from "../lib/supabase";
+import { isSupabaseConfigured, listMembers, type Member } from "../lib/supabase";
 import { PrivateCallOverlay } from "./PrivateCallOverlay";
 
 if (typeof window !== "undefined") {
@@ -106,6 +106,8 @@ export function GlobalDirectCallBridge() {
   }, []);
 
   useEffect(() => {
+    if (!isSupabaseConfigured) return undefined;
+
     let disposed = false;
     let incomingSubscription: ReturnType<typeof subscribeIncomingDirectCalls> = null;
     let messagesSubscription: ReturnType<typeof subscribeToAllDirectMessages> | null = null;
