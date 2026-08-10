@@ -1,7 +1,16 @@
-/* Acesso Labstar — mesma identidade do produto em login, erro, pendência e troca de conta. */
+/* Login Labstar — usa a mesma identidade do produto, sem alterar os estados de acesso. */
+html body .access-v2-card.login {
+  width: min(92vw, 420px) !important;
+  padding: 18px 28px 20px !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+}
 
-/* Todo estado do AccessControl usa a estrela oficial acima da marca. */
-html body .access-v2-card::before {
+/* No login, a estrela oficial assume o lugar do rótulo textual antigo acima da marca. */
+html body .access-v2-card.login::before {
   content: "";
   width: 28px;
   height: 28px;
@@ -11,9 +20,10 @@ html body .access-v2-card::before {
   filter: drop-shadow(0 0 10px rgba(139, 174, 255, .5));
 }
 
-/* O DOM legado escreve L★BSTAR. Reconstruímos visualmente usando Anurati + estrela oficial. */
-html body .access-v2-card .access-v2-wordmark {
-  margin: 0 auto 18px !important;
+/* O login antigo escrevia L★BSTAR como texto comum. Mantemos o DOM e
+ * reconstruímos a marca com Anurati + a estrela oficial do wordmark. */
+html body .access-v2-card.login .access-v2-wordmark {
+  margin: 0 auto 22px !important;
   display: flex !important;
   width: max-content !important;
   align-items: center !important;
@@ -28,7 +38,7 @@ html body .access-v2-card .access-v2-wordmark {
   line-height: 1 !important;
 }
 
-html body .access-v2-card .access-v2-wordmark > span {
+html body .access-v2-card.login .access-v2-wordmark > span {
   position: relative !important;
   width: .92em !important;
   height: .92em !important;
@@ -41,28 +51,13 @@ html body .access-v2-card .access-v2-wordmark > span {
   filter: none !important;
 }
 
-html body .access-v2-card .access-v2-wordmark > span::before {
+html body .access-v2-card.login .access-v2-wordmark > span::before {
   content: "";
   width: .92em;
   height: .92em;
   display: block;
   background: center / contain no-repeat url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23eaf0ff' stroke='%23eaf0ff' stroke-width='1.25' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolygon points='12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2'/%3E%3C/svg%3E");
   filter: drop-shadow(0 0 7px rgba(139, 174, 255, .42));
-}
-
-/* A tela de login continua sem caixa/painel: conteúdo diretamente sobre o céu. */
-html body .access-v2-card.login {
-  width: min(92vw, 420px) !important;
-  padding: 18px 28px 20px !important;
-  border: 0 !important;
-  border-radius: 0 !important;
-  background: transparent !important;
-  box-shadow: none !important;
-  backdrop-filter: none !important;
-}
-
-html body .access-v2-card.login .access-v2-wordmark {
-  margin-bottom: 22px !important;
 }
 
 html body .access-v2-card.login .access-v2-provider-list {
@@ -132,16 +127,6 @@ html body .access-v2-card.login .access-v2-invite-copy {
     place-items: center !important;
   }
 
-  html body .access-v2-card::before {
-    width: 30px;
-    height: 30px;
-    margin-bottom: 7px;
-  }
-
-  html body .access-v2-card .access-v2-wordmark {
-    font-size: 31px !important;
-  }
-
   html body .access-v2-card.login {
     width: min(100%, 390px) !important;
     margin: 0 !important;
@@ -149,7 +134,14 @@ html body .access-v2-card.login .access-v2-invite-copy {
     border-radius: 0 !important;
   }
 
+  html body .access-v2-card.login::before {
+    width: 30px;
+    height: 30px;
+    margin-bottom: 7px;
+  }
+
   html body .access-v2-card.login .access-v2-wordmark {
+    font-size: 31px !important;
     margin-bottom: 20px !important;
   }
 
