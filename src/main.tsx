@@ -31,6 +31,7 @@ import { PushNotificationBridge } from "./components/PushNotificationBridge";
 import { RuntimeReliability } from "./components/RuntimeReliability";
 import { SafetyGuards } from "./components/SafetyGuards";
 import { SystemDiagnosticsAddon } from "./components/SystemDiagnostics";
+import { UniversalProfileMentionBridge } from "./components/UniversalProfileMentionBridge";
 import { WorkItemsCenter } from "./components/WorkItemsCenter";
 import { WorkspaceQuickMenus } from "./components/WorkspaceQuickMenus";
 import { WorkspaceSettingsPortal } from "./components/WorkspaceSettingsPortal";
@@ -76,6 +77,7 @@ import "./role-professional-polish.css";
 import "./professional-permission-bridge.css";
 import "./brand-home-navigation";
 import "./product-polish.css";
+import "./universal-profile-mention.css";
 
 const BRAND_INTRO_DURATION_MS = 2350;
 const NATIVE_BRIDGE_TIMEOUT_MS = 4000;
@@ -191,6 +193,7 @@ function RootSurfaces() {
       {introFinished && <OptionalSurface name="ações das mensagens em canais"><ChannelMessageActionsBridge /></OptionalSurface>}
       {introFinished && <OptionalSurface name="exclusão individual de mensagens privadas"><DirectMessageDeleteOptionsBridge /></OptionalSurface>}
       {introFinished && <OptionalSurface name="busca global"><GlobalSearchBridge /></OptionalSurface>}
+      {introFinished && <OptionalSurface name="perfis e menções"><UniversalProfileMentionBridge /></OptionalSurface>}
       {introFinished && <OptionalSurface name="projetos avançados"><ProjectEnhancementsPortal /></OptionalSurface>}
       {introFinished && <OptionalSurface name="instalação web"><InstallApp /></OptionalSurface>}
     </>
