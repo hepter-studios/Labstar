@@ -34,7 +34,7 @@ type OrganizationRow = {
 };
 
 const SESSION_PREFIX = "labstar-organization-entry-v2";
-const ENTRY_ROCKET_TIME_MS = 1850;
+const ENTRY_STAR_TIME_MS = 1350;
 
 function delay(ms: number) {
   return new Promise<void>((resolve) => window.setTimeout(resolve, ms));
@@ -106,10 +106,10 @@ function StarLoader({ size = 22 }: { size?: number }) {
         width: size,
         height: size,
         placeItems: "center",
-        color: "#eaf0ff",
+        color: "#f4f7ff",
         fontSize: `${Math.round(size * 0.9)}px`,
         lineHeight: 1,
-        filter: "drop-shadow(0 0 8px rgba(139,174,255,.45))",
+        filter: "drop-shadow(0 0 11px rgba(174,199,255,.62))",
       }}
     >
       ★
@@ -211,9 +211,9 @@ export function OrganizationEntryGate({ children }: { children: ReactNode }) {
     setActiveOrganization(organization);
     markSeen();
     setStage("entering");
-    await delay(ENTRY_ROCKET_TIME_MS);
+    await delay(ENTRY_STAR_TIME_MS);
     setStage("leaving");
-    window.setTimeout(() => setDone(true), 440);
+    window.setTimeout(() => setDone(true), 360);
   }, [markSeen]);
 
   const enter = useCallback((organization: Organization) => {
@@ -259,6 +259,7 @@ export function OrganizationEntryGate({ children }: { children: ReactNode }) {
   const firstOrganization = organizations.length === 0;
   const primaryAction = useMemo(() => selected ? `Entrar em ${selected.name}` : "Entrar", [selected]);
   const explicitHandleInvalid = Boolean(slug.trim()) && handleState === "taken";
+  const standaloneEntry = stage === "entering" || stage === "leaving";
 
   if (done) return <>{children}</>;
 
@@ -270,131 +271,147 @@ export function OrganizationEntryGate({ children }: { children: ReactNode }) {
       <div className="organization-entry-vignette" aria-hidden="true" />
       <div className="organization-entry-curtain" aria-hidden="true" />
 
-      <section className="organization-entry-glass">
-        <strong className="organization-entry-brand" aria-label="Labstar">L<span>★</span>BSTAR</strong>
+      {standaloneEntry ? (
+        <div
+          aria-label="Entrando no Labstar"
+          aria-live="polite"
+          aria-busy="true"
+          style={{
+            position: "relative",
+            zIndex: 12,
+            display: "grid",
+            placeItems: "center",
+            width: 72,
+            height: 72,
+            margin: 0,
+            padding: 0,
+            border: 0,
+            borderRadius: 0,
+            background: "transparent",
+            boxShadow: "none",
+          }}
+        >
+          <StarLoader size={48} />
+        </div>
+      ) : (
+        <section className="organization-entry-glass">
+          <strong className="organization-entry-brand" aria-label="Labstar">L<span>★</span>BSTAR</strong>
 
-        {stage === "loading" && (
-          <div className="organization-entry-loading">
-            <StarLoader size={21} />
-            <span>Preparando suas organizações</span>
-          </div>
-        )}
-
-        {stage === "choose" && (
-          <>
-            <header className="organization-entry-copy">
-              <h1>Escolha como continuar</h1>
-              <p>Entre em uma organização ou crie uma nova.</p>
-            </header>
-
-            <div className="organization-entry-list" role="listbox" aria-label="Suas organizações">
-              {organizations.map((organization) => (
-                <button
-                  type="button"
-                  role="option"
-                  aria-selected={selected?.id === organization.id}
-                  key={organization.id}
-                  className={selected?.id === organization.id ? "active" : ""}
-                  onClick={() => setSelected(organization)}
-                >
-                  <span className="organization-entry-org-icon"><Building2 size={17} /></span>
-                  <span className="organization-entry-org-copy">
-                    <strong>{organization.name}</strong>
-                    <small>@{organization.slug} · {organization.role}</small>
-                  </span>
-                  {selected?.id === organization.id && <Check size={16} />}
-                </button>
-              ))}
+          {stage === "loading" && (
+            <div className="organization-entry-loading">
+              <StarLoader size={21} />
+              <span>Preparando suas organizações</span>
             </div>
+          )}
 
-            <div className="organization-entry-actions">
-              <button className="primary" type="button" disabled={!selected} onClick={() => selected && enter(selected)}>
-                {primaryAction}<ArrowRight size={16} />
-              </button>
-              <button className="secondary" type="button" onClick={() => { setError(""); setName(""); setSlug(""); setHandleState("idle"); setStage("create"); }}>
-                <Plus size={16} /> Criar nova organização
-              </button>
-            </div>
-          </>
-        )}
+          {stage === "choose" && (
+            <>
+              <header className="organization-entry-copy">
+                <h1>Escolha como continuar</h1>
+                <p>Entre em uma organização ou crie uma nova.</p>
+              </header>
 
-        {stage === "create" && (
-          <>
-            <header className="organization-entry-copy">
-              <h1>{firstOrganization ? "Crie sua organização" : "Nova organização"}</h1>
-              <p>{firstOrganization ? "Só precisamos de um nome para começar." : "Crie um novo ambiente separado no Labstar."}</p>
-            </header>
-
-            <form className="organization-entry-form" onSubmit={submitCreate}>
-              <label>
-                <span>Nome</span>
-                <input autoFocus required minLength={2} maxLength={80} value={name} onChange={(event) => setName(event.target.value)} placeholder="Nome da organização" />
-              </label>
-              <label>
-                <span>Handle <small>opcional · único no Labstar</small></span>
-                <div className={`organization-entry-handle handle-${handleState}`}>
-                  <b>@</b>
-                  <input
-                    maxLength={48}
-                    value={slug}
-                    onChange={(event) => {
-                      setError("");
-                      setSlug(event.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ""));
-                    }}
-                    placeholder="minha-organizacao"
-                    aria-invalid={explicitHandleInvalid}
-                  />
-                  <span className="organization-entry-handle-status" aria-live="polite">
-                    {handleState === "checking" && <LoaderCircle className="spin" size={13} />}
-                    {handleState === "available" && <><Check size={13} /> disponível</>}
-                    {handleState === "taken" && "indisponível"}
-                  </span>
-                </div>
-                {handleState === "taken" && <small className="organization-entry-handle-help error">Escolha outro @handle. Dois iguais nunca são permitidos.</small>}
-                {handleState === "error" && <small className="organization-entry-handle-help">Não foi possível verificar agora; a criação continuará protegida pelo banco.</small>}
-              </label>
-
-              {error && <div className="organization-entry-error">{error}</div>}
-
-              <div className="organization-entry-actions form-actions">
-                {!firstOrganization && (
-                  <button className="secondary icon-back" type="button" onClick={() => setStage("choose")}>
-                    <ArrowLeft size={16} /> Voltar
+              <div className="organization-entry-list" role="listbox" aria-label="Suas organizações">
+                {organizations.map((organization) => (
+                  <button
+                    type="button"
+                    role="option"
+                    aria-selected={selected?.id === organization.id}
+                    key={organization.id}
+                    className={selected?.id === organization.id ? "active" : ""}
+                    onClick={() => setSelected(organization)}
+                  >
+                    <span className="organization-entry-org-icon"><Building2 size={17} /></span>
+                    <span className="organization-entry-org-copy">
+                      <strong>{organization.name}</strong>
+                      <small>@{organization.slug} · {organization.role}</small>
+                    </span>
+                    {selected?.id === organization.id && <Check size={16} />}
                   </button>
-                )}
-                <button className="primary" type="submit" disabled={name.trim().length < 2 || explicitHandleInvalid || handleState === "checking"}>
-                  Criar organização <ArrowRight size={16} />
+                ))}
+              </div>
+
+              <div className="organization-entry-actions">
+                <button className="primary" type="button" disabled={!selected} onClick={() => selected && enter(selected)}>
+                  {primaryAction}<ArrowRight size={16} />
+                </button>
+                <button className="secondary" type="button" onClick={() => { setError(""); setName(""); setSlug(""); setHandleState("idle"); setStage("create"); }}>
+                  <Plus size={16} /> Criar nova organização
                 </button>
               </div>
-            </form>
-          </>
-        )}
+            </>
+          )}
 
-        {stage === "creating" && (
-          <div className="organization-entry-loading" aria-live="polite" aria-busy="true">
-            <StarLoader size={23} />
-            <span>Criando sua organização…</span>
-          </div>
-        )}
+          {stage === "create" && (
+            <>
+              <header className="organization-entry-copy">
+                <h1>{firstOrganization ? "Crie sua organização" : "Nova organização"}</h1>
+                <p>{firstOrganization ? "Só precisamos de um nome para começar." : "Crie um novo ambiente separado no Labstar."}</p>
+              </header>
 
-        {stage === "entering" && (
-          <div className="organization-entry-creating organization-entry-entering" aria-live="polite" aria-busy="true">
-            <LottieAnimation kind="rocket" className="organization-entry-rocket" preserveAspectRatio="xMidYMid meet" />
-            <h1>Entrando no Labstar</h1>
-            <p>{selected ? `Abrindo ${selected.name}…` : "Preparando seu espaço de trabalho…"}</p>
-          </div>
-        )}
+              <form className="organization-entry-form" onSubmit={submitCreate}>
+                <label>
+                  <span>Nome</span>
+                  <input autoFocus required minLength={2} maxLength={80} value={name} onChange={(event) => setName(event.target.value)} placeholder="Nome da organização" />
+                </label>
+                <label>
+                  <span>Handle <small>opcional · único no Labstar</small></span>
+                  <div className={`organization-entry-handle handle-${handleState}`}>
+                    <b>@</b>
+                    <input
+                      maxLength={48}
+                      value={slug}
+                      onChange={(event) => {
+                        setError("");
+                        setSlug(event.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ""));
+                      }}
+                      placeholder="minha-organizacao"
+                      aria-invalid={explicitHandleInvalid}
+                    />
+                    <span className="organization-entry-handle-status" aria-live="polite">
+                      {handleState === "checking" && <LoaderCircle className="spin" size={13} />}
+                      {handleState === "available" && <><Check size={13} /> disponível</>}
+                      {handleState === "taken" && "indisponível"}
+                    </span>
+                  </div>
+                  {handleState === "taken" && <small className="organization-entry-handle-help error">Escolha outro @handle. Dois iguais nunca são permitidos.</small>}
+                  {handleState === "error" && <small className="organization-entry-handle-help">Não foi possível verificar agora; a criação continuará protegida pelo banco.</small>}
+                </label>
 
-        {stage === "error" && (
-          <div className="organization-entry-error-state">
-            <h1>Não conseguimos carregar suas organizações.</h1>
-            <p>{error}</p>
-            <button className="primary" type="button" onClick={() => void refresh()}>
-              Tentar novamente
-            </button>
-          </div>
-        )}
-      </section>
+                {error && <div className="organization-entry-error">{error}</div>}
+
+                <div className="organization-entry-actions form-actions">
+                  {!firstOrganization && (
+                    <button className="secondary icon-back" type="button" onClick={() => setStage("choose")}>
+                      <ArrowLeft size={16} /> Voltar
+                    </button>
+                  )}
+                  <button className="primary" type="submit" disabled={name.trim().length < 2 || explicitHandleInvalid || handleState === "checking"}>
+                    Criar organização <ArrowRight size={16} />
+                  </button>
+                </div>
+              </form>
+            </>
+          )}
+
+          {stage === "creating" && (
+            <div className="organization-entry-loading" aria-live="polite" aria-busy="true">
+              <StarLoader size={23} />
+              <span>Criando sua organização…</span>
+            </div>
+          )}
+
+          {stage === "error" && (
+            <div className="organization-entry-error-state">
+              <h1>Não conseguimos carregar suas organizações.</h1>
+              <p>{error}</p>
+              <button className="primary" type="button" onClick={() => void refresh()}>
+                Tentar novamente
+              </button>
+            </div>
+          )}
+        </section>
+      )}
     </main>
   );
 }
