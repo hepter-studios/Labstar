@@ -68,19 +68,24 @@ function migrationMissing(error: { code?: string; message?: string } | null | un
     || message.includes("relation") && message.includes("does not exist");
 }
 
+function migrationRequiredError() {
+  return Object.assign(new Error("organization_migration_required"), { code: "organization_migration_required" });
+}
+
 export async function listMyOrganizations(): Promise<Organization[]> {
-  if (!supabaseClient) return [PRIMARY_ORGANIZATION];
+  // Nunca invente Hepter Studios como fallback para uma identidade autenticada.
+  // Uma organização só aparece quando o banco confirma a associação da conta.
+  if (!supabaseClient) return import.meta.env.DEV ? [PRIMARY_ORGANIZATION] : [];
+
   const { data, error } = await requireClient().rpc("list_my_organizations");
   if (error) {
-    if (migrationMissing(error)) return [PRIMARY_ORGANIZATION];
+    if (migrationMissing(error)) throw migrationRequiredError();
     throw error;
   }
 
-  const organizations = (Array.isArray(data) ? data : [])
+  return (Array.isArray(data) ? data : [])
     .map((row) => mapOrganization(row as OrganizationRow))
     .filter((organization) => organization.id);
-
-  return organizations.length ? organizations : [PRIMARY_ORGANIZATION];
 }
 
 export async function createOrganization(name: string, slug = ""): Promise<Organization> {
@@ -89,9 +94,7 @@ export async function createOrganization(name: string, slug = ""): Promise<Organ
     desired_slug: slug.trim() || null,
   });
   if (error) {
-    if (migrationMissing(error)) {
-      throw Object.assign(new Error("organization_migration_required"), { code: "organization_migration_required" });
-    }
+    if (migrationMissing(error)) throw migrationRequiredError();
     throw error;
   }
 
@@ -102,9 +105,9 @@ export async function createOrganization(name: string, slug = ""): Promise<Organ
 
 export function loadActiveOrganizationId() {
   try {
-    return window.localStorage.getItem(ACTIVE_ORGANIZATION_KEY) || PRIMARY_ORGANIZATION_ID;
+    return window.localStorage.getItem(ACTIVE_ORGANIZATION_KEY) || "";
   } catch {
-    return PRIMARY_ORGANIZATION_ID;
+    return "";
   }
 }
 
