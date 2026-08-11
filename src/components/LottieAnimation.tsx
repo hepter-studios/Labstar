@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import lottie, { type AnimationItem } from "lottie-web";
 import { loadOnboardingLottie, type OnboardingLottieKind } from "../lib/onboarding-lotties";
+import "../lottie-runtime.css";
 
 type DiagnosticState = "loading" | "player-created" | "playing" | "failed";
 
@@ -104,8 +105,6 @@ export function LottieAnimation({
         instance.addEventListener("data_failed", markFailure);
         instance.addEventListener("error", markFailure);
 
-        // Alguns exports antigos não disparam DOMLoaded de forma consistente,
-        // mas já criaram o SVG. Neste caso o SVG visível também conta como pronto.
         readyTimer = window.setTimeout(() => {
           if (!disposed && ref.current?.querySelector("svg")) markReady();
         }, 700);
