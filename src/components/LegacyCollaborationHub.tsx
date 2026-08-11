@@ -80,6 +80,7 @@ import {
   type IntegrationRule,
 } from "../lib/supabase";
 import { CHAT_CLEARED_EVENT, type ChatClearedDetail } from "../lib/chatMaintenance";
+import { isDevPreviewMode } from "../lib/devPreviewMode";
 import { memberPresenceStatus, useMemberPresence } from "../lib/presence";
 import {
   MAX_CHAT_FILE_BYTES,
@@ -176,6 +177,19 @@ export function CollaborationHub({ member, initialChannelId, soundEnabled = true
     setLoading(true);
     setError("");
     try {
+      if (import.meta.env.DEV && isDevPreviewMode()) {
+        const { devPreviewCollaboration, devPreviewMembers } = await import("../lib/devPreview");
+        const collaboration = devPreviewCollaboration();
+        const team = devPreviewMembers(member);
+        setSpaces(collaboration.spaces);
+        setCategories(collaboration.categories);
+        setChannels(collaboration.channels);
+        setMembers(team);
+        const nextSpace = selectedSpaceId || collaboration.spaces[0]?.id || "";
+        setSelectedSpaceId(nextSpace);
+        setSelectedChannelId((current) => current || collaboration.channels.find((channel) => channel.spaceId === nextSpace)?.id || "");
+        return;
+      }
       const [collaboration, team] = await Promise.all([loadCollaboration(), listMembers()]);
       setSpaces(collaboration.spaces);
       setCategories(collaboration.categories);
@@ -582,6 +596,11 @@ function MessageRoom({ channel, space, member }: { channel: LabstarChannel; spac
 
   async function refreshMessages(scroll = false) {
     try {
+      if (import.meta.env.DEV && isDevPreviewMode()) {
+        setMessages([]);
+        setLoadError("");
+        return;
+      }
       const data = await withChatLoadTimeout(listMessages(channel.id));
       setMessages(data);
       setLoadError("");
@@ -612,6 +631,7 @@ function MessageRoom({ channel, space, member }: { channel: LabstarChannel; spac
     setCodeMode(false);
     setMarkdownStudio(null);
     void refreshMessages(true);
+    if (import.meta.env.DEV && isDevPreviewMode()) return undefined;
     const messageSubscription = subscribeToTable("channel_messages", `channel_id=eq.${channel.id}`, () => void refreshMessages());
     const attachmentSubscription = subscribeToTable("channel_message_attachments", "", () => void refreshMessages());
     return () => {
@@ -669,6 +689,16 @@ function MessageRoom({ channel, space, member }: { channel: LabstarChannel; spac
   async function submit(event: React.FormEvent) {
     event.preventDefault();
     if (!draft.trim() && !files.length) return;
+    if (import.meta.env.DEV && isDevPreviewMode()) {
+      setDraft("");
+      setFiles([]);
+      setEditing(null);
+      setReplying(null);
+      setMarkdownStudio(null);
+      setUploadNotice("Prévia local: a mensagem não foi enviada ao banco.");
+      setUploadNoticeError(false);
+      return;
+    }
     setSending(true);
     setUploadNotice("");
     setUploadNoticeError(false);

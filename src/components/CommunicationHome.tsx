@@ -21,6 +21,7 @@ import {
   type LabstarNotification,
   type Member,
 } from "../lib/supabase";
+import { isDevPreviewMode } from "../lib/devPreviewMode";
 import { Avatar } from "./Avatar";
 
 type CommunicationHomeProps = {
@@ -97,6 +98,21 @@ export function CommunicationHome({ member, onOpenChannel, onOpenDirect }: Commu
     setError("");
 
     try {
+      if (import.meta.env.DEV && isDevPreviewMode()) {
+        const { devPreviewCollaboration, devPreviewMembers } = await import("../lib/devPreview");
+        const collaboration = devPreviewCollaboration();
+        const publicChannels = collaboration.channels.filter(
+          (channel) => channel.allowedRoles.length === 0 && channel.allowedAssignments.length === 0,
+        );
+        setData({
+          spaces: collaboration.spaces,
+          channels: publicChannels,
+          members: devPreviewMembers(member),
+          messages: [],
+          notifications: [],
+        });
+        return;
+      }
       const [collaborationResult, membersResult, notificationsResult] = await Promise.allSettled([
         withTimeout(loadCollaboration(), HOME_CORE_TIMEOUT_MS, "collaboration"),
         withTimeout(listMembers(), HOME_CORE_TIMEOUT_MS, "members"),
