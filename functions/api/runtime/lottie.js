@@ -15,7 +15,11 @@ function javascript(body, status = 200, cache = "no-store") {
   });
 }
 
-export async function onRequestGet() {
+export async function onRequest(context) {
+  if (context.request.method !== "GET") {
+    return javascript("/* Method Not Allowed */", 405);
+  }
+
   for (const source of LOTTIE_RUNTIME_SOURCES) {
     try {
       const upstream = await fetch(source, {
@@ -43,8 +47,4 @@ export async function onRequestGet() {
   }
 
   return javascript("/* Labstar: Lottie runtime unavailable */", 503);
-}
-
-export function onRequest() {
-  return javascript("/* Method Not Allowed */", 405);
 }
