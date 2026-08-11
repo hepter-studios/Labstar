@@ -23,7 +23,9 @@ declare global {
   }
 }
 
-const RUNTIME_URL = "https://cdnjs.cloudflare.com/ajax/libs/bodymovin/5.12.2/lottie.min.js";
+// Same-origin on purpose: browsers/privacy shields can block public CDN scripts.
+// Cloudflare Pages proxies the pinned runtime server-side at this route.
+const RUNTIME_URL = "/api/runtime/lottie";
 let runtimePromise: Promise<LottieRuntime> | null = null;
 
 function loadRuntime() {
@@ -39,9 +41,11 @@ function loadRuntime() {
       else reject(new Error("lottie_runtime_missing"));
     };
 
+    const fail = () => reject(new Error("lottie_runtime_failed"));
+
     if (existing) {
       existing.addEventListener("load", finish, { once: true });
-      existing.addEventListener("error", () => reject(new Error("lottie_runtime_failed")), { once: true });
+      existing.addEventListener("error", fail, { once: true });
       window.setTimeout(() => window.lottie && resolve(window.lottie), 0);
       return;
     }
@@ -50,8 +54,12 @@ function loadRuntime() {
     script.async = true;
     script.dataset.labstarLottie = "true";
     script.addEventListener("load", finish, { once: true });
-    script.addEventListener("error", () => reject(new Error("lottie_runtime_failed")), { once: true });
+    script.addEventListener("error", fail, { once: true });
     document.head.appendChild(script);
+  }).catch((error) => {
+    runtimePromise = null;
+    document.querySelector<HTMLScriptElement>("script[data-labstar-lottie]")?.remove();
+    throw error;
   });
 
   return runtimePromise;
@@ -77,6 +85,7 @@ export function LottieAnimation({
 
     let disposed = false;
     let instance: LottieInstance | null = null;
+    setFailed(false);
 
     void Promise.all([loadRuntime(), loadOnboardingLottie(kind)])
       .then(([runtime, animationData]) => {
