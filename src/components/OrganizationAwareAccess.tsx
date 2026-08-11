@@ -14,6 +14,15 @@ type AccessRoute = "resolving" | "standard" | "organization";
 
 function OrganizationEntryWithAccountBack({ children }: { children: ReactNode }) {
   const [signingOut, setSigningOut] = useState(false);
+  const [entryVisible, setEntryVisible] = useState(false);
+
+  useEffect(() => {
+    const sync = () => setEntryVisible(Boolean(document.querySelector(".organization-entry-screen")));
+    sync();
+    const observer = new MutationObserver(sync);
+    observer.observe(document.body, { childList: true, subtree: true });
+    return () => observer.disconnect();
+  }, []);
 
   async function switchAccount() {
     if (signingOut) return;
@@ -27,38 +36,40 @@ function OrganizationEntryWithAccountBack({ children }: { children: ReactNode })
 
   return (
     <>
-      <button
-        type="button"
-        aria-label="Voltar e entrar com outra conta"
-        title="Entrar com outra conta"
-        disabled={signingOut}
-        onClick={() => void switchAccount()}
-        style={{
-          position: "fixed",
-          top: "clamp(18px, 3vw, 30px)",
-          left: "clamp(18px, 3vw, 30px)",
-          zIndex: 33020,
-          minHeight: 38,
-          display: "inline-flex",
-          alignItems: "center",
-          justifyContent: "center",
-          gap: 8,
-          padding: "0 13px",
-          border: "1px solid rgba(180, 199, 238, .14)",
-          borderRadius: 11,
-          color: "#c9d3e6",
-          background: "rgba(5, 9, 17, .58)",
-          boxShadow: "inset 0 1px 0 rgba(255,255,255,.04), 0 12px 34px rgba(0,0,0,.22)",
-          backdropFilter: "blur(18px)",
-          WebkitBackdropFilter: "blur(18px)",
-          font: "700 11px/1 Inter, ui-sans-serif, system-ui, sans-serif",
-          cursor: signingOut ? "default" : "pointer",
-          opacity: signingOut ? .55 : 1,
-        }}
-      >
-        <ArrowLeft size={15} strokeWidth={1.8} />
-        <span>{signingOut ? "Saindo…" : "Trocar conta"}</span>
-      </button>
+      {entryVisible && (
+        <button
+          type="button"
+          aria-label="Voltar e entrar com outra conta"
+          title="Entrar com outra conta"
+          disabled={signingOut}
+          onClick={() => void switchAccount()}
+          style={{
+            position: "fixed",
+            top: "clamp(18px, 3vw, 30px)",
+            left: "clamp(18px, 3vw, 30px)",
+            zIndex: 33020,
+            minHeight: 38,
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 8,
+            padding: "0 13px",
+            border: "1px solid rgba(180, 199, 238, .14)",
+            borderRadius: 11,
+            color: "#c9d3e6",
+            background: "rgba(5, 9, 17, .58)",
+            boxShadow: "inset 0 1px 0 rgba(255,255,255,.04), 0 12px 34px rgba(0,0,0,.22)",
+            backdropFilter: "blur(18px)",
+            WebkitBackdropFilter: "blur(18px)",
+            font: "700 11px/1 Inter, ui-sans-serif, system-ui, sans-serif",
+            cursor: signingOut ? "default" : "pointer",
+            opacity: signingOut ? .55 : 1,
+          }}
+        >
+          <ArrowLeft size={15} strokeWidth={1.8} />
+          <span>{signingOut ? "Saindo…" : "Trocar conta"}</span>
+        </button>
+      )}
       <OrganizationEntryGate>{children}</OrganizationEntryGate>
     </>
   );
