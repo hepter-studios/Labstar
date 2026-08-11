@@ -48,6 +48,8 @@ export function LottieAnimation({
     let disposed = false;
     let instance: AnimationItem | null = null;
     let readyTimer = 0;
+    let posterSettled = false;
+    const posterTimers: number[] = [];
 
     setFailed(false);
     setReady(false);
@@ -88,11 +90,25 @@ export function LottieAnimation({
 
         if (diagnosticMode) setDiagnosticState("player-created");
 
+        const pinPosterFrame = () => {
+          if (disposed || posterFrame === undefined) return;
+          instance?.goToAndStop(posterFrame, true);
+        };
+
         const markReady = () => {
           if (disposed) return;
-          if (posterFrame !== undefined) instance?.goToAndStop(posterFrame, true);
+          pinPosterFrame();
           setReady(true);
           if (diagnosticMode) setDiagnosticState("playing");
+        };
+
+        const settlePosterFrame = () => {
+          markReady();
+          if (posterFrame === undefined || posterSettled) return;
+          posterSettled = true;
+          for (const delay of [120, 400, 900, 1800]) {
+            posterTimers.push(window.setTimeout(pinPosterFrame, delay));
+          }
         };
 
         const markFailure = (event?: unknown) => {
@@ -107,13 +123,14 @@ export function LottieAnimation({
           }
         };
 
-        instance.addEventListener("DOMLoaded", markReady);
+        instance.addEventListener("DOMLoaded", settlePosterFrame);
+        instance.addEventListener("loaded_images", settlePosterFrame);
         instance.addEventListener("data_ready", markReady);
         instance.addEventListener("data_failed", markFailure);
         instance.addEventListener("error", markFailure);
 
         readyTimer = window.setTimeout(() => {
-          if (!disposed && ref.current?.querySelector("svg")) markReady();
+          if (!disposed && ref.current?.querySelector("svg")) settlePosterFrame();
         }, 700);
       })
       .catch((cause) => {
@@ -131,6 +148,7 @@ export function LottieAnimation({
     return () => {
       disposed = true;
       window.clearTimeout(readyTimer);
+      for (const timer of posterTimers) window.clearTimeout(timer);
       instance?.destroy();
       container.replaceChildren();
     };
