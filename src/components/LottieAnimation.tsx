@@ -62,6 +62,7 @@ export function LottieAnimation({
       .then((sourceData) => {
         if (disposed || !ref.current) return;
         const animationData = structuredClone(sourceData);
+        const expectedLayerCount = Array.isArray(animationData.layers) ? animationData.layers.length : 0;
 
         if (diagnosticMode) {
           setDiagnosticInfo({
@@ -97,12 +98,12 @@ export function LottieAnimation({
 
         const markReady = () => {
           if (disposed) return;
-          pinPosterFrame();
           setReady(true);
           if (diagnosticMode) setDiagnosticState("playing");
         };
 
         const settlePosterFrame = () => {
+          pinPosterFrame();
           markReady();
           if (posterFrame === undefined || posterSettled) return;
           posterSettled = true;
@@ -125,12 +126,21 @@ export function LottieAnimation({
 
         instance.addEventListener("DOMLoaded", settlePosterFrame);
         instance.addEventListener("loaded_images", settlePosterFrame);
-        instance.addEventListener("data_ready", markReady);
+        instance.addEventListener("data_ready", () => {
+          if (posterFrame === undefined) markReady();
+        });
         instance.addEventListener("data_failed", markFailure);
         instance.addEventListener("error", markFailure);
 
         readyTimer = window.setTimeout(() => {
-          if (!disposed && ref.current?.querySelector("svg")) settlePosterFrame();
+          if (disposed) return;
+          const svgRoot = ref.current?.querySelector("svg > g");
+          if (!svgRoot) return;
+          if (posterFrame === undefined) {
+            markReady();
+            return;
+          }
+          if (expectedLayerCount === 0 || svgRoot.children.length >= expectedLayerCount) settlePosterFrame();
         }, 700);
       })
       .catch((cause) => {
