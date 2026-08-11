@@ -66,6 +66,8 @@ import {
 import { memberPresenceStatus, useMemberPresence } from "./lib/presence";
 import { Avatar } from "./components/Avatar";
 import { CollaborationHub } from "./components/CollaborationHub";
+import { LottieAnimation } from "./components/LottieAnimation";
+import { MascotCelebrationHost, ProjectLottieExperience, celebrateWithMascot } from "./components/LottieExperience";
 import { NotificationsButton } from "./components/NotificationsPanel";
 import { CurrentProfileConnection, MemberProfileConnection } from "./components/ProfileConnectionsBridge";
 import { RoleBadge, RoleManager } from "./components/RoleManager";
@@ -149,12 +151,15 @@ function isDevPreviewMode() {
 }
 
 export default function Home() {
+  const [showProjectLottieBackground, setShowProjectLottieBackground] = useState(() => window.matchMedia("(min-width: 701px)").matches);
+  const [projectSkyEnabled, setProjectSkyEnabled] = useState(false);
   const [sessionState, setSessionState] = useState<SessionState>("carregando");
   const [session, setSession] = useState<SessionData | null>(null);
   const [blockedIdentity, setBlockedIdentity] = useState<{ email: string } | null>(null);
   const [nodes, setNodes] = useState<StructureNode[]>(initialNodes);
   const [selectedId, setSelectedId] = useState("labstar");
   const [view, setView] = useState<ViewMode>("mapa");
+  const [projectLoadToken, setProjectLoadToken] = useState(0);
   const [zoom, setZoom] = useState(0.78);
   const [sound, setSound] = useState(true);
   const [search, setSearch] = useState("");
@@ -176,6 +181,14 @@ export default function Home() {
   const zoomRef = useRef(zoom);
   const pendingWheelRef = useRef(0);
   const wheelFrameRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    const media = window.matchMedia("(min-width: 701px)");
+    const syncBackground = () => setShowProjectLottieBackground(media.matches);
+    syncBackground();
+    media.addEventListener("change", syncBackground);
+    return () => media.removeEventListener("change", syncBackground);
+  }, []);
 
   useEffect(() => {
     if (githubConnectionResult) setQuickPanel("profile");
@@ -433,6 +446,11 @@ export default function Home() {
       setSync("sincronizado");
       setManualSave("saved");
       setEditorOpen(false);
+      celebrateWithMascot({
+        variant: "happy",
+        title: "Projeto salvo",
+        message: selected?.name ? `${selected.name} voltou para a órbita.` : "As alterações foram registradas.",
+      });
     } catch {
       setSync("local");
       setManualSave("error");
@@ -472,6 +490,12 @@ export default function Home() {
       viewport.scrollLeft = Math.max(0, (minX + contentWidth / 2) * nextZoom - viewport.clientWidth / 2);
       viewport.scrollTop = Math.max(0, (minY + contentHeight / 2) * nextZoom - viewport.clientHeight / 2);
     });
+  }
+
+  function openProjectMap() {
+    setProjectSkyEnabled(true);
+    setProjectLoadToken((current) => current + 1);
+    setView("mapa");
   }
 
   function zoomAt(event: React.WheelEvent<HTMLDivElement>) {
@@ -543,7 +567,7 @@ export default function Home() {
         <nav className="rail" aria-label="Navegação principal">
           <div className="rail-group">
             <button data-tooltip="Visão geral" className={view === "visao" ? "active" : ""} onClick={() => setView("visao")} aria-label="Visão geral"><LayoutDashboard size={18} /></button>
-            <button data-tooltip="Mapa" className={view === "mapa" ? "active" : ""} onClick={() => setView("mapa")} aria-label="Mapa da organização"><Network size={18} /></button>
+            <button data-tooltip="Mapa" className={view === "mapa" ? "active" : ""} onClick={openProjectMap} aria-label="Mapa da organização"><Network size={18} /></button>
             <button data-tooltip="Central de trabalho" className={view === "colaboracao" ? "active" : ""} onClick={() => setView("colaboracao")} aria-label="Central de trabalho"><MessagesSquare size={18} /></button>
             <button data-tooltip="Equipe" className={view === "equipe" ? "active" : ""} onClick={() => setView("equipe")} aria-label="Equipe"><Users size={18} /></button>
           </div>
@@ -553,7 +577,8 @@ export default function Home() {
         </nav>
 
         {view === "mapa" ? (
-          <section className="canvas-shell">
+          <section className={`canvas-shell ${showProjectLottieBackground && projectSkyEnabled ? "project-lottie-sky-active" : ""}`}>
+            {showProjectLottieBackground && projectSkyEnabled && <LottieAnimation kind="project-stars" className="lottie-project-space-background" />}
             <div className="cosmic-effects" aria-hidden="true">
               <i className="shooting-star shooting-star-one" />
               <i className="shooting-star shooting-star-two" />
@@ -611,8 +636,16 @@ export default function Home() {
                     <article
                       key={node.id}
                       data-project-node-id={node.id}
+                      tabIndex={0}
+                      role="button"
+                      aria-label={`Selecionar ${meta.label.toLocaleLowerCase()} ${node.name}`}
                       className={`node-card ${selectedId === node.id ? "selected" : ""} ${draggingId === node.id ? "dragging" : ""} ${matches ? "" : "search-muted"}`}
                       style={{ left: node.x, top: node.y, "--accent": meta.color, "--status": status.color } as React.CSSProperties}
+                      onKeyDown={(event) => {
+                        if (event.key !== "Enter" && event.key !== " ") return;
+                        event.preventDefault();
+                        selectNode(node.id);
+                      }}
                       onPointerDown={(event) => {
                         if (event.button !== 0) return;
                         if ((event.target as HTMLElement).closest("button, a")) return;
@@ -667,7 +700,7 @@ export default function Home() {
             attentionNodes={attentionNodes}
             completeCount={completeCount}
             averageProgress={averageProgress}
-            onSelect={(id) => { setSelectedId(id); setEditorOpen(false); setView("mapa"); }}
+            onSelect={(id) => { setSelectedId(id); setEditorOpen(false); setProjectSkyEnabled(true); setView("mapa"); }}
             onOpenSummary={() => setQuickPanel("summary")}
           />
         ) : view === "colaboracao" ? (
@@ -752,6 +785,8 @@ export default function Home() {
         />
       )}
       {legalOpen && <LegalModal anchored onClose={() => setLegalOpen(false)} />}
+      <ProjectLottieExperience projectLoadToken={projectLoadToken} />
+      <MascotCelebrationHost />
     </main>
   );
 }

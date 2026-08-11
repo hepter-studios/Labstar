@@ -25,6 +25,7 @@ import { MemberPanelTools } from "./components/MemberPanelTools";
 import { MemberQuickActions } from "./components/MemberQuickActions";
 import { MessageWorkItemBridge } from "./components/MessageWorkItemBridge";
 import { OrganizationAwareAccess } from "./components/OrganizationAwareAccess";
+import { AccessBrandIntro } from "./components/AccessControl";
 import { OrganizationSwitcherPortal } from "./components/OrganizationSwitcherPortal";
 import { ProfessionalPermissionBridge } from "./components/ProfessionalPermissionBridge";
 import { ProjectEnhancementsPortal } from "./components/ProjectEnhancementsPortal";
@@ -82,7 +83,7 @@ import "./universal-profile-mention.css";
 import "./organization-switcher.css";
 import "./organization-entry.css";
 
-const BRAND_INTRO_DURATION_MS = 2350;
+const BRAND_INTRO_DURATION_MS = 3450;
 const NATIVE_BRIDGE_TIMEOUT_MS = 4000;
 
 function isDevPreviewMode() {
@@ -206,11 +207,14 @@ function RootSurfaces() {
 
 function ApplicationRoot() {
   const previewMode = isDevPreviewMode();
+  const introPreviewMode = previewMode && new URLSearchParams(window.location.search).has("intro-preview");
 
   return (
     <>
       <BootReadySignal />
-      {previewMode
+      {introPreviewMode
+        ? <AccessBrandIntro />
+        : previewMode
         ? <RootSurfaces />
         : <OrganizationAwareAccess><RootSurfaces /></OrganizationAwareAccess>}
     </>
