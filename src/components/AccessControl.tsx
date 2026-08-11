@@ -205,7 +205,7 @@ export function AccessBrandIntro() {
 }
 
 function ApprovalValidation() {
-  return <LabstarAccessLoader message="Validando aprovação" />;
+  return <LabstarAccessLoader />;
 }
 
 function AccessFrame({ children, compact = false, login = false }: { children: React.ReactNode; compact?: boolean; login?: boolean }) {

@@ -59,11 +59,10 @@ export function ProjectLottieExperience({ projectLoadToken }: { projectLoadToken
   );
 }
 
-export function LabstarAccessLoader({ message }: { message: string }) {
+export function LabstarAccessLoader() {
   return (
-    <main className="access-screen labstar-access-loader" aria-label={message} aria-live="polite" aria-busy="true">
+    <main className="access-screen labstar-access-loader" aria-label="Carregando Labstar" aria-live="polite" aria-busy="true">
       <LottieAnimation kind="rocket" className="labstar-access-loader-animation" preserveAspectRatio="xMidYMid meet" />
-      <span>{message}</span>
     </main>
   );
 }

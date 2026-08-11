@@ -215,7 +215,7 @@ function ApplicationRoot() {
     <>
       <BootReadySignal />
       {loaderPreviewMode
-        ? <LabstarAccessLoader message="Validando aprovação" />
+        ? <LabstarAccessLoader />
         : introPreviewMode
         ? <AccessBrandIntro />
         : previewMode
