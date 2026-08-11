@@ -5,9 +5,11 @@ import stars3 from "./lottie-payloads/stars-3";
 import stars4 from "./lottie-payloads/stars-4";
 import stars5 from "./lottie-payloads/stars-5";
 import stars6 from "./lottie-payloads/stars-6";
+import rocketPayload from "./lottie-payloads/rocket";
 
 export type OnboardingLottieKind =
   | "stars"
+  | "rocket"
   | "project-stars"
   | "planet"
   | "happy-spaceman"
@@ -16,11 +18,20 @@ export type OnboardingLottieKind =
   | "victory-sign"
   | "crying-astronaut"
   | "space-boy-developer"
-  | "free-consultation";
+  | "free-consultation"
+  | "cute-astronaut-mug"
+  | "astronaut-coffee"
+  | "catch-the-fish"
+  | "astronaut-cosmos"
+  | "astronaut-solo"
+  | "astronaut-orbit"
+  | "astronaut-headphones"
+  | "astronaut-flow";
 
 // The supplied space scene is kept complete here (all top-level layers/assets).
 // It is only gzip-compressed and split into modules so it stays manageable in source.
 const STARS_GZIP_BASE64 = stars0 + stars1 + stars2 + stars3 + stars4 + stars5 + stars6;
+const ROCKET_GZIP_BASE64 = rocketPayload;
 
 const cache = new Map<OnboardingLottieKind, Promise<Record<string, unknown>>>();
 
@@ -54,8 +65,24 @@ async function loadLottieSource(kind: OnboardingLottieKind) {
   if (kind === "crying-astronaut") return (await import("../assets/lottie/crying-astronaut.json")).default as Record<string, unknown>;
   if (kind === "space-boy-developer") return (await import("../assets/lottie/space-boy-developer.json")).default as Record<string, unknown>;
   if (kind === "free-consultation") return (await import("../assets/lottie/free-consultation.json")).default as Record<string, unknown>;
+  if (kind === "cute-astronaut-mug") return (await import("../assets/lottie/cute-astronaut-mug.json")).default as Record<string, unknown>;
+  if (kind === "astronaut-coffee") return (await import("../assets/lottie/astronaut-coffee.json")).default as Record<string, unknown>;
+  if (kind === "catch-the-fish") return (await import("../assets/lottie/catch-the-fish.json")).default as Record<string, unknown>;
+  if (kind === "astronaut-cosmos") return (await import("../assets/lottie/astronaut-cosmos.json")).default as Record<string, unknown>;
+  if (kind === "astronaut-solo") return (await import("../assets/lottie/astronaut-solo.json")).default as Record<string, unknown>;
+  if (kind === "astronaut-orbit") return (await import("../assets/lottie/astronaut-orbit.json")).default as Record<string, unknown>;
+  if (kind === "astronaut-headphones") return (await import("../assets/lottie/astronaut-headphones.json")).default as Record<string, unknown>;
+  if (kind === "astronaut-flow") return (await import("../assets/lottie/astronaut-flow.json")).default as Record<string, unknown>;
 
-  return expandLottie(STARS_GZIP_BASE64);
+  const payload = kind === "stars" ? STARS_GZIP_BASE64 : ROCKET_GZIP_BASE64;
+  const animation = await expandLottie(payload);
+
+  if (kind === "rocket") {
+    const layers = Array.isArray(animation.layers) ? animation.layers : [];
+    animation.layers = layers.filter((layer) => String((layer as { nm?: unknown }).nm ?? "") !== "Radial");
+  }
+
+  return animation;
 }
 
 export function loadOnboardingLottie(kind: OnboardingLottieKind) {

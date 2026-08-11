@@ -40,8 +40,6 @@ import { LabstarAccessLoader } from "./LottieExperience";
 
 type AccessStage = "loading" | "anonymous" | "active" | "pending" | "suspended" | "unauthorized" | "error";
 
-const BRAND_INTRO_DURATION_MS = 3450;
-
 type InviteForm = {
   mode: InviteMode;
   email: string;
@@ -86,7 +84,6 @@ async function copyText(value: string) {
 }
 
 export function AccessControl({ children }: { children: ReactNode }) {
-  const [introComplete, setIntroComplete] = useState(false);
   const [stage, setStage] = useState<AccessStage>("loading");
   const [identity, setIdentity] = useState<AccessIdentity | null>(null);
   const [inspection, setInspection] = useState<InviteInspection | null>(null);
@@ -115,11 +112,6 @@ export function AccessControl({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    const timer = window.setTimeout(() => setIntroComplete(true), BRAND_INTRO_DURATION_MS);
-    return () => window.clearTimeout(timer);
-  }, []);
-
-  useEffect(() => {
     void refresh();
     const unsubscribe = subscribeToAccessChanges((event) => {
       if (event === "INITIAL_SESSION" || event === "TOKEN_REFRESHED") return;
@@ -127,8 +119,6 @@ export function AccessControl({ children }: { children: ReactNode }) {
     });
     return unsubscribe;
   }, [refresh]);
-
-  if (!introComplete) return <AccessBrandIntro />;
 
   if (stage === "active" && identity?.member) {
     const canInvite = identity.member.role === "owner" || identity.member.role === "admin";

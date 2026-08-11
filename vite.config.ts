@@ -49,11 +49,14 @@ export default defineConfig({
       },
       workbox: {
         importScripts: ["push-sw.js"],
-        navigateFallback: "/index.html",
+        // Labstar depends on the network for authentication and live data. Keeping
+        // index.html in Workbox's precache can trap an open client on an older
+        // deployment even after Cloudflare is already serving the new build.
+        navigateFallback: null,
         cleanupOutdatedCaches: true,
         skipWaiting: true,
         clientsClaim: true,
-        globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
+        globPatterns: ["**/*.{js,css,ico,png,svg,woff2}"],
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/pgzwyngxsxnheulvusdq\.supabase\.co\/.*/i,
