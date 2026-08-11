@@ -3,4 +3,4 @@
   X-Content-Type-Options: nosniff
   Referrer-Policy: strict-origin-when-cross-origin
   Permissions-Policy: camera=(self), microphone=(self), geolocation=()
-  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://pgzwyngxsxnheulvusdq.supabase.co; media-src 'self' blob: https://pgzwyngxsxnheulvusdq.supabase.co; connect-src 'self' https://labstar-api-mackson.fly.dev https://pgzwyngxsxnheulvusdq.supabase.co wss://pgzwyngxsxnheulvusdq.supabase.co; font-src 'self' data:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'
+  Content-Security-Policy: default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://unpkg.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://pgzwyngxsxnheulvusdq.supabase.co; media-src 'self' blob: https://pgzwyngxsxnheulvusdq.supabase.co; connect-src 'self' https://labstar-api-mackson.fly.dev https://pgzwyngxsxnheulvusdq.supabase.co wss://pgzwyngxsxnheulvusdq.supabase.co; font-src 'self' data:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'
