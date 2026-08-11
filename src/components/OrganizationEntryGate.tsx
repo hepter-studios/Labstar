@@ -34,7 +34,7 @@ type OrganizationRow = {
 };
 
 const SESSION_PREFIX = "labstar-organization-entry-v2";
-const ENTRY_ROCKET_TIME_MS = 1850;
+const ENTRY_STAR_TIME_MS = 760;
 
 function delay(ms: number) {
   return new Promise<void>((resolve) => window.setTimeout(resolve, ms));
@@ -57,7 +57,6 @@ function organizationFromRow(row: OrganizationRow): Organization | null {
 }
 
 async function listOrganizationsForEntry() {
-  // Use the RPC directly here so a genuinely empty membership list stays empty.
   if (supabaseClient) {
     const { data, error } = await supabaseClient.rpc("list_my_organizations");
     if (!error) {
@@ -95,6 +94,27 @@ function creationError(cause: unknown) {
   if (value.includes("member_not_authorized")) return "Sua conta ainda não tem permissão para criar uma organização.";
   if (value.includes("organization_migration_required")) return "A criação de organizações ainda está sendo publicada. Tente novamente em instantes.";
   return "Não foi possível criar a organização. Tente novamente.";
+}
+
+function StarLoader({ size = 22 }: { size?: number }) {
+  return (
+    <span
+      className="spin"
+      aria-hidden="true"
+      style={{
+        display: "inline-grid",
+        width: size,
+        height: size,
+        placeItems: "center",
+        color: "#eaf0ff",
+        fontSize: `${Math.round(size * 0.9)}px`,
+        lineHeight: 1,
+        filter: "drop-shadow(0 0 8px rgba(139,174,255,.45))",
+      }}
+    >
+      ★
+    </span>
+  );
 }
 
 export function OrganizationEntryGate({ children }: { children: ReactNode }) {
@@ -191,9 +211,9 @@ export function OrganizationEntryGate({ children }: { children: ReactNode }) {
     setActiveOrganization(organization);
     markSeen();
     setStage("entering");
-    await delay(ENTRY_ROCKET_TIME_MS);
+    await delay(ENTRY_STAR_TIME_MS);
     setStage("leaving");
-    window.setTimeout(() => setDone(true), 440);
+    window.setTimeout(() => setDone(true), 360);
   }, [markSeen]);
 
   const enter = useCallback((organization: Organization) => {
@@ -255,7 +275,7 @@ export function OrganizationEntryGate({ children }: { children: ReactNode }) {
 
         {stage === "loading" && (
           <div className="organization-entry-loading">
-            <LoaderCircle className="spin" size={19} />
+            <StarLoader size={21} />
             <span>Preparando suas organizações</span>
           </div>
         )}
@@ -352,16 +372,15 @@ export function OrganizationEntryGate({ children }: { children: ReactNode }) {
 
         {stage === "creating" && (
           <div className="organization-entry-loading" aria-live="polite" aria-busy="true">
-            <LoaderCircle className="spin" size={21} />
+            <StarLoader size={23} />
             <span>Criando sua organização…</span>
           </div>
         )}
 
         {stage === "entering" && (
-          <div className="organization-entry-creating organization-entry-entering" aria-live="polite" aria-busy="true">
-            <LottieAnimation kind="rocket" className="organization-entry-rocket" preserveAspectRatio="xMidYMid meet" />
-            <h1>Entrando no Labstar</h1>
-            <p>{selected ? `Abrindo ${selected.name}…` : "Preparando seu espaço de trabalho…"}</p>
+          <div className="organization-entry-loading" aria-live="polite" aria-busy="true">
+            <StarLoader size={25} />
+            <span>{selected ? `Entrando em ${selected.name}…` : "Entrando no Labstar…"}</span>
           </div>
         )}
 
