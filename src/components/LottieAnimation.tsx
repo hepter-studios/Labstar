@@ -23,9 +23,9 @@ declare global {
   }
 }
 
-// Same-origin on purpose: browsers/privacy shields can block public CDN scripts.
-// Cloudflare Pages proxies the pinned runtime server-side at this route.
-const RUNTIME_URL = "/api/runtime/lottie";
+// Same-origin on purpose: privacy shields never need to allow a third-party script.
+// The Pages Function pins lottie-web 5.12.2 and tries multiple upstream mirrors server-side.
+const RUNTIME_URL = "/api/runtime/lottie?v=5.12.2-labstar-2";
 let runtimePromise: Promise<LottieRuntime> | null = null;
 
 function loadRuntime() {
@@ -37,8 +37,11 @@ function loadRuntime() {
     const script = existing ?? document.createElement("script");
 
     const finish = () => {
-      if (window.lottie) resolve(window.lottie);
-      else reject(new Error("lottie_runtime_missing"));
+      if (window.lottie) {
+        resolve(window.lottie);
+        return;
+      }
+      reject(new Error("lottie_runtime_missing"));
     };
 
     const fail = () => reject(new Error("lottie_runtime_failed"));
@@ -46,7 +49,9 @@ function loadRuntime() {
     if (existing) {
       existing.addEventListener("load", finish, { once: true });
       existing.addEventListener("error", fail, { once: true });
-      window.setTimeout(() => window.lottie && resolve(window.lottie), 0);
+      window.setTimeout(() => {
+        if (window.lottie) resolve(window.lottie);
+      }, 0);
       return;
     }
 
@@ -90,6 +95,7 @@ export function LottieAnimation({
     void Promise.all([loadRuntime(), loadOnboardingLottie(kind)])
       .then(([runtime, animationData]) => {
         if (disposed || !ref.current) return;
+        ref.current.replaceChildren();
         instance = runtime.loadAnimation({
           container: ref.current,
           renderer: "svg",
@@ -103,7 +109,8 @@ export function LottieAnimation({
           instance.goToAndStop(0, true);
         }
       })
-      .catch(() => {
+      .catch((cause) => {
+        console.error(`[Labstar] Falha ao renderizar Lottie ${kind}`, cause);
         if (!disposed) setFailed(true);
       });
 
