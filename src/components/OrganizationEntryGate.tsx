@@ -19,7 +19,7 @@ import {
 import { supabaseClient } from "../lib/supabase";
 import { LottieAnimation } from "./LottieAnimation";
 
-type EntryStage = "loading" | "choose" | "create" | "creating" | "error" | "leaving";
+type EntryStage = "loading" | "choose" | "create" | "creating" | "entering" | "error" | "leaving";
 type HandleState = "idle" | "checking" | "available" | "taken" | "error";
 
 type OrganizationRow = {
@@ -34,7 +34,7 @@ type OrganizationRow = {
 };
 
 const SESSION_PREFIX = "labstar-organization-entry-v2";
-const MIN_ROCKET_TIME_MS = 1450;
+const ENTRY_ROCKET_TIME_MS = 1850;
 
 function delay(ms: number) {
   return new Promise<void>((resolve) => window.setTimeout(resolve, ms));
@@ -186,12 +186,19 @@ export function OrganizationEntryGate({ children }: { children: ReactNode }) {
     }
   }, [sessionKey]);
 
-  const enter = useCallback((organization: Organization) => {
+  const finishEntry = useCallback(async (organization: Organization) => {
+    setSelected(organization);
     setActiveOrganization(organization);
     markSeen();
+    setStage("entering");
+    await delay(ENTRY_ROCKET_TIME_MS);
     setStage("leaving");
     window.setTimeout(() => setDone(true), 440);
   }, [markSeen]);
+
+  const enter = useCallback((organization: Organization) => {
+    void finishEntry(organization);
+  }, [finishEntry]);
 
   async function submitCreate(event: React.FormEvent) {
     event.preventDefault();
@@ -219,16 +226,9 @@ export function OrganizationEntryGate({ children }: { children: ReactNode }) {
     setStage("creating");
 
     try {
-      const [created] = await Promise.all([
-        createOrganization(name, requestedHandle),
-        delay(MIN_ROCKET_TIME_MS),
-      ]);
+      const created = await createOrganization(name, requestedHandle);
       setOrganizations((current) => [...current.filter((organization) => organization.id !== created.id), created]);
-      setSelected(created);
-      setActiveOrganization(created);
-      markSeen();
-      setStage("leaving");
-      window.setTimeout(() => setDone(true), 480);
+      await finishEntry(created);
     } catch (cause) {
       setError(creationError(cause));
       if (String((cause as Error)?.message ?? "").includes("organization_handle_taken")) setHandleState("taken");
@@ -351,10 +351,17 @@ export function OrganizationEntryGate({ children }: { children: ReactNode }) {
         )}
 
         {stage === "creating" && (
-          <div className="organization-entry-creating" aria-live="polite" aria-busy="true">
+          <div className="organization-entry-loading" aria-live="polite" aria-busy="true">
+            <LoaderCircle className="spin" size={21} />
+            <span>Criando sua organização…</span>
+          </div>
+        )}
+
+        {stage === "entering" && (
+          <div className="organization-entry-creating organization-entry-entering" aria-live="polite" aria-busy="true">
             <LottieAnimation kind="rocket" className="organization-entry-rocket" preserveAspectRatio="xMidYMid meet" />
-            <h1>Criando sua organização</h1>
-            <p>Preparando seu novo espaço de trabalho…</p>
+            <h1>Entrando no Labstar</h1>
+            <p>{selected ? `Abrindo ${selected.name}…` : "Preparando seu espaço de trabalho…"}</p>
           </div>
         )}
 
