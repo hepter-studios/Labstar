@@ -59,6 +59,15 @@ export function ProjectLottieExperience({ projectLoadToken }: { projectLoadToken
   );
 }
 
+export function LabstarAccessLoader({ message }: { message: string }) {
+  return (
+    <main className="access-screen labstar-access-loader" aria-label={message} aria-live="polite" aria-busy="true">
+      <LottieAnimation kind="astronaut-illustration" className="labstar-access-loader-animation" preserveAspectRatio="xMidYMid meet" />
+      <span>{message}</span>
+    </main>
+  );
+}
+
 export function MascotCelebrationHost() {
   const [celebration, setCelebration] = useState<(MascotCelebrationDetail & { key: number }) | null>(null);
 

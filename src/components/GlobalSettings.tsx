@@ -13,6 +13,7 @@ import {
   Settings,
   ShieldCheck,
   Trash2,
+  Trophy,
   Upload,
   UserRound,
   Video,
@@ -26,6 +27,7 @@ import {
   saveAppSettings,
   type AppSettings,
 } from "../lib/app-settings";
+import { ACHIEVEMENT_CATALOG, syncOwnAchievements, type AchievementProgress } from "../lib/achievements";
 import { secureSignOut } from "../lib/access";
 import {
   deviceNotificationStateMessage,
@@ -39,8 +41,9 @@ import {
   type Member,
 } from "../lib/supabase";
 import { Avatar } from "./Avatar";
+import { LottieAnimation } from "./LottieAnimation";
 
-type SettingsTab = "general" | "account" | "appearance" | "notifications" | "media" | "security";
+type SettingsTab = "general" | "account" | "achievements" | "appearance" | "notifications" | "media" | "security";
 
 type Props = {
   member: Member;
@@ -55,6 +58,7 @@ type Props = {
 const tabs: Array<{ id: SettingsTab; label: string; icon: typeof Settings }> = [
   { id: "general", label: "Geral", icon: Settings },
   { id: "account", label: "Conta e perfil", icon: UserRound },
+  { id: "achievements", label: "Conquistas", icon: Trophy },
   { id: "appearance", label: "Aparência", icon: Palette },
   { id: "notifications", label: "Notificações", icon: Bell },
   { id: "media", label: "Áudio e vídeo", icon: Video },
@@ -78,10 +82,17 @@ export function GlobalSettings({
   const [mediaStatus, setMediaStatus] = useState("");
   const [microphones, setMicrophones] = useState<MediaDeviceInfo[]>([]);
   const [cameras, setCameras] = useState<MediaDeviceInfo[]>([]);
+  const [achievements, setAchievements] = useState<AchievementProgress[]>([]);
+  const [achievementState, setAchievementState] = useState<"idle" | "loading" | "ready" | "pending" | "error">("idle");
   const avatarInput = useRef<HTMLInputElement>(null);
 
   useEffect(() => setDraft(settings), [settings]);
   useEffect(() => setProfileName(member.name), [member.name]);
+
+  useEffect(() => {
+    if (tab !== "achievements" || achievementState !== "idle") return;
+    void refreshAchievements();
+  }, [achievementState, tab]);
 
   useEffect(() => {
     const close = (event: KeyboardEvent) => {
@@ -239,6 +250,17 @@ export function GlobalSettings({
     }
   }
 
+  async function refreshAchievements() {
+    setAchievementState("loading");
+    try {
+      setAchievements(await syncOwnAchievements());
+      setAchievementState("ready");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "";
+      setAchievementState(/migration_pending|database_unavailable/.test(message) ? "pending" : "error");
+    }
+  }
+
   function update<K extends keyof AppSettings>(key: K, value: AppSettings[K]) {
     setDraft((current) => ({ ...current, [key]: value }));
   }
@@ -305,6 +327,40 @@ export function GlobalSettings({
             </div>
           )}
 
+          {tab === "achievements" && (
+            <div className="settings-sections achievements-settings">
+              <SettingsSection title="Jornada espacial" description="Conquistas são calculadas com ações reais da sua conta e sincronizadas pelo banco.">
+                <div className="achievements-summary">
+                  <span><Trophy size={18} /><strong>{achievements.filter((achievement) => achievement.unlockedAt).length}</strong><small>desbloqueadas</small></span>
+                  <div><b>{ACHIEVEMENT_CATALOG.length} missões disponíveis</b><small>Novas missões aparecerão conforme o Labstar evoluir.</small></div>
+                  <button type="button" onClick={() => void refreshAchievements()} disabled={achievementState === "loading"}><RotateCcw className={achievementState === "loading" ? "spin" : ""} size={14} /> Atualizar</button>
+                </div>
+                {achievementState === "pending" && <p className="achievements-notice">O catálogo já está pronto. A sincronização será ativada assim que a migração de conquistas for aplicada no Supabase.</p>}
+                {achievementState === "error" && <p className="achievements-notice error">Não foi possível sincronizar as conquistas agora. Nenhum progresso local foi inventado ou sobrescrito.</p>}
+                <div className="achievements-grid">
+                  {ACHIEVEMENT_CATALOG.map((achievement) => {
+                    const saved = achievements.find((item) => item.key === achievement.key);
+                    const progress = Math.min(saved?.progress ?? 0, saved?.target ?? achievement.target);
+                    const target = saved?.target ?? achievement.target;
+                    const unlocked = Boolean(saved?.unlockedAt);
+                    return (
+                      <article className={`achievement-card ${unlocked ? "unlocked" : "locked"}`} key={achievement.key}>
+                        <div className="achievement-art"><LottieAnimation kind={achievement.kind} preserveAspectRatio="xMidYMid meet" /></div>
+                        <div className="achievement-copy">
+                          <span><b>{achievement.rarity}</b>{unlocked ? <em>Desbloqueada</em> : <em><LockKeyhole size={10} /> Bloqueada</em>}</span>
+                          <strong>{achievement.title}</strong>
+                          <p>{achievement.description}</p>
+                          <div className="achievement-progress"><i style={{ width: `${Math.min(100, Math.round((progress / target) * 100))}%` }} /></div>
+                          <small>{unlocked && saved?.unlockedAt ? `Conquistada em ${new Date(saved.unlockedAt).toLocaleDateString("pt-BR")}` : `${progress} de ${target}`}</small>
+                        </div>
+                      </article>
+                    );
+                  })}
+                </div>
+              </SettingsSection>
+            </div>
+          )}
+
           {tab === "appearance" && (
             <div className="settings-sections">
               <SettingsSection title="Interface" description="Ajustes visuais aplicados no aplicativo inteiro.">
@@ -360,8 +416,8 @@ export function GlobalSettings({
           )}
 
           <footer className="global-settings-footer">
-            <span className={status.includes("Não") ? "error" : ""}>{status || "Alterações de preferências são salvas somente quando você confirmar."}</span>
-            {tab !== "account" && tab !== "security" && <button type="button" onClick={() => void persist()} disabled={saving}>{saving ? <LoaderCircle className="spin" size={14} /> : <Check size={14} />} Salvar configurações</button>}
+            <span className={status.includes("Não") ? "error" : ""}>{status || (tab === "achievements" ? "O progresso é verificado automaticamente com dados protegidos da sua conta." : "Alterações de preferências são salvas somente quando você confirmar.")}</span>
+            {tab !== "account" && tab !== "achievements" && tab !== "security" && <button type="button" onClick={() => void persist()} disabled={saving}>{saving ? <LoaderCircle className="spin" size={14} /> : <Check size={14} />} Salvar configurações</button>}
           </footer>
         </main>
       </section>

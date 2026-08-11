@@ -1,5 +1,9 @@
 .project-lottie-sky-active {
-  background-image: none !important;
+  background-image:
+    radial-gradient(circle at 20% 72%, rgba(76,39,139,.36), transparent 18%),
+    radial-gradient(circle at 76% 28%, rgba(53,85,162,.3), transparent 24%),
+    radial-gradient(circle at 52% 48%, rgba(39,20,87,.24), transparent 38%),
+    linear-gradient(155deg, #07031a, #020610 54%, #09021b) !important;
   background-color: #010207 !important;
 }
 
@@ -71,6 +75,39 @@
   text-transform: uppercase;
 }
 
+.labstar-access-loader {
+  align-content: center;
+  justify-items: center;
+  gap: 4px;
+}
+
+.labstar-access-loader-animation {
+  position: relative;
+  z-index: 2;
+  width: 190px;
+  height: 190px;
+  filter: drop-shadow(0 0 18px rgba(107,145,255,.34));
+}
+
+.labstar-access-loader-animation > svg {
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
+  overflow: visible !important;
+  transform: scale(1.72);
+}
+
+.labstar-access-loader > span {
+  position: relative;
+  z-index: 2;
+  margin: -22px 0 0;
+  color: #8f9cb3;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+
 .lottie-mascot-celebration {
   position: fixed;
   z-index: 1250;
@@ -120,29 +157,28 @@
 .lottie-mascot-message strong { color: #e8efff; font-size: 10px; }
 .lottie-mascot-message small { color: #7687a6; font-size: 8px; }
 
-.intro-rocket-flyby {
+.intro-astronaut-flyby {
   position: fixed;
   z-index: 1;
-  left: -190px;
-  top: calc(50% - 118px);
-  width: 150px;
-  height: 236px;
+  left: -230px;
+  top: calc(50% + clamp(96px, 16vh, 140px));
+  width: 190px;
+  height: 190px;
   opacity: 0;
   pointer-events: none;
   filter: drop-shadow(0 0 22px rgba(113,155,255,.5));
-  animation: labstar-intro-rocket-pass 1.36s cubic-bezier(.33,.05,.68,.96) 1.62s both;
+  animation: labstar-intro-astronaut-pass 1.5s cubic-bezier(.33,.05,.68,.96) 1.62s both;
 }
 
-.intro-rocket-animation,
-.intro-rocket-animation > svg {
+.intro-astronaut-animation,
+.intro-astronaut-animation > svg {
   display: block;
   width: 100% !important;
   height: 100% !important;
   overflow: visible !important;
 }
 
-.intro-rocket-animation > svg { transform: scale(1.75); }
-.intro-rocket-animation svg [stroke="rgb(0,0,0)"] { stroke: #afc5ff !important; }
+.intro-astronaut-animation > svg { transform: scale(2); }
 
 @keyframes lottie-project-loader-out { to { opacity: 0; visibility: hidden; } }
 
@@ -151,11 +187,11 @@
   to { opacity: 1; transform: translate3d(0,0,0) scale(1) rotate(0); }
 }
 
-@keyframes labstar-intro-rocket-pass {
-  0% { opacity: 0; transform: translate3d(0,54px,0) scale(.72) rotate(4deg); }
+@keyframes labstar-intro-astronaut-pass {
+  0% { opacity: 0; transform: translate3d(0,12px,0) scale(.78) rotate(-3deg); }
   14% { opacity: .92; }
   78% { opacity: .96; }
-  100% { opacity: 0; transform: translate3d(calc(100vw + 380px),-76px,0) scale(1.08) rotate(4deg); }
+  100% { opacity: 0; transform: translate3d(calc(100vw + 470px),-42px,0) scale(1.06) rotate(-3deg); }
 }
 
 @media (max-width: 700px) {
@@ -171,16 +207,20 @@
   .lottie-mascot-animation { width: 142px; height: 142px; }
   .lottie-mascot-message { max-width: 138px; }
 
-  .intro-rocket-flyby {
-    width: 112px;
-    height: 180px;
-    top: calc(50% - 92px);
-    animation-duration: 1.2s;
+  .labstar-access-loader-animation { width: 158px; height: 158px; }
+  .labstar-access-loader > span { margin-top: -17px; font-size: 9px; }
+
+  .intro-astronaut-flyby {
+    left: -180px;
+    top: calc(50% + 104px);
+    width: 150px;
+    height: 150px;
+    animation-duration: 1.3s;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .intro-rocket-flyby { display: none; }
+  .intro-astronaut-flyby { display: none; }
   .lottie-project-loading,
   .lottie-mascot-celebration { animation-duration: .01ms; }
 }

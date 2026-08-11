@@ -67,7 +67,7 @@ import { memberPresenceStatus, useMemberPresence } from "./lib/presence";
 import { Avatar } from "./components/Avatar";
 import { CollaborationHub } from "./components/CollaborationHub";
 import { LottieAnimation } from "./components/LottieAnimation";
-import { MascotCelebrationHost, ProjectLottieExperience, celebrateWithMascot } from "./components/LottieExperience";
+import { LabstarAccessLoader, MascotCelebrationHost, ProjectLottieExperience, celebrateWithMascot } from "./components/LottieExperience";
 import { NotificationsButton } from "./components/NotificationsPanel";
 import { CurrentProfileConnection, MemberProfileConnection } from "./components/ProfileConnectionsBridge";
 import { RoleBadge, RoleManager } from "./components/RoleManager";
@@ -152,7 +152,7 @@ function isDevPreviewMode() {
 
 export default function Home() {
   const [showProjectLottieBackground, setShowProjectLottieBackground] = useState(() => window.matchMedia("(min-width: 701px)").matches);
-  const [projectSkyEnabled, setProjectSkyEnabled] = useState(false);
+  const [projectSkyEnabled, setProjectSkyEnabled] = useState(() => window.matchMedia("(min-width: 701px)").matches);
   const [sessionState, setSessionState] = useState<SessionState>("carregando");
   const [session, setSession] = useState<SessionData | null>(null);
   const [blockedIdentity, setBlockedIdentity] = useState<{ email: string } | null>(null);
@@ -1418,11 +1418,7 @@ function QuickPanel({
 }
 
 function AccessLoading() {
-  return (
-    <main className="access-screen" aria-label="Validando aprovação" aria-live="polite" aria-busy="true">
-      <p style={{ position: "relative", zIndex: 2, margin: 0, color: "#8f98aa", fontSize: 12, fontWeight: 500, letterSpacing: ".035em", animation: "access-v2-star-breathe 1.8s ease-in-out infinite" }}>Validando aprovação</p>
-    </main>
-  );
+  return <LabstarAccessLoader message="Validando aprovação" />;
 }
 
 function AccessGate() {

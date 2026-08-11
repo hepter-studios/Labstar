@@ -11,6 +11,25 @@ import { getCurrentIdentity, type Member } from "../lib/supabase";
 import { GlobalSettings } from "./GlobalSettings";
 
 const MOBILE_SETTINGS_QUERY = "(max-width: 760px)";
+const DEV_PREVIEW_MEMBER: Member = {
+  id: "00000000-0000-4000-8000-000000000099",
+  email: "preview@labstar.dev",
+  name: "Mackson",
+  status: "active",
+  role: "owner",
+  jobTitle: "Fundador",
+  area: "Direção",
+  assignments: [],
+  createdAt: new Date(0).toISOString(),
+  lastSeenAt: new Date(0).toISOString(),
+  avatarPath: "",
+  avatarUrl: "",
+  jobRoles: [],
+};
+
+function isDevPreviewMode() {
+  return import.meta.env.DEV && new URLSearchParams(window.location.search).has("preview");
+}
 
 export function GlobalSettingsPortal() {
   const [target, setTarget] = useState<Element | null>(null);
@@ -41,6 +60,15 @@ export function GlobalSettingsPortal() {
   useEffect(() => {
     let cancelled = false;
     async function load() {
+      if (isDevPreviewMode()) {
+        const preferences = await loadAppSettings().catch(() => DEFAULT_APP_SETTINGS);
+        if (!cancelled) {
+          setSettings(preferences);
+          setMember(DEV_PREVIEW_MEMBER);
+          setSettingsLoaded(true);
+        }
+        return;
+      }
       try {
         const [preferences, access] = await Promise.all([
           loadAppSettings(),

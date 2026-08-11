@@ -36,6 +36,7 @@ import {
   type InviteMode,
 } from "../lib/access";
 import { LottieAnimation } from "./LottieAnimation";
+import { LabstarAccessLoader } from "./LottieExperience";
 
 type AccessStage = "loading" | "anonymous" | "active" | "pending" | "suspended" | "unauthorized" | "error";
 
@@ -191,7 +192,9 @@ export function AccessControl({ children }: { children: ReactNode }) {
 export function AccessBrandIntro() {
   return (
     <main className="access-screen brand-intro" aria-label="Abrindo Labstar" aria-live="polite" aria-busy="true">
-      <div className="intro-rocket-flyby" aria-hidden="true"><LottieAnimation kind="rocket" className="intro-rocket-animation" /></div>
+      <div className="intro-astronaut-flyby" aria-hidden="true">
+        <LottieAnimation kind="astronaut-illustration" className="intro-astronaut-animation" preserveAspectRatio="xMidYMid meet" />
+      </div>
       <div className="intro-mark">
         <strong className="wordmark large animated" aria-label="Labstar">
           <span className="word-letter" aria-hidden="true">L</span>
@@ -212,11 +215,7 @@ export function AccessBrandIntro() {
 }
 
 function ApprovalValidation() {
-  return (
-    <main className="access-screen" aria-label="Validando aprovação" aria-live="polite" aria-busy="true">
-      <p style={{ position: "relative", zIndex: 2, margin: 0, color: "#8f98aa", fontSize: 12, fontWeight: 500, letterSpacing: ".035em", animation: "access-v2-star-breathe 1.8s ease-in-out infinite" }}>Validando aprovação</p>
-    </main>
-  );
+  return <LabstarAccessLoader message="Validando aprovação" />;
 }
 
 function AccessFrame({ children, compact = false, login = false }: { children: React.ReactNode; compact?: boolean; login?: boolean }) {
