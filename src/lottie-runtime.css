@@ -1,15 +1,10 @@
-/* O céu em CSS existe somente enquanto o Lottie real ainda não está pronto. */
-.organization-entry-space:has(.organization-entry-stars.ready)::before,
-.organization-entry-space:has(.organization-entry-stars.ready)::after {
-  opacity: 0 !important;
-  animation: none !important;
-  transition: opacity .35s ease;
-}
+@import "./organization-entry-sky.css";
 
-.organization-entry-stars.ready {
-  opacity: 1 !important;
-}
-
-.organization-entry-stars.failed {
-  opacity: 0 !important;
+/*
+  Lottie remains available for dedicated transitions such as the rocket.
+  The organization sky itself is intentionally rendered by CSS now, so its
+  appearance no longer depends on the animation runtime becoming ready.
+*/
+.labstar-lottie.failed {
+  opacity: 0;
 }
