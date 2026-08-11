@@ -1,105 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import lottie, { type AnimationItem } from "lottie-web";
 import { loadOnboardingLottie, type OnboardingLottieKind } from "../lib/onboarding-lotties";
-
-type LottieEventName = "DOMLoaded" | "data_ready" | "data_failed" | "error";
-
-type LottieInstance = {
-  destroy(): void;
-  goToAndStop(value: number, isFrame: boolean): void;
-  addEventListener?(name: LottieEventName, callback: (event?: unknown) => void): void;
-};
-
-type LottieRuntime = {
-  loadAnimation(options: {
-    container: Element;
-    renderer: "svg";
-    loop: boolean;
-    autoplay: boolean;
-    animationData: Record<string, unknown>;
-    rendererSettings?: { preserveAspectRatio?: string };
-  }): LottieInstance;
-};
-
-declare global {
-  interface Window {
-    lottie?: LottieRuntime;
-  }
-}
-
-const RUNTIME_URLS = [
-  "/api/runtime/lottie?v=5.12.2-labstar-3",
-  "https://cdnjs.cloudflare.com/ajax/libs/bodymovin/5.12.2/lottie.min.js",
-  "https://cdn.jsdelivr.net/npm/lottie-web@5.12.2/build/player/lottie.min.js",
-  "https://unpkg.com/lottie-web@5.12.2/build/player/lottie.min.js",
-] as const;
-
-let runtimePromise: Promise<LottieRuntime> | null = null;
-
-function loadScript(url: string) {
-  return new Promise<LottieRuntime>((resolve, reject) => {
-    if (window.lottie) {
-      resolve(window.lottie);
-      return;
-    }
-
-    const script = document.createElement("script");
-    script.src = url;
-    script.async = true;
-    script.dataset.labstarLottie = "true";
-    script.dataset.source = url;
-
-    const cleanup = () => {
-      script.removeEventListener("load", loaded);
-      script.removeEventListener("error", failed);
-    };
-
-    const loaded = () => {
-      cleanup();
-      if (window.lottie) {
-        resolve(window.lottie);
-        return;
-      }
-      script.remove();
-      reject(new Error(`lottie_runtime_missing:${url}`));
-    };
-
-    const failed = () => {
-      cleanup();
-      script.remove();
-      reject(new Error(`lottie_runtime_failed:${url}`));
-    };
-
-    script.addEventListener("load", loaded, { once: true });
-    script.addEventListener("error", failed, { once: true });
-    document.head.appendChild(script);
-  });
-}
-
-async function loadRuntime() {
-  if (window.lottie) return window.lottie;
-  if (runtimePromise) return runtimePromise;
-
-  runtimePromise = (async () => {
-    let lastError: unknown = new Error("lottie_runtime_unavailable");
-
-    for (const url of RUNTIME_URLS) {
-      try {
-        return await loadScript(url);
-      } catch (cause) {
-        lastError = cause;
-        console.warn(`[Labstar] Player Lottie indisponível em ${url}; tentando próxima origem.`, cause);
-      }
-    }
-
-    throw lastError;
-  })().catch((error) => {
-    runtimePromise = null;
-    throw error;
-  });
-
-  return runtimePromise;
-}
 
 type DiagnosticState = "loading" | "player-created" | "playing" | "failed";
 
@@ -109,7 +11,6 @@ type DiagnosticInfo = {
   fps?: number;
   firstFrame?: number;
   lastFrame?: number;
-  runtimeSource?: string;
   error?: string;
 };
 
@@ -130,6 +31,7 @@ export function LottieAnimation({
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const [failed, setFailed] = useState(false);
+  const [ready, setReady] = useState(false);
   const [diagnosticState, setDiagnosticState] = useState<DiagnosticState>("loading");
   const [diagnosticInfo, setDiagnosticInfo] = useState<DiagnosticInfo>({});
   const diagnosticMode = kind === "stars" && new URLSearchParams(window.location.search).has("lottie-test");
@@ -139,19 +41,19 @@ export function LottieAnimation({
     if (!container) return undefined;
 
     let disposed = false;
-    let instance: LottieInstance | null = null;
+    let instance: AnimationItem | null = null;
+    let readyTimer = 0;
+
     setFailed(false);
+    setReady(false);
     if (diagnosticMode) {
       setDiagnosticState("loading");
       setDiagnosticInfo({});
     }
 
-    void Promise.all([loadRuntime(), loadOnboardingLottie(kind)])
-      .then(([runtime, animationData]) => {
+    void loadOnboardingLottie(kind)
+      .then((animationData) => {
         if (disposed || !ref.current) return;
-
-        const runtimeSource = document.querySelector<HTMLScriptElement>("script[data-labstar-lottie]")?.dataset.source
-          ?? (window.lottie ? "window.lottie" : "unknown");
 
         if (diagnosticMode) {
           setDiagnosticInfo({
@@ -160,59 +62,69 @@ export function LottieAnimation({
             fps: numeric(animationData.fr),
             firstFrame: numeric(animationData.ip),
             lastFrame: numeric(animationData.op),
-            runtimeSource,
           });
         }
 
         ref.current.replaceChildren();
-        instance = runtime.loadAnimation({
+        instance = lottie.loadAnimation({
           container: ref.current,
           renderer: "svg",
           loop,
           autoplay: true,
-          animationData,
-          rendererSettings: { preserveAspectRatio },
+          animationData: animationData as never,
+          rendererSettings: {
+            preserveAspectRatio,
+            progressiveLoad: false,
+            hideOnTransparent: true,
+          },
         });
 
-        if (diagnosticMode) {
-          setDiagnosticState("player-created");
-          const markPlaying = () => {
-            if (!disposed) setDiagnosticState("playing");
-          };
-          const markAnimationFailure = (event?: unknown) => {
-            if (disposed) return;
-            const details = event instanceof Error ? event.message : String(event ?? "lottie_animation_error");
-            setFailed(true);
-            setDiagnosticState("failed");
-            setDiagnosticInfo((current) => ({ ...current, error: details }));
-          };
-          instance.addEventListener?.("DOMLoaded", markPlaying);
-          instance.addEventListener?.("data_ready", markPlaying);
-          instance.addEventListener?.("data_failed", markAnimationFailure);
-          instance.addEventListener?.("error", markAnimationFailure);
-          window.setTimeout(() => {
-            if (!disposed && ref.current?.querySelector("svg")) setDiagnosticState("playing");
-          }, 700);
-        }
+        if (diagnosticMode) setDiagnosticState("player-created");
 
-        if (!diagnosticMode && window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-          instance.goToAndStop(0, true);
-        }
-      })
-      .catch((cause) => {
-        console.error(`[Labstar] Falha ao renderizar Lottie ${kind}`, cause);
-        if (!disposed) {
+        const markReady = () => {
+          if (disposed) return;
+          setReady(true);
+          if (diagnosticMode) setDiagnosticState("playing");
+        };
+
+        const markFailure = (event?: unknown) => {
+          if (disposed) return;
+          const details = event instanceof Error ? event.message : String(event ?? "lottie_animation_error");
+          console.error(`[Labstar] Falha interna no Lottie ${kind}`, event);
           setFailed(true);
+          setReady(false);
           if (diagnosticMode) {
-            const details = cause instanceof Error ? `${cause.name}: ${cause.message}` : String(cause);
             setDiagnosticState("failed");
             setDiagnosticInfo((current) => ({ ...current, error: details }));
           }
+        };
+
+        instance.addEventListener("DOMLoaded", markReady);
+        instance.addEventListener("data_ready", markReady);
+        instance.addEventListener("data_failed", markFailure);
+        instance.addEventListener("error", markFailure);
+
+        // Alguns exports antigos não disparam DOMLoaded de forma consistente,
+        // mas já criaram o SVG. Neste caso o SVG visível também conta como pronto.
+        readyTimer = window.setTimeout(() => {
+          if (!disposed && ref.current?.querySelector("svg")) markReady();
+        }, 700);
+      })
+      .catch((cause) => {
+        console.error(`[Labstar] Falha ao preparar Lottie ${kind}`, cause);
+        if (disposed) return;
+        setFailed(true);
+        setReady(false);
+        if (diagnosticMode) {
+          const details = cause instanceof Error ? `${cause.name}: ${cause.message}` : String(cause);
+          setDiagnosticState("failed");
+          setDiagnosticInfo((current) => ({ ...current, error: details }));
         }
       });
 
     return () => {
       disposed = true;
+      window.clearTimeout(readyTimer);
       instance?.destroy();
       container.replaceChildren();
     };
@@ -220,9 +132,9 @@ export function LottieAnimation({
 
   if (diagnosticMode) {
     const statusLabel = diagnosticState === "loading"
-      ? "CARREGANDO JSON + PLAYER"
+      ? "CARREGANDO JSON"
       : diagnosticState === "player-created"
-        ? "PLAYER CRIADO"
+        ? "PLAYER LOCAL CRIADO"
         : diagnosticState === "playing"
           ? "RODANDO"
           : "FALHOU";
@@ -236,7 +148,7 @@ export function LottieAnimation({
         <style>{`.lottie-diagnostic-animation>svg,.lottie-diagnostic-animation>canvas{display:block;width:100%!important;height:100%!important}`}</style>
         <div
           ref={ref}
-          className={`labstar-lottie lottie-diagnostic-animation ${failed ? "failed" : ""}`.trim()}
+          className={`labstar-lottie lottie-diagnostic-animation ${failed ? "failed" : ""} ${ready ? "ready" : ""}`.trim()}
           aria-label="Teste isolado do Stars.json"
           style={{ position: "absolute", inset: 0, width: "100%", height: "100%", opacity: failed ? 0.18 : 1 }}
         />
@@ -248,14 +160,13 @@ export function LottieAnimation({
             {diagnosticInfo.fps ? ` · ${diagnosticInfo.fps} fps` : ""}
             {duration ? ` · ${duration}s` : ""}
           </div>
-          {diagnosticInfo.runtimeSource && <div style={{ marginTop: 4, color: "#76849d", wordBreak: "break-all" }}>player: {diagnosticInfo.runtimeSource}</div>}
+          <div style={{ marginTop: 4, color: "#76849d" }}>player: lottie-web 5.12.2 · bundle local</div>
           {diagnosticInfo.error && <pre style={{ margin: "9px 0 0", padding: 9, maxHeight: 150, overflow: "auto", whiteSpace: "pre-wrap", wordBreak: "break-word", borderRadius: 8, background: "#19080a", color: "#ffb5b5", font: "11px/1.45 Consolas,monospace" }}>{diagnosticInfo.error}</pre>}
-          <small style={{ display: "block", marginTop: 9, color: "#617087" }}>Este modo não usa o céu CSS, o card de organização nem o foguete. É somente o payload Stars + lottie-web.</small>
         </aside>
       </main>,
       document.body,
     );
   }
 
-  return <div ref={ref} className={`labstar-lottie ${failed ? "failed" : ""} ${className}`.trim()} aria-hidden="true" />;
+  return <div ref={ref} className={`labstar-lottie ${failed ? "failed" : ""} ${ready ? "ready" : ""} ${className}`.trim()} aria-hidden="true" />;
 }
