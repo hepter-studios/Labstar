@@ -49,6 +49,7 @@ import {
   type DirectCallSession,
 } from "../lib/directCalls";
 import { CHAT_CLEARED_EVENT, type ChatClearedDetail } from "../lib/chatMaintenance";
+import { isDevPreviewMode } from "../lib/devPreviewMode";
 import {
   deleteDirectMessage,
   editDirectMessage,
@@ -197,6 +198,11 @@ export function DirectMessagesHub({ member, onOpenWorkspace }: Props) {
   const onlineMemberIds = useMemberPresence(member.id, handlePresenceError);
 
   const refreshThreads = useCallback(async (silent = false) => {
+    if (import.meta.env.DEV && isDevPreviewMode()) {
+      setThreads([]);
+      setDmAvailable(true);
+      return;
+    }
     try {
       setThreads(await withDmLoadTimeout(listDirectThreads()));
       setDmAvailable(true);
@@ -209,6 +215,23 @@ export function DirectMessagesHub({ member, onOpenWorkspace }: Props) {
   useEffect(() => {
     let cancelled = false;
     void (async () => {
+      if (import.meta.env.DEV && isDevPreviewMode()) {
+        const { devPreviewCollaboration, devPreviewMembers } = await import("../lib/devPreview");
+        const collaboration = devPreviewCollaboration();
+        const map: Record<string, string> = {};
+        for (const space of collaboration.spaces) {
+          const first = collaboration.channels.find((channel) => channel.spaceId === space.id);
+          if (first) map[space.id] = first.id;
+        }
+        setMembers(devPreviewMembers(member));
+        setSpaces(collaboration.spaces);
+        setFirstChannels(map);
+        setNotifications([]);
+        setThreads([]);
+        setDmAvailable(true);
+        setLoading(false);
+        return;
+      }
       const [teamResult, collaborationResult, notificationResult] = await Promise.allSettled([
         withDmLoadTimeout(listMembers()),
         withDmLoadTimeout(loadCollaboration()),
@@ -240,6 +263,7 @@ export function DirectMessagesHub({ member, onOpenWorkspace }: Props) {
   }, [member.id, refreshThreads, showToast]);
 
   useEffect(() => {
+    if (import.meta.env.DEV && isDevPreviewMode()) return undefined;
     if (!members.length) return undefined;
     const receive = (session: DirectCallSession) => {
       if (session.status !== "ringing" || activeCall) return;
@@ -337,6 +361,11 @@ export function DirectMessagesHub({ member, onOpenWorkspace }: Props) {
     }
 
     setSelectedMemberId(contact.member.id);
+    if (import.meta.env.DEV && isDevPreviewMode()) {
+      setSelectedThreadId(`preview-thread-${contact.member.id}`);
+      setDmAvailable(true);
+      return;
+    }
     if (contact.thread) {
       setSelectedThreadId(contact.thread.threadId);
       void markDirectThreadRead(contact.thread.threadId)
@@ -702,6 +731,12 @@ function DirectConversation({
   const emojiButtonRef = useRef<HTMLButtonElement>(null);
 
   const refresh = useCallback(async (scroll = false) => {
+    if (import.meta.env.DEV && isDevPreviewMode()) {
+      setMessages([]);
+      setError("");
+      setLoading(false);
+      return;
+    }
     if (!threadId) {
       setMessages([]);
       setLoading(false);
@@ -740,7 +775,7 @@ function DirectConversation({
     setNote(window.localStorage.getItem(`labstar-dm-note-${contact.id}`) ?? "");
     void refresh(true);
 
-    if (!threadId) return undefined;
+    if (!threadId || (import.meta.env.DEV && isDevPreviewMode())) return undefined;
     const subscription = subscribeToDirectThread(threadId, () => void refresh());
     return () => unsubscribeDirect(subscription);
   }, [contact.id, refresh, threadId]);
@@ -802,6 +837,17 @@ function DirectConversation({
     if (!threadId || sending) return;
     if (editing && !draft.trim()) return;
     if (!editing && !draft.trim() && !files.length) return;
+
+    if (import.meta.env.DEV && isDevPreviewMode()) {
+      setDraft("");
+      setFiles([]);
+      setEditing(null);
+      setReplying(null);
+      setEmojiOpen(false);
+      setUploadNotice("Prévia local: a mensagem privada não foi enviada ao banco.");
+      setUploadNoticeError(false);
+      return;
+    }
 
     setSending(true);
     setError("");

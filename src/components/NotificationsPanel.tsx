@@ -244,7 +244,7 @@ export function NotificationsButton({ member, onOpenChannel }: { member: Member;
       {open && (
         <section className="notifications-panel">
           <header>
-            <div><strong>Notificações</strong><small>{unread ? `${unread} não lida${unread === 1 ? "" : "s"} · ${todayCount} hoje` : `${todayCount} atualização${todayCount === 1 ? "" : "ões"} hoje`}</small></div>
+            <div><strong>Notificações</strong><small>{unread ? `${unread} não lida${unread === 1 ? "" : "s"} · ${todayCount} hoje` : `${todayCount} ${todayCount === 1 ? "atualização" : "atualizações"} hoje`}</small></div>
             <span className="notifications-head-actions">
               <button type="button" className={refreshing ? "spin" : ""} onClick={() => void refresh(false, true)} aria-label="Atualizar notificações"><RefreshCw size={14} /></button>
               <button type="button" onClick={() => setOpen(false)} aria-label="Fechar notificações"><X size={15} /></button>
