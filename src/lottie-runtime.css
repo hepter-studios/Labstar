@@ -8,3 +8,19 @@
 .labstar-lottie.failed {
   opacity: 0;
 }
+
+/*
+  The rocket is intentionally monochrome on the Labstar sky. Applying the
+  filter to the rendered Lottie keeps every animated piece (rocket + companion
+  icon/details) white while preserving the animation's original transparency.
+*/
+.organization-entry-rocket {
+  background: transparent !important;
+  box-shadow: none !important;
+  filter: brightness(0) invert(1) drop-shadow(0 0 18px rgba(225, 235, 255, .24));
+}
+
+.organization-entry-rocket > svg,
+.organization-entry-rocket > canvas {
+  background: transparent !important;
+}
