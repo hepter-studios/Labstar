@@ -65,6 +65,13 @@ type MemberRow = {
   avatar_path?: string | null;
 };
 
+type AccountOrganizationRow = {
+  id?: string | null;
+  name?: string | null;
+  role?: string | null;
+  created_at?: string | null;
+};
+
 export type CollaborationSpace = {
   id: string;
   name: string;
@@ -267,6 +274,55 @@ function fallbackBlockedMember(user: User, status: "pending" | "suspended"): Mem
   };
 }
 
+function validOrganizationRole(value: unknown): MemberRole {
+  return value === "owner" || value === "admin" || value === "manager" || value === "viewer"
+    ? value
+    : "member";
+}
+
+async function memberFromActiveOrganization(user: User): Promise<Member | null> {
+  try {
+    const { data, error } = await requireClient().rpc("list_my_organizations");
+    if (error || !Array.isArray(data) || data.length === 0) return null;
+
+    let activeOrganizationId = "";
+    try {
+      activeOrganizationId = window.localStorage.getItem("labstar-active-organization-v1") ?? "";
+    } catch {
+      // O vínculo confirmado pelo banco continua sendo a fonte de verdade.
+    }
+
+    const rows = data as AccountOrganizationRow[];
+    const organization = rows.find((row) => String(row.id ?? "") === activeOrganizationId) ?? rows[0];
+    if (!organization?.id) return null;
+
+    const email = user.email?.trim().toLowerCase() ?? "";
+    const metadataName = String(user.user_metadata?.full_name ?? user.user_metadata?.name ?? "").trim();
+    const role = validOrganizationRole(organization.role);
+    const avatarUrl = String(user.user_metadata?.avatar_url ?? user.user_metadata?.picture ?? "");
+
+    return {
+      // organization_accounts is keyed by auth_user_id, so the authenticated UUID
+      // is the stable identity inside an organization that has no legacy member row.
+      id: user.id,
+      email,
+      name: metadataName || email.split("@")[0] || "Membro Labstar",
+      status: "active",
+      role,
+      jobTitle: role === "owner" ? "Proprietário" : "",
+      area: String(organization.name ?? "Organização"),
+      assignments: [],
+      createdAt: String(organization.created_at ?? ""),
+      lastSeenAt: new Date().toISOString(),
+      avatarPath: "",
+      avatarUrl,
+      jobRoles: [],
+    };
+  } catch {
+    return null;
+  }
+}
+
 function memberToUpdates(updates: Partial<Member>) {
   const patch: Record<string, unknown> = {};
   if (typeof updates.name === "string") patch.name = updates.name.trim();
@@ -309,7 +365,11 @@ export async function getCurrentIdentity(): Promise<{ user: User; member: Member
     if (!(error instanceof BackendApiError)) throw error;
 
     if (error.code === "member_not_authorized") {
-      return { user: session.user, member: null };
+      // Legacy Hepter Studios membership is not the same thing as Labstar account
+      // access. A verified organization_account grants access only to that org and
+      // must not manufacture a legacy members row or grant Hepter permissions.
+      const organizationMember = await memberFromActiveOrganization(session.user);
+      return { user: session.user, member: organizationMember };
     }
 
     if (error.code === "member_pending" || error.code === "member_suspended") {
