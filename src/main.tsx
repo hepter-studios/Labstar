@@ -26,6 +26,7 @@ import { MemberQuickActions } from "./components/MemberQuickActions";
 import { MessageWorkItemBridge } from "./components/MessageWorkItemBridge";
 import { OrganizationAwareAccess } from "./components/OrganizationAwareAccess";
 import { AccessBrandIntro } from "./components/AccessControl";
+import { LabstarAccessLoader } from "./components/LottieExperience";
 import { OrganizationSwitcherPortal } from "./components/OrganizationSwitcherPortal";
 import { ProfessionalPermissionBridge } from "./components/ProfessionalPermissionBridge";
 import { ProjectEnhancementsPortal } from "./components/ProjectEnhancementsPortal";
@@ -208,11 +209,14 @@ function RootSurfaces() {
 function ApplicationRoot() {
   const previewMode = isDevPreviewMode();
   const introPreviewMode = previewMode && new URLSearchParams(window.location.search).has("intro-preview");
+  const loaderPreviewMode = previewMode && new URLSearchParams(window.location.search).has("loader-preview");
 
   return (
     <>
       <BootReadySignal />
-      {introPreviewMode
+      {loaderPreviewMode
+        ? <LabstarAccessLoader message="Validando aprovação" />
+        : introPreviewMode
         ? <AccessBrandIntro />
         : previewMode
         ? <RootSurfaces />

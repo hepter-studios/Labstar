@@ -209,6 +209,58 @@
 .settings-danger { width: fit-content; color: #d79196; border-color: rgba(216,93,103,.15); background: rgba(216,93,103,.035); }
 .settings-danger:hover { color: #ffb0b6; border-color: rgba(216,93,103,.28); background: rgba(216,93,103,.07); }
 
+.achievements-settings .settings-section-body { gap: 16px; }
+.achievements-summary {
+  display: grid;
+  grid-template-columns: auto minmax(0,1fr) auto;
+  align-items: center;
+  gap: 14px;
+  padding: 13px 14px;
+  border: 1px solid rgba(112,148,232,.13);
+  border-radius: 11px;
+  background: linear-gradient(145deg,rgba(19,29,49,.72),rgba(7,11,19,.82));
+  box-shadow: inset 1px 1px rgba(255,255,255,.035),5px 7px 18px rgba(0,0,0,.28);
+}
+.achievements-summary > span { display: grid; grid-template-columns:auto auto; align-items:center; column-gap:8px; color:#89aafa; }
+.achievements-summary > span svg { grid-row:1 / 3; }
+.achievements-summary > span strong { color:#eef3ff; font-size:18px; line-height:1; }
+.achievements-summary > span small { color:#6d7a91; font-size:8px; }
+.achievements-summary > div { min-width:0; display:grid; gap:3px; }
+.achievements-summary > div b { color:#cdd8eb; font-size:10px; }
+.achievements-summary > div small { color:#637188; font-size:8.5px; }
+.achievements-summary > button { min-height:34px; padding:0 10px; display:inline-flex; align-items:center; gap:6px; border:1px solid rgba(112,148,232,.15); border-radius:8px; color:#a8b9d7; background:#090e17; font:inherit; font-size:9px; cursor:pointer; }
+.achievements-summary > button:disabled { opacity:.5; cursor:wait; }
+.achievements-notice { margin:0; padding:10px 12px; border-left:2px solid #6f91dc; border-radius:7px; color:#8998b2; background:rgba(74,108,184,.065); font-size:9px; line-height:1.5; }
+.achievements-notice.error { border-left-color:#bc6570; color:#bd858c; background:rgba(188,74,87,.055); }
+.achievements-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:11px; }
+.achievement-card {
+  min-width:0;
+  min-height:142px;
+  display:grid;
+  grid-template-columns:112px minmax(0,1fr);
+  align-items:center;
+  gap:4px;
+  overflow:hidden;
+  border:1px solid rgba(130,158,218,.09);
+  border-radius:12px;
+  background:linear-gradient(145deg,#0d121d,#070a10);
+  box-shadow:6px 7px 17px rgba(0,0,0,.32),inset 1px 1px rgba(255,255,255,.025);
+}
+.achievement-card.unlocked { border-color:rgba(107,151,255,.22); box-shadow:7px 9px 22px rgba(0,0,0,.38),-3px -3px 11px rgba(39,52,76,.16),inset 1px 1px rgba(255,255,255,.035); }
+.achievement-art { width:112px; height:126px; display:grid; place-items:center; overflow:hidden; }
+.achievement-art > .labstar-lottie,.achievement-art svg { width:100%!important; height:100%!important; overflow:visible!important; }
+.achievement-card.locked .achievement-art { opacity:.28; filter:grayscale(1) saturate(.15); }
+.achievement-copy { min-width:0; padding:12px 12px 12px 0; display:grid; gap:5px; }
+.achievement-copy > span { display:flex; align-items:center; justify-content:space-between; gap:6px; }
+.achievement-copy > span b { color:#7f9ddb; font-size:7px; letter-spacing:.1em; text-transform:uppercase; }
+.achievement-copy > span em { display:inline-flex; align-items:center; gap:3px; color:#66748b; font-size:7px; font-style:normal; }
+.achievement-card.unlocked .achievement-copy > span em { color:#82b8a8; }
+.achievement-copy > strong { color:#dce6f6; font-size:10.5px; }
+.achievement-copy > p { min-height:27px; margin:0; color:#657289; font-size:8px; line-height:1.45; }
+.achievement-progress { height:3px; overflow:hidden; border-radius:999px; background:rgba(255,255,255,.055); }
+.achievement-progress i { height:100%; display:block; border-radius:inherit; background:linear-gradient(90deg,#587ed9,#8cb0ff); box-shadow:0 0 8px rgba(105,148,245,.35); }
+.achievement-copy > small { color:#59667b; font-size:7.5px; }
+
 .global-settings-footer {
   min-height: 58px;
   padding: 0 25px;
@@ -257,4 +309,7 @@ html[data-labstar-motion="reduced"] *::after {
   .global-settings-footer { padding-inline: 16px; }
   .settings-profile-row { grid-template-columns: auto minmax(0,1fr); }
   .settings-profile-actions { grid-column: 1 / -1; }
+  .achievements-summary { grid-template-columns:auto minmax(0,1fr); }
+  .achievements-summary > button { grid-column:1 / -1; justify-self:start; }
+  .achievements-grid { grid-template-columns:1fr; }
 }
