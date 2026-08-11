@@ -25,6 +25,7 @@ import { MediaPreferenceBridge } from "./components/MediaPreferenceBridge";
 import { MemberPanelTools } from "./components/MemberPanelTools";
 import { MemberQuickActions } from "./components/MemberQuickActions";
 import { MessageWorkItemBridge } from "./components/MessageWorkItemBridge";
+import { OrganizationEntryGate } from "./components/OrganizationEntryGate";
 import { OrganizationSwitcherPortal } from "./components/OrganizationSwitcherPortal";
 import { ProfessionalPermissionBridge } from "./components/ProfessionalPermissionBridge";
 import { ProjectEnhancementsPortal } from "./components/ProjectEnhancementsPortal";
@@ -80,6 +81,7 @@ import "./brand-home-navigation";
 import "./product-polish.css";
 import "./universal-profile-mention.css";
 import "./organization-switcher.css";
+import "./organization-entry.css";
 
 const BRAND_INTRO_DURATION_MS = 2350;
 const NATIVE_BRIDGE_TIMEOUT_MS = 4000;
@@ -211,7 +213,7 @@ function ApplicationRoot() {
       <BootReadySignal />
       {previewMode
         ? <RootSurfaces />
-        : <AccessControl><RootSurfaces /></AccessControl>}
+        : <AccessControl><OrganizationEntryGate><RootSurfaces /></OrganizationEntryGate></AccessControl>}
     </>
   );
 }
