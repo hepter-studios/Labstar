@@ -23,47 +23,74 @@ declare global {
   }
 }
 
-// Same-origin on purpose: privacy shields never need to allow a third-party script.
-// The Pages Function pins lottie-web 5.12.2 and tries multiple upstream mirrors server-side.
-const RUNTIME_URL = "/api/runtime/lottie?v=5.12.2-labstar-2";
+const RUNTIME_URLS = [
+  "/api/runtime/lottie?v=5.12.2-labstar-3",
+  "https://cdnjs.cloudflare.com/ajax/libs/bodymovin/5.12.2/lottie.min.js",
+  "https://cdn.jsdelivr.net/npm/lottie-web@5.12.2/build/player/lottie.min.js",
+  "https://unpkg.com/lottie-web@5.12.2/build/player/lottie.min.js",
+] as const;
+
 let runtimePromise: Promise<LottieRuntime> | null = null;
 
-function loadRuntime() {
-  if (window.lottie) return Promise.resolve(window.lottie);
-  if (runtimePromise) return runtimePromise;
+function loadScript(url: string) {
+  return new Promise<LottieRuntime>((resolve, reject) => {
+    if (window.lottie) {
+      resolve(window.lottie);
+      return;
+    }
 
-  runtimePromise = new Promise<LottieRuntime>((resolve, reject) => {
-    const existing = document.querySelector<HTMLScriptElement>("script[data-labstar-lottie]");
-    const script = existing ?? document.createElement("script");
+    const script = document.createElement("script");
+    script.src = url;
+    script.async = true;
+    script.dataset.labstarLottie = "true";
+    script.dataset.source = url;
 
-    const finish = () => {
+    const cleanup = () => {
+      script.removeEventListener("load", loaded);
+      script.removeEventListener("error", failed);
+    };
+
+    const loaded = () => {
+      cleanup();
       if (window.lottie) {
         resolve(window.lottie);
         return;
       }
-      reject(new Error("lottie_runtime_missing"));
+      script.remove();
+      reject(new Error(`lottie_runtime_missing:${url}`));
     };
 
-    const fail = () => reject(new Error("lottie_runtime_failed"));
+    const failed = () => {
+      cleanup();
+      script.remove();
+      reject(new Error(`lottie_runtime_failed:${url}`));
+    };
 
-    if (existing) {
-      existing.addEventListener("load", finish, { once: true });
-      existing.addEventListener("error", fail, { once: true });
-      window.setTimeout(() => {
-        if (window.lottie) resolve(window.lottie);
-      }, 0);
-      return;
+    script.addEventListener("load", loaded, { once: true });
+    script.addEventListener("error", failed, { once: true });
+    document.head.appendChild(script);
+  });
+}
+
+async function loadRuntime() {
+  if (window.lottie) return window.lottie;
+  if (runtimePromise) return runtimePromise;
+
+  runtimePromise = (async () => {
+    let lastError: unknown = new Error("lottie_runtime_unavailable");
+
+    for (const url of RUNTIME_URLS) {
+      try {
+        return await loadScript(url);
+      } catch (cause) {
+        lastError = cause;
+        console.warn(`[Labstar] Player Lottie indisponível em ${url}; tentando próxima origem.`, cause);
+      }
     }
 
-    script.src = RUNTIME_URL;
-    script.async = true;
-    script.dataset.labstarLottie = "true";
-    script.addEventListener("load", finish, { once: true });
-    script.addEventListener("error", fail, { once: true });
-    document.head.appendChild(script);
-  }).catch((error) => {
+    throw lastError;
+  })().catch((error) => {
     runtimePromise = null;
-    document.querySelector<HTMLScriptElement>("script[data-labstar-lottie]")?.remove();
     throw error;
   });
 
