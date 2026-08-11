@@ -1,0 +1,15 @@
+/* O céu em CSS existe somente enquanto o Lottie real ainda não está pronto. */
+.organization-entry-space:has(.organization-entry-stars.ready)::before,
+.organization-entry-space:has(.organization-entry-stars.ready)::after {
+  opacity: 0 !important;
+  animation: none !important;
+  transition: opacity .35s ease;
+}
+
+.organization-entry-stars.ready {
+  opacity: 1 !important;
+}
+
+.organization-entry-stars.failed {
+  opacity: 0 !important;
+}
