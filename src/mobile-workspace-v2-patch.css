@@ -116,6 +116,62 @@
     overflow: hidden !important;
   }
 
+  body.mobile-workspace-active .integrations-center > header {
+    position: sticky !important;
+    z-index: 5 !important;
+    top: 0 !important;
+    min-height: 62px !important;
+    padding: max(9px, env(safe-area-inset-top)) 10px 9px !important;
+    gap: 8px !important;
+    background: rgba(8,10,15,.97) !important;
+    backdrop-filter: blur(16px) !important;
+  }
+
+  body.mobile-workspace-active .integrations-center > header > div {
+    min-width: 0 !important;
+    flex: 1 !important;
+  }
+
+  body.mobile-workspace-active .integrations-center > header > div > span {
+    display: none !important;
+  }
+
+  body.mobile-workspace-active .integrations-center > header > div > div {
+    min-width: 0 !important;
+  }
+
+  body.mobile-workspace-active .integrations-center > header small {
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+  }
+
+  body.mobile-workspace-active .integrations-mobile-back {
+    width: auto !important;
+    min-width: 44px !important;
+    min-height: 42px !important;
+    padding: 0 10px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+    flex: 0 0 auto !important;
+    border: 1px solid rgba(139,174,255,.16) !important;
+    color: #aebfe2 !important;
+    background: rgba(139,174,255,.06) !important;
+  }
+
+  body.mobile-workspace-active .integrations-mobile-back span {
+    display: inline !important;
+    font-size: 10px !important;
+    font-weight: 750 !important;
+  }
+
+  body.mobile-workspace-active .integrations-close {
+    min-width: 42px !important;
+    min-height: 42px !important;
+    flex: 0 0 42px !important;
+  }
+
   body.mobile-workspace-active .work-modal > label,
   body.mobile-workspace-active .work-modal > fieldset,
   body.mobile-workspace-active .work-modal > .form-grid,
@@ -145,6 +201,12 @@
   body.mobile-workspace-active .integrations-center footer button {
     min-height: 42px;
     flex: 1 1 120px;
+  }
+}
+
+@media (min-width: 701px) {
+  .integrations-mobile-back {
+    display: none !important;
   }
 }
 
