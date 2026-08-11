@@ -17,6 +17,15 @@ export type Organization = {
   createdAt: string;
 };
 
+export type OrganizationAccount = {
+  authUserId: string;
+  email: string;
+  name: string;
+  role: OrganizationRole;
+  joinedAt: string;
+  isCurrentUser: boolean;
+};
+
 type OrganizationRow = {
   id?: string;
   name?: string;
@@ -26,6 +35,15 @@ type OrganizationRow = {
   default_locale?: "en" | "pt-BR";
   enabled_locales?: string[] | null;
   created_at?: string;
+};
+
+type OrganizationAccountRow = {
+  auth_user_id?: string;
+  email?: string;
+  display_name?: string;
+  role?: OrganizationRole;
+  joined_at?: string;
+  is_current_user?: boolean;
 };
 
 export const PRIMARY_ORGANIZATION: Organization = {
@@ -59,6 +77,17 @@ function mapOrganization(row: OrganizationRow): Organization {
   };
 }
 
+function mapOrganizationAccount(row: OrganizationAccountRow): OrganizationAccount {
+  return {
+    authUserId: String(row.auth_user_id ?? ""),
+    email: String(row.email ?? ""),
+    name: String(row.display_name ?? row.email ?? "Membro Labstar"),
+    role: row.role ?? "member",
+    joinedAt: String(row.joined_at ?? ""),
+    isCurrentUser: Boolean(row.is_current_user),
+  };
+}
+
 function migrationMissing(error: { code?: string; message?: string } | null | undefined) {
   const message = error?.message?.toLocaleLowerCase() ?? "";
   return error?.code === "PGRST202"
@@ -72,6 +101,11 @@ function migrationRequiredError() {
   return Object.assign(new Error("organization_migration_required"), { code: "organization_migration_required" });
 }
 
+function throwRpcError(error: { code?: string; message?: string } | null | undefined): never {
+  if (migrationMissing(error)) throw migrationRequiredError();
+  throw error;
+}
+
 export function normalizeGlobalHandle(value: string) {
   return value
     .trim()
@@ -82,15 +116,10 @@ export function normalizeGlobalHandle(value: string) {
 }
 
 export async function listMyOrganizations(): Promise<Organization[]> {
-  // Nunca invente Hepter Studios como fallback para uma identidade autenticada.
-  // Uma organização só aparece quando o banco confirma a associação da conta.
   if (!supabaseClient) return import.meta.env.DEV ? [PRIMARY_ORGANIZATION] : [];
 
   const { data, error } = await requireClient().rpc("list_my_organizations");
-  if (error) {
-    if (migrationMissing(error)) throw migrationRequiredError();
-    throw error;
-  }
+  if (error) throwRpcError(error);
 
   return (Array.isArray(data) ? data : [])
     .map((row) => mapOrganization(row as OrganizationRow))
@@ -101,10 +130,7 @@ export async function isOrganizationHandleAvailable(handle: string): Promise<boo
   const normalized = normalizeGlobalHandle(handle);
   if (normalized.length < 3 || normalized.length > 48) return false;
   const { data, error } = await requireClient().rpc("organization_handle_available", { candidate: normalized });
-  if (error) {
-    if (migrationMissing(error)) throw migrationRequiredError();
-    throw error;
-  }
+  if (error) throwRpcError(error);
   return data === true;
 }
 
@@ -112,20 +138,14 @@ export async function isUsernameAvailable(username: string): Promise<boolean> {
   const normalized = normalizeGlobalHandle(username);
   if (normalized.length < 3 || normalized.length > 39) return false;
   const { data, error } = await requireClient().rpc("username_available", { candidate: normalized });
-  if (error) {
-    if (migrationMissing(error)) throw migrationRequiredError();
-    throw error;
-  }
+  if (error) throwRpcError(error);
   return data === true;
 }
 
 export async function claimUsername(username: string): Promise<string> {
   const normalized = normalizeGlobalHandle(username);
   const { data, error } = await requireClient().rpc("claim_username", { desired_username: normalized });
-  if (error) {
-    if (migrationMissing(error)) throw migrationRequiredError();
-    throw error;
-  }
+  if (error) throwRpcError(error);
   return String(data ?? normalized);
 }
 
@@ -134,14 +154,55 @@ export async function createOrganization(name: string, slug = ""): Promise<Organ
     organization_name: name.trim(),
     desired_slug: slug.trim() ? normalizeGlobalHandle(slug) : null,
   });
-  if (error) {
-    if (migrationMissing(error)) throw migrationRequiredError();
-    throw error;
-  }
+  if (error) throwRpcError(error);
 
   const row = Array.isArray(data) ? data[0] : data;
   if (!row) throw new Error("organization_create_empty_response");
   return mapOrganization(row as OrganizationRow);
+}
+
+export async function updateOrganizationProfile(organizationId: string, name: string, slug: string): Promise<Organization> {
+  const normalized = normalizeGlobalHandle(slug);
+  const { data, error } = await requireClient().rpc("update_organization_profile", {
+    target_organization_id: organizationId,
+    organization_name: name.trim(),
+    desired_slug: normalized,
+  });
+  if (error) throwRpcError(error);
+  const row = Array.isArray(data) ? data[0] : data;
+  if (!row) throw new Error("organization_update_empty_response");
+  return mapOrganization(row as OrganizationRow);
+}
+
+export async function listOrganizationAccounts(organizationId: string): Promise<OrganizationAccount[]> {
+  const { data, error } = await requireClient().rpc("list_organization_accounts", {
+    target_organization_id: organizationId,
+  });
+  if (error) throwRpcError(error);
+  return (Array.isArray(data) ? data : [])
+    .map((row) => mapOrganizationAccount(row as OrganizationAccountRow))
+    .filter((account) => account.authUserId);
+}
+
+export async function setOrganizationAccountRole(
+  organizationId: string,
+  authUserId: string,
+  role: OrganizationRole,
+) {
+  const { error } = await requireClient().rpc("set_organization_account_role", {
+    target_organization_id: organizationId,
+    target_auth_user_id: authUserId,
+    new_role: role,
+  });
+  if (error) throwRpcError(error);
+}
+
+export async function deleteOrganization(organizationId: string, confirmationSlug: string) {
+  const { error } = await requireClient().rpc("delete_organization", {
+    target_organization_id: organizationId,
+    confirmation_slug: normalizeGlobalHandle(confirmationSlug),
+  });
+  if (error) throwRpcError(error);
 }
 
 export function loadActiveOrganizationId() {
@@ -149,6 +210,14 @@ export function loadActiveOrganizationId() {
     return window.localStorage.getItem(ACTIVE_ORGANIZATION_KEY) || "";
   } catch {
     return "";
+  }
+}
+
+export function clearActiveOrganization() {
+  try {
+    window.localStorage.removeItem(ACTIVE_ORGANIZATION_KEY);
+  } catch {
+    // A próxima seleção corrige o estado quando storage estiver disponível.
   }
 }
 
