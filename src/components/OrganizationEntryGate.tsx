@@ -34,7 +34,7 @@ type OrganizationRow = {
 };
 
 const SESSION_PREFIX = "labstar-organization-entry-v2";
-const ENTRY_STAR_TIME_MS = 760;
+const ENTRY_ROCKET_TIME_MS = 1850;
 
 function delay(ms: number) {
   return new Promise<void>((resolve) => window.setTimeout(resolve, ms));
@@ -211,9 +211,9 @@ export function OrganizationEntryGate({ children }: { children: ReactNode }) {
     setActiveOrganization(organization);
     markSeen();
     setStage("entering");
-    await delay(ENTRY_STAR_TIME_MS);
+    await delay(ENTRY_ROCKET_TIME_MS);
     setStage("leaving");
-    window.setTimeout(() => setDone(true), 360);
+    window.setTimeout(() => setDone(true), 440);
   }, [markSeen]);
 
   const enter = useCallback((organization: Organization) => {
@@ -378,9 +378,10 @@ export function OrganizationEntryGate({ children }: { children: ReactNode }) {
         )}
 
         {stage === "entering" && (
-          <div className="organization-entry-loading" aria-live="polite" aria-busy="true">
-            <StarLoader size={25} />
-            <span>{selected ? `Entrando em ${selected.name}…` : "Entrando no Labstar…"}</span>
+          <div className="organization-entry-creating organization-entry-entering" aria-live="polite" aria-busy="true">
+            <LottieAnimation kind="rocket" className="organization-entry-rocket" preserveAspectRatio="xMidYMid meet" />
+            <h1>Entrando no Labstar</h1>
+            <p>{selected ? `Abrindo ${selected.name}…` : "Preparando seu espaço de trabalho…"}</p>
           </div>
         )}
 
