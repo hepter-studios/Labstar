@@ -1,4 +1,5 @@
 import {
+  ArrowLeft,
   AudioLines,
   BellRing,
   Camera,
@@ -483,8 +484,9 @@ function IntegrationsCenter({ space, channels, onClose }: { space: Collaboration
     <div className="modal-backdrop integrations-backdrop" onMouseDown={onClose}>
       <section ref={modalRef} className="integrations-center" role="dialog" aria-modal="true" aria-label="Central de integrações" onMouseDown={(event) => event.stopPropagation()}>
         <header>
+          <button className="integrations-mobile-back" type="button" onClick={onClose} aria-label="Voltar à conversa"><ArrowLeft size={17} /><span>Voltar à conversa</span></button>
           <div><span><Webhook size={19} /></span><div><strong>Integrações e automações</strong><small>{space.name} · cada evento chega ao canal certo</small></div></div>
-          <button type="button" onClick={onClose} aria-label="Fechar"><X size={17} /></button>
+          <button className="integrations-close" type="button" onClick={onClose} aria-label="Fechar"><X size={17} /></button>
         </header>
 
         <div className="integration-intro">
