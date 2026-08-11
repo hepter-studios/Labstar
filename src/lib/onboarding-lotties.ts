@@ -11,6 +11,7 @@ export type OnboardingLottieKind =
   | "stars"
   | "rocket"
   | "project-stars"
+  | "project-space"
   | "planet"
   | "happy-spaceman"
   | "astronaut-illustration"
@@ -86,6 +87,7 @@ function recolorRocket(animation: Record<string, unknown>) {
 
 async function loadLottieSource(kind: OnboardingLottieKind) {
   if (kind === "project-stars") return (await import("../assets/lottie/stars.json")).default as Record<string, unknown>;
+  if (kind === "project-space") return (await import("../assets/lottie/space.json")).default as Record<string, unknown>;
   if (kind === "planet") return (await import("../assets/lottie/planet.json")).default as Record<string, unknown>;
   if (kind === "happy-spaceman") return (await import("../assets/lottie/happy-spaceman.json")).default as Record<string, unknown>;
   if (kind === "astronaut-illustration") return (await import("../assets/lottie/astronaut-illustration.json")).default as Record<string, unknown>;

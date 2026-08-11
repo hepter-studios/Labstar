@@ -582,10 +582,9 @@ export default function Home() {
               <>
                 <img className="project-sky-poster" src="/project-sky-poster.png" alt="" aria-hidden="true" />
                 <LottieAnimation
-                  kind="project-stars"
+                  kind="project-space"
                   className="lottie-project-space-background"
                   preserveAspectRatio="xMidYMid slice"
-                  posterFrame={240}
                 />
               </>
             )}
