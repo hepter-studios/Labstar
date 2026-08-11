@@ -578,7 +578,13 @@ export default function Home() {
 
         {view === "mapa" ? (
           <section className={`canvas-shell ${showProjectLottieBackground && projectSkyEnabled ? "project-lottie-sky-active" : ""}`}>
-            {showProjectLottieBackground && projectSkyEnabled && <LottieAnimation kind="project-stars" className="lottie-project-space-background" />}
+            {showProjectLottieBackground && projectSkyEnabled && (
+              <LottieAnimation
+                kind="project-stars"
+                className="lottie-project-space-background"
+                preserveAspectRatio="xMidYMax slice"
+              />
+            )}
             <div className="cosmic-effects" aria-hidden="true">
               <i className="shooting-star shooting-star-one" />
               <i className="shooting-star shooting-star-two" />
