@@ -1,12 +1,9 @@
 .project-lottie-sky-active {
-  background-image:
-    radial-gradient(circle at 20% 72%, rgba(76,39,139,.36), transparent 18%),
-    radial-gradient(circle at 76% 28%, rgba(53,85,162,.3), transparent 24%),
-    radial-gradient(circle at 52% 48%, rgba(39,20,87,.24), transparent 38%),
-    linear-gradient(155deg, #07031a, #020610 54%, #09021b) !important;
-  background-color: #010207 !important;
+  background-image: none !important;
+  background-color: #100529 !important;
 }
 
+.project-lottie-sky-active::before,
 .project-lottie-sky-active::after,
 .project-lottie-sky-active > .cosmic-effects {
   display: none !important;
@@ -19,24 +16,15 @@
   width: 110%;
   height: 110%;
   overflow: hidden;
-  opacity: .58;
+  opacity: 1;
   pointer-events: none;
-  filter: saturate(1.08) contrast(1.14) brightness(.68);
+  filter: none;
 }
 
 .lottie-project-space-background > svg {
   display: block;
   width: 100% !important;
   height: 100% !important;
-}
-
-.lottie-project-space-background::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background:
-    radial-gradient(circle at 54% 42%, transparent 9%, rgba(2,4,12,.08) 45%, rgba(1,2,7,.62) 100%),
-    linear-gradient(180deg, rgba(2,4,10,.08), rgba(1,2,7,.28));
 }
 
 .lottie-project-loading {
@@ -84,8 +72,8 @@
 .labstar-access-loader-animation {
   position: relative;
   z-index: 2;
-  width: 190px;
-  height: 190px;
+  width: 128px;
+  height: 208px;
   filter: drop-shadow(0 0 18px rgba(107,145,255,.34));
 }
 
@@ -94,13 +82,13 @@
   width: 100% !important;
   height: 100% !important;
   overflow: visible !important;
-  transform: scale(1.72);
+  transform: scale(2.4);
 }
 
 .labstar-access-loader > span {
   position: relative;
   z-index: 2;
-  margin: -22px 0 0;
+  margin: -18px 0 0;
   color: #8f9cb3;
   font-size: 10px;
   font-weight: 700;
@@ -167,7 +155,7 @@
   opacity: 0;
   pointer-events: none;
   filter: drop-shadow(0 0 22px rgba(113,155,255,.5));
-  animation: labstar-intro-astronaut-pass 1.5s cubic-bezier(.33,.05,.68,.96) 1.62s both;
+  animation: labstar-intro-astronaut-pass 2.1s cubic-bezier(.33,.05,.68,.96) 1.2s both;
 }
 
 .intro-astronaut-animation,
@@ -188,10 +176,13 @@
 }
 
 @keyframes labstar-intro-astronaut-pass {
-  0% { opacity: 0; transform: translate3d(0,12px,0) scale(.78) rotate(-3deg); }
+  0% { opacity: 0; transform: translate3d(0,34px,0) scale(.76) rotate(-12deg); }
   14% { opacity: .92; }
-  78% { opacity: .96; }
-  100% { opacity: 0; transform: translate3d(calc(100vw + 470px),-42px,0) scale(1.06) rotate(-3deg); }
+  18% { transform: translate3d(calc(18vw + 85px),18px,0) scale(.83) rotate(-13deg); }
+  44% { transform: translate3d(calc(44vw + 207px),-8px,0) scale(.94) rotate(-15deg); }
+  66% { transform: translate3d(calc(66vw + 310px),-66px,0) scale(1) rotate(-18deg); }
+  82% { opacity: .96; transform: translate3d(calc(82vw + 385px),-142px,0) scale(1.04) rotate(-21deg); }
+  100% { opacity: 0; transform: translate3d(calc(100vw + 470px),-245px,0) scale(1.08) rotate(-24deg); }
 }
 
 @media (max-width: 700px) {
@@ -215,7 +206,7 @@
     top: calc(50% + 104px);
     width: 150px;
     height: 150px;
-    animation-duration: 1.3s;
+    animation-duration: 1.85s;
   }
 }
 

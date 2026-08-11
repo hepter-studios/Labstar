@@ -2,6 +2,21 @@
   const startedAt = Date.now();
   const state = { ready: false, rendered: false };
 
+  if ("serviceWorker" in navigator) {
+    let reloadingForFreshWorker = false;
+    navigator.serviceWorker.addEventListener("controllerchange", () => {
+      if (reloadingForFreshWorker) return;
+      reloadingForFreshWorker = true;
+      location.reload();
+    });
+
+    window.addEventListener("load", () => {
+      navigator.serviceWorker.getRegistration()
+        .then((registration) => registration?.update())
+        .catch(() => undefined);
+    });
+  }
+
   function safeText(value) {
     return String(value ?? "erro desconhecido")
       .replaceAll("&", "&amp;")

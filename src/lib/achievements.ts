@@ -8,7 +8,15 @@ export const ACHIEVEMENT_CATALOG = [
   { key: "stellar_communicator", title: "Comunicador estelar", description: "Envie 10 mensagens para manter a tripulação alinhada.", rarity: "Rara", target: 10, kind: "free-consultation" },
   { key: "project_pioneer", title: "Pioneiro de projetos", description: "Atualize os detalhes ou o README de um projeto.", rarity: "Rara", target: 1, kind: "space-boy-developer" },
   { key: "multi_mission", title: "Múltiplas missões", description: "Receba dois cargos profissionais na organização.", rarity: "Rara", target: 2, kind: "astronaut-illustration" },
-  { key: "organization_founder", title: "Fundador de constelação", description: "Crie e lidere uma organização no Labstar.", rarity: "Épica", target: 1, kind: "star-in-hand" },
+  { key: "organization_founder", title: "Fundador de constelação", description: "Crie e lidere uma organização no Labstar.", rarity: "Épica", target: 1, kind: "astronaut-cosmos" },
+  { key: "orbital_coffee", title: "Café orbital", description: "Envie 25 mensagens para manter as missões em movimento.", rarity: "Rara", target: 25, kind: "cute-astronaut-mug" },
+  { key: "constellation_voice", title: "Voz da constelação", description: "Alcance 50 mensagens entre canais e conversas privadas.", rarity: "Rara", target: 50, kind: "astronaut-coffee" },
+  { key: "long_range_radio", title: "Rádio de longo alcance", description: "Alcance 100 mensagens no Labstar.", rarity: "Épica", target: 100, kind: "astronaut-headphones" },
+  { key: "space_veteran", title: "Veterano do espaço", description: "Alcance 250 mensagens e torne-se uma referência da tripulação.", rarity: "Épica", target: 250, kind: "astronaut-solo" },
+  { key: "idea_fisher", title: "Pescador de ideias", description: "Atualize três projetos diferentes.", rarity: "Rara", target: 3, kind: "catch-the-fish" },
+  { key: "mission_engineer", title: "Engenheiro de missão", description: "Atualize cinco projetos diferentes.", rarity: "Épica", target: 5, kind: "astronaut-flow" },
+  { key: "versatile_crew", title: "Tripulação versátil", description: "Receba três cargos profissionais na organização.", rarity: "Épica", target: 3, kind: "crying-astronaut" },
+  { key: "universe_architect", title: "Arquiteto de universos", description: "Crie e lidere duas organizações no Labstar.", rarity: "Épica", target: 2, kind: "astronaut-orbit" },
 ] as const satisfies ReadonlyArray<{
   key: string;
   title: string;
