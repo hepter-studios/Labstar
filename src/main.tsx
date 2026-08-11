@@ -8,7 +8,6 @@ import {
 } from "react";
 import { createRoot } from "react-dom/client";
 import App from "./App";
-import { AccessControl } from "./components/AccessControl";
 import { CategoryAccessPortal } from "./components/CategoryAccessPortal";
 import { ChannelAccessPortal } from "./components/ChannelAccessPortal";
 import { ChannelMessageActionsBridge } from "./components/ChannelMessageActionsBridge";
@@ -25,7 +24,7 @@ import { MediaPreferenceBridge } from "./components/MediaPreferenceBridge";
 import { MemberPanelTools } from "./components/MemberPanelTools";
 import { MemberQuickActions } from "./components/MemberQuickActions";
 import { MessageWorkItemBridge } from "./components/MessageWorkItemBridge";
-import { OrganizationEntryGate } from "./components/OrganizationEntryGate";
+import { OrganizationAwareAccess } from "./components/OrganizationAwareAccess";
 import { OrganizationSwitcherPortal } from "./components/OrganizationSwitcherPortal";
 import { ProfessionalPermissionBridge } from "./components/ProfessionalPermissionBridge";
 import { ProjectEnhancementsPortal } from "./components/ProjectEnhancementsPortal";
@@ -213,7 +212,7 @@ function ApplicationRoot() {
       <BootReadySignal />
       {previewMode
         ? <RootSurfaces />
-        : <AccessControl><OrganizationEntryGate><RootSurfaces /></OrganizationEntryGate></AccessControl>}
+        : <OrganizationAwareAccess><RootSurfaces /></OrganizationAwareAccess>}
     </>
   );
 }
