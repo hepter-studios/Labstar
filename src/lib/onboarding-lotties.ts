@@ -7,7 +7,18 @@ import stars5 from "./lottie-payloads/stars-5";
 import stars6 from "./lottie-payloads/stars-6";
 import rocketPayload from "./lottie-payloads/rocket";
 
-export type OnboardingLottieKind = "stars" | "rocket";
+export type OnboardingLottieKind =
+  | "stars"
+  | "rocket"
+  | "project-stars"
+  | "planet"
+  | "happy-spaceman"
+  | "astronaut-illustration"
+  | "star-in-hand"
+  | "victory-sign"
+  | "crying-astronaut"
+  | "space-boy-developer"
+  | "free-consultation";
 
 // The supplied space scene is kept complete here (all top-level layers/assets).
 // It is only gzip-compressed and split into modules so it stays manageable in source.
@@ -36,12 +47,31 @@ async function expandLottie(payload: string) {
   return JSON.parse(json) as Record<string, unknown>;
 }
 
+async function loadLottieSource(kind: OnboardingLottieKind) {
+  if (kind === "project-stars") return (await import("../assets/lottie/stars.json")).default as Record<string, unknown>;
+  if (kind === "planet") return (await import("../assets/lottie/planet.json")).default as Record<string, unknown>;
+  if (kind === "happy-spaceman") return (await import("../assets/lottie/happy-spaceman.json")).default as Record<string, unknown>;
+  if (kind === "astronaut-illustration") return (await import("../assets/lottie/astronaut-illustration.json")).default as Record<string, unknown>;
+  if (kind === "star-in-hand") return (await import("../assets/lottie/star-in-hand.json")).default as Record<string, unknown>;
+  if (kind === "victory-sign") return (await import("../assets/lottie/victory-sign.json")).default as Record<string, unknown>;
+  if (kind === "crying-astronaut") return (await import("../assets/lottie/crying-astronaut.json")).default as Record<string, unknown>;
+  if (kind === "space-boy-developer") return (await import("../assets/lottie/space-boy-developer.json")).default as Record<string, unknown>;
+  if (kind === "free-consultation") return (await import("../assets/lottie/free-consultation.json")).default as Record<string, unknown>;
+
+  const payload = kind === "stars" ? STARS_GZIP_BASE64 : ROCKET_GZIP_BASE64;
+  const animation = await expandLottie(payload);
+  if (kind === "rocket") {
+    const layers = Array.isArray(animation.layers) ? animation.layers : [];
+    animation.layers = layers.filter((layer) => String((layer as { nm?: unknown }).nm ?? "") !== "Radial");
+  }
+  return animation;
+}
+
 export function loadOnboardingLottie(kind: OnboardingLottieKind) {
   const existing = cache.get(kind);
   if (existing) return existing;
 
-  const payload = kind === "stars" ? STARS_GZIP_BASE64 : ROCKET_GZIP_BASE64;
-  const promise = expandLottie(payload).catch((error) => {
+  const promise = loadLottieSource(kind).catch((error) => {
     cache.delete(kind);
     throw error;
   });

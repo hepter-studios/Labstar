@@ -35,10 +35,11 @@ import {
   type InviteInspection,
   type InviteMode,
 } from "../lib/access";
+import { LottieAnimation } from "./LottieAnimation";
 
 type AccessStage = "loading" | "anonymous" | "active" | "pending" | "suspended" | "unauthorized" | "error";
 
-const BRAND_INTRO_DURATION_MS = 2350;
+const BRAND_INTRO_DURATION_MS = 3450;
 
 type InviteForm = {
   mode: InviteMode;
@@ -187,9 +188,10 @@ export function AccessControl({ children }: { children: ReactNode }) {
   );
 }
 
-function AccessBrandIntro() {
+export function AccessBrandIntro() {
   return (
     <main className="access-screen brand-intro" aria-label="Abrindo Labstar" aria-live="polite" aria-busy="true">
+      <div className="intro-rocket-flyby" aria-hidden="true"><LottieAnimation kind="rocket" className="intro-rocket-animation" /></div>
       <div className="intro-mark">
         <strong className="wordmark large animated" aria-label="Labstar">
           <span className="word-letter" aria-hidden="true">L</span>

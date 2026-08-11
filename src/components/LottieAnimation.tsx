@@ -23,11 +23,13 @@ export function LottieAnimation({
   kind,
   className = "",
   loop = true,
+  speed = 1,
   preserveAspectRatio = "xMidYMid slice",
 }: {
   kind: OnboardingLottieKind;
   className?: string;
   loop?: boolean;
+  speed?: number;
   preserveAspectRatio?: string;
 }) {
   const ref = useRef<HTMLDivElement>(null);
@@ -53,8 +55,9 @@ export function LottieAnimation({
     }
 
     void loadOnboardingLottie(kind)
-      .then((animationData) => {
+      .then((sourceData) => {
         if (disposed || !ref.current) return;
+        const animationData = structuredClone(sourceData);
 
         if (diagnosticMode) {
           setDiagnosticInfo({
@@ -79,6 +82,7 @@ export function LottieAnimation({
             hideOnTransparent: true,
           },
         });
+        instance.setSpeed(speed);
 
         if (diagnosticMode) setDiagnosticState("player-created");
 
@@ -127,7 +131,7 @@ export function LottieAnimation({
       instance?.destroy();
       container.replaceChildren();
     };
-  }, [diagnosticMode, kind, loop, preserveAspectRatio]);
+  }, [diagnosticMode, kind, loop, preserveAspectRatio, speed]);
 
   if (diagnosticMode) {
     const statusLabel = diagnosticState === "loading"
