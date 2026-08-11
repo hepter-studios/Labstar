@@ -55,6 +55,35 @@ async function expandLottie(payload: string) {
   return JSON.parse(json) as Record<string, unknown>;
 }
 
+function recolorRocket(animation: Record<string, unknown>) {
+  const visit = (value: unknown): void => {
+    if (Array.isArray(value)) {
+      value.forEach(visit);
+      return;
+    }
+    if (!value || typeof value !== "object") return;
+
+    const record = value as Record<string, unknown>;
+    const color = record.c;
+    if (color && typeof color === "object") {
+      const colorRecord = color as Record<string, unknown>;
+      const channels = colorRecord.k;
+      if (Array.isArray(channels) && channels.length === 4 && channels.every((channel) => typeof channel === "number")) {
+        const [red, green, blue, alpha] = channels as number[];
+        const darkestChannel = Math.max(red, green, blue);
+        colorRecord.k = darkestChannel < 0.2
+          ? [0.12, 0.44, 0.9, alpha]
+          : [0.9, 0.97, 1, alpha];
+      }
+    }
+
+    Object.values(record).forEach(visit);
+  };
+
+  visit(animation);
+  return animation;
+}
+
 async function loadLottieSource(kind: OnboardingLottieKind) {
   if (kind === "project-stars") return (await import("../assets/lottie/stars.json")).default as Record<string, unknown>;
   if (kind === "planet") return (await import("../assets/lottie/planet.json")).default as Record<string, unknown>;
@@ -80,6 +109,7 @@ async function loadLottieSource(kind: OnboardingLottieKind) {
   if (kind === "rocket") {
     const layers = Array.isArray(animation.layers) ? animation.layers : [];
     animation.layers = layers.filter((layer) => String((layer as { nm?: unknown }).nm ?? "") !== "Radial");
+    recolorRocket(animation);
   }
 
   return animation;

@@ -1418,7 +1418,7 @@ function QuickPanel({
 }
 
 function AccessLoading() {
-  return <LabstarAccessLoader message="Validando aprovação" />;
+  return <LabstarAccessLoader />;
 }
 
 function AccessGate() {

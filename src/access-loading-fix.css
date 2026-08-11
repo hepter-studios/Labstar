@@ -1,4 +1,4 @@
-.access-screen:not(.brand-intro) > p {
+.access-screen:not(.brand-intro):not(.labstar-access-loader) > p {
   width: 58px !important;
   height: 58px !important;
   margin: 0 !important;
@@ -14,7 +14,7 @@
 }
 
 /* Loader simples: a mesma estrela visual do wordmark LABSTAR, parada no centro e girando. */
-.access-screen:not(.brand-intro) > p::before {
+.access-screen:not(.brand-intro):not(.labstar-access-loader) > p::before {
   content: "";
   width: 36px;
   height: 36px;
@@ -27,7 +27,7 @@
   animation: labstar-access-star-spin 1.05s linear infinite;
 }
 
-.access-screen:not(.brand-intro) > p::after {
+.access-screen:not(.brand-intro):not(.labstar-access-loader) > p::after {
   display: none !important;
   content: none !important;
 }
@@ -47,14 +47,14 @@
     font-size: clamp(34px, 8vw, 38px) !important;
   }
 
-  .access-screen:not(.brand-intro) > p::before {
+  .access-screen:not(.brand-intro):not(.labstar-access-loader) > p::before {
     width: 34px;
     height: 34px;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .access-screen:not(.brand-intro) > p::before {
+  .access-screen:not(.brand-intro):not(.labstar-access-loader) > p::before {
     animation-duration: 2.4s;
   }
 }
