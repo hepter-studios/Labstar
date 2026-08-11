@@ -25,12 +25,14 @@ export function LottieAnimation({
   loop = true,
   speed = 1,
   preserveAspectRatio = "xMidYMid slice",
+  posterFrame,
 }: {
   kind: OnboardingLottieKind;
   className?: string;
   loop?: boolean;
   speed?: number;
   preserveAspectRatio?: string;
+  posterFrame?: number;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const [failed, setFailed] = useState(false);
@@ -73,8 +75,8 @@ export function LottieAnimation({
         instance = lottie.loadAnimation({
           container: ref.current,
           renderer: "svg",
-          loop,
-          autoplay: true,
+          loop: posterFrame === undefined ? loop : false,
+          autoplay: posterFrame === undefined,
           animationData: animationData as never,
           rendererSettings: {
             preserveAspectRatio,
@@ -88,6 +90,7 @@ export function LottieAnimation({
 
         const markReady = () => {
           if (disposed) return;
+          if (posterFrame !== undefined) instance?.goToAndStop(posterFrame, true);
           setReady(true);
           if (diagnosticMode) setDiagnosticState("playing");
         };
@@ -131,7 +134,7 @@ export function LottieAnimation({
       instance?.destroy();
       container.replaceChildren();
     };
-  }, [diagnosticMode, kind, loop, preserveAspectRatio, speed]);
+  }, [diagnosticMode, kind, loop, posterFrame, preserveAspectRatio, speed]);
 
   if (diagnosticMode) {
     const statusLabel = diagnosticState === "loading"

@@ -582,7 +582,8 @@ export default function Home() {
               <LottieAnimation
                 kind="project-stars"
                 className="lottie-project-space-background"
-                preserveAspectRatio="xMidYMax slice"
+                preserveAspectRatio="xMidYMid slice"
+                posterFrame={240}
               />
             )}
             <div className="cosmic-effects" aria-hidden="true">

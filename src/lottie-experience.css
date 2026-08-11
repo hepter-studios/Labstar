@@ -72,8 +72,8 @@
 .labstar-access-loader-animation {
   position: relative;
   z-index: 2;
-  width: 128px;
-  height: 208px;
+  width: 112px;
+  height: 176px;
   filter:
     drop-shadow(0 0 2px rgba(228,244,255,.88))
     drop-shadow(0 0 12px rgba(65,139,255,.58));
@@ -84,7 +84,7 @@
   width: 100% !important;
   height: 100% !important;
   overflow: visible !important;
-  transform: scale(2.4);
+  transform: scale(2.08);
 }
 
 .lottie-mascot-celebration {
@@ -189,7 +189,7 @@
   .lottie-mascot-animation { width: 142px; height: 142px; }
   .lottie-mascot-message { max-width: 138px; }
 
-  .labstar-access-loader-animation { width: 158px; height: 158px; }
+  .labstar-access-loader-animation { width: 138px; height: 138px; }
   .intro-astronaut-flyby {
     left: -180px;
     top: calc(50% + 104px);
