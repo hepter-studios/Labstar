@@ -56,7 +56,11 @@ export default defineConfig({
         cleanupOutdatedCaches: true,
         skipWaiting: true,
         clientsClaim: true,
-        globPatterns: ["**/*.{js,css,ico,png,svg,woff2}"],
+        // Entry points and styles use content hashes and must come from the
+        // current HTML, not from a worker that can outlive a deployment.
+        // The service worker remains available for push notifications and only
+        // precaches stable visual/font assets.
+        globPatterns: ["**/*.{ico,png,svg,woff2}"],
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/pgzwyngxsxnheulvusdq\.supabase\.co\/.*/i,

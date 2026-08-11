@@ -4,6 +4,60 @@
 
   if ("serviceWorker" in navigator) {
     let reloadingForFreshWorker = false;
+    const entryPattern = /\/assets\/index-[A-Za-z0-9_-]+\.js/;
+
+    function currentEntry() {
+      for (const script of document.scripts) {
+        const match = script.src.match(entryPattern);
+        if (match) return match[0];
+      }
+      return null;
+    }
+
+    async function ensureFreshDeployment() {
+      const loadedEntry = currentEntry();
+      if (!loadedEntry) return;
+
+      const probe = await fetch(`/index.html?labstar-deployment=${Date.now()}`, {
+        cache: "no-store",
+        credentials: "same-origin",
+        headers: { "Cache-Control": "no-cache" },
+      });
+      if (!probe.ok) return;
+
+      const latestEntry = (await probe.text()).match(entryPattern)?.[0] ?? null;
+      if (!latestEntry || latestEntry === loadedEntry) {
+        try {
+          sessionStorage.removeItem("labstar:deployment-reload");
+        } catch {
+          // Storage can be disabled; freshness checks must still continue.
+        }
+        return;
+      }
+
+      try {
+        if (sessionStorage.getItem("labstar:deployment-reload") === latestEntry) return;
+        sessionStorage.setItem("labstar:deployment-reload", latestEntry);
+      } catch {
+        // The cache cleanup below remains safe without the loop guard.
+      }
+
+      const registration = await navigator.serviceWorker.getRegistration();
+      await registration?.update();
+      registration?.waiting?.postMessage({ type: "SKIP_WAITING" });
+
+      if ("caches" in window) {
+        const cacheNames = await caches.keys();
+        await Promise.all(
+          cacheNames
+            .filter((name) => name.startsWith("workbox-precache"))
+            .map((name) => caches.delete(name)),
+        );
+      }
+
+      window.setTimeout(() => location.reload(), 250);
+    }
+
     navigator.serviceWorker.addEventListener("controllerchange", () => {
       if (reloadingForFreshWorker) return;
       reloadingForFreshWorker = true;
@@ -11,8 +65,7 @@
     });
 
     window.addEventListener("load", () => {
-      navigator.serviceWorker.getRegistration()
-        .then((registration) => registration?.update())
+      ensureFreshDeployment()
         .catch(() => undefined);
     });
   }
