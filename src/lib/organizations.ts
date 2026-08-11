@@ -101,6 +101,10 @@ function migrationRequiredError() {
   return Object.assign(new Error("organization_migration_required"), { code: "organization_migration_required" });
 }
 
+function organizationRuleError(code: string) {
+  return Object.assign(new Error(code), { code });
+}
+
 function throwRpcError(error: { code?: string; message?: string } | null | undefined): never {
   if (migrationMissing(error)) throw migrationRequiredError();
   throw error;
@@ -163,6 +167,18 @@ export async function createOrganization(name: string, slug = ""): Promise<Organ
 
 export async function updateOrganizationProfile(organizationId: string, name: string, slug: string): Promise<Organization> {
   const normalized = normalizeGlobalHandle(slug);
+  if (normalized.length < 3 || normalized.length > 48 || !/^[a-z0-9][a-z0-9-]{1,46}[a-z0-9]$/.test(normalized)) {
+    throw organizationRuleError("invalid_organization_handle");
+  }
+
+  const current = (await listMyOrganizations()).find((organization) => organization.id === organizationId);
+  if (!current) throw organizationRuleError("organization_not_found");
+
+  if (normalized !== current.slug) {
+    const available = await isOrganizationHandleAvailable(normalized);
+    if (!available) throw organizationRuleError("organization_handle_taken");
+  }
+
   const { data, error } = await requireClient().rpc("update_organization_profile", {
     target_organization_id: organizationId,
     organization_name: name.trim(),
