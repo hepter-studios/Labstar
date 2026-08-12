@@ -4,7 +4,9 @@ use crate::{
     security::{self, ValidatedDeepLink},
 };
 use serde::Serialize;
-use tauri::{AppHandle, Manager, State, UserAttentionType};
+use tauri::{AppHandle, Manager, State};
+#[cfg(desktop)]
+use tauri::UserAttentionType;
 use tauri_plugin_notification::NotificationExt;
 use tauri_plugin_opener::OpenerExt;
 
@@ -73,6 +75,7 @@ pub fn focus_main_window(app: AppHandle) -> Result<(), String> {
     window
         .show()
         .map_err(|error| format!("main_window_show_failed: {error}"))?;
+    #[cfg(desktop)]
     window
         .unminimize()
         .map_err(|error| format!("main_window_restore_failed: {error}"))?;
@@ -88,6 +91,7 @@ pub fn request_main_window_attention(app: AppHandle, critical: bool) -> Result<(
         .get_webview_window("main")
         .ok_or_else(|| "main_window_not_found".to_string())?;
 
+    #[cfg(desktop)]
     window
         .request_user_attention(Some(if critical {
             UserAttentionType::Critical
@@ -95,6 +99,10 @@ pub fn request_main_window_attention(app: AppHandle, critical: bool) -> Result<(
             UserAttentionType::Informational
         }))
         .map_err(|error| format!("main_window_attention_failed: {error}"))?;
+
+    #[cfg(mobile)]
+    let _ = (window, critical);
+
     Ok(())
 }
 
