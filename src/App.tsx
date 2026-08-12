@@ -116,6 +116,19 @@ const initialNodes: StructureNode[] = [
   { id: "atlas", parentId: "digital", name: "Atlas", description: "Produto em validação e descoberta.", kind: "produto", status: "planejamento", priority: "media", owner: "Product team", progress: 12, x: 1420, y: 80 },
 ];
 
+const BOARD_WIDTH = 1750;
+const BOARD_HEIGHT = 980;
+const NODE_WIDTH = 274;
+const NODE_HEIGHT = 164;
+const BOARD_SAFE_MARGIN = 24;
+
+function clampNodePosition(x: number, y: number) {
+  return {
+    x: Math.max(BOARD_SAFE_MARGIN, Math.min(BOARD_WIDTH - NODE_WIDTH - BOARD_SAFE_MARGIN, Math.round(x))),
+    y: Math.max(BOARD_SAFE_MARGIN, Math.min(BOARD_HEIGHT - NODE_HEIGHT - BOARD_SAFE_MARGIN, Math.round(y))),
+  };
+}
+
 const kindMeta: Record<NodeKind, { label: string; color: string; Icon: LucideIcon }> = {
   holding: { label: "Holding", color: "#dfe7ff", Icon: Orbit },
   empresa: { label: "Empresa", color: "#8baeff", Icon: Building2 },
@@ -387,8 +400,9 @@ export default function Home() {
       const rect = board.getBoundingClientRect();
       const x = Math.round((event.clientX - rect.left) / zoom - drag.dx);
       const y = Math.round((event.clientY - rect.top) / zoom - drag.dy);
+      const position = clampNodePosition(x, y);
       setNodes((current) => current.map((node) =>
-        node.id === drag.id ? { ...node, x: Math.max(24, x), y: Math.max(24, y) } : node
+        node.id === drag.id ? { ...node, ...position } : node
       ));
     };
     const stop = () => {
@@ -447,6 +461,10 @@ export default function Home() {
     const parent = nodes.find((node) => node.id === parentId);
     const siblings = nodes.filter((node) => node.parentId === parentId).length;
     const id = `node-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    const position = clampNodePosition(
+      parent ? parent.x + 350 : 720,
+      parent ? parent.y + (siblings % 2 === 0 ? -205 : 205) : 400,
+    );
     const next: StructureNode = {
       id,
       parentId,
@@ -458,13 +476,16 @@ export default function Home() {
       owner: "Sem responsável",
       cardTheme: "obsidian",
       progress: 0,
-      x: parent ? parent.x + 350 : 720,
-      y: parent ? parent.y + (siblings % 2 === 0 ? -205 : 205) : 400,
+      ...position,
     };
     setNodes((current) => [...current, next]);
     setView("mapa");
     selectNode(id);
     setEditorOpen(true);
+    window.requestAnimationFrame(() => {
+      const card = Array.from(document.querySelectorAll<HTMLElement>(".node-card")).find((candidate) => candidate.dataset.projectNodeId === id);
+      card?.scrollIntoView({ behavior: "smooth", block: "center", inline: "center" });
+    });
   }
 
   function updateSelected(patch: Partial<StructureNode>) {
@@ -681,13 +702,12 @@ export default function Home() {
                       data-card-tone={cardThemeMeta[cardTheme].tone}
                       tabIndex={0}
                       role="button"
-                      title="Botão direito para inspecionar o perfil"
+                      title="Clique duas vezes para inspecionar o perfil"
                       aria-label={`Selecionar ${meta.label.toLocaleLowerCase()} ${node.name}`}
                       className={`node-card ${selectedId === node.id ? "selected" : ""} ${draggingId === node.id ? "dragging" : ""} ${matches ? "" : "search-muted"}`}
                       style={{ left: node.x, top: node.y, "--accent": meta.color, "--status": status.color } as React.CSSProperties}
-                      onContextMenu={(event) => {
+                      onDoubleClick={(event) => {
                         if ((event.target as HTMLElement).closest("button, a")) return;
-                        event.preventDefault();
                         event.stopPropagation();
                         openEditor(node.id);
                       }}
