@@ -31,7 +31,8 @@
   filter: none;
 }
 
-.lottie-project-space-background > svg {
+.lottie-project-space-background > svg,
+.lottie-project-space-background > canvas {
   display: block;
   width: 100% !important;
   height: 100% !important;

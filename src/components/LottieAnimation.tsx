@@ -26,7 +26,6 @@ export function LottieAnimation({
   speed = 1,
   preserveAspectRatio = "xMidYMid slice",
   posterFrame,
-  playbackSegment,
 }: {
   kind: OnboardingLottieKind;
   className?: string;
@@ -34,7 +33,6 @@ export function LottieAnimation({
   speed?: number;
   preserveAspectRatio?: string;
   posterFrame?: number;
-  playbackSegment?: readonly [startFrame: number, endFrame: number];
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const [failed, setFailed] = useState(false);
@@ -42,9 +40,6 @@ export function LottieAnimation({
   const [diagnosticState, setDiagnosticState] = useState<DiagnosticState>("loading");
   const [diagnosticInfo, setDiagnosticInfo] = useState<DiagnosticInfo>({});
   const diagnosticMode = kind === "stars" && new URLSearchParams(window.location.search).has("lottie-test");
-  const playbackStartFrame = playbackSegment?.[0];
-  const playbackEndFrame = playbackSegment?.[1];
-  const hasPlaybackSegment = playbackStartFrame !== undefined && playbackEndFrame !== undefined;
 
   useEffect(() => {
     const container = ref.current;
@@ -68,15 +63,6 @@ export function LottieAnimation({
         if (disposed || !ref.current) return;
         const animationData = structuredClone(sourceData);
         const expectedLayerCount = Array.isArray(animationData.layers) ? animationData.layers.length : 0;
-
-        // Limita a linha do tempo antes de criar o player. Em builds de produção,
-        // iniciar o recorte depois de DOMLoaded podia acontecer tarde demais: o
-        // SVG já nascia no fim do segmento, sem camadas visíveis e sem reprodução.
-        // Com ip/op ajustados, o autoplay comum do Lottie passa a controlar o loop.
-        if (hasPlaybackSegment) {
-          animationData.ip = playbackStartFrame;
-          animationData.op = playbackEndFrame;
-        }
 
         if (diagnosticMode) {
           setDiagnosticInfo({
@@ -180,7 +166,7 @@ export function LottieAnimation({
       instance?.destroy();
       container.replaceChildren();
     };
-  }, [diagnosticMode, hasPlaybackSegment, kind, loop, playbackEndFrame, playbackStartFrame, posterFrame, preserveAspectRatio, speed]);
+  }, [diagnosticMode, kind, loop, posterFrame, preserveAspectRatio, speed]);
 
   if (diagnosticMode) {
     const statusLabel = diagnosticState === "loading"
