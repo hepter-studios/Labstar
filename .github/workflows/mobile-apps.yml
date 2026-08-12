@@ -1,0 +1,236 @@
+name: Validar apps mobile
+
+on:
+  pull_request:
+    paths:
+      - "src/**"
+      - "src-tauri/**"
+      - "backend/**"
+      - "package.json"
+      - "package-lock.json"
+      - ".github/workflows/mobile-apps.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mobile-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+  CI: "true"
+
+jobs:
+  validate:
+    name: React, Rust e segurança
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Baixar branch
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Instalar dependências web
+        run: npm ci
+
+      - name: Build React/Vite
+        run: npm run build
+
+      - name: Instalar dependências Tauri do Linux
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libwebkit2gtk-4.1-dev \
+            libappindicator3-dev \
+            librsvg2-dev \
+            patchelf
+
+      - name: Instalar Rust estável
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Restaurar cache Cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: |
+            src-tauri
+            backend
+
+      - name: Verificar formatação Rust
+        run: |
+          cargo fmt --manifest-path src-tauri/Cargo.toml --all -- --check
+          cargo fmt --manifest-path backend/Cargo.toml --all -- --check
+
+      - name: Clippy do núcleo Tauri sem avisos
+        run: cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets --all-features -- -D warnings
+
+      - name: Testar núcleo Tauri
+        run: cargo test --manifest-path src-tauri/Cargo.toml --all-features
+
+      - name: Cargo check do núcleo Tauri
+        run: cargo check --manifest-path src-tauri/Cargo.toml
+
+      - name: Testar API administrativa Rust com lock
+        run: cargo test --locked --manifest-path backend/Cargo.toml
+
+      - name: Procurar credenciais proibidas no bundle web
+        shell: bash
+        run: |
+          set -euo pipefail
+          if grep -R -a -E '(sb_secret_|SUPABASE_SERVICE_ROLE_KEY[=:]|SUPABASE_DATABASE_URL[=:]|postgres(ql)?://[^[:space:]"'"']+|GITHUB_CLIENT_SECRET[=:]|APPLE_[A-Z_]*PRIVATE_KEY[=:])' dist; then
+            echo "Credencial proibida encontrada no bundle web."
+            exit 1
+          fi
+
+  android:
+    name: Android APK/AAB + emulador
+    runs-on: ubuntu-24.04
+    timeout-minutes: 55
+    steps:
+      - name: Baixar branch
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Instalar dependências web
+        run: npm ci
+
+      - name: Instalar Rust mobile
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android,x86_64-linux-android
+
+      - name: Configurar Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Instalar Android 35 e NDK 28
+        shell: bash
+        run: |
+          yes | sdkmanager --licenses >/dev/null
+          sdkmanager \
+            "platform-tools" \
+            "platforms;android-35" \
+            "build-tools;35.0.0" \
+            "ndk;28.2.13676358"
+          echo "NDK_HOME=${ANDROID_SDK_ROOT}/ndk/28.2.13676358" >> "$GITHUB_ENV"
+          echo "ANDROID_NDK_HOME=${ANDROID_SDK_ROOT}/ndk/28.2.13676358" >> "$GITHUB_ENV"
+
+      - name: Inicializar Tauri Android
+        run: npx --yes @tauri-apps/cli@2 android init --ci --skip-targets-install
+
+      - name: Compilar APK e AAB debug
+        run: npx --yes @tauri-apps/cli@2 android build --debug --apk --aab --ci --target aarch64 --target x86_64
+
+      - name: Localizar artefatos Android
+        id: android_artifacts
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p mobile-artifacts
+          find src-tauri/gen/android -type f \( -name '*.apk' -o -name '*.aab' \) -print -exec cp {} mobile-artifacts/ \;
+          test -n "$(find mobile-artifacts -name '*.apk' -print -quit)"
+          test -n "$(find mobile-artifacts -name '*.aab' -print -quit)"
+          apk="$(find mobile-artifacts -name '*.apk' -print -quit)"
+          echo "apk=${apk}" >> "$GITHUB_OUTPUT"
+          sha256sum mobile-artifacts/* | tee mobile-artifacts/SHA256SUMS.txt
+
+      - name: Verificar ausência de segredos nos APK/AAB
+        shell: bash
+        run: |
+          set -euo pipefail
+          if grep -R -a -E '(sb_secret_|SUPABASE_SERVICE_ROLE_KEY[=:]|SUPABASE_DATABASE_URL[=:]|postgres(ql)?://[^[:space:]"'"']+|GITHUB_CLIENT_SECRET[=:]|APPLE_[A-Z_]*PRIVATE_KEY[=:])' mobile-artifacts; then
+            echo "Credencial proibida encontrada no artefato Android."
+            exit 1
+          fi
+
+      - name: Smoke test Android em emulador
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          arch: x86_64
+          profile: pixel_6
+          disable-animations: true
+          script: |
+            set -euo pipefail
+            apk="${{ steps.android_artifacts.outputs.apk }}"
+            adb install -r "$apk"
+            adb shell monkey -p co.labstar.app.debug -c android.intent.category.LAUNCHER 1
+            sleep 5
+            adb shell dumpsys activity activities | grep -E 'co\.labstar\.app\.debug|co\.labstar\.app'
+            token='0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'
+            adb shell am start -W -a android.intent.action.VIEW -d "labstar://invite/${token}" co.labstar.app.debug || adb shell am start -W -a android.intent.action.VIEW -d "labstar://invite/${token}"
+            sleep 3
+            adb exec-out screencap -p > mobile-artifacts/android-deeplink.png
+            adb shell svc wifi disable || true
+            adb shell svc data disable || true
+            sleep 3
+            adb exec-out screencap -p > mobile-artifacts/android-offline.png
+            adb shell svc wifi enable || true
+            adb shell svc data enable || true
+            adb shell input keyevent KEYCODE_BACK
+            sleep 2
+            adb logcat -d -t 1200 > mobile-artifacts/android-logcat.txt
+            if grep -E 'FATAL EXCEPTION|AndroidRuntime.*FATAL' mobile-artifacts/android-logcat.txt; then
+              echo "Crash Android detectado no smoke test."
+              exit 1
+            fi
+
+      - name: Publicar APK, AAB e evidências
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: labstar-android-debug-${{ github.run_number }}
+          path: mobile-artifacts/
+          if-no-files-found: warn
+          retention-days: 14
+          compression-level: 6
+
+  ios:
+    name: iOS simulator
+    runs-on: macos-15
+    timeout-minutes: 45
+    steps:
+      - name: Baixar branch
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Instalar dependências web
+        run: npm ci
+
+      - name: Instalar Rust iOS
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-ios-sim
+
+      - name: Inicializar Tauri iOS
+        run: npx --yes @tauri-apps/cli@2 ios init --ci --skip-targets-install
+
+      - name: Compilar para simulador iOS
+        run: npx --yes @tauri-apps/cli@2 ios build --debug --target aarch64-sim --ci
+
+      - name: Auditar projeto gerado sem segredos
+        shell: bash
+        run: |
+          set -euo pipefail
+          if grep -R -a -E '(sb_secret_|SUPABASE_SERVICE_ROLE_KEY[=:]|SUPABASE_DATABASE_URL[=:]|postgres(ql)?://[^[:space:]"'"']+|GITHUB_CLIENT_SECRET[=:]|APPLE_[A-Z_]*PRIVATE_KEY[=:])' src-tauri/gen/apple; then
+            echo "Credencial proibida encontrada no projeto iOS gerado."
+            exit 1
+          fi
+          find src-tauri/gen/apple -maxdepth 5 -type f \( -name '*.app' -o -name '*.ipa' \) -print || true
