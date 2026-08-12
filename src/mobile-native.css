@@ -1,0 +1,103 @@
+/* Ajustes exclusivos do app Tauri Android/iOS. O site/PWA não usa esta camada. */
+@media (max-width: 760px) {
+  html.labstar-native-mobile {
+    --labstar-native-safe-top: max(0px, env(safe-area-inset-top));
+    --labstar-native-safe-bottom: max(8px, env(safe-area-inset-bottom));
+    --labstar-mobile-safe-bottom: var(--labstar-native-safe-bottom);
+    --mobile-safe-bottom: var(--labstar-native-safe-bottom);
+  }
+
+  html.labstar-native-mobile,
+  html.labstar-native-mobile body,
+  html.labstar-native-mobile #root {
+    height: var(--labstar-visual-height, 100dvh) !important;
+    min-height: 0 !important;
+    overscroll-behavior: none;
+  }
+
+  html.labstar-native-mobile body #root > .app {
+    height: var(--labstar-visual-height, 100dvh) !important;
+    max-height: var(--labstar-visual-height, 100dvh) !important;
+  }
+
+  html.labstar-native-mobile .header {
+    box-sizing: border-box !important;
+    padding-top: var(--labstar-native-safe-top) !important;
+  }
+
+  html.labstar-native-mobile .organization-entry-screen,
+  html.labstar-native-mobile .access-control,
+  html.labstar-native-mobile .access-shell {
+    min-height: var(--labstar-visual-height, 100dvh) !important;
+    padding-top: max(16px, var(--labstar-native-safe-top)) !important;
+    padding-bottom: max(16px, var(--labstar-native-safe-bottom)) !important;
+  }
+
+  html.labstar-native-mobile .organization-entry-stars {
+    display: none !important;
+  }
+
+  html.labstar-native-mobile [role="dialog"],
+  html.labstar-native-mobile .quick-panel,
+  html.labstar-native-mobile .notifications-panel,
+  html.labstar-native-mobile .organization-switcher-menu {
+    max-height: calc(var(--labstar-visual-height, 100dvh) - var(--labstar-native-safe-top) - var(--labstar-native-safe-bottom) - 20px) !important;
+    overscroll-behavior: contain;
+  }
+
+  html.labstar-native-mobile .global-settings,
+  html.labstar-native-mobile .workspace-settings-panel,
+  html.labstar-native-mobile .organization-modal {
+    max-height: calc(var(--labstar-visual-height, 100dvh) - var(--labstar-native-safe-top) - var(--labstar-native-safe-bottom) - 20px) !important;
+  }
+
+  html.labstar-native-mobile .global-settings-content,
+  html.labstar-native-mobile .workspace-settings-content,
+  html.labstar-native-mobile .organization-settings-scroll {
+    min-height: 0 !important;
+    overflow-y: auto !important;
+    overscroll-behavior: contain;
+  }
+
+  html.labstar-keyboard-open #labstar-mobile-workspace-nav,
+  html.labstar-keyboard-open .workspace > .rail:not(.collaboration-workspace .rail) {
+    display: none !important;
+  }
+
+  html.labstar-keyboard-open body.mobile-workspace-active .collaboration-server-mode > .communication-workspace-stage > .collaboration-shell,
+  html.labstar-keyboard-open body.mobile-workspace-active .collaboration-server-mode > .collaboration-shell {
+    bottom: 0 !important;
+  }
+
+  html.labstar-keyboard-open .message-composer,
+  html.labstar-keyboard-open .dm-composer {
+    padding-bottom: 6px !important;
+  }
+
+  html.labstar-native-mobile input,
+  html.labstar-native-mobile textarea,
+  html.labstar-native-mobile select {
+    font-size: max(16px, 1em);
+  }
+
+  html.labstar-native-mobile button,
+  html.labstar-native-mobile [role="button"] {
+    -webkit-tap-highlight-color: transparent;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html.labstar-native-mobile *,
+  html.labstar-native-mobile *::before,
+  html.labstar-native-mobile *::after {
+    scroll-behavior: auto !important;
+  }
+
+  html.labstar-native-mobile .organization-entry-space::before,
+  html.labstar-native-mobile .organization-entry-space::after,
+  html.labstar-native-mobile .star,
+  html.labstar-native-mobile .shooting-star {
+    animation-duration: .001ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
