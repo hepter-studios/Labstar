@@ -68,12 +68,6 @@
   animation: labstar-nebula-drift 18s ease-in-out infinite alternate !important;
 }
 
-/* The old Stars Lottie is deliberately hidden for the organization background.
-   Rocket Lottie remains available for the app-entry transition. */
-.organization-entry-space .organization-entry-stars {
-  display: none !important;
-}
-
 /* Sparse foreground stars + a very subtle central atmospheric glow. */
 .organization-entry-vignette {
   background:
