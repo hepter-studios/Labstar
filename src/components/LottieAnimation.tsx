@@ -84,6 +84,9 @@ export function LottieAnimation({
           renderer: "svg",
           loop: posterFrame === undefined ? loop : false,
           autoplay: posterFrame === undefined,
+          initialSegment: playbackStartFrame !== undefined && playbackEndFrame !== undefined
+            ? [playbackStartFrame, playbackEndFrame]
+            : undefined,
           animationData: animationData as never,
           rendererSettings: {
             preserveAspectRatio,
@@ -98,16 +101,6 @@ export function LottieAnimation({
         const pinPosterFrame = () => {
           if (disposed || posterFrame === undefined) return;
           instance?.goToAndStop(posterFrame, true);
-        };
-
-        const playConfiguredSegment = () => {
-          if (
-            disposed
-            || posterFrame !== undefined
-            || playbackStartFrame === undefined
-            || playbackEndFrame === undefined
-          ) return;
-          instance?.playSegments([playbackStartFrame, playbackEndFrame], true);
         };
 
         const markReady = () => {
@@ -138,14 +131,10 @@ export function LottieAnimation({
           }
         };
 
-        instance.addEventListener("DOMLoaded", () => {
-          playConfiguredSegment();
-          settlePosterFrame();
-        });
+        instance.addEventListener("DOMLoaded", settlePosterFrame);
         instance.addEventListener("loaded_images", settlePosterFrame);
         instance.addEventListener("data_ready", () => {
           if (posterFrame === undefined) {
-            playConfiguredSegment();
             markReady();
           }
         });
