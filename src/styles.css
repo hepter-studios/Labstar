@@ -977,9 +977,10 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .job-role-assignment strong { font-size: 10px; }
 .job-role-assignment small { color: #535c68; font-size: 8px; }
 .job-role-assignment > div:last-child { max-height: 185px; margin-top: 8px; display: flex; flex-wrap: wrap; gap: 5px; overflow-y: auto; }
-.job-role-assignment label { cursor: pointer; opacity: .58; }
+.job-role-assignment label { position:relative; display:inline-flex; align-items:center; cursor:pointer; opacity:.58; }
 .job-role-assignment label.active { opacity: 1; }
 .job-role-assignment input { position: absolute; opacity: 0; pointer-events: none; }
+.job-role-order { position:absolute; z-index:2; top:-5px; left:-5px; min-width:15px; height:15px; padding:0 3px; display:grid; place-items:center; border:2px solid #07090e; border-radius:999px; color:#080b10; background:#dce7fb; font-size:7px; font-weight:850; box-shadow:0 2px 7px rgba(0,0,0,.45); }
 
 .professional-role-badge { --role-color:#8baeff; max-width: 100%; min-height: 30px; padding: 0 9px 0 6px; display: inline-flex; align-items: center; gap: 6px; border: 1px solid color-mix(in srgb,var(--role-color) 25%,transparent); border-radius: 8px; color: var(--role-color); background: color-mix(in srgb,var(--role-color) 8%,#090b10); }
 .professional-role-badge.compact { min-height: 25px; padding: 0 7px 0 4px; gap: 4px; border-radius: 7px; }
@@ -1005,7 +1006,8 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .roles-scroll section > button:hover,.roles-scroll section > button.active { background: rgba(255,255,255,.025); }
 .roles-scroll section > button.active { box-shadow: inset 2px 0 #8baeff; }
 .roles-scroll section > button > span { color: #4d5662; font-size: 7px; }
-.role-editor { display: grid; grid-template-rows: auto auto auto minmax(0,1fr) auto; overflow-y: auto; }
+.role-editor { display:grid; grid-template-rows:auto minmax(0,1fr) auto; overflow:hidden; }
+.role-editor-scroll { min-height:0; overflow:auto; padding:14px 15px 4px; scrollbar-width:thin; scrollbar-color:#263148 transparent; }
 .role-editor > header { min-height: 72px; padding: 12px 15px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--line); }
 .role-editor > header > div:first-child { display: flex; align-items: center; gap: 10px; }
 .role-preview-icon { width: 46px; height: 46px; border: 1px solid color-mix(in srgb,var(--role-color) 22%,transparent); border-radius: 12px; background: color-mix(in srgb,var(--role-color) 7%,transparent); }
@@ -1016,7 +1018,12 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .role-order button { width: 32px; height: 32px; display: grid; place-items: center; border: 1px solid var(--line); border-radius: 8px; color: #737c88; background: #0b0e13; cursor: pointer; }
 .role-preview { min-height: 70px; padding: 12px 15px; display: flex; align-items: center; justify-content: space-between; gap: 10px; border-bottom: 1px solid var(--line); background: rgba(255,255,255,.012); }
 .role-preview > span { color: #5d6673; font-size: 9px; }
-.role-form-grid { padding: 14px 15px; display: grid; grid-template-columns: 1fr 1fr; gap: 11px 9px; border-bottom: 1px solid var(--line); }
+.role-identity-section { margin-bottom:14px; overflow:hidden; border:1px solid var(--line); border-radius:10px; background:#070a0f; }
+.role-identity-section > header { min-height:58px; padding:10px 12px; display:flex; align-items:center; justify-content:space-between; gap:12px; border-bottom:1px solid var(--line); }
+.role-identity-section > header > div { min-width:0; display:grid; gap:3px; }
+.role-identity-section > header strong { color:#dbe3f1; font-size:10.5px; }
+.role-identity-section > header small { color:#69758a; font-size:8px; }
+.role-form-grid { padding:13px; display:grid; grid-template-columns:1fr 1fr; gap:11px 9px; }
 .role-form-grid label { display: grid; gap: 6px; color: #747d8a; font-size: 9px; }
 .role-form-grid label.full { grid-column: 1/-1; }
 .role-form-grid input,.role-form-grid select { width: 100%; min-height: 38px; padding: 0 9px; border: 1px solid var(--line); border-radius: 8px; outline: 0; color: #d6dbe3; background: #06080c; font-size: 10px; }
@@ -1025,7 +1032,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .role-color-field > span { grid-row: 2; align-self: center; color: #8a93a0; font-size: 9px; }
 .role-color-field > div { grid-row: 2; display: flex; flex-wrap: wrap; gap: 4px; }
 .role-color-field > div button { width: 22px; height: 22px; border: 2px solid #090b10; border-radius: 6px; box-shadow: 0 0 0 1px rgba(255,255,255,.08); cursor: pointer; }
-.permission-grid { margin: 14px 15px; padding: 12px; display: grid; grid-template-columns: 1fr 1fr; gap: 7px; align-content: start; border: 1px solid var(--line); border-radius: 10px; }
+.permission-grid { margin:0 0 14px; padding:12px; display:grid; grid-template-columns:1fr 1fr; gap:7px; align-content:start; border:1px solid var(--line); border-radius:10px; }
 .permission-grid legend { padding: 0 5px; color: #8a93a0; font-size: 10px; font-weight: 700; }
 .permission-grid > p { grid-column: 1/-1; margin: 0 0 4px; color: #59616d; font-size: 8px; }
 .permission-grid > label { min-height: 38px; padding: 0 8px; display: grid; grid-template-columns: 14px 1fr; align-items: center; gap: 7px; border: 1px solid rgba(255,255,255,.045); border-radius: 8px; cursor: pointer; }

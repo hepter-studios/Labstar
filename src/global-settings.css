@@ -135,6 +135,9 @@
 .settings-field input:focus,
 .settings-field select:focus { border-color: rgba(79,130,255,.35); box-shadow: 0 0 0 3px rgba(79,130,255,.045); }
 .settings-field input[readonly] { color: #68758a; cursor: default; }
+.settings-field textarea { width:100%; min-height:92px; box-sizing:border-box; padding:10px 11px; resize:vertical; border:1px solid rgba(137,165,222,.105); border-radius:8px; outline:0; color:#cbd6e8; background:#070b12; font:inherit; font-size:10px; line-height:1.55; }
+.settings-field textarea:focus { border-color:rgba(79,130,255,.35); box-shadow:0 0 0 3px rgba(79,130,255,.045); }
+.settings-field > small { justify-self:end; margin-top:-3px; color:#56647a; font-size:7.5px; }
 
 .settings-toggle {
   min-height: 50px;
@@ -235,9 +238,9 @@
 .achievements-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:11px; }
 .achievement-card {
   min-width:0;
-  min-height:142px;
+  min-height:156px;
   display:grid;
-  grid-template-columns:112px minmax(0,1fr);
+  grid-template-columns:124px minmax(0,1fr);
   align-items:center;
   gap:4px;
   overflow:hidden;
@@ -247,9 +250,9 @@
   box-shadow:6px 7px 17px rgba(0,0,0,.32),inset 1px 1px rgba(255,255,255,.025);
 }
 .achievement-card.unlocked { border-color:rgba(107,151,255,.22); box-shadow:7px 9px 22px rgba(0,0,0,.38),-3px -3px 11px rgba(39,52,76,.16),inset 1px 1px rgba(255,255,255,.035); }
-.achievement-art { width:112px; height:126px; display:grid; place-items:center; overflow:hidden; }
+.achievement-art { width:124px; height:140px; display:grid; place-items:center; overflow:hidden; }
 .achievement-art > .labstar-lottie,.achievement-art svg { width:100%!important; height:100%!important; overflow:visible!important; }
-.achievement-card.locked .achievement-art { opacity:.28; filter:grayscale(1) saturate(.15); }
+.achievement-card.locked .achievement-art { opacity:.54; filter:grayscale(1) saturate(.22); }
 .achievement-copy { min-width:0; padding:12px 12px 12px 0; display:grid; gap:5px; }
 .achievement-copy > span { display:flex; align-items:center; justify-content:space-between; gap:6px; }
 .achievement-copy > span b { color:#7f9ddb; font-size:7px; letter-spacing:.1em; text-transform:uppercase; }

@@ -75,7 +75,7 @@ import { takeGithubProfileConnectionResult, type GithubProfileConnectionResult }
 type NodeKind = "holding" | "empresa" | "area" | "produto" | "projeto";
 type NodeStatus = "planejamento" | "ativo" | "atencao" | "concluido";
 type NodePriority = "baixa" | "media" | "alta";
-type CardTheme = "obsidian" | "snow" | "cream" | "lilac" | "blue" | "cosmic";
+type CardTheme = "obsidian" | "snow" | "cream" | "lilac" | "blue" | "red" | "wine" | "green" | "gray" | "pink" | "cosmic";
 type ViewMode = "mapa" | "visao" | "colaboracao" | "equipe";
 type SyncState = "carregando" | "salvando" | "sincronizado" | "local";
 type ManualSaveState = "idle" | "saving" | "saved" | "error";
@@ -136,6 +136,11 @@ const cardThemeMeta: Record<CardTheme, { label: string; swatch: string; tone: "d
   cream: { label: "Creme", swatch: "#f2eadb", tone: "light" },
   lilac: { label: "Lilás", swatch: "#e4dcfa", tone: "light" },
   blue: { label: "Azul", swatch: "#d8e8fb", tone: "light" },
+  red: { label: "Vermelho", swatch: "#e7b8bd", tone: "light" },
+  wine: { label: "Vinho", swatch: "#70283c", tone: "dark" },
+  green: { label: "Verde", swatch: "#c2dfcd", tone: "light" },
+  gray: { label: "Cinza", swatch: "#c9cdd4", tone: "light" },
+  pink: { label: "Rosa", swatch: "#efc9dd", tone: "light" },
   cosmic: { label: "Céu profundo", swatch: "#3d2871", tone: "dark" },
 };
 
@@ -1263,14 +1268,15 @@ function TeamDirectory({ nodes, currentMember, onMemberUpdated }: { nodes: Struc
               </div>}
 
               <div className="job-role-assignment">
-                <div><strong>Cargos profissionais</strong><small>O primeiro cargo na hierarquia define a cor e o escudo exibidos.</small></div>
+                <div><strong>Cargos profissionais</strong></div>
                 <div>
                   {jobRoles.map((role) => {
                     const checked = memberForm?.jobRoles.some((item) => item.id === role.id) ?? false;
+                    const selectedOrder = memberForm?.jobRoles.findIndex((item) => item.id === role.id) ?? -1;
                     return <label key={role.id} className={checked ? "active" : ""}><input type="checkbox" checked={checked} disabled={!editingSelected} onChange={() => setMemberDraft((current) => current ? {
                       ...current,
                       jobRoles: checked ? current.jobRoles.filter((item) => item.id !== role.id) : [...current.jobRoles, role],
-                    } : current)} /><RoleBadge role={role} compact /></label>;
+                    } : current)} />{selectedOrder >= 0 && <span className="job-role-order" aria-label={`Ordem ${selectedOrder + 1}`}>{selectedOrder + 1}</span>}<RoleBadge role={role} compact /></label>;
                   })}
                 </div>
               </div>
@@ -1443,6 +1449,7 @@ function QuickPanel({
           <Avatar name={session.member.name} url={session.member.avatarUrl} size="lg" />
           <div><b>{session.member.name}</b><small>{session.member.email}</small></div>
         </div>
+        {session.member.bio?.trim() && <p className="profile-bio">{session.member.bio}</p>}
         <div className="profile-photo-actions">
           <button type="button" onClick={() => fileRef.current?.click()}><Pencil size={13} /> {session.member.avatarUrl ? "Trocar foto" : "Adicionar foto"}</button>
           {session.member.avatarPath && <button className="remove" type="button" onClick={() => void clearProfilePhoto()}><Trash2 size={13} /> Remover</button>}
