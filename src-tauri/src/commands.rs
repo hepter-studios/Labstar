@@ -4,9 +4,9 @@ use crate::{
     security::{self, ValidatedDeepLink},
 };
 use serde::Serialize;
-use tauri::{AppHandle, Manager, State};
 #[cfg(desktop)]
 use tauri::UserAttentionType;
+use tauri::{AppHandle, Manager, State};
 use tauri_plugin_notification::NotificationExt;
 use tauri_plugin_opener::OpenerExt;
 
