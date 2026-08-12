@@ -10,6 +10,7 @@ fn main() {
         "open_auth_url",
         "open_profile_connection_url",
         "secure_vault_password",
+        "exit_mobile_app",
     ];
 
     tauri_build::try_build(
