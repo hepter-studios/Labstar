@@ -1,6 +1,7 @@
 mod commands;
 mod deep_links;
 mod profile_connections;
+mod secure_storage;
 mod security;
 mod settings;
 
@@ -73,6 +74,11 @@ pub fn run() {
 
             let app_data_directory = app.path().app_data_dir()?;
             std::fs::create_dir_all(&app_data_directory)?;
+
+            let stronghold_salt = app.path().app_local_data_dir()?.join("stronghold-salt.txt");
+            app.handle().plugin(
+                tauri_plugin_stronghold::Builder::with_argon2(&stronghold_salt).build(),
+            )?;
 
             #[cfg(desktop)]
             {
@@ -187,6 +193,7 @@ pub fn run() {
             commands::show_native_notification,
             commands::open_auth_url,
             commands::open_profile_connection_url,
+            secure_storage::secure_vault_password,
             settings::load_app_settings,
             settings::save_app_settings,
             settings::reset_app_settings
