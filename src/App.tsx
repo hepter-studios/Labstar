@@ -182,7 +182,6 @@ export default function Home() {
   const [blockedIdentity, setBlockedIdentity] = useState<{ email: string } | null>(null);
   const [nodes, setNodes] = useState<StructureNode[]>(initialNodes);
   const [selectedId, setSelectedId] = useState("labstar");
-  const [expandedNodeId, setExpandedNodeId] = useState<string | null>(null);
   const [view, setView] = useState<ViewMode>("mapa");
   const [projectLoadToken, setProjectLoadToken] = useState(0);
   const [zoom, setZoom] = useState(0.78);
@@ -413,11 +412,6 @@ export default function Home() {
         event.preventDefault();
         searchRef.current?.focus();
       }
-      if (event.key === "Escape" && expandedNodeId) {
-        event.preventDefault();
-        setExpandedNodeId(null);
-        return;
-      }
       if (view !== "mapa" || (event.target as HTMLElement)?.matches("input, textarea, select")) return;
       if (event.key === "+" || event.key === "=") setZoom((value) => Math.min(1.2, value + .035));
       if (event.key === "-") setZoom((value) => Math.max(.46, value - .035));
@@ -425,11 +419,7 @@ export default function Home() {
     };
     window.addEventListener("keydown", shortcuts);
     return () => window.removeEventListener("keydown", shortcuts);
-  }, [view, nodes, expandedNodeId]);
-
-  useEffect(() => {
-    if (view !== "mapa") setExpandedNodeId(null);
-  }, [view]);
+  }, [view, nodes]);
 
   const selected = nodes.find((node) => node.id === selectedId) ?? null;
   const connections = useMemo(() => nodes.flatMap((node) => {
@@ -444,14 +434,12 @@ export default function Home() {
 
   function selectNode(id: string) {
     setSelectedId(id);
-    setExpandedNodeId((current) => current === id ? current : null);
     setManualSave("idle");
     if (sound) playTone();
   }
 
   function openEditor(id: string) {
     selectNode(id);
-    setExpandedNodeId(null);
     setEditorOpen(true);
   }
 
@@ -652,7 +640,6 @@ export default function Home() {
               onPointerDown={(event) => {
                 if (event.button !== 0) return;
                 if ((event.target as HTMLElement).closest(".node-card, button, input, select, textarea")) return;
-                setExpandedNodeId(null);
                 const viewport = viewportRef.current;
                 if (!viewport) return;
                 event.preventDefault();
@@ -694,19 +681,15 @@ export default function Home() {
                       data-card-tone={cardThemeMeta[cardTheme].tone}
                       tabIndex={0}
                       role="button"
-                      aria-expanded={node.kind === "projeto" ? expandedNodeId === node.id : undefined}
+                      title="Botão direito para inspecionar o perfil"
                       aria-label={`Selecionar ${meta.label.toLocaleLowerCase()} ${node.name}`}
-                      className={`node-card ${selectedId === node.id ? "selected" : ""} ${expandedNodeId === node.id ? "expanded" : ""} ${draggingId === node.id ? "dragging" : ""} ${matches ? "" : "search-muted"}`}
+                      className={`node-card ${selectedId === node.id ? "selected" : ""} ${draggingId === node.id ? "dragging" : ""} ${matches ? "" : "search-muted"}`}
                       style={{ left: node.x, top: node.y, "--accent": meta.color, "--status": status.color } as React.CSSProperties}
-                      onDoubleClick={(event) => {
-                        if (node.kind !== "projeto" || (event.target as HTMLElement).closest("button, a")) return;
+                      onContextMenu={(event) => {
+                        if ((event.target as HTMLElement).closest("button, a")) return;
                         event.preventDefault();
                         event.stopPropagation();
-                        const card = event.currentTarget;
-                        selectNode(node.id);
-                        const willExpand = expandedNodeId !== node.id;
-                        setExpandedNodeId(willExpand ? node.id : null);
-                        if (willExpand) window.requestAnimationFrame(() => card.scrollIntoView({ behavior: "smooth", block: "center", inline: "center" }));
+                        openEditor(node.id);
                       }}
                       onKeyDown={(event) => {
                         if (event.key !== "Enter" && event.key !== " ") return;
