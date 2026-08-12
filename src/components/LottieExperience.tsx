@@ -1,5 +1,6 @@
 import { X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { ACHIEVEMENTS_REFRESH_EVENT, ACHIEVEMENT_CATALOG, syncOwnAchievements } from "../lib/achievements";
 import { LottieAnimation } from "./LottieAnimation";
 import type { OnboardingLottieKind } from "../lib/onboarding-lotties";
 import "../lottie-experience.css";
@@ -10,6 +11,7 @@ export type MascotCelebrationDetail = {
   variant?: MascotCelebrationVariant;
   title?: string;
   message?: string;
+  kind?: OnboardingLottieKind;
   force?: boolean;
 };
 
@@ -66,14 +68,18 @@ export function LabstarAccessLoader() {
   );
 }
 
-export function MascotCelebrationHost() {
+export function MascotCelebrationHost({ memberId }: { memberId?: string }) {
   const [celebration, setCelebration] = useState<(MascotCelebrationDetail & { key: number }) | null>(null);
 
   useEffect(() => {
     if (!import.meta.env.DEV) return;
-    const requestedVariant = new URLSearchParams(window.location.search).get("mascot-preview") as MascotCelebrationVariant | null;
+    const searchParams = new URLSearchParams(window.location.search);
+    const requestedVariant = searchParams.get("mascot-preview") as MascotCelebrationVariant | null;
     if (!requestedVariant || !Object.prototype.hasOwnProperty.call(MASCOT_VARIANTS, requestedVariant)) return;
-    setCelebration({ variant: requestedVariant, key: Date.now(), title: MASCOT_VARIANTS[requestedVariant].title, message: "Prévia local do mascote" });
+    const requestedKind = requestedVariant === "achievement" && searchParams.get("achievement-kind") === "astronaut-flow"
+      ? "astronaut-flow"
+      : undefined;
+    setCelebration({ variant: requestedVariant, kind: requestedKind, key: Date.now(), title: MASCOT_VARIANTS[requestedVariant].title, message: "Prévia local do mascote" });
   }, []);
 
   useEffect(() => {
@@ -86,8 +92,64 @@ export function MascotCelebrationHost() {
   }, []);
 
   useEffect(() => {
+    if (!memberId) return undefined;
+    let disposed = false;
+    let synchronizing = false;
+
+    const synchronize = async () => {
+      if (synchronizing) return;
+      synchronizing = true;
+      try {
+        const progress = await syncOwnAchievements();
+        if (disposed) return;
+        const unlocked = progress.filter((item) => item.unlockedAt);
+        const storageKey = `labstar-achievements-seen-v1:${memberId}`;
+        let seen = new Set<string>();
+        try {
+          const saved = JSON.parse(localStorage.getItem(storageKey) ?? "[]");
+          if (Array.isArray(saved)) seen = new Set(saved.filter((value): value is string => typeof value === "string"));
+        } catch {
+          seen = new Set();
+        }
+        const newlyUnlocked = unlocked.find((item) => !seen.has(item.key));
+        unlocked.forEach((item) => seen.add(item.key));
+        try {
+          localStorage.setItem(storageKey, JSON.stringify([...seen]));
+        } catch {
+          // A celebração continua funcionando mesmo quando o navegador bloqueia o armazenamento local.
+        }
+        if (!newlyUnlocked) return;
+        const achievement = ACHIEVEMENT_CATALOG.find((item) => item.key === newlyUnlocked.key);
+        if (!achievement) return;
+        celebrateWithMascot({
+          variant: "achievement",
+          title: "Conquista desbloqueada",
+          message: achievement.title,
+          kind: "celebrationKind" in achievement ? achievement.celebrationKind : achievement.kind,
+          force: true,
+        });
+      } catch {
+        // A sincronização manual em Configurações continua mostrando qualquer erro ao usuário.
+      } finally {
+        synchronizing = false;
+      }
+    };
+
+    const refresh = () => void synchronize();
+    const initialTimer = window.setTimeout(refresh, 1_200);
+    window.addEventListener(ACHIEVEMENTS_REFRESH_EVENT, refresh);
+    window.addEventListener("focus", refresh);
+    return () => {
+      disposed = true;
+      window.clearTimeout(initialTimer);
+      window.removeEventListener(ACHIEVEMENTS_REFRESH_EVENT, refresh);
+      window.removeEventListener("focus", refresh);
+    };
+  }, [memberId]);
+
+  useEffect(() => {
     if (!celebration) return undefined;
-    const timer = window.setTimeout(() => setCelebration(null), 6_500);
+    const timer = window.setTimeout(() => setCelebration(null), celebration.variant === "achievement" ? 5_000 : 6_500);
     return () => window.clearTimeout(timer);
   }, [celebration]);
 
@@ -97,7 +159,7 @@ export function MascotCelebrationHost() {
   return (
     <aside className={`lottie-mascot-celebration ${variant}`} aria-live="polite">
       <button type="button" onClick={() => setCelebration(null)} aria-label="Dispensar mascote"><X size={14} /></button>
-      <LottieAnimation key={celebration.key} kind={mascot.kind} className="lottie-mascot-animation" preserveAspectRatio="xMidYMid meet" />
+      <LottieAnimation key={celebration.key} kind={celebration.kind ?? mascot.kind} className="lottie-mascot-animation" preserveAspectRatio="xMidYMid meet" />
       <span className="lottie-mascot-message">
         <strong>{celebration.title || mascot.title}</strong>
         {celebration.message && <small>{celebration.message}</small>}

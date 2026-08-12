@@ -135,11 +135,11 @@ const cardThemeMeta: Record<CardTheme, { label: string; swatch: string; tone: "d
   snow: { label: "Branco", swatch: "#f4f6fb", tone: "light" },
   cream: { label: "Creme", swatch: "#f2eadb", tone: "light" },
   lilac: { label: "Lilás", swatch: "#e4dcfa", tone: "light" },
-  blue: { label: "Azul", swatch: "#d8e8fb", tone: "light" },
-  red: { label: "Vermelho", swatch: "#e7b8bd", tone: "light" },
+  blue: { label: "Azul", swatch: "#173b69", tone: "dark" },
+  red: { label: "Vermelho", swatch: "#9a313a", tone: "dark" },
   wine: { label: "Vinho", swatch: "#70283c", tone: "dark" },
-  green: { label: "Verde", swatch: "#c2dfcd", tone: "light" },
-  gray: { label: "Cinza", swatch: "#c9cdd4", tone: "light" },
+  green: { label: "Verde", swatch: "#1b5a45", tone: "dark" },
+  gray: { label: "Cinza", swatch: "#39414e", tone: "dark" },
   pink: { label: "Rosa", swatch: "#efc9dd", tone: "light" },
   cosmic: { label: "Céu profundo", swatch: "#3d2871", tone: "dark" },
 };
@@ -843,7 +843,7 @@ export default function Home() {
       )}
       {legalOpen && <LegalModal anchored onClose={() => setLegalOpen(false)} />}
       <ProjectLottieExperience projectLoadToken={projectLoadToken} />
-      <MascotCelebrationHost />
+      <MascotCelebrationHost memberId={session.member.id} />
     </main>
   );
 }

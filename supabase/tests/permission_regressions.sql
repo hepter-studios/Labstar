@@ -3,7 +3,7 @@ begin;
 create extension if not exists pgtap with schema extensions;
 set local search_path = public, extensions, pg_catalog;
 
-select plan(42);
+select plan(50);
 
 select ok(
   to_regprocedure('public.delete_labstar_account(text,text)') is null,
@@ -150,6 +150,39 @@ select ok(not has_table_privilege('authenticated', 'public._sqlx_migrations', 'S
 select ok(not has_table_privilege('authenticated', 'public._sqlx_migrations', 'INSERT'), 'clientes autenticados não criam versões falsas do backend Rust');
 select ok(not has_table_privilege('authenticated', 'public._sqlx_migrations', 'UPDATE'), 'clientes autenticados não alteram versões do backend Rust');
 select ok(not has_table_privilege('authenticated', 'public._sqlx_migrations', 'DELETE'), 'clientes autenticados não apagam versões do backend Rust');
+select ok(
+  lower(pg_get_functiondef('public.sync_own_achievements()'::regprocedure)) like '%(''space_veteran'', least(message_count, 1000), 1000)%',
+  'a conquista veterano exige mil mensagens'
+);
+select ok(
+  lower(pg_get_functiondef('public.sync_own_achievements()'::regprocedure)) like '%(''mission_engineer'', least(project_count, 25), 25)%',
+  'a conquista engenheiro exige 25 projetos distintos'
+);
+select ok(
+  lower(pg_get_functiondef('public.sync_own_achievements()'::regprocedure)) like '%when current.unlocked_at is not null then current.unlocked_at%',
+  'conquistas já obtidas são preservadas após aumentar a dificuldade'
+);
+select ok(
+  lower(pg_get_functiondef('public.sync_own_achievements()'::regprocedure)) like '%(''channel_explorer'', least(conversation_count, 5), 5)%',
+  'explorar canais mede colaboração dentro da organização'
+);
+select ok(
+  lower(pg_get_functiondef('public.sync_own_achievements()'::regprocedure)) like '%(''constellation_architect'', least(conversation_count, 15), 15)%',
+  'arquiteto de constelações exige participação ampla dentro da organização'
+);
+select ok(
+  lower(pg_get_functiondef('public.sync_own_achievements()'::regprocedure)) like '%on conflict on constraint member_achievements_pkey%',
+  'a sincronização não confunde a coluna achievement_key com o parâmetro de saída'
+);
+select is(
+  (select count(*)::bigint from public.member_achievements where achievement_key in ('organization_founder', 'universe_architect')),
+  0::bigint,
+  'missões de criar organização foram removidas do progresso persistido'
+);
+select ok(
+  lower(pg_get_functiondef('public.sync_own_achievements()'::regprocedure)) like '%(''engineering_master'', least(project_count, 50), 50)%',
+  'a 16ª conquista preserva o Flow 1 e exige cinquenta projetos distintos'
+);
 
 select * from finish();
 rollback;
