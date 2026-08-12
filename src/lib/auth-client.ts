@@ -1,4 +1,5 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { isNativeMobileRuntime, nativeSecureSessionStorage } from "./native-secure-storage";
 
 const supabaseUrl = (import.meta.env.VITE_SUPABASE_URL ?? "").replace(/\/rest\/v1\/?$/, "");
 const supabasePublicKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY
@@ -9,6 +10,7 @@ const configured = supabaseUrl.startsWith("https://")
   && supabasePublicKey.length > 20
   && !supabasePublicKey.includes("SUA_CHAVE")
   && !supabasePublicKey.includes("cole_a_chave");
+const nativeMobile = typeof window !== "undefined" && isNativeMobileRuntime();
 
 export const authClient: SupabaseClient | null = configured
   ? createClient(supabaseUrl, supabasePublicKey, {
@@ -16,7 +18,8 @@ export const authClient: SupabaseClient | null = configured
         flowType: "pkce",
         persistSession: true,
         autoRefreshToken: true,
-        detectSessionInUrl: true,
+        detectSessionInUrl: !nativeMobile,
+        storage: nativeSecureSessionStorage,
       },
     })
   : null;
