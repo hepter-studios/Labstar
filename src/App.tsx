@@ -75,6 +75,7 @@ import { takeGithubProfileConnectionResult, type GithubProfileConnectionResult }
 type NodeKind = "holding" | "empresa" | "area" | "produto" | "projeto";
 type NodeStatus = "planejamento" | "ativo" | "atencao" | "concluido";
 type NodePriority = "baixa" | "media" | "alta";
+type CardTheme = "obsidian" | "snow" | "cream" | "lilac" | "blue" | "cosmic";
 type ViewMode = "mapa" | "visao" | "colaboracao" | "equipe";
 type SyncState = "carregando" | "salvando" | "sincronizado" | "local";
 type ManualSaveState = "idle" | "saving" | "saved" | "error";
@@ -98,6 +99,7 @@ type StructureNode = {
   owner: string;
   githubUrl?: string;
   websiteUrl?: string;
+  cardTheme?: CardTheme;
   progress: number;
   x: number;
   y: number;
@@ -127,6 +129,21 @@ const statusMeta: Record<NodeStatus, { label: string; color: string }> = {
   atencao: { label: "Requer atenção", color: "#e7a55b" },
   concluido: { label: "Concluído", color: "#839ef7" },
 };
+
+const cardThemeMeta: Record<CardTheme, { label: string; swatch: string; tone: "dark" | "light" }> = {
+  obsidian: { label: "Preto", swatch: "#0a0d13", tone: "dark" },
+  snow: { label: "Branco", swatch: "#f4f6fb", tone: "light" },
+  cream: { label: "Creme", swatch: "#f2eadb", tone: "light" },
+  lilac: { label: "Lilás", swatch: "#e4dcfa", tone: "light" },
+  blue: { label: "Azul", swatch: "#d8e8fb", tone: "light" },
+  cosmic: { label: "Céu profundo", swatch: "#3d2871", tone: "dark" },
+};
+
+function cardThemeFor(node: StructureNode): CardTheme {
+  return node.cardTheme && Object.prototype.hasOwnProperty.call(cardThemeMeta, node.cardTheme)
+    ? node.cardTheme
+    : "obsidian";
+}
 
 function playTone() {
   const AudioContextClass = window.AudioContext || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
@@ -423,6 +440,7 @@ export default function Home() {
       status: "planejamento",
       priority: "media",
       owner: "Sem responsável",
+      cardTheme: "obsidian",
       progress: 0,
       x: parent ? parent.x + 350 : 720,
       y: parent ? parent.y + (siblings % 2 === 0 ? -205 : 205) : 400,
@@ -635,6 +653,7 @@ export default function Home() {
                 {nodes.map((node) => {
                   const meta = kindMeta[node.kind];
                   const status = statusMeta[node.status];
+                  const cardTheme = cardThemeFor(node);
                   const NodeIcon = meta.Icon;
                   const matches = !query || `${node.name} ${node.description} ${node.owner}`.toLocaleLowerCase().includes(query);
                   const childCount = nodes.filter((candidate) => candidate.parentId === node.id).length;
@@ -642,6 +661,8 @@ export default function Home() {
                     <article
                       key={node.id}
                       data-project-node-id={node.id}
+                      data-card-theme={cardTheme}
+                      data-card-tone={cardThemeMeta[cardTheme].tone}
                       tabIndex={0}
                       role="button"
                       aria-label={`Selecionar ${meta.label.toLocaleLowerCase()} ${node.name}`}
@@ -731,6 +752,31 @@ export default function Home() {
                 <div><small>{kindMeta[selected.kind].label}</small><strong>{selected.name}</strong></div>
                 <button onClick={() => setEditorOpen(false)} aria-label="Fechar painel"><X size={16} /></button>
               </div>
+
+              <fieldset className="card-theme-picker">
+                <legend>Aparência do cartão</legend>
+                <div role="radiogroup" aria-label="Cor do cartão">
+                  {(Object.keys(cardThemeMeta) as CardTheme[]).map((theme) => {
+                    const option = cardThemeMeta[theme];
+                    const active = cardThemeFor(selected) === theme;
+                    return (
+                      <button
+                        key={theme}
+                        type="button"
+                        role="radio"
+                        aria-checked={active}
+                        className={active ? "active" : ""}
+                        onClick={() => updateSelected({ cardTheme: theme })}
+                        title={option.label}
+                      >
+                        <i style={{ "--card-theme-swatch": option.swatch } as React.CSSProperties} />
+                        <span>{option.label}</span>
+                        {active && <Check size={11} aria-hidden="true" />}
+                      </button>
+                    );
+                  })}
+                </div>
+              </fieldset>
 
               <div className="field-grid">
                 <label className="full">Nome<input value={selected.name} onChange={(event) => updateSelected({ name: event.target.value })} /></label>
