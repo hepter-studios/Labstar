@@ -52,9 +52,8 @@ export function ProjectLottieExperience({ projectLoadToken }: { projectLoadToken
 
   if (!visible) return null;
   return (
-    <section className="lottie-project-loading" aria-label="Carregando Projetos" aria-live="polite" aria-busy="true">
+    <section className="lottie-project-loading" aria-label="Abrindo Projetos" aria-live="polite" aria-busy="true">
       <LottieAnimation kind="planet" className="lottie-project-planet" speed={1.8} />
-      <span>Carregando Projetos</span>
     </section>
   );
 }

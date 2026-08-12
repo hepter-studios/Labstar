@@ -69,6 +69,15 @@ export function LottieAnimation({
         const animationData = structuredClone(sourceData);
         const expectedLayerCount = Array.isArray(animationData.layers) ? animationData.layers.length : 0;
 
+        // Limita a linha do tempo antes de criar o player. Em builds de produção,
+        // iniciar o recorte depois de DOMLoaded podia acontecer tarde demais: o
+        // SVG já nascia no fim do segmento, sem camadas visíveis e sem reprodução.
+        // Com ip/op ajustados, o autoplay comum do Lottie passa a controlar o loop.
+        if (hasPlaybackSegment) {
+          animationData.ip = playbackStartFrame;
+          animationData.op = playbackEndFrame;
+        }
+
         if (diagnosticMode) {
           setDiagnosticInfo({
             width: numeric(animationData.w),
@@ -84,7 +93,7 @@ export function LottieAnimation({
           container: ref.current,
           renderer: "svg",
           loop: posterFrame === undefined ? loop : false,
-          autoplay: posterFrame === undefined && !hasPlaybackSegment,
+          autoplay: posterFrame === undefined,
           animationData: animationData as never,
           rendererSettings: {
             preserveAspectRatio,
@@ -99,16 +108,6 @@ export function LottieAnimation({
         const pinPosterFrame = () => {
           if (disposed || posterFrame === undefined) return;
           instance?.goToAndStop(posterFrame, true);
-        };
-
-        const playConfiguredSegment = () => {
-          if (
-            disposed
-            || posterFrame !== undefined
-            || playbackStartFrame === undefined
-            || playbackEndFrame === undefined
-          ) return;
-          instance?.playSegments([playbackStartFrame, playbackEndFrame], true);
         };
 
         const markReady = () => {
@@ -140,12 +139,11 @@ export function LottieAnimation({
         };
 
         instance.addEventListener("DOMLoaded", () => {
-          playConfiguredSegment();
           settlePosterFrame();
         });
         instance.addEventListener("loaded_images", settlePosterFrame);
         instance.addEventListener("data_ready", () => {
-          if (posterFrame === undefined && !hasPlaybackSegment) {
+          if (posterFrame === undefined) {
             markReady();
           }
         });
@@ -157,13 +155,6 @@ export function LottieAnimation({
           const svgRoot = ref.current?.querySelector("svg > g");
           if (!svgRoot) return;
           if (posterFrame === undefined) {
-            if (hasPlaybackSegment) {
-              if (expectedLayerCount === 0 || svgRoot.children.length >= expectedLayerCount) {
-                playConfiguredSegment();
-                markReady();
-              }
-              return;
-            }
             markReady();
             return;
           }
