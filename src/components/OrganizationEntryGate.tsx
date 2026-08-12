@@ -17,7 +17,7 @@ import {
   type Organization,
 } from "../lib/organizations";
 import { supabaseClient } from "../lib/supabase";
-import { LottieAnimation } from "./LottieAnimation";
+import { LabstarAccessLoader } from "./LottieExperience";
 
 type EntryStage = "loading" | "choose" | "create" | "creating" | "entering" | "error" | "leaving";
 type HandleState = "idle" | "checking" | "available" | "taken" | "error";
@@ -34,7 +34,7 @@ type OrganizationRow = {
 };
 
 const SESSION_PREFIX = "labstar-organization-entry-v2";
-const ENTRY_STAR_TIME_MS = 1350;
+const ENTRY_TRANSITION_TIME_MS = 1350;
 
 function delay(ms: number) {
   return new Promise<void>((resolve) => window.setTimeout(resolve, ms));
@@ -94,27 +94,6 @@ function creationError(cause: unknown) {
   if (value.includes("member_not_authorized")) return "Sua conta ainda não tem permissão para criar uma organização.";
   if (value.includes("organization_migration_required")) return "A criação de organizações ainda está sendo publicada. Tente novamente em instantes.";
   return "Não foi possível criar a organização. Tente novamente.";
-}
-
-function StarLoader({ size = 22 }: { size?: number }) {
-  return (
-    <span
-      className="spin"
-      aria-hidden="true"
-      style={{
-        display: "inline-grid",
-        width: size,
-        height: size,
-        placeItems: "center",
-        color: "#f4f7ff",
-        fontSize: `${Math.round(size * 0.9)}px`,
-        lineHeight: 1,
-        filter: "drop-shadow(0 0 11px rgba(174,199,255,.62))",
-      }}
-    >
-      ★
-    </span>
-  );
 }
 
 export function OrganizationEntryGate({ children }: { children: ReactNode }) {
@@ -211,7 +190,7 @@ export function OrganizationEntryGate({ children }: { children: ReactNode }) {
     setActiveOrganization(organization);
     markSeen();
     setStage("entering");
-    await delay(ENTRY_STAR_TIME_MS);
+    await delay(ENTRY_TRANSITION_TIME_MS);
     setStage("leaving");
     window.setTimeout(() => setDone(true), 360);
   }, [markSeen]);
@@ -262,44 +241,20 @@ export function OrganizationEntryGate({ children }: { children: ReactNode }) {
   const standaloneEntry = stage === "entering" || stage === "leaving";
 
   if (done) return <>{children}</>;
+  if (standaloneEntry) return <LabstarAccessLoader />;
 
   return (
     <main className={`organization-entry-screen stage-${stage}`} aria-label="Escolher organização">
-      <div className="organization-entry-space" aria-hidden="true">
-        <LottieAnimation kind="stars" className="organization-entry-stars" />
-      </div>
+      <div className="organization-entry-space" aria-hidden="true" />
       <div className="organization-entry-vignette" aria-hidden="true" />
       <div className="organization-entry-curtain" aria-hidden="true" />
 
-      {standaloneEntry ? (
-        <div
-          aria-label="Entrando no Labstar"
-          aria-live="polite"
-          aria-busy="true"
-          style={{
-            position: "relative",
-            zIndex: 12,
-            display: "grid",
-            placeItems: "center",
-            width: 72,
-            height: 72,
-            margin: 0,
-            padding: 0,
-            border: 0,
-            borderRadius: 0,
-            background: "transparent",
-            boxShadow: "none",
-          }}
-        >
-          <StarLoader size={48} />
-        </div>
-      ) : (
-        <section className="organization-entry-glass">
+      <section className="organization-entry-glass">
           <strong className="organization-entry-brand" aria-label="Labstar">L<span>★</span>BSTAR</strong>
 
           {stage === "loading" && (
             <div className="organization-entry-loading">
-              <StarLoader size={21} />
+              <LoaderCircle className="spin" size={21} aria-hidden="true" />
               <span>Preparando suas organizações</span>
             </div>
           )}
@@ -396,7 +351,7 @@ export function OrganizationEntryGate({ children }: { children: ReactNode }) {
 
           {stage === "creating" && (
             <div className="organization-entry-loading" aria-live="polite" aria-busy="true">
-              <StarLoader size={23} />
+              <LoaderCircle className="spin" size={23} aria-hidden="true" />
               <span>Criando sua organização…</span>
             </div>
           )}
@@ -410,8 +365,7 @@ export function OrganizationEntryGate({ children }: { children: ReactNode }) {
               </button>
             </div>
           )}
-        </section>
-      )}
+      </section>
     </main>
   );
 }
