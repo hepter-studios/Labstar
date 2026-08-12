@@ -1,6 +1,11 @@
-import { DotLottieReact, type DotLottie } from "@lottiefiles/dotlottie-react";
+import { DotLottieReact, setWasmUrl, type DotLottie } from "@lottiefiles/dotlottie-react";
+import dotLottieWasmUrl from "@lottiefiles/dotlottie-web/dotlottie-player.wasm?url";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import projectSpaceUrl from "../assets/lottie/space.lottie?url";
+
+// O CSP do Labstar bloqueia os CDNs usados como padrão pelo player. Empacotar o
+// runtime WASM mantém a animação inteiramente no mesmo domínio do aplicativo.
+setWasmUrl(dotLottieWasmUrl);
 
 const PROJECT_SPACE_SEGMENT: [number, number] = [0, 360];
 const PROJECT_SPACE_LAYOUT = { fit: "cover" as const, align: [0.5, 0.5] as [number, number] };
