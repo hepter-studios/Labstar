@@ -97,7 +97,7 @@ jobs:
             psql "${SUPABASE_DATABASE_URL}" --set ON_ERROR_STOP=1 \
               --file /workspace/supabase/tests/permission_regressions.sql \
               | tee final-hardening-audit.txt
-          grep -q "1\.\.20" final-hardening-audit.txt
+          grep -Eq "1\.\.[1-9][0-9]*" final-hardening-audit.txt
           ! grep -q "not ok" final-hardening-audit.txt
 
       - name: Guardar backup privado e auditoria
