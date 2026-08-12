@@ -1,3 +1,4 @@
+import { initializeMobileNativeRuntime } from "./components/MobileNativeRuntime";
 import "./mobile-final.css";
 import "./mobile-final-patch.css";
 import "./mobile-workspace-v2.css";
@@ -13,3 +14,5 @@ import "./mobile-direct-messages-row-fix.css";
 import "./reference-autocomplete-intelligence";
 import "./mobile-workspace-v2";
 import "./mobile-direct-messages-runtime-authority";
+
+initializeMobileNativeRuntime();
