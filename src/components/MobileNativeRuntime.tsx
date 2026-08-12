@@ -1,4 +1,3 @@
-import { useEffect } from "react";
 import { isTauriApp } from "../lib/native";
 
 type PluginListener = { unregister(): Promise<void> };
@@ -13,6 +12,12 @@ type MobileTauriGlobal = {
   app?: NativeAppApi;
   core?: NativeCoreApi;
 };
+
+declare global {
+  interface Window {
+    __LABSTAR_MOBILE_NATIVE_RUNTIME__?: true;
+  }
+}
 
 const MODAL_SELECTORS = [
   '[role="dialog"][aria-modal="true"]',
@@ -104,64 +109,44 @@ function updateViewportMetrics() {
   root.classList.toggle("labstar-keyboard-open", keyboardHeight > 120);
 }
 
-export function MobileNativeRuntime() {
-  useEffect(() => {
-    if (!isTauriApp() || (!isAndroid() && !isIos())) return undefined;
+export function initializeMobileNativeRuntime() {
+  if (window.__LABSTAR_MOBILE_NATIVE_RUNTIME__) return;
+  if (!isTauriApp() || (!isAndroid() && !isIos())) return;
+  window.__LABSTAR_MOBILE_NATIVE_RUNTIME__ = true;
 
-    const root = document.documentElement;
-    root.classList.add("labstar-native-mobile");
-    root.classList.toggle("labstar-android", isAndroid());
-    root.classList.toggle("labstar-ios", isIos());
+  const root = document.documentElement;
+  root.classList.add("labstar-native-mobile");
+  root.classList.toggle("labstar-android", isAndroid());
+  root.classList.toggle("labstar-ios", isIos());
 
-    updateViewportMetrics();
-    const viewport = window.visualViewport;
-    viewport?.addEventListener("resize", updateViewportMetrics);
-    viewport?.addEventListener("scroll", updateViewportMetrics);
-    window.addEventListener("resize", updateViewportMetrics);
-    window.addEventListener("orientationchange", updateViewportMetrics);
+  updateViewportMetrics();
+  const viewport = window.visualViewport;
+  viewport?.addEventListener("resize", updateViewportMetrics);
+  viewport?.addEventListener("scroll", updateViewportMetrics);
+  window.addEventListener("resize", updateViewportMetrics);
+  window.addEventListener("orientationchange", updateViewportMetrics);
 
-    const onVisibilityChange = () => {
-      root.classList.toggle("labstar-app-backgrounded", document.visibilityState !== "visible");
-      window.dispatchEvent(new CustomEvent("labstar:native-lifecycle", {
-        detail: { state: document.visibilityState },
-      }));
-    };
-    document.addEventListener("visibilitychange", onVisibilityChange);
+  const onVisibilityChange = () => {
+    root.classList.toggle("labstar-app-backgrounded", document.visibilityState !== "visible");
+    window.dispatchEvent(new CustomEvent("labstar:native-lifecycle", {
+      detail: { state: document.visibilityState },
+    }));
+  };
+  document.addEventListener("visibilitychange", onVisibilityChange);
+  onVisibilityChange();
 
-    let disposed = false;
-    let backListener: PluginListener | null = null;
-    if (isAndroid()) {
-      const tauri = mobileTauri();
-      void tauri?.app?.onBackButtonPress((payload) => {
-        if (dismissTopSurface() || clickExplicitBack() || stepWorkspaceBack()) return;
-        if (payload.canGoBack && window.history.length > 1) {
-          window.history.back();
-          return;
-        }
-        void tauri.core?.invoke("exit_mobile_app");
-      }).then((listener) => {
-        if (disposed) void listener.unregister();
-        else backListener = listener;
-      }).catch((error) => {
-        window.dispatchEvent(new CustomEvent("labstar:native-boot-warning", {
-          detail: `android_back_listener_failed:${String((error as Error)?.message ?? error)}`,
-        }));
-      });
+  if (!isAndroid()) return;
+  const tauri = mobileTauri();
+  void tauri?.app?.onBackButtonPress((payload) => {
+    if (dismissTopSurface() || clickExplicitBack() || stepWorkspaceBack()) return;
+    if (payload.canGoBack && window.history.length > 1) {
+      window.history.back();
+      return;
     }
-
-    return () => {
-      disposed = true;
-      void backListener?.unregister();
-      viewport?.removeEventListener("resize", updateViewportMetrics);
-      viewport?.removeEventListener("scroll", updateViewportMetrics);
-      window.removeEventListener("resize", updateViewportMetrics);
-      window.removeEventListener("orientationchange", updateViewportMetrics);
-      document.removeEventListener("visibilitychange", onVisibilityChange);
-      root.classList.remove("labstar-native-mobile", "labstar-android", "labstar-ios", "labstar-keyboard-open", "labstar-app-backgrounded");
-      root.style.removeProperty("--labstar-visual-height");
-      root.style.removeProperty("--labstar-keyboard-height");
-    };
-  }, []);
-
-  return null;
+    void tauri.core?.invoke("exit_mobile_app");
+  }).catch((error) => {
+    window.dispatchEvent(new CustomEvent("labstar:native-boot-warning", {
+      detail: `android_back_listener_failed:${String((error as Error)?.message ?? error)}`,
+    }));
+  });
 }
