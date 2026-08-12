@@ -18,6 +18,7 @@
     "allow-show-native-notification",
     "allow-open-auth-url",
     "allow-open-profile-connection-url",
-    "allow-secure-vault-password"
+    "allow-secure-vault-password",
+    "allow-exit-mobile-app"
   ]
 }
