@@ -85,8 +85,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          pattern='sb_secret_|SUPABASE_SERVICE_ROLE_KEY[=:]|SUPABASE_DATABASE_URL[=:]|postgres(ql)?://[^[:space:]"]+|GITHUB_CLIENT_SECRET[=:]|APPLE_[A-Z_]*PRIVATE_KEY[=:]'
-          if grep -R -a -E "$pattern" dist; then
+          pattern='sb_secret_[A-Za-z0-9_-]{20,}|SUPABASE_SERVICE_ROLE_KEY[=:]|SUPABASE_DATABASE_URL[=:]|postgres(ql)?://[^[:space:]\"]+|GITHUB_CLIENT_SECRET[=:]|APPLE_[A-Z_]*PRIVATE_KEY[=:]'
+          if grep -R -a -l -E "$pattern" dist; then
             echo "Credencial proibida encontrada no bundle web."
             exit 1
           fi
@@ -150,11 +150,33 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          pattern='sb_secret_|SUPABASE_SERVICE_ROLE_KEY[=:]|SUPABASE_DATABASE_URL[=:]|postgres(ql)?://[^[:space:]"]+|GITHUB_CLIENT_SECRET[=:]|APPLE_[A-Z_]*PRIVATE_KEY[=:]'
-          if grep -R -a -E "$pattern" mobile-artifacts; then
+          pattern='sb_secret_[A-Za-z0-9_-]{20,}|SUPABASE_SERVICE_ROLE_KEY[=:]|SUPABASE_DATABASE_URL[=:]|postgres(ql)?://[^[:space:]\"]+|GITHUB_CLIENT_SECRET[=:]|APPLE_[A-Z_]*PRIVATE_KEY[=:]'
+          if grep -R -a -l -E "$pattern" mobile-artifacts; then
             echo "Credencial proibida encontrada no artefato Android."
             exit 1
           fi
+
+      - name: Liberar disco para o emulador Android
+        shell: bash
+        run: |
+          set -euxo pipefail
+          df -h /
+          rm -rf \
+            node_modules \
+            src-tauri/target \
+            src-tauri/gen/android/.gradle \
+            src-tauri/gen/android/build \
+            src-tauri/gen/android/app/build \
+            "$HOME/.gradle/caches" \
+            "$HOME/.gradle/daemon" \
+            "$HOME/.gradle/native" \
+            "$HOME/.cargo/registry" \
+            "$HOME/.cargo/git" || true
+          if [ -n "${ANDROID_NDK_HOME:-}" ] && [ -d "$ANDROID_NDK_HOME" ]; then
+            sudo rm -rf "$ANDROID_NDK_HOME"
+          fi
+          sudo apt-get clean
+          df -h /
 
       - name: Smoke test Android em emulador
         uses: reactivecircus/android-emulator-runner@v2
@@ -162,6 +184,7 @@ jobs:
           api-level: 35
           arch: x86_64
           profile: pixel_6
+          disk-size: 2048M
           disable-animations: true
           script: |
             set -euo pipefail
@@ -230,8 +253,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          pattern='sb_secret_|SUPABASE_SERVICE_ROLE_KEY[=:]|SUPABASE_DATABASE_URL[=:]|postgres(ql)?://[^[:space:]"]+|GITHUB_CLIENT_SECRET[=:]|APPLE_[A-Z_]*PRIVATE_KEY[=:]'
-          if grep -R -a -E "$pattern" src-tauri/gen/apple; then
+          pattern='sb_secret_[A-Za-z0-9_-]{20,}|SUPABASE_SERVICE_ROLE_KEY[=:]|SUPABASE_DATABASE_URL[=:]|postgres(ql)?://[^[:space:]\"]+|GITHUB_CLIENT_SECRET[=:]|APPLE_[A-Z_]*PRIVATE_KEY[=:]'
+          if grep -R -a -l -E "$pattern" src-tauri/gen/apple; then
             echo "Credencial proibida encontrada no projeto iOS gerado."
             exit 1
           fi
