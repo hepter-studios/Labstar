@@ -88,8 +88,6 @@ pub fn request_main_window_attention(app: AppHandle, critical: bool) -> Result<(
         .get_webview_window("main")
         .ok_or_else(|| "main_window_not_found".to_string())?;
 
-    // A notificação nativa chama a atenção sem reabrir a janela que o usuário fechou.
-    // O clique explícito na notificação ou na bandeja continua usando focus_main_window.
     window
         .request_user_attention(Some(if critical {
             UserAttentionType::Critical
@@ -131,4 +129,13 @@ pub fn open_profile_connection_url(app: AppHandle, url: String) -> Result<(), St
     app.opener()
         .open_url(safe_url, None::<&str>)
         .map_err(|error| format!("profile_connection_browser_open_failed: {error}"))
+}
+
+#[tauri::command]
+pub fn exit_mobile_app(app: AppHandle) {
+    #[cfg(mobile)]
+    app.exit(0);
+
+    #[cfg(not(mobile))]
+    let _ = app;
 }
