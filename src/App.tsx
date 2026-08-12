@@ -205,11 +205,13 @@ export default function Home() {
   const [notificationChannelId, setNotificationChannelId] = useState<string | null>(null);
   const [legalOpen, setLegalOpen] = useState(false);
   const [editorOpen, setEditorOpen] = useState(false);
+  const [inspectorMode, setInspectorMode] = useState<"view" | "edit">("edit");
   const [ready, setReady] = useState(false);
   const [sync, setSync] = useState<SyncState>("carregando");
   const [manualSave, setManualSave] = useState<ManualSaveState>("idle");
   const [panning, setPanning] = useState(false);
   const [draggingId, setDraggingId] = useState<string | null>(null);
+  const lastCardClickRef = useRef<{ id: string; at: number } | null>(null);
   const searchRef = useRef<HTMLInputElement>(null);
   const viewportRef = useRef<HTMLDivElement>(null);
   const boardRef = useRef<HTMLDivElement>(null);
@@ -454,6 +456,13 @@ export default function Home() {
 
   function openEditor(id: string) {
     selectNode(id);
+    setInspectorMode("edit");
+    setEditorOpen(true);
+  }
+
+  function openInspector(id: string) {
+    selectNode(id);
+    setInspectorMode("view");
     setEditorOpen(true);
   }
 
@@ -481,6 +490,7 @@ export default function Home() {
     setNodes((current) => [...current, next]);
     setView("mapa");
     selectNode(id);
+    setInspectorMode("edit");
     setEditorOpen(true);
     window.requestAnimationFrame(() => {
       const card = Array.from(document.querySelectorAll<HTMLElement>(".node-card")).find((candidate) => candidate.dataset.projectNodeId === id);
@@ -706,11 +716,6 @@ export default function Home() {
                       aria-label={`Selecionar ${meta.label.toLocaleLowerCase()} ${node.name}`}
                       className={`node-card ${selectedId === node.id ? "selected" : ""} ${draggingId === node.id ? "dragging" : ""} ${matches ? "" : "search-muted"}`}
                       style={{ left: node.x, top: node.y, "--accent": meta.color, "--status": status.color } as React.CSSProperties}
-                      onDoubleClick={(event) => {
-                        if ((event.target as HTMLElement).closest("button, a")) return;
-                        event.stopPropagation();
-                        openEditor(node.id);
-                      }}
                       onKeyDown={(event) => {
                         if (event.key !== "Enter" && event.key !== " ") return;
                         event.preventDefault();
@@ -719,6 +724,18 @@ export default function Home() {
                       onPointerDown={(event) => {
                         if (event.button !== 0) return;
                         if ((event.target as HTMLElement).closest("button, a")) return;
+                        const now = Date.now();
+                        const previous = lastCardClickRef.current;
+                        if (previous?.id === node.id && now - previous.at <= 700) {
+                          lastCardClickRef.current = null;
+                          dragRef.current = null;
+                          setDraggingId(null);
+                          event.preventDefault();
+                          event.stopPropagation();
+                          openInspector(node.id);
+                          return;
+                        }
+                        lastCardClickRef.current = { id: node.id, at: now };
                         event.preventDefault();
                         event.currentTarget.setPointerCapture(event.pointerId);
                         const rect = event.currentTarget.getBoundingClientRect();
@@ -785,7 +802,7 @@ export default function Home() {
           />
         )}
 
-        {view === "mapa" && editorOpen && <aside className={`inspector ${selected ? "open" : ""}`}>
+        {view === "mapa" && editorOpen && <aside className={`inspector ${selected ? "open" : ""} ${inspectorMode === "view" ? "read-only" : ""}`} data-inspector-mode={inspectorMode}>
           {selected ? (
             <>
               <div className="inspector-head">
@@ -796,6 +813,7 @@ export default function Home() {
                 <button onClick={() => setEditorOpen(false)} aria-label="Fechar painel"><X size={16} /></button>
               </div>
 
+              {inspectorMode === "edit" && <>
               <fieldset className="card-theme-picker">
                 <legend>Aparência do cartão</legend>
                 <div role="radiogroup" aria-label="Cor do cartão">
@@ -862,6 +880,7 @@ export default function Home() {
                 {manualSave === "error" ? <CloudOff size={11} /> : <Check size={11} />}
                 {manualSave === "error" ? "Não foi possível confirmar no banco" : "O botão confirma a gravação no banco"}
               </div>
+              </>}
             </>
           ) : (
             <div className="inspector-empty"><Network size={24} /><p>Selecione um núcleo para visualizar e editar suas informações.</p></div>
