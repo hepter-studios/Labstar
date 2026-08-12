@@ -9,6 +9,7 @@ import {
   CircleDot,
   Cloud,
   CloudOff,
+  Eye,
   Focus,
   FolderKanban,
   FileText,
@@ -716,6 +717,14 @@ export default function Home() {
                       aria-label={`Selecionar ${meta.label.toLocaleLowerCase()} ${node.name}`}
                       className={`node-card ${selectedId === node.id ? "selected" : ""} ${draggingId === node.id ? "dragging" : ""} ${matches ? "" : "search-muted"}`}
                       style={{ left: node.x, top: node.y, "--accent": meta.color, "--status": status.color } as React.CSSProperties}
+                      onDoubleClick={(event) => {
+                        if ((event.target as HTMLElement).closest("button, a")) return;
+                        event.preventDefault();
+                        event.stopPropagation();
+                        dragRef.current = null;
+                        setDraggingId(null);
+                        openInspector(node.id);
+                      }}
                       onKeyDown={(event) => {
                         if (event.key !== "Enter" && event.key !== " ") return;
                         event.preventDefault();
@@ -748,6 +757,7 @@ export default function Home() {
                         <span className="node-symbol"><NodeIcon size={16} strokeWidth={1.55} /></span>
                         <span className="node-kind">{meta.label}</span>
                         <span className="node-actions">
+                          <button data-tooltip="Inspecionar bloco" aria-label={`Inspecionar ${node.name}`} onClick={(event) => { event.stopPropagation(); openInspector(node.id); }}><Eye size={13} /></button>
                           <button data-tooltip="Editar bloco" aria-label={`Editar ${node.name}`} onClick={(event) => { event.stopPropagation(); openEditor(node.id); }}><Pencil size={13} /></button>
                           <button data-tooltip="Adicionar conexão" aria-label={`Adicionar conexão em ${node.name}`} onClick={() => addNode(node.id)}><Plus size={15} /></button>
                         </span>
