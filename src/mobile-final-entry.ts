@@ -10,6 +10,7 @@ import "./mobile-dashboard-settings-tight.css";
 import "./mobile-root-padding-settings.css";
 import "./mobile-direct-messages-final.css";
 import "./mobile-direct-messages-row-fix.css";
+import "./mobile-intro-logo-size.css";
 import "./reference-autocomplete-intelligence";
 import "./mobile-workspace-v2";
 import "./mobile-direct-messages-runtime-authority";
