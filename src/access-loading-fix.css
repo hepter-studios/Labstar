@@ -13,18 +13,11 @@
   animation: none !important;
 }
 
-/* Loader simples: a mesma estrela visual do wordmark LABSTAR, parada no centro e girando. */
+/* O carregamento de acesso é controlado exclusivamente pelo foguete Lottie.
+ * Nenhum estado legado pode injetar uma segunda estrela por pseudo-elemento. */
 .access-screen:not(.brand-intro):not(.labstar-access-loader) > p::before {
-  content: "";
-  width: 36px;
-  height: 36px;
-  display: block;
-  background: center / contain no-repeat url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23eaf0ff' stroke='%23eaf0ff' stroke-width='1.25' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolygon points='12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2'/%3E%3C/svg%3E");
-  transform-origin: 50% 50%;
-  filter:
-    drop-shadow(0 0 5px rgba(255,255,255,.28))
-    drop-shadow(0 0 12px rgba(139,174,255,.52));
-  animation: labstar-access-star-spin 1.05s linear infinite;
+  display: none !important;
+  content: none !important;
 }
 
 .access-screen:not(.brand-intro):not(.labstar-access-loader) > p::after {
@@ -37,24 +30,10 @@
   display: none !important;
 }
 
-@keyframes labstar-access-star-spin {
-  to { transform: rotate(360deg); }
-}
-
 @media (max-width: 760px) {
   /* No celular o wordmark de abertura precisa ter presença semelhante à versão desktop. */
   .brand-intro .wordmark.large {
     font-size: clamp(34px, 8vw, 38px) !important;
   }
 
-  .access-screen:not(.brand-intro):not(.labstar-access-loader) > p::before {
-    width: 34px;
-    height: 34px;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .access-screen:not(.brand-intro):not(.labstar-access-loader) > p::before {
-    animation-duration: 2.4s;
-  }
 }

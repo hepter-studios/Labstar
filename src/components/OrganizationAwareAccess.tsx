@@ -8,6 +8,7 @@ import {
 } from "../lib/access";
 import { supabaseClient } from "../lib/supabase";
 import { AccessControl } from "./AccessControl";
+import { LabstarAccessLoader } from "./LottieExperience";
 import { OrganizationEntryGate } from "./OrganizationEntryGate";
 
 type AccessRoute = "resolving" | "standard" | "organization";
@@ -132,7 +133,7 @@ export function OrganizationAwareAccess({ children }: { children: ReactNode }) {
   }, [resolveRoute]);
 
   if (route === "resolving") {
-    return <main className="organization-access-resolving" aria-label="Preparando Labstar" />;
+    return <LabstarAccessLoader />;
   }
 
   if (route === "organization") {
