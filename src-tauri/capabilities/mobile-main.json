@@ -1,0 +1,22 @@
+{
+  "$schema": "../gen/schemas/mobile-schema.json",
+  "identifier": "mobile-main",
+  "description": "Permissões mínimas do WebView oficial do Labstar no Android e iOS.",
+  "windows": ["main"],
+  "platforms": ["iOS", "android"],
+  "permissions": [
+    "core:default",
+    "core:event:default",
+    "deep-link:default",
+    "notification:default",
+    "stronghold:default",
+    "allow-native-health",
+    "allow-validate-deep-link",
+    "allow-build-invite-deep-link",
+    "allow-take-pending-deep-links",
+    "allow-show-native-notification",
+    "allow-open-auth-url",
+    "allow-open-profile-connection-url",
+    "allow-secure-vault-password"
+  ]
+}
