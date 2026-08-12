@@ -3,9 +3,9 @@ import { authClient } from "./auth-client";
 import { isDevPreviewMode } from "./devPreviewMode";
 
 export const ACHIEVEMENT_CATALOG = [
-  { key: "welcome_aboard", title: "Bem-vindo a bordo", description: "Faça parte da tripulação ativa do Labstar.", rarity: "Comum", target: 1, kind: "victory-sign", posterFrame: 20 },
-  { key: "profile_in_orbit", title: "Perfil em órbita", description: "Complete nome, foto, cargo e área do seu perfil.", rarity: "Comum", target: 1, kind: "star-in-hand", posterFrame: 20 },
-  { key: "first_transmission", title: "Primeira transmissão", description: "Envie sua primeira mensagem em um canal ou conversa privada.", rarity: "Comum", target: 1, kind: "happy-spaceman", posterFrame: 24 },
+  { key: "profile_in_orbit", title: "Perfil em órbita", description: "Personalize seu perfil com uma foto ou uma bio.", rarity: "Comum", target: 1, kind: "star-in-hand", posterFrame: 20 },
+  { key: "first_transmission", title: "Primeiros sinais", description: "Envie dez mensagens em canais ou conversas privadas.", rarity: "Comum", target: 10, kind: "happy-spaceman", posterFrame: 24 },
+  { key: "mission_preparation", title: "Preparando a missão", description: "Atualize dois projetos diferentes.", rarity: "Comum", target: 2, kind: "victory-sign", posterFrame: 20 },
   { key: "stellar_communicator", title: "Comunicador estelar", description: "Envie 50 mensagens para manter a tripulação alinhada.", rarity: "Rara", target: 50, kind: "free-consultation", posterFrame: 38 },
   { key: "project_pioneer", title: "Pioneiro de projetos", description: "Atualize três projetos diferentes.", rarity: "Rara", target: 3, kind: "space-boy-developer", posterFrame: 80 },
   { key: "multi_mission", title: "Múltiplas missões", description: "Receba dois cargos profissionais na organização.", rarity: "Rara", target: 2, kind: "astronaut-illustration", posterFrame: 70 },
@@ -31,12 +31,17 @@ export const ACHIEVEMENT_CATALOG = [
 }>;
 
 export const ACHIEVEMENTS_REFRESH_EVENT = "labstar:achievements-refresh";
+export const OPEN_ACHIEVEMENT_EVENT = "labstar:open-achievement";
 
 export function requestAchievementRefresh() {
   if (typeof window !== "undefined") window.dispatchEvent(new Event(ACHIEVEMENTS_REFRESH_EVENT));
 }
 
 export type AchievementKey = (typeof ACHIEVEMENT_CATALOG)[number]["key"];
+
+export function requestOpenAchievement(key: AchievementKey) {
+  if (typeof window !== "undefined") window.dispatchEvent(new CustomEvent<{ key: AchievementKey }>(OPEN_ACHIEVEMENT_EVENT, { detail: { key } }));
+}
 
 export type AchievementProgress = {
   key: AchievementKey;

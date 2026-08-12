@@ -40,6 +40,14 @@ export type Member = {
   jobRoles: JobRole[];
 };
 
+export const MEMBER_PROFILE_UPDATED_EVENT = "labstar:member-profile-updated";
+
+function publishMemberProfile(member: Member) {
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent<Member>(MEMBER_PROFILE_UPDATED_EVENT, { detail: member }));
+  }
+}
+
 export type MemberRemovalResult = {
   outcome: "removed" | "suspended";
   member: Member | null;
@@ -700,7 +708,8 @@ export async function uploadOwnAvatar(memberId: string, file: File) {
   });
   if (error) throw error;
   const roles = await listRolesForMember(memberId);
-  const member = memberFromRow((Array.isArray(data) ? data[0] : data) as MemberRow, roles);
+  const member = await memberFromRow((Array.isArray(data) ? data[0] : data) as MemberRow, roles);
+  publishMemberProfile(member);
   requestAchievementRefresh();
   return member;
 }
@@ -713,7 +722,8 @@ export async function updateOwnProfile(memberId: string, name: string, bio?: str
   });
   if (error) throw error;
   const roles = await listRolesForMember(memberId);
-  const member = memberFromRow((Array.isArray(data) ? data[0] : data) as MemberRow, roles);
+  const member = await memberFromRow((Array.isArray(data) ? data[0] : data) as MemberRow, roles);
+  publishMemberProfile(member);
   requestAchievementRefresh();
   return member;
 }
@@ -723,7 +733,9 @@ export async function removeOwnAvatar(memberId: string, currentPath: string) {
   if (error) throw error;
   if (currentPath) await requireClient().storage.from("labstar-files").remove([currentPath]);
   const roles = await listRolesForMember(memberId);
-  return memberFromRow((Array.isArray(data) ? data[0] : data) as MemberRow, roles);
+  const member = await memberFromRow((Array.isArray(data) ? data[0] : data) as MemberRow, roles);
+  publishMemberProfile(member);
+  return member;
 }
 
 export async function loadCollaboration() {

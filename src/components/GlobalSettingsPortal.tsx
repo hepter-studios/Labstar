@@ -6,8 +6,9 @@ import {
   loadAppSettings,
   type AppSettings,
 } from "../lib/app-settings";
+import { OPEN_ACHIEVEMENT_EVENT, type AchievementKey } from "../lib/achievements";
 import { getCurrentAccessIdentity } from "../lib/access";
-import { getCurrentIdentity, type Member } from "../lib/supabase";
+import { getCurrentIdentity, MEMBER_PROFILE_UPDATED_EVENT, type Member } from "../lib/supabase";
 import { GlobalSettings } from "./GlobalSettings";
 
 const MOBILE_SETTINGS_QUERY = "(max-width: 760px)";
@@ -38,7 +39,28 @@ export function GlobalSettingsPortal() {
   const [member, setMember] = useState<Member | null>(null);
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_APP_SETTINGS);
   const [settingsLoaded, setSettingsLoaded] = useState(false);
+  const [focusedAchievement, setFocusedAchievement] = useState<AchievementKey | null>(null);
   const startupApplied = useRef(false);
+
+  useEffect(() => {
+    const inspectAchievement = (event: Event) => {
+      const key = (event as CustomEvent<{ key?: AchievementKey }>).detail?.key;
+      if (!key) return;
+      setFocusedAchievement(key);
+      setOpen(true);
+    };
+    window.addEventListener(OPEN_ACHIEVEMENT_EVENT, inspectAchievement);
+    return () => window.removeEventListener(OPEN_ACHIEVEMENT_EVENT, inspectAchievement);
+  }, []);
+
+  useEffect(() => {
+    const updateMember = (event: Event) => {
+      const updated = (event as CustomEvent<Member>).detail;
+      if (updated) setMember((current) => current?.id === updated.id ? updated : current);
+    };
+    window.addEventListener(MEMBER_PROFILE_UPDATED_EVENT, updateMember);
+    return () => window.removeEventListener(MEMBER_PROFILE_UPDATED_EVENT, updateMember);
+  }, []);
 
   useEffect(() => {
     const media = window.matchMedia(MOBILE_SETTINGS_QUERY);
@@ -127,7 +149,7 @@ export function GlobalSettingsPortal() {
       data-tooltip="Configurações"
       aria-label="Configurações do Labstar"
       className={`${mobileLauncher ? "mobile-settings-button" : ""} ${open ? "active" : ""}`.trim()}
-      onClick={() => setOpen((value) => !value)}
+      onClick={() => { setFocusedAchievement(null); setOpen((value) => !value); }}
     >
       <Settings size={17} />
     </button>,
@@ -141,7 +163,9 @@ export function GlobalSettingsPortal() {
         <GlobalSettings
           member={member}
           settings={settings}
-          onClose={() => setOpen(false)}
+          initialTab={focusedAchievement ? "achievements" : undefined}
+          initialAchievementKey={focusedAchievement}
+          onClose={() => { setOpen(false); setFocusedAchievement(null); }}
           onSettingsChanged={setSettings}
           onMemberUpdated={setMember}
           onSoundChanged={syncSound}

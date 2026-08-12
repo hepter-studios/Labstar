@@ -27,7 +27,7 @@ import {
   saveAppSettings,
   type AppSettings,
 } from "../lib/app-settings";
-import { ACHIEVEMENT_CATALOG, syncOwnAchievements, type AchievementProgress } from "../lib/achievements";
+import { ACHIEVEMENT_CATALOG, syncOwnAchievements, type AchievementKey, type AchievementProgress } from "../lib/achievements";
 import { secureSignOut } from "../lib/access";
 import {
   deviceNotificationStateMessage,
@@ -48,6 +48,8 @@ type SettingsTab = "general" | "account" | "achievements" | "appearance" | "noti
 type Props = {
   member: Member;
   settings: AppSettings;
+  initialTab?: SettingsTab;
+  initialAchievementKey?: AchievementKey | null;
   onClose: () => void;
   onSettingsChanged: (settings: AppSettings) => void;
   onMemberUpdated: (member: Member) => void;
@@ -68,13 +70,15 @@ const tabs: Array<{ id: SettingsTab; label: string; icon: typeof Settings }> = [
 export function GlobalSettings({
   member,
   settings,
+  initialTab,
+  initialAchievementKey,
   onClose,
   onSettingsChanged,
   onMemberUpdated,
   onSoundChanged,
   onNavigate,
 }: Props) {
-  const [tab, setTab] = useState<SettingsTab>("general");
+  const [tab, setTab] = useState<SettingsTab>(initialTab ?? "general");
   const [draft, setDraft] = useState(settings);
   const [profileName, setProfileName] = useState(member.name);
   const [profileBio, setProfileBio] = useState(member.bio ?? "");
@@ -90,6 +94,15 @@ export function GlobalSettings({
   useEffect(() => setDraft(settings), [settings]);
   useEffect(() => setProfileName(member.name), [member.name]);
   useEffect(() => setProfileBio(member.bio ?? ""), [member.bio]);
+  useEffect(() => { if (initialTab) setTab(initialTab); }, [initialTab]);
+
+  useEffect(() => {
+    if (tab !== "achievements" || !initialAchievementKey) return undefined;
+    const frame = window.requestAnimationFrame(() => {
+      document.querySelector(`[data-achievement-key="${initialAchievementKey}"]`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [initialAchievementKey, tab]);
 
   useEffect(() => {
     if (tab !== "achievements" || achievementState !== "idle") return;
@@ -347,7 +360,7 @@ export function GlobalSettings({
                     const target = saved?.target ?? achievement.target;
                     const unlocked = Boolean(saved?.unlockedAt);
                     return (
-                      <article className={`achievement-card ${unlocked ? "unlocked" : "locked"}`} key={achievement.key}>
+                      <article className={`achievement-card ${unlocked ? "unlocked" : "locked"} ${achievement.key === initialAchievementKey ? "inspected" : ""}`} data-achievement-key={achievement.key} key={achievement.key}>
                         <div className="achievement-art" data-kind={achievement.kind}><LottieAnimation kind={achievement.kind} posterFrame={"posterFrame" in achievement ? achievement.posterFrame : undefined} preserveAspectRatio="xMidYMid meet" /></div>
                         <div className="achievement-copy">
                           <span><b>{achievement.rarity}</b>{unlocked ? <em>Desbloqueada</em> : <em><LockKeyhole size={10} /> Bloqueada</em>}</span>

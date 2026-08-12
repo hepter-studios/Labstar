@@ -138,11 +138,26 @@
 .lottie-mascot-celebration.achievement > button { top:24px; right:24px; }
 .lottie-mascot-celebration.achievement .lottie-mascot-message {
   min-width: min(280px,calc(100vw - 36px));
+  max-width: min(390px,calc(100vw - 36px));
   margin-top: -8px;
-  padding: 10px 16px;
+  padding: 13px 18px;
+  gap: 5px;
 }
-.lottie-mascot-celebration.achievement .lottie-mascot-message strong { font-size: 13px; }
-.lottie-mascot-celebration.achievement .lottie-mascot-message small { font-size: 10px; }
+.lottie-mascot-celebration.achievement .lottie-mascot-message em { color:#81a9ff; font-size:9px; font-style:normal; font-weight:800; letter-spacing:.1em; text-transform:uppercase; }
+.lottie-mascot-celebration.achievement .lottie-mascot-message strong { font-size:16px; }
+.lottie-mascot-celebration.achievement .lottie-mascot-message small { color:#a8b6ce; font-size:11px; line-height:1.45; }
+.lottie-mascot-celebration.achievement .lottie-mascot-message button {
+  justify-self:center;
+  margin-top:3px;
+  padding:7px 12px;
+  pointer-events:auto;
+  border:1px solid rgba(129,169,255,.3);
+  border-radius:8px;
+  color:#dce7ff;
+  background:rgba(72,112,197,.18);
+  cursor:pointer;
+}
+.lottie-mascot-celebration.achievement .lottie-mascot-message button:hover { background:rgba(90,134,225,.28); }
 
 .lottie-mascot-celebration > button {
   position: absolute;

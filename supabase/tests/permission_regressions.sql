@@ -3,7 +3,7 @@ begin;
 create extension if not exists pgtap with schema extensions;
 set local search_path = public, extensions, pg_catalog;
 
-select plan(50);
+select plan(54);
 
 select ok(
   to_regprocedure('public.delete_labstar_account(text,text)') is null,
@@ -182,6 +182,22 @@ select is(
 select ok(
   lower(pg_get_functiondef('public.sync_own_achievements()'::regprocedure)) like '%(''engineering_master'', least(project_count, 50), 50)%',
   'a 16ª conquista preserva o Flow 1 e exige cinquenta projetos distintos'
+);
+select ok(
+  lower(pg_get_functiondef('public.sync_own_achievements()'::regprocedure)) not like '%(''welcome_aboard'', 1, 1)%',
+  'entrar no Labstar não concede conquista automaticamente'
+);
+select ok(
+  lower(pg_get_functiondef('public.sync_own_achievements()'::regprocedure)) like '%char_length(trim(coalesce(member.bio, ''''))) >= 2%or char_length(trim(coalesce(member.avatar_path, ''''))) >= 2%',
+  'a conquista mais fácil exige personalizar o perfil com bio ou foto'
+);
+select ok(
+  lower(pg_get_functiondef('public.sync_own_achievements()'::regprocedure)) like '%(''first_transmission'', least(message_count, 10), 10)%',
+  'a primeira conquista de mensagens exige dez envios'
+);
+select ok(
+  lower(pg_get_functiondef('public.sync_own_achievements()'::regprocedure)) like '%(''mission_preparation'', least(project_count, 2), 2)%',
+  'a conquista substituta exige atualizar dois projetos'
 );
 
 select * from finish();
