@@ -77,6 +77,7 @@ export function GlobalSettings({
   const [tab, setTab] = useState<SettingsTab>("general");
   const [draft, setDraft] = useState(settings);
   const [profileName, setProfileName] = useState(member.name);
+  const [profileBio, setProfileBio] = useState(member.bio ?? "");
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState("");
   const [mediaStatus, setMediaStatus] = useState("");
@@ -88,6 +89,7 @@ export function GlobalSettings({
 
   useEffect(() => setDraft(settings), [settings]);
   useEffect(() => setProfileName(member.name), [member.name]);
+  useEffect(() => setProfileBio(member.bio ?? ""), [member.bio]);
 
   useEffect(() => {
     if (tab !== "achievements" || achievementState !== "idle") return;
@@ -122,7 +124,7 @@ export function GlobalSettings({
     setSaving(true);
     setStatus("Salvando perfil...");
     try {
-      const updated = await updateOwnProfile(member.id, profileName);
+      const updated = await updateOwnProfile(member.id, profileName, profileBio);
       onMemberUpdated(updated);
       setStatus("Perfil atualizado");
     } catch {
@@ -321,6 +323,7 @@ export function GlobalSettings({
                   </div>
                 </div>
                 <SettingsField label="Nome exibido"><input value={profileName} maxLength={100} onChange={(event) => setProfileName(event.target.value)} /></SettingsField>
+                <SettingsField label="Bio (opcional)"><textarea rows={4} value={profileBio} maxLength={300} onChange={(event) => setProfileBio(event.target.value)} placeholder="Conte brevemente no que você trabalha ou o que está construindo." /><small>{profileBio.length}/300</small></SettingsField>
                 <SettingsField label="E-mail"><input value={member.email} readOnly /></SettingsField>
                 <div className="settings-inline-actions"><button type="button" onClick={() => void saveProfile()} disabled={saving || profileName.trim().length < 2}><Save size={14} /> Salvar perfil</button></div>
               </SettingsSection>
@@ -345,7 +348,7 @@ export function GlobalSettings({
                     const unlocked = Boolean(saved?.unlockedAt);
                     return (
                       <article className={`achievement-card ${unlocked ? "unlocked" : "locked"}`} key={achievement.key}>
-                        <div className="achievement-art"><LottieAnimation kind={achievement.kind} preserveAspectRatio="xMidYMid meet" /></div>
+                        <div className="achievement-art"><LottieAnimation kind={achievement.kind} posterFrame={achievement.posterFrame} preserveAspectRatio={achievement.kind === "astronaut-cosmos" ? "xMinYMid slice" : "xMidYMid meet"} /></div>
                         <div className="achievement-copy">
                           <span><b>{achievement.rarity}</b>{unlocked ? <em>Desbloqueada</em> : <em><LockKeyhole size={10} /> Bloqueada</em>}</span>
                           <strong>{achievement.title}</strong>

@@ -47,6 +47,11 @@ const departments = [
   "Outros",
 ];
 
+const devPreviewRoles: JobRole[] = [
+  { id: "preview-ceo", name: "CEO", department: "Diretoria", color: "#ef5b62", icon: "star", position: 1, permissions: ["manage_members", "manage_roles"] },
+  { id: "preview-cso", name: "CSO", department: "Diretoria Científica", color: "#8B1E3F", icon: "star", position: 2, permissions: ["manage_projects"] },
+];
+
 export function RoleBadge({ role, compact = false }: { role: JobRole; compact?: boolean }) {
   return (
     <span className={`professional-role-badge ${compact ? "compact" : ""}`} style={{ "--role-color": role.color } as React.CSSProperties}>
@@ -57,6 +62,7 @@ export function RoleBadge({ role, compact = false }: { role: JobRole; compact?: 
 }
 
 export function RoleManager() {
+  const isDevPreview = import.meta.env.DEV && new URLSearchParams(window.location.search).has("preview");
   const [roles, setRoles] = useState<JobRole[]>([]);
   const [selectedId, setSelectedId] = useState("");
   const [draft, setDraft] = useState<Omit<JobRole, "id">>({
@@ -73,7 +79,7 @@ export function RoleManager() {
   const [deleteConfirm, setDeleteConfirm] = useState(false);
 
   async function refresh(preferredId?: string) {
-    const data = await listJobRoles();
+    const data = isDevPreview ? devPreviewRoles : await listJobRoles();
     setRoles(data);
     const id = preferredId || selectedId || data[0]?.id || "";
     setSelectedId(id);
@@ -105,7 +111,7 @@ export function RoleManager() {
       department: "Outros",
       color: "#8baeff",
       icon: "star",
-      position: Math.max(100, ...roles.map((role) => role.position)) + 1,
+      position: Math.max(0, ...roles.map((role) => role.position)) + 1,
       permissions: [],
     });
     setMessage("");
@@ -118,7 +124,7 @@ export function RoleManager() {
     setDraft((current) => ({
       ...current,
       name: `${current.name} — cópia`,
-      position: Math.max(100, ...roles.map((role) => role.position)) + 1,
+      position: Math.max(0, ...roles.map((role) => role.position)) + 1,
       permissions: [...current.permissions],
     }));
     setDeleteConfirm(false);
@@ -130,6 +136,17 @@ export function RoleManager() {
     setMessage("");
     setDeleteConfirm(false);
     try {
+      if (isDevPreview) {
+        const nextId = selectedId || `preview-role-${Date.now()}`;
+        const nextRole = { ...draft, id: nextId };
+        setRoles((current) => selectedId
+          ? current.map((role) => role.id === selectedId ? nextRole : role)
+          : [...current, nextRole]);
+        setSelectedId(nextId);
+        setDraft({ ...nextRole });
+        setMessage("Cargo profissional salvo");
+        return;
+      }
       if (selectedId) {
         await updateJobRole(selectedId, draft);
         await refresh(selectedId);
@@ -152,6 +169,15 @@ export function RoleManager() {
     const target = ordered[index + direction];
     const current = ordered[index];
     if (!current || !target) return;
+    if (isDevPreview) {
+      setRoles((items) => items.map((role) => {
+        if (role.id === current.id) return { ...role, position: target.position };
+        if (role.id === target.id) return { ...role, position: current.position };
+        return role;
+      }));
+      setDraft((value) => ({ ...value, position: target.position }));
+      return;
+    }
     await Promise.all([
       updateJobRole(current.id, { position: target.position }),
       updateJobRole(target.id, { position: current.position }),
@@ -169,6 +195,16 @@ export function RoleManager() {
     setSaving(true);
     setMessage("Excluindo cargo…");
     try {
+      if (isDevPreview) {
+        const remaining = roles.filter((role) => role.id !== selectedId);
+        const next = remaining.sort((a, b) => a.position - b.position)[0];
+        setRoles(remaining);
+        setSelectedId(next?.id ?? "");
+        if (next) setDraft({ ...next, permissions: [...next.permissions] });
+        setDeleteConfirm(false);
+        setMessage("Cargo removido.");
+        return;
+      }
       await deleteJobRole(selectedId);
       setSelectedId("");
       setDeleteConfirm(false);
@@ -218,38 +254,37 @@ export function RoleManager() {
           </div>
         </header>
 
-        <div className="professional-role-explainer">
-          <ShieldCheckCopy />
-          <div><strong>Cargo profissional e nível de acesso são coisas diferentes.</strong><p>O cargo representa função, cor e permissões extras. Administrador, Gestor, Membro e Convidado continuam sendo níveis técnicos da conta.</p></div>
-        </div>
+        <div className="role-editor-scroll">
+          <div className="professional-role-explainer">
+            <ShieldCheckCopy />
+            <div><strong>Cargo profissional e nível de acesso são coisas diferentes.</strong><p>O cargo representa a função da pessoa. Permissões extras só devem ser concedidas quando forem necessárias.</p></div>
+          </div>
 
-        <div className="role-preview">
-          <span>Prévia nas mensagens e na equipe</span>
-          <RoleBadge role={{ ...draft, id: selectedId }} />
-        </div>
+          <section className="role-identity-section">
+            <header><div><strong>Identidade do cargo</strong><small>Nome, departamento e cor usados em perfis e mensagens.</small></div><RoleBadge role={{ ...draft, id: selectedId }} /></header>
+            <div className="role-form-grid">
+              <label className="full">Nome do cargo<input value={draft.name} onChange={(event) => setDraft({ ...draft, name: event.target.value })} placeholder="Ex.: Desenvolvedor Front-end" /></label>
+              <label className="full">Departamento<select value={draft.department} onChange={(event) => setDraft({ ...draft, department: event.target.value })}>{departments.map((department) => <option key={department}>{department}</option>)}</select></label>
+              <label className="full role-color-field">Cor<input type="color" value={draft.color} onChange={(event) => setDraft({ ...draft, color: event.target.value })} /><span>{draft.color.toUpperCase()}</span><div>{["#ef5b62", "#8B1E3F", "#f39c5a", "#4f9cff", "#b67cff", "#32c5a4", "#ff72ad", "#d2a93b", "#74bf70", "#8d98aa"].map((color) => <button key={color} type="button" style={{ background: color }} onClick={() => setDraft({ ...draft, color })} aria-label={`Usar cor ${color}`} /> )}</div></label>
+            </div>
+          </section>
 
-        <div className="role-form-grid">
-          <label className="full">Nome do cargo<input value={draft.name} onChange={(event) => setDraft({ ...draft, name: event.target.value })} placeholder="Ex.: Desenvolvedor Front-end" /></label>
-          <label>Departamento<select value={draft.department} onChange={(event) => setDraft({ ...draft, department: event.target.value })}>{departments.map((department) => <option key={department}>{department}</option>)}</select></label>
-          <label>Posição na hierarquia<input type="number" min="1" max="999" value={draft.position} onChange={(event) => setDraft({ ...draft, position: Number(event.target.value) })} /><small>Menor número aparece primeiro e pode definir o cargo principal exibido.</small></label>
-          <label className="full role-color-field">Cor sólida<input type="color" value={draft.color} onChange={(event) => setDraft({ ...draft, color: event.target.value })} /><span>{draft.color.toUpperCase()}</span><div>{["#ef5b62", "#f39c5a", "#4f9cff", "#b67cff", "#32c5a4", "#ff72ad", "#d2a93b", "#74bf70", "#8d98aa"].map((color) => <button key={color} type="button" style={{ background: color }} onClick={() => setDraft({ ...draft, color })} aria-label={`Usar cor ${color}`} /> )}</div></label>
+          <fieldset className="permission-grid professional-permission-grid">
+            <legend>Permissões adicionais</legend>
+            <p>Deixe tudo desmarcado quando o cargo for somente visual.</p>
+            {permissionOptions.map(({ permission, label, detail }) => (
+              <label key={permission} className={draft.permissions.includes(permission) ? "active" : ""}>
+                <input type="checkbox" checked={draft.permissions.includes(permission)} onChange={() => setDraft({
+                  ...draft,
+                  permissions: draft.permissions.includes(permission)
+                    ? draft.permissions.filter((item) => item !== permission)
+                    : [...draft.permissions, permission],
+                })} />
+                <span><Shield size={15} /><span><b>{label}</b><small>{detail}</small></span></span>
+              </label>
+            ))}
+          </fieldset>
         </div>
-
-        <fieldset className="permission-grid professional-permission-grid">
-          <legend>Permissões adicionais do cargo</legend>
-          <p>Deixe tudo desmarcado quando o cargo for apenas visual. Ative somente o que a função realmente precisa fazer.</p>
-          {permissionOptions.map(({ permission, label, detail }) => (
-            <label key={permission} className={draft.permissions.includes(permission) ? "active" : ""}>
-              <input type="checkbox" checked={draft.permissions.includes(permission)} onChange={() => setDraft({
-                ...draft,
-                permissions: draft.permissions.includes(permission)
-                  ? draft.permissions.filter((item) => item !== permission)
-                  : [...draft.permissions, permission],
-              })} />
-              <span><Shield size={15} /><span><b>{label}</b><small>{detail}</small></span></span>
-            </label>
-          ))}
-        </fieldset>
 
         <footer>
           {selectedId && <button className={`danger-text ${deleteConfirm ? "confirm" : ""}`} disabled={saving} onClick={() => void removeSelectedRole()}><Trash2 size={14} /> {deleteConfirm ? "Confirmar exclusão" : "Excluir cargo"}</button>}

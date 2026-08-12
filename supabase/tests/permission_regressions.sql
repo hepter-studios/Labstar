@@ -3,7 +3,7 @@ begin;
 create extension if not exists pgtap with schema extensions;
 set local search_path = public, extensions, pg_catalog;
 
-select plan(20);
+select plan(42);
 
 select ok(
   to_regprocedure('public.delete_labstar_account(text,text)') is null,
@@ -84,6 +84,72 @@ select is(
   '#8B1E3F',
   'CSO usa carmesim profundo distinto da cor destrutiva'
 );
+
+select ok(
+  exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'members' and column_name = 'bio'),
+  'o perfil possui bio opcional persistida'
+);
+select ok(
+  exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'member_job_roles' and column_name = 'position'),
+  'a atribuição de cargo possui ordem individual'
+);
+select is(
+  (select is_nullable from information_schema.columns where table_schema = 'public' and table_name = 'member_job_roles' and column_name = 'position'),
+  'NO',
+  'a ordem individual nunca fica nula'
+);
+select ok(
+  exists (select 1 from pg_constraint where conname = 'member_job_roles_member_position_unique' and conrelid = 'public.member_job_roles'::regclass),
+  'um membro não pode ter dois cargos na mesma posição'
+);
+select ok(
+  exists (select 1 from pg_constraint where conname = 'member_job_roles_primary_matches_position' and conrelid = 'public.member_job_roles'::regclass),
+  'o cargo principal é obrigatoriamente a posição 1'
+);
+select ok(
+  exists (select 1 from pg_constraint where conname = 'member_job_roles_position_positive' and conrelid = 'public.member_job_roles'::regclass),
+  'a ordem individual começa em 1'
+);
+select ok(
+  to_regprocedure('public.set_member_job_roles(uuid,uuid[])') is not null,
+  'a atualização atômica da ordem dos cargos existe'
+);
+select ok(
+  has_function_privilege('authenticated', 'public.set_member_job_roles(uuid,uuid[])', 'EXECUTE'),
+  'authenticated pode chamar a rotina que revalida manage_roles'
+);
+select ok(
+  not has_function_privilege('anon', 'public.set_member_job_roles(uuid,uuid[])', 'EXECUTE'),
+  'anon não pode alterar cargos profissionais'
+);
+select ok(
+  lower(pg_get_functiondef('public.set_member_job_roles(uuid,uuid[])'::regprocedure)) like '%can_manage_professional_roles%',
+  'a rotina revalida a permissão profissional no servidor'
+);
+select ok(
+  lower(pg_get_functiondef('public.set_member_job_roles(uuid,uuid[])'::regprocedure)) like '%pg_advisory_xact_lock%',
+  'atualizações concorrentes do mesmo membro são serializadas sem elevar privilégios'
+);
+select ok(
+  not (select prosecdef from pg_proc where oid = 'public.set_member_job_roles(uuid,uuid[])'::regprocedure),
+  'a rotina atômica também respeita RLS como o usuário chamador'
+);
+select ok(
+  to_regprocedure('public.update_own_profile(text,text,text)') is not null,
+  'a atualização protegida do perfil aceita bio'
+);
+select ok(
+  to_regprocedure('public.update_own_profile(text,text)') is null,
+  'a assinatura antiga do perfil foi removida'
+);
+select ok(not has_table_privilege('anon', 'public._sqlx_migrations', 'SELECT'), 'anon não lê o histórico interno do backend Rust');
+select ok(not has_table_privilege('anon', 'public._sqlx_migrations', 'INSERT'), 'anon não cria versões falsas do backend Rust');
+select ok(not has_table_privilege('anon', 'public._sqlx_migrations', 'UPDATE'), 'anon não altera versões do backend Rust');
+select ok(not has_table_privilege('anon', 'public._sqlx_migrations', 'DELETE'), 'anon não apaga versões do backend Rust');
+select ok(not has_table_privilege('authenticated', 'public._sqlx_migrations', 'SELECT'), 'clientes autenticados não leem o histórico interno do backend Rust');
+select ok(not has_table_privilege('authenticated', 'public._sqlx_migrations', 'INSERT'), 'clientes autenticados não criam versões falsas do backend Rust');
+select ok(not has_table_privilege('authenticated', 'public._sqlx_migrations', 'UPDATE'), 'clientes autenticados não alteram versões do backend Rust');
+select ok(not has_table_privilege('authenticated', 'public._sqlx_migrations', 'DELETE'), 'clientes autenticados não apagam versões do backend Rust');
 
 select * from finish();
 rollback;

@@ -25,6 +25,7 @@ import { MemberPanelTools } from "./components/MemberPanelTools";
 import { MemberQuickActions } from "./components/MemberQuickActions";
 import { MessageWorkItemBridge } from "./components/MessageWorkItemBridge";
 import { OrganizationAwareAccess } from "./components/OrganizationAwareAccess";
+import { OrganizationEntryGate } from "./components/OrganizationEntryGate";
 import { AccessBrandIntro } from "./components/AccessControl";
 import { LabstarAccessLoader } from "./components/LottieExperience";
 import { OrganizationSwitcherPortal } from "./components/OrganizationSwitcherPortal";
@@ -208,8 +209,10 @@ function RootSurfaces() {
 
 function ApplicationRoot() {
   const previewMode = isDevPreviewMode();
-  const introPreviewMode = previewMode && new URLSearchParams(window.location.search).has("intro-preview");
-  const loaderPreviewMode = previewMode && new URLSearchParams(window.location.search).has("loader-preview");
+  const searchParams = new URLSearchParams(window.location.search);
+  const introPreviewMode = previewMode && searchParams.has("intro-preview");
+  const loaderPreviewMode = previewMode && searchParams.has("loader-preview");
+  const organizationPreview = previewMode ? searchParams.get("organization-preview") : null;
 
   return (
     <>
@@ -218,6 +221,16 @@ function ApplicationRoot() {
         ? <LabstarAccessLoader />
         : introPreviewMode
         ? <AccessBrandIntro />
+        : organizationPreview !== null
+        ? (
+          <OrganizationEntryGate
+            devPreview
+            forceChooserInDevPreview={organizationPreview === "choose"}
+            resetDevPreview={organizationPreview === "reset"}
+          >
+            <RootSurfaces />
+          </OrganizationEntryGate>
+        )
         : previewMode
         ? <RootSurfaces />
         : <OrganizationAwareAccess><RootSurfaces /></OrganizationAwareAccess>}

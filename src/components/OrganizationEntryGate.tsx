@@ -5,8 +5,9 @@ import {
   Check,
   LoaderCircle,
   Plus,
+  X,
 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import {
   createOrganization,
   isOrganizationHandleAvailable,
@@ -16,73 +17,92 @@ import {
   setActiveOrganization,
   type Organization,
 } from "../lib/organizations";
-import { supabaseClient } from "../lib/supabase";
 import { LabstarAccessLoader } from "./LottieExperience";
 
-type EntryStage = "loading" | "choose" | "create" | "creating" | "entering" | "error" | "leaving";
+type EntryStage = "loading" | "choose" | "create" | "creating" | "entering" | "error";
 type HandleState = "idle" | "checking" | "available" | "taken" | "error";
 
-type OrganizationRow = {
-  id?: unknown;
-  name?: unknown;
-  slug?: unknown;
-  role?: unknown;
-  is_primary_legacy?: unknown;
-  default_locale?: unknown;
-  enabled_locales?: unknown;
-  created_at?: unknown;
+const ENTRY_TRANSITION_TIME_MS = 1050;
+const PREVIEW_ORGANIZATIONS_KEY = "labstar-dev-preview-organizations-v1";
+const PREVIEW_ACTIVE_ORGANIZATION_KEY = "labstar-dev-preview-active-organization-v1";
+let previewResetConsumed = false;
+
+type OrganizationEntryGateProps = {
+  children: ReactNode;
+  devPreview?: boolean;
+  forceChooserInDevPreview?: boolean;
+  resetDevPreview?: boolean;
 };
 
-const SESSION_PREFIX = "labstar-organization-entry-v2";
-const ENTRY_TRANSITION_TIME_MS = 1350;
-
-function delay(ms: number) {
-  return new Promise<void>((resolve) => window.setTimeout(resolve, ms));
-}
-
-function organizationFromRow(row: OrganizationRow): Organization | null {
-  const id = String(row.id ?? "");
-  if (!id) return null;
-  const role = String(row.role ?? "member") as Organization["role"];
-  return {
-    id,
-    name: String(row.name ?? "Organization"),
-    slug: String(row.slug ?? "organization"),
-    role,
-    isPrimaryLegacy: Boolean(row.is_primary_legacy),
-    defaultLocale: row.default_locale === "pt-BR" ? "pt-BR" : "en",
-    enabledLocales: Array.isArray(row.enabled_locales) ? row.enabled_locales.map(String) : ["en", "pt-BR"],
-    createdAt: String(row.created_at ?? ""),
-  };
-}
-
-async function listOrganizationsForEntry() {
-  if (supabaseClient) {
-    const { data, error } = await supabaseClient.rpc("list_my_organizations");
-    if (!error) {
-      return (Array.isArray(data) ? data : [])
-        .map((row) => organizationFromRow(row as OrganizationRow))
-        .filter((organization): organization is Organization => Boolean(organization));
+function readPreviewOrganizations(reset: boolean) {
+  try {
+    if (reset && !previewResetConsumed) {
+      previewResetConsumed = true;
+      window.localStorage.removeItem(PREVIEW_ORGANIZATIONS_KEY);
+      window.localStorage.removeItem(PREVIEW_ACTIVE_ORGANIZATION_KEY);
     }
+    const stored = window.localStorage.getItem(PREVIEW_ORGANIZATIONS_KEY);
+    if (!stored) return [];
+    const parsed = JSON.parse(stored);
+    return Array.isArray(parsed) ? parsed as Organization[] : [];
+  } catch {
+    return [];
   }
-  return listMyOrganizations();
 }
 
-function hashToken(value: string) {
-  let hash = 2166136261;
-  for (let index = 0; index < value.length; index += 1) {
-    hash ^= value.charCodeAt(index);
-    hash = Math.imul(hash, 16777619);
-  }
-  return (hash >>> 0).toString(36);
+function writePreviewOrganizations(organizations: Organization[]) {
+  window.localStorage.setItem(PREVIEW_ORGANIZATIONS_KEY, JSON.stringify(organizations));
 }
 
-async function resolveSessionKey() {
-  if (!supabaseClient) return `${SESSION_PREFIX}:browser`;
-  const { data } = await supabaseClient.auth.getSession();
-  const session = data.session;
-  if (!session) return `${SESSION_PREFIX}:browser`;
-  return `${SESSION_PREFIX}:${session.user.id}:${hashToken(session.access_token)}`;
+function previewActiveOrganizationId() {
+  try {
+    return window.localStorage.getItem(PREVIEW_ACTIVE_ORGANIZATION_KEY) || "";
+  } catch {
+    return "";
+  }
+}
+
+function setPreviewActiveOrganization(organization: Organization) {
+  try {
+    window.localStorage.setItem(PREVIEW_ACTIVE_ORGANIZATION_KEY, organization.id);
+  } catch {
+    // O modo de demonstração continua em memória se o storage estiver indisponível.
+  }
+}
+
+function previewHandleAvailable(handle: string, organizations: Organization[]) {
+  const normalized = normalizeGlobalHandle(handle);
+  return normalized.length >= 3
+    && normalized.length <= 48
+    && !organizations.some((organization) => organization.slug === normalized);
+}
+
+function createPreviewOrganization(name: string, requestedHandle: string, organizations: Organization[]) {
+  const normalizedName = normalizeGlobalHandle(name) || "organizacao";
+  const baseSlug = requestedHandle || (normalizedName.length >= 3 ? normalizedName : `${normalizedName}-lab`);
+  if (requestedHandle && !previewHandleAvailable(requestedHandle, organizations)) {
+    throw Object.assign(new Error("organization_handle_taken"), { code: "organization_handle_taken" });
+  }
+
+  let slug = baseSlug;
+  let suffix = 2;
+  while (organizations.some((organization) => organization.slug === slug)) {
+    slug = `${baseSlug}-${suffix}`;
+    suffix += 1;
+  }
+
+  const organization: Organization = {
+    id: globalThis.crypto?.randomUUID?.() ?? `preview-${Date.now()}`,
+    name: name.trim(),
+    slug,
+    role: "owner",
+    isPrimaryLegacy: false,
+    defaultLocale: "pt-BR",
+    enabledLocales: ["pt-BR", "en"],
+    createdAt: new Date().toISOString(),
+  };
+  writePreviewOrganizations([...organizations, organization]);
+  return organization;
 }
 
 function creationError(cause: unknown) {
@@ -96,53 +116,72 @@ function creationError(cause: unknown) {
   return "Não foi possível criar a organização. Tente novamente.";
 }
 
-export function OrganizationEntryGate({ children }: { children: ReactNode }) {
+export function OrganizationEntryGate({
+  children,
+  devPreview = false,
+  forceChooserInDevPreview = false,
+  resetDevPreview = false,
+}: OrganizationEntryGateProps) {
+  const safeDevPreview = import.meta.env.DEV && devPreview;
   const [done, setDone] = useState(false);
   const [stage, setStage] = useState<EntryStage>("loading");
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [selected, setSelected] = useState<Organization | null>(null);
-  const [sessionKey, setSessionKey] = useState("");
   const [name, setName] = useState("");
   const [slug, setSlug] = useState("");
   const [handleState, setHandleState] = useState<HandleState>("idle");
   const [error, setError] = useState("");
+  const finishTimerRef = useRef<number | null>(null);
+
+  const getOrganizations = useCallback(async () => {
+    if (safeDevPreview) return readPreviewOrganizations(resetDevPreview);
+    return listMyOrganizations();
+  }, [resetDevPreview, safeDevPreview]);
+
+  const getActiveOrganizationId = useCallback(() => (
+    safeDevPreview ? previewActiveOrganizationId() : loadActiveOrganizationId()
+  ), [safeDevPreview]);
+
+  const activateOrganization = useCallback((organization: Organization) => {
+    if (safeDevPreview) {
+      setPreviewActiveOrganization(organization);
+      return;
+    }
+    setActiveOrganization(organization);
+  }, [safeDevPreview]);
 
   const refresh = useCallback(async () => {
     setStage("loading");
     setError("");
     try {
-      const next = await listOrganizationsForEntry();
-      const preferred = loadActiveOrganizationId();
-      const active = next.find((organization) => organization.id === preferred)
+      const next = await getOrganizations();
+      const preferred = getActiveOrganizationId();
+      const active = next.find((organization) => organization.id === preferred) ?? null;
+      const suggested = active
         ?? next.find((organization) => organization.isPrimaryLegacy)
         ?? next[0]
         ?? null;
       setOrganizations(next);
-      setSelected(active);
+      setSelected(suggested);
+
+      // The stored id is only accepted after it has been found in the server-side
+      // membership list. This restores the app without trusting stale browser state.
+      if (active && !forceChooserInDevPreview) {
+        activateOrganization(active);
+        setDone(true);
+        return;
+      }
       setStage(next.length ? "choose" : "create");
     } catch {
       setStage("error");
       setError("Não foi possível carregar suas organizações.");
     }
-  }, []);
+  }, [activateOrganization, forceChooserInDevPreview, getActiveOrganizationId, getOrganizations]);
 
   useEffect(() => {
-    let cancelled = false;
-    void resolveSessionKey().then((key) => {
-      if (cancelled) return;
-      setSessionKey(key);
-      try {
-        if (window.sessionStorage.getItem(key) === "done") {
-          setDone(true);
-          return;
-        }
-      } catch {
-        // Falha de storage não bloqueia o fluxo visual.
-      }
-      void refresh();
-    });
+    void refresh();
     return () => {
-      cancelled = true;
+      if (finishTimerRef.current !== null) window.clearTimeout(finishTimerRef.current);
     };
   }, [refresh]);
 
@@ -161,7 +200,10 @@ export function OrganizationEntryGate({ children }: { children: ReactNode }) {
     let cancelled = false;
     setHandleState("checking");
     const timer = window.setTimeout(() => {
-      void isOrganizationHandleAvailable(normalized)
+      const availability = safeDevPreview
+        ? Promise.resolve(previewHandleAvailable(normalized, organizations))
+        : isOrganizationHandleAvailable(normalized);
+      void availability
         .then((available) => {
           if (!cancelled) setHandleState(available ? "available" : "taken");
         })
@@ -174,30 +216,35 @@ export function OrganizationEntryGate({ children }: { children: ReactNode }) {
       cancelled = true;
       window.clearTimeout(timer);
     };
-  }, [slug, stage]);
+  }, [organizations, safeDevPreview, slug, stage]);
 
-  const markSeen = useCallback(() => {
-    if (!sessionKey) return;
-    try {
-      window.sessionStorage.setItem(sessionKey, "done");
-    } catch {
-      // O onboarding continua mesmo quando storage está bloqueado.
-    }
-  }, [sessionKey]);
-
-  const finishEntry = useCallback(async (organization: Organization) => {
+  const finishEntry = useCallback((organization: Organization) => {
     setSelected(organization);
-    setActiveOrganization(organization);
-    markSeen();
+    activateOrganization(organization);
     setStage("entering");
-    await delay(ENTRY_TRANSITION_TIME_MS);
-    setStage("leaving");
-    window.setTimeout(() => setDone(true), 360);
-  }, [markSeen]);
+    if (finishTimerRef.current !== null) window.clearTimeout(finishTimerRef.current);
+    finishTimerRef.current = window.setTimeout(() => {
+      finishTimerRef.current = null;
+      setDone(true);
+    }, ENTRY_TRANSITION_TIME_MS);
+  }, [activateOrganization]);
 
   const enter = useCallback((organization: Organization) => {
-    void finishEntry(organization);
+    finishEntry(organization);
   }, [finishEntry]);
+
+  const canDismiss = Boolean(selected) && stage !== "loading" && stage !== "creating" && stage !== "entering";
+
+  useEffect(() => {
+    if (!canDismiss || !selected) return undefined;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      finishEntry(selected);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [canDismiss, finishEntry, selected]);
 
   async function submitCreate(event: React.FormEvent) {
     event.preventDefault();
@@ -207,7 +254,9 @@ export function OrganizationEntryGate({ children }: { children: ReactNode }) {
     if (requestedHandle) {
       setHandleState("checking");
       try {
-        const available = await isOrganizationHandleAvailable(requestedHandle);
+        const available = safeDevPreview
+          ? previewHandleAvailable(requestedHandle, organizations)
+          : await isOrganizationHandleAvailable(requestedHandle);
         if (!available) {
           setHandleState("taken");
           setError("Esse @handle já está sendo usado por outra organização.");
@@ -225,9 +274,11 @@ export function OrganizationEntryGate({ children }: { children: ReactNode }) {
     setStage("creating");
 
     try {
-      const created = await createOrganization(name, requestedHandle);
+      const created = safeDevPreview
+        ? createPreviewOrganization(name, requestedHandle, organizations)
+        : await createOrganization(name, requestedHandle);
       setOrganizations((current) => [...current.filter((organization) => organization.id !== created.id), created]);
-      await finishEntry(created);
+      finishEntry(created);
     } catch (cause) {
       setError(creationError(cause));
       if (String((cause as Error)?.message ?? "").includes("organization_handle_taken")) setHandleState("taken");
@@ -236,18 +287,29 @@ export function OrganizationEntryGate({ children }: { children: ReactNode }) {
   }
 
   const firstOrganization = organizations.length === 0;
-  const primaryAction = useMemo(() => selected ? `Entrar em ${selected.name}` : "Entrar", [selected]);
+  const primaryAction = selected ? `Entrar em ${selected.name}` : "Entrar";
   const explicitHandleInvalid = Boolean(slug.trim()) && handleState === "taken";
-  const standaloneEntry = stage === "entering" || stage === "leaving";
 
   if (done) return <>{children}</>;
-  if (standaloneEntry) return <LabstarAccessLoader />;
+  if (stage === "entering") return <LabstarAccessLoader />;
 
   return (
     <main className={`organization-entry-screen stage-${stage}`} aria-label="Escolher organização">
       <div className="organization-entry-space" aria-hidden="true" />
       <div className="organization-entry-vignette" aria-hidden="true" />
       <div className="organization-entry-curtain" aria-hidden="true" />
+
+      {canDismiss && selected && (
+        <button
+          type="button"
+          className="organization-entry-dismiss"
+          aria-label={`Fechar e entrar em ${selected.name}`}
+          title={`Entrar em ${selected.name}`}
+          onClick={() => finishEntry(selected)}
+        >
+          <X size={17} aria-hidden="true" />
+        </button>
+      )}
 
       <section className="organization-entry-glass">
           <strong className="organization-entry-brand" aria-label="Labstar">L<span>★</span>BSTAR</strong>

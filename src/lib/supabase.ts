@@ -30,6 +30,7 @@ export type Member = {
   role: MemberRole;
   jobTitle: string;
   area: string;
+  bio?: string;
   assignments: string[];
   createdAt: string;
   lastSeenAt: string;
@@ -59,6 +60,7 @@ type MemberRow = {
   role: MemberRole;
   job_title: string;
   area: string;
+  bio?: string | null;
   assignments: string[] | null;
   created_at: string;
   last_seen_at: string;
@@ -212,6 +214,7 @@ async function memberFromRow(row: MemberRow, jobRoles: JobRole[] = []): Promise<
     role: row.role,
     jobTitle: row.job_title ?? "",
     area: row.area ?? "",
+    bio: row.bio ?? "",
     assignments: Array.isArray(row.assignments) ? row.assignments : [],
     createdAt: row.created_at,
     lastSeenAt: row.last_seen_at,
@@ -230,6 +233,7 @@ function memberFromBackend(member: BackendMember): Member {
     role: member.role,
     jobTitle: member.jobTitle ?? "",
     area: member.area ?? "",
+    bio: "",
     assignments: [],
     createdAt: "",
     lastSeenAt: new Date().toISOString(),
@@ -265,6 +269,7 @@ function fallbackBlockedMember(user: User, status: "pending" | "suspended"): Mem
     role: "viewer",
     jobTitle: "",
     area: "",
+    bio: "",
     assignments: [],
     createdAt: "",
     lastSeenAt: new Date().toISOString(),
@@ -648,26 +653,23 @@ export async function deleteJobRole(id: string) {
 export async function listRolesForMember(memberId: string) {
   const { data, error } = await requireClient()
     .from("member_job_roles")
-    .select("job_role:job_roles(*)")
-    .eq("member_id", memberId);
-  if (error) return [];
+    .select("position,is_primary,job_role:job_roles(*)")
+    .eq("member_id", memberId)
+    .order("position", { ascending: true });
+  if (error) throw error;
   return (data ?? []).flatMap((row) => {
     const value = (row as { job_role?: Record<string, unknown> | Record<string, unknown>[] | null }).job_role;
     const role = Array.isArray(value) ? value[0] : value;
     return role ? [jobRoleFromRow(role)] : [];
-  }).sort((a, b) => a.position - b.position);
+  });
 }
 
 export async function setMemberJobRoles(memberId: string, roleIds: string[]) {
-  const supabase = requireClient();
-  const { error: deleteError } = await supabase.from("member_job_roles").delete().eq("member_id", memberId);
-  if (deleteError) throw deleteError;
-  if (roleIds.length) {
-    const { error: insertError } = await supabase.from("member_job_roles").insert(
-      roleIds.map((jobRoleId, index) => ({ member_id: memberId, job_role_id: jobRoleId, is_primary: index === 0 })),
-    );
-    if (insertError) throw insertError;
-  }
+  const { error } = await requireClient().rpc("set_member_job_roles", {
+    target_member_id: memberId,
+    ordered_job_role_ids: [...new Set(roleIds)],
+  });
+  if (error) throw error;
   return listRolesForMember(memberId);
 }
 
@@ -691,16 +693,18 @@ export async function uploadOwnAvatar(memberId: string, file: File) {
   const { data, error } = await requireClient().rpc("update_own_profile", {
     new_name: null,
     new_avatar_path: path,
+    new_bio: null,
   });
   if (error) throw error;
   const roles = await listRolesForMember(memberId);
   return memberFromRow((Array.isArray(data) ? data[0] : data) as MemberRow, roles);
 }
 
-export async function updateOwnProfile(memberId: string, name: string, avatarPath?: string | null) {
+export async function updateOwnProfile(memberId: string, name: string, bio?: string, avatarPath?: string | null) {
   const { data, error } = await requireClient().rpc("update_own_profile", {
     new_name: name.trim() || null,
     new_avatar_path: avatarPath === undefined ? null : avatarPath,
+    new_bio: bio === undefined ? null : bio,
   });
   if (error) throw error;
   const roles = await listRolesForMember(memberId);
