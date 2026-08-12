@@ -193,6 +193,7 @@ pub fn run() {
             commands::show_native_notification,
             commands::open_auth_url,
             commands::open_profile_connection_url,
+            commands::exit_mobile_app,
             secure_storage::secure_vault_password,
             settings::load_app_settings,
             settings::save_app_settings,
