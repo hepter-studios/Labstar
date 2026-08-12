@@ -584,6 +584,7 @@ export default function Home() {
                 <LottieAnimation
                   kind="project-space"
                   className="lottie-project-space-background"
+                  playbackSegment={[0, 360]}
                   preserveAspectRatio="xMidYMid slice"
                 />
               </>

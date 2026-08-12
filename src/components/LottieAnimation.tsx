@@ -26,6 +26,7 @@ export function LottieAnimation({
   speed = 1,
   preserveAspectRatio = "xMidYMid slice",
   posterFrame,
+  playbackSegment,
 }: {
   kind: OnboardingLottieKind;
   className?: string;
@@ -33,6 +34,7 @@ export function LottieAnimation({
   speed?: number;
   preserveAspectRatio?: string;
   posterFrame?: number;
+  playbackSegment?: readonly [startFrame: number, endFrame: number];
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const [failed, setFailed] = useState(false);
@@ -40,6 +42,8 @@ export function LottieAnimation({
   const [diagnosticState, setDiagnosticState] = useState<DiagnosticState>("loading");
   const [diagnosticInfo, setDiagnosticInfo] = useState<DiagnosticInfo>({});
   const diagnosticMode = kind === "stars" && new URLSearchParams(window.location.search).has("lottie-test");
+  const playbackStartFrame = playbackSegment?.[0];
+  const playbackEndFrame = playbackSegment?.[1];
 
   useEffect(() => {
     const container = ref.current;
@@ -96,6 +100,16 @@ export function LottieAnimation({
           instance?.goToAndStop(posterFrame, true);
         };
 
+        const playConfiguredSegment = () => {
+          if (
+            disposed
+            || posterFrame !== undefined
+            || playbackStartFrame === undefined
+            || playbackEndFrame === undefined
+          ) return;
+          instance?.playSegments([playbackStartFrame, playbackEndFrame], true);
+        };
+
         const markReady = () => {
           if (disposed) return;
           setReady(true);
@@ -124,10 +138,16 @@ export function LottieAnimation({
           }
         };
 
-        instance.addEventListener("DOMLoaded", settlePosterFrame);
+        instance.addEventListener("DOMLoaded", () => {
+          playConfiguredSegment();
+          settlePosterFrame();
+        });
         instance.addEventListener("loaded_images", settlePosterFrame);
         instance.addEventListener("data_ready", () => {
-          if (posterFrame === undefined) markReady();
+          if (posterFrame === undefined) {
+            playConfiguredSegment();
+            markReady();
+          }
         });
         instance.addEventListener("data_failed", markFailure);
         instance.addEventListener("error", markFailure);
@@ -162,7 +182,7 @@ export function LottieAnimation({
       instance?.destroy();
       container.replaceChildren();
     };
-  }, [diagnosticMode, kind, loop, posterFrame, preserveAspectRatio, speed]);
+  }, [diagnosticMode, kind, loop, playbackEndFrame, playbackStartFrame, posterFrame, preserveAspectRatio, speed]);
 
   if (diagnosticMode) {
     const statusLabel = diagnosticState === "loading"
