@@ -1,4 +1,5 @@
 import type { RealtimeChannel } from "@supabase/supabase-js";
+import { requestAchievementRefresh } from "./achievements";
 import { listRolesForMember, supabaseClient, type JobRole } from "./supabase";
 import {
   defaultAttachmentMessage,
@@ -291,6 +292,7 @@ export async function sendDirectMessage(input: {
     throw uploadError;
   }
 
+  requestAchievementRefresh();
   return message;
 }
 

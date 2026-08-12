@@ -2,6 +2,7 @@ import { type RealtimeChannel, type SupabaseClient, type User } from "@supabase/
 import { secureSignOut } from "./access";
 import { BackendApiError, getBackendIdentity, type BackendMember } from "./backend";
 import { authClient } from "./auth-client";
+import { requestAchievementRefresh } from "./achievements";
 import {
   defaultAttachmentMessage,
   normalizeDeveloperFile,
@@ -670,7 +671,9 @@ export async function setMemberJobRoles(memberId: string, roleIds: string[]) {
     ordered_job_role_ids: [...new Set(roleIds)],
   });
   if (error) throw error;
-  return listRolesForMember(memberId);
+  const roles = await listRolesForMember(memberId);
+  requestAchievementRefresh();
+  return roles;
 }
 
 function safeFileName(name: string) {
@@ -697,7 +700,9 @@ export async function uploadOwnAvatar(memberId: string, file: File) {
   });
   if (error) throw error;
   const roles = await listRolesForMember(memberId);
-  return memberFromRow((Array.isArray(data) ? data[0] : data) as MemberRow, roles);
+  const member = memberFromRow((Array.isArray(data) ? data[0] : data) as MemberRow, roles);
+  requestAchievementRefresh();
+  return member;
 }
 
 export async function updateOwnProfile(memberId: string, name: string, bio?: string, avatarPath?: string | null) {
@@ -708,7 +713,9 @@ export async function updateOwnProfile(memberId: string, name: string, bio?: str
   });
   if (error) throw error;
   const roles = await listRolesForMember(memberId);
-  return memberFromRow((Array.isArray(data) ? data[0] : data) as MemberRow, roles);
+  const member = memberFromRow((Array.isArray(data) ? data[0] : data) as MemberRow, roles);
+  requestAchievementRefresh();
+  return member;
 }
 
 export async function removeOwnAvatar(memberId: string, currentPath: string) {
@@ -973,6 +980,7 @@ export async function sendMessage(input: {
     }
     throw uploadError;
   }
+  requestAchievementRefresh();
   return message;
 }
 

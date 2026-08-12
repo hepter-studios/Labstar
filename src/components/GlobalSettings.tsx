@@ -348,7 +348,7 @@ export function GlobalSettings({
                     const unlocked = Boolean(saved?.unlockedAt);
                     return (
                       <article className={`achievement-card ${unlocked ? "unlocked" : "locked"}`} key={achievement.key}>
-                        <div className="achievement-art"><LottieAnimation kind={achievement.kind} posterFrame={achievement.posterFrame} preserveAspectRatio={achievement.kind === "astronaut-cosmos" ? "xMinYMid slice" : "xMidYMid meet"} /></div>
+                        <div className="achievement-art" data-kind={achievement.kind}><LottieAnimation kind={achievement.kind} posterFrame={"posterFrame" in achievement ? achievement.posterFrame : undefined} preserveAspectRatio="xMidYMid meet" /></div>
                         <div className="achievement-copy">
                           <span><b>{achievement.rarity}</b>{unlocked ? <em>Desbloqueada</em> : <em><LockKeyhole size={10} /> Bloqueada</em>}</span>
                           <strong>{achievement.title}</strong>

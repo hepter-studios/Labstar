@@ -250,8 +250,12 @@
   box-shadow:6px 7px 17px rgba(0,0,0,.32),inset 1px 1px rgba(255,255,255,.025);
 }
 .achievement-card.unlocked { border-color:rgba(107,151,255,.22); box-shadow:7px 9px 22px rgba(0,0,0,.38),-3px -3px 11px rgba(39,52,76,.16),inset 1px 1px rgba(255,255,255,.035); }
-.achievement-art { width:124px; height:140px; display:grid; place-items:center; overflow:hidden; }
+.achievement-art { width:124px; height:140px; padding:4px; box-sizing:border-box; display:grid; place-items:center; overflow:hidden; }
 .achievement-art > .labstar-lottie,.achievement-art svg { width:100%!important; height:100%!important; overflow:visible!important; }
+.achievement-art[data-kind="astronaut-headphones"] > .labstar-lottie { transform:scale(.88); }
+.achievement-art[data-kind="astronaut-solo"] > .labstar-lottie { transform:scale(.9); }
+.achievement-art[data-kind="astronaut-flow"] > .labstar-lottie { transform:translateY(-42px) scale(.52); }
+.achievement-art[data-kind="astronaut-flow"] svg,.achievement-art[data-kind="astronaut-flow"] svg * { overflow:visible!important; clip-path:none!important; }
 .achievement-card.locked .achievement-art { opacity:.54; filter:grayscale(1) saturate(.22); }
 .achievement-copy { min-width:0; padding:12px 12px 12px 0; display:grid; gap:5px; }
 .achievement-copy > span { display:flex; align-items:center; justify-content:space-between; gap:6px; }

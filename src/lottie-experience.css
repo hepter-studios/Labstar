@@ -115,6 +115,35 @@
 
 .lottie-mascot-animation { width: 176px; height: 176px; }
 
+.lottie-mascot-celebration.achievement {
+  z-index: 16000;
+  inset: 0;
+  width: auto;
+  min-height: 0;
+  grid-template-rows: auto auto;
+  align-content: center;
+  justify-content: center;
+  background: rgba(1,4,10,.72);
+  backdrop-filter: blur(8px);
+  filter: none;
+  animation: lottie-achievement-show 5s ease both;
+}
+
+.lottie-mascot-celebration.achievement .lottie-mascot-animation {
+  width: min(360px,72vw);
+  height: min(360px,58vh);
+  filter: drop-shadow(0 22px 38px rgba(0,0,0,.58));
+}
+
+.lottie-mascot-celebration.achievement > button { top:24px; right:24px; }
+.lottie-mascot-celebration.achievement .lottie-mascot-message {
+  min-width: min(280px,calc(100vw - 36px));
+  margin-top: -8px;
+  padding: 10px 16px;
+}
+.lottie-mascot-celebration.achievement .lottie-mascot-message strong { font-size: 13px; }
+.lottie-mascot-celebration.achievement .lottie-mascot-message small { font-size: 10px; }
+
 .lottie-mascot-celebration > button {
   position: absolute;
   z-index: 2;
@@ -177,6 +206,12 @@
   to { opacity: 1; transform: translate3d(0,0,0) scale(1) rotate(0); }
 }
 
+@keyframes lottie-achievement-show {
+  0% { opacity:0; transform:scale(.94); }
+  10%,88% { opacity:1; transform:scale(1); }
+  100% { opacity:0; transform:scale(1.02); }
+}
+
 @keyframes labstar-intro-astronaut-pass {
   0% { opacity: 0; transform: translate3d(0,34px,0) scale(.76) rotate(-12deg); }
   14% { opacity: .92; }
@@ -200,6 +235,7 @@
 
   .lottie-mascot-animation { width: 142px; height: 142px; }
   .lottie-mascot-message { max-width: 138px; }
+  .lottie-mascot-celebration.achievement .lottie-mascot-message { max-width:calc(100vw - 36px); }
 
   .labstar-access-loader-animation { width: 138px; height: 138px; }
   .intro-astronaut-flyby {

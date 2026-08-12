@@ -1,4 +1,5 @@
 import { supabaseClient } from "./supabase";
+import { requestAchievementRefresh } from "./achievements";
 
 export type ProjectProfile = {
   nodeId: string;
@@ -168,7 +169,9 @@ export async function saveProjectProfile(input: ProjectProfileInput): Promise<Pr
       updated_at: new Date().toISOString(),
     }, { onConflict: "node_id" }).select("*").single();
     if (error) throw error;
-    return upsertLocal(await rowToProfile(data as Record<string, unknown>));
+    const saved = upsertLocal(await rowToProfile(data as Record<string, unknown>));
+    requestAchievementRefresh();
+    return saved;
   } catch (error) {
     if (!unavailableError(error)) throw error;
     return upsertLocal(normalized);
