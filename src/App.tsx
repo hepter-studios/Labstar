@@ -43,7 +43,7 @@ import {
   ZoomOut,
   type LucideIcon,
 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import {
   getCurrentIdentity,
   inviteMember as createMemberInvite,
@@ -66,7 +66,6 @@ import {
 import { memberPresenceStatus, useMemberPresence } from "./lib/presence";
 import { Avatar } from "./components/Avatar";
 import { CollaborationHub } from "./components/CollaborationHub";
-import { LottieAnimation } from "./components/LottieAnimation";
 import { LabstarAccessLoader, MascotCelebrationHost, ProjectLottieExperience, celebrateWithMascot } from "./components/LottieExperience";
 import { NotificationsButton } from "./components/NotificationsPanel";
 import { CurrentProfileConnection, MemberProfileConnection } from "./components/ProfileConnectionsBridge";
@@ -80,6 +79,8 @@ type ViewMode = "mapa" | "visao" | "colaboracao" | "equipe";
 type SyncState = "carregando" | "salvando" | "sincronizado" | "local";
 type ManualSaveState = "idle" | "saving" | "saved" | "error";
 type SessionState = "carregando" | "anonimo" | "nao_convidado" | "pendente" | "ativo" | "configuracao" | "erro";
+
+const ProjectSpaceAnimation = lazy(() => import("./components/ProjectSpaceAnimation"));
 
 type SessionData = {
   user: { displayName: string; email: string; fullName: string | null };
@@ -581,12 +582,7 @@ export default function Home() {
             {showProjectLottieBackground && projectSkyEnabled && (
               <>
                 <img className="project-sky-poster" src="/project-sky-poster.png" alt="" aria-hidden="true" />
-                <LottieAnimation
-                  kind="project-space"
-                  className="lottie-project-space-background"
-                  playbackSegment={[0, 360]}
-                  preserveAspectRatio="xMidYMid slice"
-                />
+                <Suspense fallback={null}><ProjectSpaceAnimation /></Suspense>
               </>
             )}
             <div className="cosmic-effects" aria-hidden="true">
