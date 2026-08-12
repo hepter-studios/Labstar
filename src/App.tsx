@@ -212,7 +212,6 @@ export default function Home() {
   const [manualSave, setManualSave] = useState<ManualSaveState>("idle");
   const [panning, setPanning] = useState(false);
   const [draggingId, setDraggingId] = useState<string | null>(null);
-  const lastCardClickRef = useRef<{ id: string; at: number } | null>(null);
   const searchRef = useRef<HTMLInputElement>(null);
   const viewportRef = useRef<HTMLDivElement>(null);
   const boardRef = useRef<HTMLDivElement>(null);
@@ -393,6 +392,7 @@ export default function Home() {
       const pan = panRef.current;
       const viewport = viewportRef.current;
       if (pan && viewport) {
+        event.preventDefault();
         viewport.scrollLeft = pan.left - (event.clientX - pan.x);
         viewport.scrollTop = pan.top - (event.clientY - pan.y);
         return;
@@ -400,6 +400,7 @@ export default function Home() {
       const drag = dragRef.current;
       const board = boardRef.current;
       if (!drag || !board) return;
+      event.preventDefault();
       const rect = board.getBoundingClientRect();
       const x = Math.round((event.clientX - rect.left) / zoom - drag.dx);
       const y = Math.round((event.clientY - rect.top) / zoom - drag.dy);
@@ -733,20 +734,6 @@ export default function Home() {
                       onPointerDown={(event) => {
                         if (event.button !== 0) return;
                         if ((event.target as HTMLElement).closest("button, a")) return;
-                        const now = Date.now();
-                        const previous = lastCardClickRef.current;
-                        if (previous?.id === node.id && now - previous.at <= 700) {
-                          lastCardClickRef.current = null;
-                          dragRef.current = null;
-                          setDraggingId(null);
-                          event.preventDefault();
-                          event.stopPropagation();
-                          openInspector(node.id);
-                          return;
-                        }
-                        lastCardClickRef.current = { id: node.id, at: now };
-                        event.preventDefault();
-                        event.currentTarget.setPointerCapture(event.pointerId);
                         const rect = event.currentTarget.getBoundingClientRect();
                         dragRef.current = { id: node.id, dx: (event.clientX - rect.left) / zoom, dy: (event.clientY - rect.top) / zoom };
                         setDraggingId(node.id);
@@ -819,7 +806,7 @@ export default function Home() {
                 <span className="inspector-symbol" style={{ "--accent": kindMeta[selected.kind].color } as React.CSSProperties}>
                   {(() => { const Icon = kindMeta[selected.kind].Icon; return <Icon size={18} strokeWidth={1.5} />; })()}
                 </span>
-                <div><small>{kindMeta[selected.kind].label}</small><strong>{selected.name}</strong></div>
+                <div><small>{inspectorMode === "view" ? "Visualização" : kindMeta[selected.kind].label}</small><strong>{selected.name}</strong>{inspectorMode === "view" && <span className="inspector-mode-badge">Somente leitura</span>}</div>
                 <button onClick={() => setEditorOpen(false)} aria-label="Fechar painel"><X size={16} /></button>
               </div>
 
