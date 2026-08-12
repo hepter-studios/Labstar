@@ -85,7 +85,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          if grep -R -a -E '(sb_secret_|SUPABASE_SERVICE_ROLE_KEY[=:]|SUPABASE_DATABASE_URL[=:]|postgres(ql)?://[^[:space:]"'"']+|GITHUB_CLIENT_SECRET[=:]|APPLE_[A-Z_]*PRIVATE_KEY[=:])' dist; then
+          pattern='sb_secret_|SUPABASE_SERVICE_ROLE_KEY[=:]|SUPABASE_DATABASE_URL[=:]|postgres(ql)?://[^[:space:]"]+|GITHUB_CLIENT_SECRET[=:]|APPLE_[A-Z_]*PRIVATE_KEY[=:]'
+          if grep -R -a -E "$pattern" dist; then
             echo "Credencial proibida encontrada no bundle web."
             exit 1
           fi
@@ -149,7 +150,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          if grep -R -a -E '(sb_secret_|SUPABASE_SERVICE_ROLE_KEY[=:]|SUPABASE_DATABASE_URL[=:]|postgres(ql)?://[^[:space:]"'"']+|GITHUB_CLIENT_SECRET[=:]|APPLE_[A-Z_]*PRIVATE_KEY[=:])' mobile-artifacts; then
+          pattern='sb_secret_|SUPABASE_SERVICE_ROLE_KEY[=:]|SUPABASE_DATABASE_URL[=:]|postgres(ql)?://[^[:space:]"]+|GITHUB_CLIENT_SECRET[=:]|APPLE_[A-Z_]*PRIVATE_KEY[=:]'
+          if grep -R -a -E "$pattern" mobile-artifacts; then
             echo "Credencial proibida encontrada no artefato Android."
             exit 1
           fi
@@ -228,7 +230,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          if grep -R -a -E '(sb_secret_|SUPABASE_SERVICE_ROLE_KEY[=:]|SUPABASE_DATABASE_URL[=:]|postgres(ql)?://[^[:space:]"'"']+|GITHUB_CLIENT_SECRET[=:]|APPLE_[A-Z_]*PRIVATE_KEY[=:])' src-tauri/gen/apple; then
+          pattern='sb_secret_|SUPABASE_SERVICE_ROLE_KEY[=:]|SUPABASE_DATABASE_URL[=:]|postgres(ql)?://[^[:space:]"]+|GITHUB_CLIENT_SECRET[=:]|APPLE_[A-Z_]*PRIVATE_KEY[=:]'
+          if grep -R -a -E "$pattern" src-tauri/gen/apple; then
             echo "Credencial proibida encontrada no projeto iOS gerado."
             exit 1
           fi
