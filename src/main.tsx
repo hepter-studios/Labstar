@@ -6,7 +6,7 @@ import {
   type ErrorInfo,
   type ReactNode,
 } from "react";
-import { createRoot } from "react-dom/client";
+import { createRoot, type Root } from "react-dom/client";
 import App from "./App";
 import { CategoryAccessPortal } from "./components/CategoryAccessPortal";
 import { ChannelAccessPortal } from "./components/ChannelAccessPortal";
@@ -74,6 +74,7 @@ import "./direct-messages-v6.css";
 import "./direct-messages-v7.css";
 import "./direct-messages-height-guard.css";
 import "./project-enhancements.css";
+import "./project-inspection-mode.css";
 import "./project-readme-assets.css";
 import "./channel-access.css";
 import "./category-access-polish.css";
@@ -98,6 +99,7 @@ declare global {
       ready(): void;
       fail(title: string, details: string): void;
     };
+    __LABSTAR_REACT_ROOT__?: Root;
   }
 }
 
@@ -246,7 +248,9 @@ function mountReact() {
   }
 
   try {
-    createRoot(rootElement).render(
+    const root = window.__LABSTAR_REACT_ROOT__ ?? createRoot(rootElement);
+    window.__LABSTAR_REACT_ROOT__ = root;
+    root.render(
       <StrictMode>
         <SurfaceBoundary name="raiz React" critical>
           <ApplicationRoot />

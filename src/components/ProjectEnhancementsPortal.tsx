@@ -196,6 +196,7 @@ export function ProjectEnhancementsPortal() {
   const [profiles, setProfiles] = useState<ProjectProfile[]>([]);
   const [cards, setCards] = useState<CardTarget[]>([]);
   const [inspectorHost, setInspectorHost] = useState<HTMLElement | null>(null);
+  const [readOnly, setReadOnly] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [expanded, setExpanded] = useState(false);
   const [editingNodeId, setEditingNodeId] = useState<string | null>(null);
@@ -289,8 +290,11 @@ export function ProjectEnhancementsPortal() {
       const inspector = document.querySelector<HTMLElement>(".inspector.open, .inspector");
       if (!inspector || !nextSelectedId) {
         setInspectorHost(null);
+        setReadOnly(false);
         return;
       }
+      const nextReadOnly = inspector.dataset.inspectorMode === "view";
+      setReadOnly((current) => current === nextReadOnly ? current : nextReadOnly);
       inspector.classList.add("project-inspector-enhanced");
       let host = inspector.querySelector<HTMLElement>(":scope > .project-enhancement-inspector-host");
       if (!host) {
@@ -440,6 +444,7 @@ export function ProjectEnhancementsPortal() {
         <ProjectInspectorPanel
           node={selectedNode}
           profile={selectedProfile}
+          readOnly={readOnly}
           expanded={expanded}
           notice={notice}
           logoBusy={logoBusy === selectedNode.id}
@@ -477,6 +482,7 @@ export function ProjectEnhancementsPortal() {
 function ProjectInspectorPanel({
   node,
   profile,
+  readOnly,
   expanded,
   notice,
   logoBusy,
@@ -488,6 +494,7 @@ function ProjectInspectorPanel({
 }: {
   node: WorkspaceNode;
   profile: ProjectProfile;
+  readOnly: boolean;
   expanded: boolean;
   notice: string;
   logoBusy: boolean;
@@ -502,20 +509,26 @@ function ProjectInspectorPanel({
   return (
     <section className="project-inspector-summary">
       <div className="project-identity-row">
-        <button className="project-logo-editor" type="button" onClick={() => fileRef.current?.click()} disabled={logoBusy} title="Enviar logo do projeto">
-          {logoBusy ? <LoaderCircle className="spin" size={20} /> : profile.logoUrl ? <img src={profile.logoUrl} alt="" /> : <ImagePlus size={20} />}
-        </button>
-        <input ref={fileRef} hidden type="file" accept="image/*" onChange={(event) => {
-          const file = event.target.files?.[0];
-          if (file) onUploadLogo(file);
-          event.currentTarget.value = "";
-        }} />
+        {readOnly ? (
+          <span className="project-logo-preview" aria-label="Logo do projeto">
+            {profile.logoUrl ? <img src={profile.logoUrl} alt="" /> : <Layers3 size={20} />}
+          </span>
+        ) : <>
+          <button className="project-logo-editor" type="button" onClick={() => fileRef.current?.click()} disabled={logoBusy} title="Enviar logo do projeto">
+            {logoBusy ? <LoaderCircle className="spin" size={20} /> : profile.logoUrl ? <img src={profile.logoUrl} alt="" /> : <ImagePlus size={20} />}
+          </button>
+          <input ref={fileRef} hidden type="file" accept="image/*" onChange={(event) => {
+            const file = event.target.files?.[0];
+            if (file) onUploadLogo(file);
+            event.currentTarget.value = "";
+          }} />
+        </>}
         <div>
           <small>{node.kind === "projeto" ? "PROJETO" : node.kind === "produto" ? "PRODUTO" : "NÚCLEO"}</small>
           <strong>{node.name}</strong>
           <span>{statusLabel(node.status)} · {node.progress}% · {node.owner}</span>
         </div>
-        {profile.logoUrl && <button type="button" className="project-logo-remove" onClick={onClearLogo} disabled={logoBusy} title="Remover logo"><Trash2 size={13} /></button>}
+        {!readOnly && profile.logoUrl && <button type="button" className="project-logo-remove" onClick={onClearLogo} disabled={logoBusy} title="Remover logo"><Trash2 size={13} /></button>}
       </div>
 
       <p className="project-objective-preview">{node.description || "Objetivo manual ainda não definido. Você pode deixar em branco quando o documento do projeto já explicar o contexto."}</p>
@@ -536,10 +549,12 @@ function ProjectInspectorPanel({
         {node.websiteUrl && <a href={node.websiteUrl} target="_blank" rel="noreferrer"><Globe2 size={14} /> Site</a>}
       </div>
 
-      <div className="project-inspector-actions">
-        <button type="button" onClick={onEdit}><Pencil size={13} /> Detalhes do projeto</button>
-        <button type="button" onClick={() => onExpanded(!expanded)}>{expanded ? <ChevronUp size={13} /> : <ChevronDown size={13} />} {expanded ? "Ocultar campos completos" : "Ver todos os campos"}</button>
-      </div>
+      {readOnly ? <p className="project-inspector-read-only">Visualização somente leitura. Use o lápis do cartão para editar.</p> : (
+        <div className="project-inspector-actions">
+          <button type="button" onClick={onEdit}><Pencil size={13} /> Detalhes do projeto</button>
+          <button type="button" onClick={() => onExpanded(!expanded)}>{expanded ? <ChevronUp size={13} /> : <ChevronDown size={13} />} {expanded ? "Ocultar campos completos" : "Ver todos os campos"}</button>
+        </div>
+      )}
       {notice && <p className="project-inspector-notice">{notice}</p>}
     </section>
   );
