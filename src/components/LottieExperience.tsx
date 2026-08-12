@@ -1,6 +1,6 @@
 import { X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { ACHIEVEMENTS_REFRESH_EVENT, ACHIEVEMENT_CATALOG, syncOwnAchievements } from "../lib/achievements";
+import { ACHIEVEMENTS_REFRESH_EVENT, ACHIEVEMENT_CATALOG, requestOpenAchievement, syncOwnAchievements, type AchievementKey } from "../lib/achievements";
 import { LottieAnimation } from "./LottieAnimation";
 import type { OnboardingLottieKind } from "../lib/onboarding-lotties";
 import "../lottie-experience.css";
@@ -12,6 +12,7 @@ export type MascotCelebrationDetail = {
   title?: string;
   message?: string;
   kind?: OnboardingLottieKind;
+  achievementKey?: AchievementKey;
   force?: boolean;
 };
 
@@ -79,7 +80,15 @@ export function MascotCelebrationHost({ memberId }: { memberId?: string }) {
     const requestedKind = requestedVariant === "achievement" && searchParams.get("achievement-kind") === "astronaut-flow"
       ? "astronaut-flow"
       : undefined;
-    setCelebration({ variant: requestedVariant, kind: requestedKind, key: Date.now(), title: MASCOT_VARIANTS[requestedVariant].title, message: "Prévia local do mascote" });
+    const previewAchievement = requestedKind ? ACHIEVEMENT_CATALOG.find((achievement) => achievement.key === "engineering_master") : undefined;
+    setCelebration({
+      variant: requestedVariant,
+      kind: requestedKind,
+      key: Date.now(),
+      title: previewAchievement?.title ?? MASCOT_VARIANTS[requestedVariant].title,
+      message: previewAchievement?.description ?? "Prévia local do mascote",
+      achievementKey: previewAchievement?.key,
+    });
   }, []);
 
   useEffect(() => {
@@ -95,9 +104,13 @@ export function MascotCelebrationHost({ memberId }: { memberId?: string }) {
     if (!memberId) return undefined;
     let disposed = false;
     let synchronizing = false;
+    let pendingAnnouncement = false;
 
-    const synchronize = async () => {
-      if (synchronizing) return;
+    const synchronize = async (announce = false) => {
+      if (synchronizing) {
+        pendingAnnouncement ||= announce;
+        return;
+      }
       synchronizing = true;
       try {
         const progress = await syncOwnAchievements();
@@ -111,7 +124,7 @@ export function MascotCelebrationHost({ memberId }: { memberId?: string }) {
         } catch {
           seen = new Set();
         }
-        const newlyUnlocked = unlocked.find((item) => !seen.has(item.key));
+        const newlyUnlocked = announce ? unlocked.find((item) => !seen.has(item.key)) : undefined;
         unlocked.forEach((item) => seen.add(item.key));
         try {
           localStorage.setItem(storageKey, JSON.stringify([...seen]));
@@ -123,27 +136,32 @@ export function MascotCelebrationHost({ memberId }: { memberId?: string }) {
         if (!achievement) return;
         celebrateWithMascot({
           variant: "achievement",
-          title: "Conquista desbloqueada",
-          message: achievement.title,
+          title: achievement.title,
+          message: achievement.description,
           kind: "celebrationKind" in achievement ? achievement.celebrationKind : achievement.kind,
+          achievementKey: achievement.key,
           force: true,
         });
       } catch {
         // A sincronização manual em Configurações continua mostrando qualquer erro ao usuário.
       } finally {
         synchronizing = false;
+        if (!disposed && pendingAnnouncement) {
+          pendingAnnouncement = false;
+          void synchronize(true);
+        }
       }
     };
 
-    const refresh = () => void synchronize();
-    const initialTimer = window.setTimeout(refresh, 1_200);
+    const refresh = () => void synchronize(true);
+    const resyncWithoutAnnouncement = () => void synchronize(false);
+    void synchronize(false);
     window.addEventListener(ACHIEVEMENTS_REFRESH_EVENT, refresh);
-    window.addEventListener("focus", refresh);
+    window.addEventListener("focus", resyncWithoutAnnouncement);
     return () => {
       disposed = true;
-      window.clearTimeout(initialTimer);
       window.removeEventListener(ACHIEVEMENTS_REFRESH_EVENT, refresh);
-      window.removeEventListener("focus", refresh);
+      window.removeEventListener("focus", resyncWithoutAnnouncement);
     };
   }, [memberId]);
 
@@ -156,13 +174,22 @@ export function MascotCelebrationHost({ memberId }: { memberId?: string }) {
   if (!celebration) return null;
   const variant = celebration.variant ?? "happy";
   const mascot = MASCOT_VARIANTS[variant];
+  const achievement = celebration.achievementKey
+    ? ACHIEVEMENT_CATALOG.find((item) => item.key === celebration.achievementKey)
+    : undefined;
   return (
     <aside className={`lottie-mascot-celebration ${variant}`} aria-live="polite">
       <button type="button" onClick={() => setCelebration(null)} aria-label="Dispensar mascote"><X size={14} /></button>
       <LottieAnimation key={celebration.key} kind={celebration.kind ?? mascot.kind} className="lottie-mascot-animation" preserveAspectRatio="xMidYMid meet" />
       <span className="lottie-mascot-message">
+        {variant === "achievement" && <em>Conquista desbloqueada{achievement ? ` · ${achievement.rarity}` : ""}</em>}
         <strong>{celebration.title || mascot.title}</strong>
         {celebration.message && <small>{celebration.message}</small>}
+        {celebration.achievementKey && (
+          <button type="button" onClick={() => { requestOpenAchievement(celebration.achievementKey!); setCelebration(null); }}>
+            Inspecionar conquista
+          </button>
+        )}
       </span>
     </aside>
   );
