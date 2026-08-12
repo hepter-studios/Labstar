@@ -1,16 +1,28 @@
 import { isTauriApp } from "./native";
+import { isNativeMobileRuntime } from "./native-secure-storage";
 import { supabaseClient } from "./supabase";
 
 const DEVICE_ID_KEY = "labstar-push-device-id-v1";
+const NATIVE_PERMISSION_KEY = "labstar-native-notification-permission-v1";
 const SUPABASE_URL = (import.meta.env.VITE_SUPABASE_URL ?? "").replace(/\/$/, "");
 const PUSH_FUNCTION_URL = SUPABASE_URL ? `${SUPABASE_URL}/functions/v1/labstar-push` : "";
 
 export type DeviceNotificationState =
   | "active"
+  | "native-ready"
   | "blocked"
   | "available"
   | "install-required"
   | "unsupported";
+
+type NativeNotificationApi = {
+  isPermissionGranted(): Promise<boolean>;
+  requestPermission(): Promise<"granted" | "denied" | "default">;
+};
+
+function nativeNotificationApi() {
+  return (window as typeof window & { __TAURI__?: { notification?: NativeNotificationApi } }).__TAURI__?.notification;
+}
 
 function isIos() {
   return /iphone|ipad|ipod/i.test(navigator.userAgent);
@@ -58,7 +70,20 @@ async function saveSubscription(subscription: PushSubscription) {
   if (error) throw error;
 }
 
+function cachedNativePermission(): DeviceNotificationState {
+  const cached = window.localStorage.getItem(NATIVE_PERMISSION_KEY);
+  if (cached === "native-ready" || cached === "blocked") return cached;
+  return "available";
+}
+
+function rememberNativePermission(state: DeviceNotificationState) {
+  if (state === "native-ready" || state === "blocked" || state === "available") {
+    window.localStorage.setItem(NATIVE_PERMISSION_KEY, state);
+  }
+}
+
 export function getDeviceNotificationState(): DeviceNotificationState {
+  if (isNativeMobileRuntime()) return cachedNativePermission();
   if (isTauriApp()) return "active";
   if (!("Notification" in window) || !("serviceWorker" in navigator) || !("PushManager" in window)) return "unsupported";
   if (isIos() && !isStandalone()) return "install-required";
@@ -66,11 +91,47 @@ export function getDeviceNotificationState(): DeviceNotificationState {
   return Notification.permission === "granted" ? "active" : "available";
 }
 
+export async function refreshDeviceNotificationState(): Promise<DeviceNotificationState> {
+  if (!isNativeMobileRuntime()) return getDeviceNotificationState();
+  const api = nativeNotificationApi();
+  if (!api) return "unsupported";
+  try {
+    if (await api.isPermissionGranted()) {
+      rememberNativePermission("native-ready");
+      return "native-ready";
+    }
+    return cachedNativePermission();
+  } catch {
+    return "unsupported";
+  }
+}
+
 export async function enableDeviceNotifications(): Promise<DeviceNotificationState> {
+  if (isNativeMobileRuntime()) {
+    const api = nativeNotificationApi();
+    if (!api) return "unsupported";
+    try {
+      if (await api.isPermissionGranted()) {
+        rememberNativePermission("native-ready");
+        return "native-ready";
+      }
+      const permission = await api.requestPermission();
+      const state: DeviceNotificationState = permission === "granted"
+        ? "native-ready"
+        : permission === "denied"
+        ? "blocked"
+        : "available";
+      rememberNativePermission(state);
+      return state;
+    } catch {
+      return "unsupported";
+    }
+  }
+
   if (isTauriApp()) {
     await window.__TAURI__?.core.invoke("show_native_notification", {
       title: "★ Labstar conectado",
-      body: "Mensagens e chamadas aparecerão no sistema.",
+      body: "Alertas locais estão disponíveis neste computador.",
     });
     return "active";
   }
@@ -114,6 +175,10 @@ export async function hasActivePushSubscription() {
 }
 
 export async function disableDeviceNotifications() {
+  if (isNativeMobileRuntime()) {
+    rememberNativePermission(await refreshDeviceNotificationState());
+    return;
+  }
   if (isTauriApp() || !("serviceWorker" in navigator)) return;
   const subscription = await (await navigator.serviceWorker.ready).pushManager.getSubscription();
   if (!subscription) return;
@@ -135,8 +200,9 @@ export async function updateAppBadge(count: number) {
 
 export function deviceNotificationStateMessage(state: DeviceNotificationState) {
   if (state === "active") return "Alertas externos ativos neste dispositivo.";
+  if (state === "native-ready") return "Permissão nativa concedida. Alertas locais funcionam enquanto o Labstar está executando; push remoto em segundo plano aguarda FCM/APNs.";
   if (state === "blocked") return "As notificações estão bloqueadas nas configurações do sistema ou navegador.";
   if (state === "install-required") return "No iPhone/iPad, adicione o Labstar à Tela de Início e abra o app instalado para ativar.";
   if (state === "unsupported") return "Este dispositivo não oferece notificações externas compatíveis.";
-  return "Pronto para ativar alertas externos.";
+  return "Pronto para solicitar a permissão de alertas deste dispositivo.";
 }

@@ -38,7 +38,13 @@
     "deep-link": {
       "desktop": {
         "schemes": ["labstar"]
-      }
+      },
+      "mobile": [
+        {
+          "scheme": ["labstar"],
+          "appLink": false
+        }
+      ]
     }
   },
   "bundle": {
@@ -54,7 +60,7 @@
     ],
     "category": "Business",
     "shortDescription": "Ambiente profissional para empresas, projetos e equipes.",
-    "longDescription": "Labstar organiza empresas, projetos, equipes, comunicação e integrações em uma experiência profissional para desktop.",
+    "longDescription": "Labstar organiza empresas, projetos, equipes, comunicação e integrações em uma experiência profissional para desktop e mobile.",
     "windows": {
       "nsis": {
         "installerIcon": "../public/favicon.ico",

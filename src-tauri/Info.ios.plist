@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>NSCameraUsageDescription</key>
+  <string>O Labstar usa a câmera somente quando você escolhe enviar uma imagem ou participa de uma chamada com vídeo.</string>
+  <key>NSMicrophoneUsageDescription</key>
+  <string>O Labstar usa o microfone somente quando você participa de uma chamada de voz ou vídeo.</string>
+  <key>NSPhotoLibraryUsageDescription</key>
+  <string>O Labstar acessa fotos apenas quando você escolhe uma imagem para enviar ou usar no seu perfil.</string>
+</dict>
+</plist>

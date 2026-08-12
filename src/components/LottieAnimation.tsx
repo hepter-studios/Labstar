@@ -31,6 +31,8 @@ export function LottieAnimation({
     let readyTimer = 0;
     let posterSettled = false;
     const posterTimers: number[] = [];
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const staticFrame = posterFrame ?? 0;
 
     setFailed(false);
     setReady(false);
@@ -45,8 +47,8 @@ export function LottieAnimation({
         instance = lottie.loadAnimation({
           container: ref.current,
           renderer: "svg",
-          loop: posterFrame === undefined ? loop : false,
-          autoplay: posterFrame === undefined,
+          loop: reduceMotion ? false : posterFrame === undefined ? loop : false,
+          autoplay: reduceMotion ? false : posterFrame === undefined,
           animationData: animationData as never,
           rendererSettings: {
             preserveAspectRatio,
@@ -56,9 +58,9 @@ export function LottieAnimation({
         });
         instance.setSpeed(speed);
 
-        const pinPosterFrame = () => {
-          if (disposed || posterFrame === undefined) return;
-          instance?.goToAndStop(posterFrame, true);
+        const pinStaticFrame = () => {
+          if (disposed || (!reduceMotion && posterFrame === undefined)) return;
+          instance?.goToAndStop(staticFrame, true);
         };
 
         const markReady = () => {
@@ -66,13 +68,13 @@ export function LottieAnimation({
           setReady(true);
         };
 
-        const settlePosterFrame = () => {
-          pinPosterFrame();
+        const settleStaticFrame = () => {
+          pinStaticFrame();
           markReady();
-          if (posterFrame === undefined || posterSettled) return;
+          if ((!reduceMotion && posterFrame === undefined) || posterSettled) return;
           posterSettled = true;
-          for (const delay of [120, 400, 900, 1800]) {
-            posterTimers.push(window.setTimeout(pinPosterFrame, delay));
+          for (const delay of [120, 400, 900]) {
+            posterTimers.push(window.setTimeout(pinStaticFrame, delay));
           }
         };
 
@@ -83,14 +85,10 @@ export function LottieAnimation({
           setReady(false);
         };
 
-        instance.addEventListener("DOMLoaded", () => {
-          settlePosterFrame();
-        });
-        instance.addEventListener("loaded_images", settlePosterFrame);
+        instance.addEventListener("DOMLoaded", settleStaticFrame);
+        instance.addEventListener("loaded_images", settleStaticFrame);
         instance.addEventListener("data_ready", () => {
-          if (posterFrame === undefined) {
-            markReady();
-          }
+          if (!reduceMotion && posterFrame === undefined) markReady();
         });
         instance.addEventListener("data_failed", markFailure);
         instance.addEventListener("error", markFailure);
@@ -99,11 +97,11 @@ export function LottieAnimation({
           if (disposed) return;
           const svgRoot = ref.current?.querySelector("svg > g");
           if (!svgRoot) return;
-          if (posterFrame === undefined) {
+          if (!reduceMotion && posterFrame === undefined) {
             markReady();
             return;
           }
-          if (expectedLayerCount === 0 || svgRoot.children.length >= expectedLayerCount) settlePosterFrame();
+          if (expectedLayerCount === 0 || svgRoot.children.length >= expectedLayerCount) settleStaticFrame();
         }, 700);
       })
       .catch((cause) => {

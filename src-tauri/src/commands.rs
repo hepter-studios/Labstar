@@ -4,7 +4,9 @@ use crate::{
     security::{self, ValidatedDeepLink},
 };
 use serde::Serialize;
-use tauri::{AppHandle, Manager, State, UserAttentionType};
+#[cfg(desktop)]
+use tauri::UserAttentionType;
+use tauri::{AppHandle, Manager, State};
 use tauri_plugin_notification::NotificationExt;
 use tauri_plugin_opener::OpenerExt;
 
@@ -73,6 +75,7 @@ pub fn focus_main_window(app: AppHandle) -> Result<(), String> {
     window
         .show()
         .map_err(|error| format!("main_window_show_failed: {error}"))?;
+    #[cfg(desktop)]
     window
         .unminimize()
         .map_err(|error| format!("main_window_restore_failed: {error}"))?;
@@ -88,8 +91,7 @@ pub fn request_main_window_attention(app: AppHandle, critical: bool) -> Result<(
         .get_webview_window("main")
         .ok_or_else(|| "main_window_not_found".to_string())?;
 
-    // A notificação nativa chama a atenção sem reabrir a janela que o usuário fechou.
-    // O clique explícito na notificação ou na bandeja continua usando focus_main_window.
+    #[cfg(desktop)]
     window
         .request_user_attention(Some(if critical {
             UserAttentionType::Critical
@@ -97,6 +99,10 @@ pub fn request_main_window_attention(app: AppHandle, critical: bool) -> Result<(
             UserAttentionType::Informational
         }))
         .map_err(|error| format!("main_window_attention_failed: {error}"))?;
+
+    #[cfg(mobile)]
+    let _ = (window, critical);
+
     Ok(())
 }
 
@@ -131,4 +137,13 @@ pub fn open_profile_connection_url(app: AppHandle, url: String) -> Result<(), St
     app.opener()
         .open_url(safe_url, None::<&str>)
         .map_err(|error| format!("profile_connection_browser_open_failed: {error}"))
+}
+
+#[tauri::command]
+pub fn exit_mobile_app(app: AppHandle) {
+    #[cfg(mobile)]
+    app.exit(0);
+
+    #[cfg(not(mobile))]
+    let _ = app;
 }
