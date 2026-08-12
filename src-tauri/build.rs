@@ -9,6 +9,7 @@ fn main() {
         "show_native_notification",
         "open_auth_url",
         "open_profile_connection_url",
+        "secure_vault_password",
     ];
 
     tauri_build::try_build(
