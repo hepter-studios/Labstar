@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from "react";
 import lottie, { type AnimationItem } from "lottie-web";
-import { isNativeMobileRuntime } from "../lib/native-secure-storage";
 import { loadOnboardingLottie, type OnboardingLottieKind } from "../lib/onboarding-lotties";
 import "../lottie-runtime.css";
 
@@ -22,10 +21,8 @@ export function LottieAnimation({
   const ref = useRef<HTMLDivElement>(null);
   const [failed, setFailed] = useState(false);
   const [ready, setReady] = useState(false);
-  const suppressHeavyMobileSky = kind === "stars" && isNativeMobileRuntime();
 
   useEffect(() => {
-    if (suppressHeavyMobileSky) return undefined;
     const container = ref.current;
     if (!container) return undefined;
 
@@ -121,8 +118,7 @@ export function LottieAnimation({
       instance?.destroy();
       container.replaceChildren();
     };
-  }, [kind, loop, posterFrame, preserveAspectRatio, speed, suppressHeavyMobileSky]);
+  }, [kind, loop, posterFrame, preserveAspectRatio, speed]);
 
-  if (suppressHeavyMobileSky) return null;
   return <div ref={ref} className={`labstar-lottie ${failed ? "failed" : ""} ${ready ? "ready" : ""} ${className}`.trim()} aria-hidden="true" />;
 }
