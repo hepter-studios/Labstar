@@ -44,6 +44,7 @@ export function LottieAnimation({
   const diagnosticMode = kind === "stars" && new URLSearchParams(window.location.search).has("lottie-test");
   const playbackStartFrame = playbackSegment?.[0];
   const playbackEndFrame = playbackSegment?.[1];
+  const hasPlaybackSegment = playbackStartFrame !== undefined && playbackEndFrame !== undefined;
 
   useEffect(() => {
     const container = ref.current;
@@ -83,10 +84,7 @@ export function LottieAnimation({
           container: ref.current,
           renderer: "svg",
           loop: posterFrame === undefined ? loop : false,
-          autoplay: posterFrame === undefined,
-          initialSegment: playbackStartFrame !== undefined && playbackEndFrame !== undefined
-            ? [playbackStartFrame, playbackEndFrame]
-            : undefined,
+          autoplay: posterFrame === undefined && !hasPlaybackSegment,
           animationData: animationData as never,
           rendererSettings: {
             preserveAspectRatio,
@@ -101,6 +99,16 @@ export function LottieAnimation({
         const pinPosterFrame = () => {
           if (disposed || posterFrame === undefined) return;
           instance?.goToAndStop(posterFrame, true);
+        };
+
+        const playConfiguredSegment = () => {
+          if (
+            disposed
+            || posterFrame !== undefined
+            || playbackStartFrame === undefined
+            || playbackEndFrame === undefined
+          ) return;
+          instance?.playSegments([playbackStartFrame, playbackEndFrame], true);
         };
 
         const markReady = () => {
@@ -131,10 +139,13 @@ export function LottieAnimation({
           }
         };
 
-        instance.addEventListener("DOMLoaded", settlePosterFrame);
+        instance.addEventListener("DOMLoaded", () => {
+          playConfiguredSegment();
+          settlePosterFrame();
+        });
         instance.addEventListener("loaded_images", settlePosterFrame);
         instance.addEventListener("data_ready", () => {
-          if (posterFrame === undefined) {
+          if (posterFrame === undefined && !hasPlaybackSegment) {
             markReady();
           }
         });
@@ -146,6 +157,13 @@ export function LottieAnimation({
           const svgRoot = ref.current?.querySelector("svg > g");
           if (!svgRoot) return;
           if (posterFrame === undefined) {
+            if (hasPlaybackSegment) {
+              if (expectedLayerCount === 0 || svgRoot.children.length >= expectedLayerCount) {
+                playConfiguredSegment();
+                markReady();
+              }
+              return;
+            }
             markReady();
             return;
           }
@@ -171,7 +189,7 @@ export function LottieAnimation({
       instance?.destroy();
       container.replaceChildren();
     };
-  }, [diagnosticMode, kind, loop, playbackEndFrame, playbackStartFrame, posterFrame, preserveAspectRatio, speed]);
+  }, [diagnosticMode, hasPlaybackSegment, kind, loop, playbackEndFrame, playbackStartFrame, posterFrame, preserveAspectRatio, speed]);
 
   if (diagnosticMode) {
     const statusLabel = diagnosticState === "loading"
