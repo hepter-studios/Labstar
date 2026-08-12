@@ -76,9 +76,8 @@ pub fn run() {
             std::fs::create_dir_all(&app_data_directory)?;
 
             let stronghold_salt = app.path().app_local_data_dir()?.join("stronghold-salt.txt");
-            app.handle().plugin(
-                tauri_plugin_stronghold::Builder::with_argon2(&stronghold_salt).build(),
-            )?;
+            app.handle()
+                .plugin(tauri_plugin_stronghold::Builder::with_argon2(&stronghold_salt).build())?;
 
             #[cfg(desktop)]
             {
