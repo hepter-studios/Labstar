@@ -118,7 +118,6 @@ jobs:
       - name: Instalar Android 35 e NDK 28
         shell: bash
         run: |
-          yes | sdkmanager --licenses >/dev/null
           sdkmanager \
             "platform-tools" \
             "platforms;android-35" \
