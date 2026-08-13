@@ -120,11 +120,9 @@
   inset: 0;
   width: auto;
   min-height: 0;
-  grid-template-rows: auto auto;
-  align-content: center;
-  justify-content: center;
-  background: rgba(1,4,10,.72);
-  backdrop-filter: blur(8px);
+  place-items: center;
+  background: transparent;
+  backdrop-filter: none;
   filter: none;
   animation: lottie-achievement-show 5s ease both;
 }

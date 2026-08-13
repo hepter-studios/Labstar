@@ -199,6 +199,11 @@ html[data-labstar-theme="light"] .sync-state {
   color: #111318;
 }
 
+html[data-labstar-theme="light"] .sync-state.carregando::before,
+html[data-labstar-theme="light"] .sync-state.salvando::before {
+  filter: brightness(0);
+}
+
 html[data-labstar-theme="light"] :where(
   .header .icon-button,
   .header .labstar-theme-toggle,
@@ -1045,6 +1050,16 @@ html[data-labstar-theme="light"] .dm-own-profile > b {
   color: #34765e;
 }
 
+html[data-labstar-theme="light"] .dm-v6 .dm-own-profile > span > strong,
+html[data-labstar-theme="light"] .channel-sidebar .channel-user > div > strong {
+  color: #111318 !important;
+}
+
+html[data-labstar-theme="light"] .dm-v6 .dm-own-profile > span > small,
+html[data-labstar-theme="light"] .channel-sidebar .channel-user > div > small {
+  color: #4f5d75 !important;
+}
+
 html[data-labstar-theme="light"] .dm-inbox-tabs button b {
   color: #365c99;
   background: rgba(117, 154, 230, .14);
@@ -1418,6 +1433,20 @@ html[data-labstar-theme="light"] .settings-section > header strong {
 
 html[data-labstar-theme="light"] .settings-section > header p {
   color: var(--neu-ink-muted) !important;
+}
+
+html[data-labstar-theme="light"] .achievements-summary > span {
+  color: #526ea8;
+}
+
+html[data-labstar-theme="light"] .achievements-summary > span strong,
+html[data-labstar-theme="light"] .achievements-summary > div b {
+  color: var(--neu-ink);
+}
+
+html[data-labstar-theme="light"] .achievements-summary > span small,
+html[data-labstar-theme="light"] .achievements-summary > div small {
+  color: #536078;
 }
 
 html[data-labstar-theme="light"] .global-settings-brand > span {

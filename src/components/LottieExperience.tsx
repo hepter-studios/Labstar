@@ -1,6 +1,6 @@
 import { X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { ACHIEVEMENTS_REFRESH_EVENT, ACHIEVEMENT_CATALOG, requestOpenAchievement, syncOwnAchievements, type AchievementKey } from "../lib/achievements";
+import { ACHIEVEMENTS_REFRESH_EVENT, ACHIEVEMENT_CATALOG, syncOwnAchievements, type AchievementKey } from "../lib/achievements";
 import { LottieAnimation } from "./LottieAnimation";
 import type { OnboardingLottieKind } from "../lib/onboarding-lotties";
 import "../lottie-experience.css";
@@ -174,23 +174,17 @@ export function MascotCelebrationHost({ memberId }: { memberId?: string }) {
   if (!celebration) return null;
   const variant = celebration.variant ?? "happy";
   const mascot = MASCOT_VARIANTS[variant];
-  const achievement = celebration.achievementKey
-    ? ACHIEVEMENT_CATALOG.find((item) => item.key === celebration.achievementKey)
-    : undefined;
+  const achievementCelebration = variant === "achievement";
   return (
-    <aside className={`lottie-mascot-celebration ${variant}`} aria-live="polite">
-      <button type="button" onClick={() => setCelebration(null)} aria-label="Dispensar mascote"><X size={14} /></button>
+    <aside className={`lottie-mascot-celebration ${variant}`} aria-live="polite" aria-label={achievementCelebration ? "Conquista desbloqueada" : undefined}>
+      {!achievementCelebration && <button type="button" onClick={() => setCelebration(null)} aria-label="Dispensar mascote"><X size={14} /></button>}
       <LottieAnimation key={celebration.key} kind={celebration.kind ?? mascot.kind} className="lottie-mascot-animation" preserveAspectRatio="xMidYMid meet" />
-      <span className="lottie-mascot-message">
-        {variant === "achievement" && <em>Conquista desbloqueada{achievement ? ` · ${achievement.rarity}` : ""}</em>}
-        <strong>{celebration.title || mascot.title}</strong>
-        {celebration.message && <small>{celebration.message}</small>}
-        {celebration.achievementKey && (
-          <button type="button" onClick={() => { requestOpenAchievement(celebration.achievementKey!); setCelebration(null); }}>
-            Inspecionar conquista
-          </button>
-        )}
-      </span>
+      {!achievementCelebration && (
+        <span className="lottie-mascot-message">
+          <strong>{celebration.title || mascot.title}</strong>
+          {celebration.message && <small>{celebration.message}</small>}
+        </span>
+      )}
     </aside>
   );
 }

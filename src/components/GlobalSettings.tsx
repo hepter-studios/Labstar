@@ -91,12 +91,14 @@ export function GlobalSettings({
   const [cameras, setCameras] = useState<MediaDeviceInfo[]>([]);
   const [achievements, setAchievements] = useState<AchievementProgress[]>([]);
   const [achievementState, setAchievementState] = useState<"idle" | "loading" | "ready" | "pending" | "error">("idle");
+  const [inspectedAchievementKey, setInspectedAchievementKey] = useState<AchievementKey | null>(initialAchievementKey ?? null);
   const avatarInput = useRef<HTMLInputElement>(null);
 
   useEffect(() => setDraft(settings), [settings]);
   useEffect(() => setProfileName(member.name), [member.name]);
   useEffect(() => setProfileBio(member.bio ?? ""), [member.bio]);
   useEffect(() => { if (initialTab) setTab(initialTab); }, [initialTab]);
+  useEffect(() => { if (initialAchievementKey) setInspectedAchievementKey(initialAchievementKey); }, [initialAchievementKey]);
 
   useEffect(() => {
     if (tab !== "achievements" || !initialAchievementKey) return undefined;
@@ -362,7 +364,21 @@ export function GlobalSettings({
                     const target = saved?.target ?? achievement.target;
                     const unlocked = Boolean(saved?.unlockedAt);
                     return (
-                      <article className={`achievement-card ${unlocked ? "unlocked" : "locked"} ${achievement.key === initialAchievementKey ? "inspected" : ""}`} data-achievement-key={achievement.key} key={achievement.key}>
+                      <article
+                        className={`achievement-card ${unlocked ? "unlocked" : "locked"} ${achievement.key === inspectedAchievementKey ? "inspected" : ""}`}
+                        data-achievement-key={achievement.key}
+                        role="button"
+                        tabIndex={0}
+                        aria-pressed={achievement.key === inspectedAchievementKey}
+                        aria-label={`Inspecionar conquista ${achievement.title}`}
+                        onClick={() => setInspectedAchievementKey(achievement.key)}
+                        onKeyDown={(event) => {
+                          if (event.key !== "Enter" && event.key !== " ") return;
+                          event.preventDefault();
+                          setInspectedAchievementKey(achievement.key);
+                        }}
+                        key={achievement.key}
+                      >
                         <div className="achievement-art" data-kind={achievement.kind}><LottieAnimation kind={achievement.kind} posterFrame={"posterFrame" in achievement ? achievement.posterFrame : undefined} preserveAspectRatio="xMidYMid meet" /></div>
                         <div className="achievement-copy">
                           <span><b>{achievement.rarity}</b>{unlocked ? <em>Desbloqueada</em> : <em><LockKeyhole size={10} /> Bloqueada</em>}</span>
