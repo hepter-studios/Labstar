@@ -1,61 +1,68 @@
-# Documentação interna do Labstar
+# 🛰️ Labstar Documentation
 
-Comece pelo `README.md` da raiz e use este índice para encontrar a documentação correta. O objetivo é permitir que uma pessoa autorizada ou o Codex reconstrua, opere e continue o projeto sem depender de conversas antigas.
+Labstar is evolving into a **public multi-organization product** while keeping organization workspaces private by default.
 
-| Documento | Quando usar |
+## 🌌 Main documents
+
+| Destination | Document |
 | --- | --- |
-| [`BUILD_FROM_SOURCE.md`](BUILD_FROM_SOURCE.md) | reconstruir web, Tauri, backend e instaladores diretamente do GitHub |
-| [`ENVIRONMENT_SETUP.md`](ENVIRONMENT_SETUP.md) | configurar variáveis, secrets, OAuth, CORS e ambientes sem expor credenciais |
-| [`DATABASE_BOOTSTRAP.md`](DATABASE_BOOTSTRAP.md) | preparar/restaurar banco e aplicar migrações na ordem correta |
-| [`PROJECT_MAP.md`](PROJECT_MAP.md) | entender onde estão frontend, Tauri, Rust, backend, banco, branches e serviços |
-| [`PRODUCT_COMPLETION_MAP.md`](PRODUCT_COMPLETION_MAP.md) | mapa completo do produto: organizações, idiomas, superfícies de programação, integrações, mobile, desktop e caminho comercial |
-| [`TEAM_ONBOARDING.md`](TEAM_ONBOARDING.md) | integrar uma pessoa nova ou orientar o Codex antes de alterar código |
-| [`ARCHITECTURE_DECISIONS.md`](ARCHITECTURE_DECISIONS.md) | conferir decisões que não devem ser revertidas sem discussão |
-| [`OPERATIONS.md`](OPERATIONS.md) | diagnosticar API, login, deploy, backup, incidente e rollback |
-| [`RELEASE_CHECKLIST.md`](RELEASE_CHECKLIST.md) | preparar instalador, release interna, beta ou lançamento público |
-| [`UPDATER.md`](UPDATER.md) | implementar atualização automática com assinatura e rollback |
-| [`INTERNATIONAL_RELEASE_ROADMAP.md`](INTERNATIONAL_RELEASE_ROADMAP.md) | planejar o caminho até o lançamento internacional |
-| [`CODEX_HANDOFF.md`](CODEX_HANDOFF.md) | continuar o trabalho com Codex sem perder contexto ou quebrar arquitetura |
-| [`../CONTRIBUTING.md`](../CONTRIBUTING.md) | padrão de branches, commits, PRs, testes e segurança |
+| ⭐ Product overview | [`../README.md`](../README.md) |
+| ✨ Evolution roadmap | [`LABSTAR_EVOLUTION_ROADMAP.md`](LABSTAR_EVOLUTION_ROADMAP.md) |
+| 🌍 International roadmap | [`INTERNATIONAL_RELEASE_ROADMAP.md`](INTERNATIONAL_RELEASE_ROADMAP.md) |
+| 🧭 Product completion map | [`PRODUCT_COMPLETION_MAP.md`](PRODUCT_COMPLETION_MAP.md) |
+| 🗺️ Project map | [`PROJECT_MAP.md`](PROJECT_MAP.md) |
+| 🏗️ Architecture decisions | [`ARCHITECTURE_DECISIONS.md`](ARCHITECTURE_DECISIONS.md) |
 
-## Ordem recomendada para uma pessoa nova
+## 🚀 Build and operations
 
-1. `README.md`;
-2. `BUILD_FROM_SOURCE.md`;
-3. `PROJECT_MAP.md`;
-4. `PRODUCT_COMPLETION_MAP.md`;
-5. `ENVIRONMENT_SETUP.md`;
-6. `DATABASE_BOOTSTRAP.md` quando houver trabalho de banco;
-7. `TEAM_ONBOARDING.md`;
-8. `ARCHITECTURE_DECISIONS.md`;
-9. `CONTRIBUTING.md`;
-10. issue e PR da tarefa;
-11. documento operacional ou de release aplicável.
+| Document | Purpose |
+| --- | --- |
+| [`BUILD_FROM_SOURCE.md`](BUILD_FROM_SOURCE.md) | build web, desktop and backend |
+| [`ENVIRONMENT_SETUP.md`](ENVIRONMENT_SETUP.md) | variables, OAuth, CORS and environments |
+| [`DATABASE_BOOTSTRAP.md`](DATABASE_BOOTSTRAP.md) | database setup, restore and migrations |
+| [`OPERATIONS.md`](OPERATIONS.md) | diagnostics, deploy, incidents and rollback |
+| [`RELEASE_CHECKLIST.md`](RELEASE_CHECKLIST.md) | release readiness |
+| [`UPDATER.md`](UPDATER.md) | signed updates and rollback |
+| [`TEAM_ONBOARDING.md`](TEAM_ONBOARDING.md) | maintainer onboarding |
+| [`CODEX_HANDOFF.md`](CODEX_HANDOFF.md) | continuity for agent-assisted work |
 
-## Fonte de verdade
+## 🔐 Public project policies
 
-- estado do código: branch e commit do GitHub;
-- reconstrução: `BUILD_FROM_SOURCE.md`;
-- ambientes/secrets: `ENVIRONMENT_SETUP.md`;
-- banco/migrações: `DATABASE_BOOTSTRAP.md` e arquivos SQL versionados;
-- direção e ordem do produto: `PRODUCT_COMPLETION_MAP.md`;
-- estado da integração: PR #7;
-- tarefas e matriz de testes: Issue #8;
-- backend: PR #5 e branch `feat/rust-backend-clean`;
-- autenticação/migrações: PR #3 e branch `fix/auth-membership-access`;
-- instaladores: workflow privado `Gerar instalador Windows integrado`;
-- decisões permanentes: `ARCHITECTURE_DECISIONS.md`;
-- updater e assinatura: `UPDATER.md` e Issue #9.
+- [`../CONTRIBUTING.md`](../CONTRIBUTING.md) — contribution workflow and validation
+- [`../SECURITY.md`](../SECURITY.md) — private vulnerability reporting and organization-isolation boundary
+- [`../CODE_OF_CONDUCT.md`](../CODE_OF_CONDUCT.md) — expected behavior in public project spaces
 
-## Regra durante a fase de PRs empilhados
+## ⚖️ Legal and privacy drafts
 
-Nem tudo aparece na `main` ainda. Isso é intencional enquanto os testes estão em andamento.
+These are **pre-release planning drafts** and require professional legal review before broad commercial use:
 
-- PR #3 contém autenticação e SQL;
-- PR #5 contém backend Rust;
-- PR #1 contém a fundação Tauri/Rust;
-- PR #7 contém a integração desktop usada nos instaladores de teste.
+- [`legal/TERMS_OF_USE_DRAFT.md`](legal/TERMS_OF_USE_DRAFT.md)
+- [`legal/PRIVACY_NOTICE_DRAFT.md`](legal/PRIVACY_NOTICE_DRAFT.md)
 
-Não mova arquivos entre branches apenas para “parecer organizado”. A integração final será feita somente depois dos testes e da revisão da ordem de merge.
+No repository software license is currently included. Public source visibility is separate from SaaS/product Terms of Use.
 
-Não use mensagens antigas, instaladores sem commit identificado ou memória informal como fonte única de verdade.
+## 🪐 Product model to preserve
+
+1. Labstar is a public product.
+2. Organizations are private by default.
+3. One user may belong to multiple organizations.
+4. Protected authorization is enforced by trusted backend/data rules.
+5. Public developer profiles are opt-in.
+6. GitHub and other integrations use least privilege.
+7. Public data is deliberately projected instead of making private organization tables public.
+
+## 🔭 Recommended reading order
+
+1. [`../README.md`](../README.md)
+2. [`LABSTAR_EVOLUTION_ROADMAP.md`](LABSTAR_EVOLUTION_ROADMAP.md)
+3. [`PROJECT_MAP.md`](PROJECT_MAP.md)
+4. [`PRODUCT_COMPLETION_MAP.md`](PRODUCT_COMPLETION_MAP.md)
+5. [`ARCHITECTURE_DECISIONS.md`](ARCHITECTURE_DECISIONS.md)
+6. [`ENVIRONMENT_SETUP.md`](ENVIRONMENT_SETUP.md)
+7. [`../CONTRIBUTING.md`](../CONTRIBUTING.md)
+8. [`../SECURITY.md`](../SECURITY.md)
+9. the current issue/PR related to the work
+
+Historical chats, old installers and outdated branch notes are not sufficient sources of truth on their own.
+
+<p align="center">🌌　⭐　🛰️　🪐　🚀　🪐　🛰️　⭐　🌌</p>
