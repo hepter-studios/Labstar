@@ -1,9 +1,10 @@
-import { Settings } from "lucide-react";
+import { Moon, Settings, Sun } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
   DEFAULT_APP_SETTINGS,
   loadAppSettings,
+  saveAppSettings,
   type AppSettings,
 } from "../lib/app-settings";
 import { OPEN_ACHIEVEMENT_EVENT, type AchievementKey } from "../lib/achievements";
@@ -40,6 +41,7 @@ export function GlobalSettingsPortal() {
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_APP_SETTINGS);
   const [settingsLoaded, setSettingsLoaded] = useState(false);
   const [focusedAchievement, setFocusedAchievement] = useState<AchievementKey | null>(null);
+  const [themeSaving, setThemeSaving] = useState(false);
   const startupApplied = useRef(false);
 
   useEffect(() => {
@@ -141,18 +143,50 @@ export function GlobalSettingsPortal() {
     if (currentlyEnabled !== enabled) button.click();
   }
 
+  async function toggleTheme() {
+    if (themeSaving) return;
+    const previous = settings;
+    const next: AppSettings = {
+      ...settings,
+      themeMode: settings.themeMode === "light" ? "dark" : "light",
+    };
+    setThemeSaving(true);
+    setSettings(next);
+    try {
+      setSettings(await saveAppSettings(next));
+    } catch {
+      setSettings(previous);
+      await saveAppSettings(previous).catch(() => undefined);
+    } finally {
+      setThemeSaving(false);
+    }
+  }
+
   if (!target || !member) return null;
 
+  const lightMode = settings.themeMode === "light";
   const launcher = createPortal(
-    <button
-      type="button"
-      data-tooltip="Configurações"
-      aria-label="Configurações do Labstar"
-      className={`${mobileLauncher ? "mobile-settings-button" : ""} ${open ? "active" : ""}`.trim()}
-      onClick={() => { setFocusedAchievement(null); setOpen((value) => !value); }}
-    >
-      <Settings size={17} />
-    </button>,
+    <>
+      <button
+        type="button"
+        data-tooltip={lightMode ? "Usar modo escuro" : "Usar modo claro neomórfico"}
+        aria-label={lightMode ? "Ativar modo escuro do Labstar" : "Ativar modo claro do Labstar"}
+        className={`${mobileLauncher ? "mobile-settings-button" : ""} labstar-theme-toggle ${lightMode ? "active" : ""}`.trim()}
+        onClick={() => void toggleTheme()}
+        disabled={themeSaving}
+      >
+        {lightMode ? <Moon size={17} /> : <Sun size={17} />}
+      </button>
+      <button
+        type="button"
+        data-tooltip="Configurações"
+        aria-label="Configurações do Labstar"
+        className={`${mobileLauncher ? "mobile-settings-button" : ""} ${open ? "active" : ""}`.trim()}
+        onClick={() => { setFocusedAchievement(null); setOpen((value) => !value); }}
+      >
+        <Settings size={17} />
+      </button>
+    </>,
     target,
   );
 
