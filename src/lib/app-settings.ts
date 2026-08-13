@@ -1,4 +1,5 @@
 import "../light-neumorphism.css";
+import { applyLightSurfaceEffects } from "../light-surface-effects";
 import { isTauriApp } from "./native";
 
 export type AppSettings = {
@@ -117,6 +118,7 @@ export function applyAppSettings(settings: AppSettings) {
   root.dataset.labstarNebula = settings.nebulaIntensity;
   root.dataset.labstarMotion = settings.reducedMotion ? "reduced" : "full";
   root.dataset.labstarMessageSounds = settings.messageSounds ? "on" : "off";
+  applyLightSurfaceEffects();
 }
 
 export function subscribeToAppSettings(callback: (settings: AppSettings) => void) {
