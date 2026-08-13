@@ -98,6 +98,16 @@
   transform: scale(1.48) rotate(7deg);
 }
 
+.map-ambient-astronaut-flow.map-ambient-diagonal {
+  right: -190px;
+  left: auto;
+  animation-name: map-ambient-diagonal-flight-reverse;
+}
+
+.map-ambient-astronaut-flow.map-ambient-diagonal > svg {
+  transform: scale(1.48) rotate(-7deg);
+}
+
 .map-ambient-planet-large,
 .map-ambient-planet-small {
   z-index: 1;
@@ -155,6 +165,22 @@
   88%, 100% {
     opacity: 0;
     transform: translate3d(126vw, -73vh, 0) scale(.68) rotate(9deg);
+  }
+}
+
+@keyframes map-ambient-diagonal-flight-reverse {
+  0% {
+    opacity: 0;
+    transform: translate3d(8vw, 8vh, 0) scale(.72) rotate(7deg);
+  }
+  8% { opacity: .86; }
+  72% {
+    opacity: .78;
+    transform: translate3d(-86vw, -52vh, 0) scale(.95) rotate(-5deg);
+  }
+  88%, 100% {
+    opacity: 0;
+    transform: translate3d(-126vw, -73vh, 0) scale(.68) rotate(-9deg);
   }
 }
 
