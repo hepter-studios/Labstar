@@ -9,6 +9,37 @@
   display: none !important;
 }
 
+.project-lottie-sky-active .canvas-meta,
+.project-lottie-sky-active .zoom-controls {
+  border-color: rgba(255, 255, 255, .09) !important;
+  background: rgba(5, 7, 12, .92) !important;
+  box-shadow: 0 14px 34px rgba(0, 0, 0, .48) !important;
+}
+
+.project-lottie-sky-active .canvas-meta > span:not(.warning),
+.project-lottie-sky-active .zoom-controls > span,
+.project-lottie-sky-active .zoom-controls button {
+  color: #d6deee !important;
+}
+
+.project-lottie-sky-active .canvas-meta .warning {
+  color: #d6a170 !important;
+}
+
+.project-lottie-sky-active .canvas-meta > span {
+  border-color: rgba(255, 255, 255, .1) !important;
+  background-color: transparent !important;
+}
+
+.project-lottie-sky-active .zoom-controls > i {
+  background-color: rgba(255, 255, 255, .1) !important;
+}
+
+.project-lottie-sky-active .zoom-controls button:hover {
+  color: #ffffff !important;
+  background: rgba(255, 255, 255, .08) !important;
+}
+
 .project-sky-poster,
 .lottie-project-space-background {
   position: absolute;
@@ -51,41 +82,94 @@
   opacity: 0;
   pointer-events: none;
   will-change: transform, opacity;
-  filter: drop-shadow(0 12px 22px rgba(0, 0, 0, .28));
+  filter: drop-shadow(0 12px 22px rgba(0, 0, 0, .24));
 }
 
-.map-ambient-rocket {
-  left: -150px;
-  top: 67%;
-  width: 102px;
-  height: 132px;
-  animation: map-ambient-rocket-flight 36s linear -25s infinite;
+.map-ambient-diagonal {
+  left: -190px;
+  top: 76%;
+  width: clamp(112px, 9vw, 152px);
+  height: clamp(112px, 9vw, 152px);
+  animation: map-ambient-diagonal-flight 15.5s cubic-bezier(.37,.04,.68,.96) both;
 }
 
-.map-ambient-rocket > svg {
+.map-ambient-diagonal > svg {
   overflow: visible !important;
-  transform: scale(1.65) rotate(64deg);
+  transform: scale(1.48) rotate(7deg);
 }
 
-@keyframes map-ambient-rocket-flight {
-  0%, 70% {
+.map-ambient-planet-large,
+.map-ambient-planet-small {
+  z-index: 1;
+  animation: map-ambient-planet-visit 15.5s ease-in-out both;
+}
+
+.map-ambient-planet-large {
+  right: 4.5%;
+  top: 5.5%;
+  width: clamp(82px, 6.6vw, 116px);
+  height: clamp(82px, 6.6vw, 116px);
+}
+
+.map-ambient-planet-small {
+  left: 15.5%;
+  top: 36%;
+  width: clamp(48px, 4.2vw, 70px);
+  height: clamp(48px, 4.2vw, 70px);
+}
+
+.map-ambient-planet-large > svg,
+.map-ambient-planet-small > svg {
+  overflow: visible !important;
+  transform: scale(1.24);
+}
+
+.map-ambient-floating {
+  left: clamp(32px, 7vw, 132px);
+  bottom: clamp(48px, 9vh, 116px);
+  width: clamp(92px, 7.5vw, 132px);
+  height: clamp(92px, 7.5vw, 132px);
+  animation: map-ambient-space-float 15.5s ease-in-out both;
+}
+
+.map-ambient-floating > svg {
+  overflow: visible !important;
+  transform: scale(1.22);
+}
+
+.map-ambient-free-consultation > svg,
+.map-ambient-space-boy-developer > svg {
+  transform: scale(1.05);
+}
+
+@keyframes map-ambient-diagonal-flight {
+  0% {
     opacity: 0;
-    transform: translate3d(-10vw, 11vh, 0) scale(.58) rotate(-4deg);
+    transform: translate3d(-8vw, 8vh, 0) scale(.72) rotate(-7deg);
   }
-  72% { opacity: 0; }
-  74% { opacity: .8; }
-  84% {
-    opacity: .72;
-    transform: translate3d(62vw, -34vh, 0) scale(.82) rotate(2deg);
+  8% { opacity: .86; }
+  72% {
+    opacity: .78;
+    transform: translate3d(86vw, -52vh, 0) scale(.95) rotate(5deg);
   }
-  89% {
+  88%, 100% {
     opacity: 0;
-    transform: translate3d(124vw, -62vh, 0) scale(.48) rotate(6deg);
+    transform: translate3d(126vw, -73vh, 0) scale(.68) rotate(9deg);
   }
-  100% {
-    opacity: 0;
-    transform: translate3d(124vw, -62vh, 0) scale(.48) rotate(6deg);
-  }
+}
+
+@keyframes map-ambient-planet-visit {
+  0%, 100% { opacity: 0; transform: translate3d(16px, 10px, 0) scale(.9) rotate(2deg); }
+  12% { opacity: .72; }
+  46% { opacity: .8; transform: translate3d(-7px, -8px, 0) scale(1) rotate(-2deg); }
+  82% { opacity: .68; transform: translate3d(6px, -17px, 0) scale(.96) rotate(2deg); }
+}
+
+@keyframes map-ambient-space-float {
+  0%, 100% { opacity: 0; transform: translate3d(-14px, 18px, 0) scale(.88) rotate(-3deg); }
+  13% { opacity: .68; }
+  48% { opacity: .78; transform: translate3d(13px, -10px, 0) scale(1) rotate(3deg); }
+  84% { opacity: .62; transform: translate3d(-4px, -22px, 0) scale(.94) rotate(-1deg); }
 }
 
 html[data-labstar-motion="reduced"] .map-ambient-flybys {
@@ -171,6 +255,8 @@ html[data-labstar-motion="reduced"] .map-ambient-flybys {
   align-content: center;
   justify-items: center;
   gap: 4px;
+  background-color: #010207 !important;
+  color: #f7f9ff !important;
 }
 
 .labstar-access-loader-animation {

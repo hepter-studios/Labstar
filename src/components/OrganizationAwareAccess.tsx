@@ -125,8 +125,10 @@ export function OrganizationAwareAccess({ children }: { children: ReactNode }) {
   useEffect(() => {
     void resolveRoute();
     const unsubscribe = subscribeToAccessChanges((event) => {
-      if (event === "TOKEN_REFRESHED") return;
-      setRoute("resolving");
+      if (event === "INITIAL_SESSION" || event === "TOKEN_REFRESHED") return;
+      // Supabase can reaffirm SIGNED_IN whenever the tab returns to the foreground.
+      // Re-evaluate in place so that event does not look like a page reload.
+      if (event === "SIGNED_OUT") setRoute("resolving");
       void resolveRoute();
     });
     return unsubscribe;
