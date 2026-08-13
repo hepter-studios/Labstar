@@ -258,7 +258,7 @@ export function WorkItemsCenter() {
         </div>
       </header>
 
-      <div className="work-items-summary">
+      <div className="work-items-summary" data-labstar-liquid-group>
         <button type="button" className={filter === "mine" ? "active" : ""} onClick={() => setFilter("mine")}><UserRound size={14} /><span>Para mim</span><b>{mineItems.length}</b></button>
         <button type="button" className={filter === "open" ? "active" : ""} onClick={() => setFilter("open")}><CircleDot size={14} /><span>Em aberto</span><b>{openItems.length}</b></button>
         <button type="button" className={`${filter === "decisions" ? "active" : ""} ${decisions.length ? "attention" : ""}`} onClick={() => setFilter("decisions")}><Gavel size={14} /><span>Decisões</span><b>{decisions.length}</b></button>

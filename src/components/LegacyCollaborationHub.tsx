@@ -102,6 +102,7 @@ import { MeetingRoomV2 } from "./MeetingRoomV2";
 import { GithubWebhookSettings } from "./IntegrationWebhookBridge";
 import { DeveloperComposerTools, handleDeveloperComposerKeyDown } from "./DeveloperComposerTools";
 import { DeveloperCreateMenu, DeveloperMarkdownStudio, README_TEMPLATE } from "./DeveloperMarkdownStudio";
+import { SoapBubbleField } from "./SoapBubbleField";
 import {
   GithubIntegrationMessage,
   normalizeIntegrationMessageBody,
@@ -861,7 +862,9 @@ function MessageRoom({ channel, space, member }: { channel: LabstarChannel; spac
         <span>{filtered.length} mensagens</span>
       </div>
       <div ref={messageScrollRef} className="message-scroll">
-        <section className="channel-welcome">
+        <SoapBubbleField />
+        <div className="message-scroll-content">
+          <section className="channel-welcome">
           <span>{channel.type === "announcement" ? <Megaphone size={23} /> : channel.type === "rules" ? <ShieldCheck size={23} /> : <Hash size={23} />}</span>
           <h2>Este é o início de #{channel.name}</h2>
           <p>{channel.description || "Registre decisões, compartilhe arquivos e mantenha toda a equipe alinhada."}</p>
@@ -947,8 +950,9 @@ function MessageRoom({ channel, space, member }: { channel: LabstarChannel; spac
             </article>
           );
         })}
-        {loadError && <div className="message-empty">{loadError} <button type="button" onClick={() => { setLoading(true); void refreshMessages(); }}>Tentar novamente</button></div>}
-        {!loading && !filtered.length && messageSearch && <div className="message-empty">Nenhuma mensagem corresponde à busca.</div>}
+          {loadError && <div className="message-empty">{loadError} <button type="button" onClick={() => { setLoading(true); void refreshMessages(); }}>Tentar novamente</button></div>}
+          {!loading && !filtered.length && messageSearch && <div className="message-empty">Nenhuma mensagem corresponde à busca.</div>}
+        </div>
       </div>
 
       {canWrite ? (

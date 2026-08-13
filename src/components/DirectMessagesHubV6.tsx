@@ -93,6 +93,7 @@ import {
 import { PrivateCallOverlay } from "./PrivateCallOverlay";
 import { DeveloperComposerTools, handleDeveloperComposerKeyDown } from "./DeveloperComposerTools";
 import { DeveloperCreateMenu, DeveloperMarkdownStudio, README_TEMPLATE } from "./DeveloperMarkdownStudio";
+import { SoapBubbleField } from "./SoapBubbleField";
 
 const dmEmojiSet = [
   "😀", "😃", "😄", "😁", "😂", "🤣", "😊", "🥹",
@@ -572,7 +573,7 @@ export function DirectMessagesHub({ member, onOpenWorkspace }: Props) {
               </div>
             </header>
 
-            <div className="dm-home-tabs">
+            <div className="dm-home-tabs" data-labstar-liquid-group>
               <button className={homeTab === "for-you" ? "active" : ""} onClick={() => setHomeTab("for-you")}>Para você</button>
               <button className={homeTab === "recent" ? "active" : ""} onClick={() => setHomeTab("recent")}>Recentes</button>
               <button className={homeTab === "favorites" ? "active" : ""} onClick={() => setHomeTab("favorites")}>Favoritos</button>
@@ -659,7 +660,7 @@ function InboxPanel({
         <div><Inbox size={19} /><strong>Caixa de entrada</strong></div>
         <div><button title="Marcar tudo como lido" onClick={onMarkAll}><Check size={15} /></button></div>
       </header>
-      <div className="dm-inbox-tabs">
+      <div className="dm-inbox-tabs" data-labstar-liquid-group>
         <button className={inboxTab === "unread" ? "active" : ""} onClick={() => setInboxTab("unread")}>Não lidas <b>{unreadCount}</b></button>
         <button className={inboxTab === "mentions" ? "active" : ""} onClick={() => setInboxTab("mentions")}>Menções <b>{mentionCount}</b></button>
       </div>
@@ -1006,7 +1007,9 @@ function DirectConversation({
         </header>
 
         <div ref={messageScrollRef} className="dm-message-scroll">
-          <section className="dm-thread-intro">
+          <SoapBubbleField />
+          <div className="dm-message-scroll-content">
+            <section className="dm-thread-intro">
             <Avatar name={contact.name} url={contact.avatarUrl} size="xl" status={contactOnline ? "online" : "offline"} />
             <h2>{contact.name}</h2>
             <span>{contact.jobRoles[0]?.name || contact.jobTitle || "Membro da Labstar"}</span>
@@ -1030,7 +1033,8 @@ function DirectConversation({
           {!loading && threadId && !visibleMessages.length && (
             <div className="dm-thread-empty"><MessageSquare size={25} /><strong>{pinnedOnly ? "Nenhuma mensagem fixada" : "Nenhuma mensagem ainda"}</strong><span>{pinnedOnly ? "Fixe mensagens importantes para encontrá-las aqui." : `Envie a primeira mensagem para ${contact.name}.`}</span></div>
           )}
-          {!threadId && <div className="dm-thread-empty"><MessageSquare size={25} /><strong>Conversa indisponível</strong><span>A estrutura privada ainda não foi ativada neste ambiente.</span></div>}
+            {!threadId && <div className="dm-thread-empty"><MessageSquare size={25} /><strong>Conversa indisponível</strong><span>A estrutura privada ainda não foi ativada neste ambiente.</span></div>}
+          </div>
         </div>
 
         <form

@@ -1,4 +1,3 @@
-import "../light-neumorphism.css";
 import { applyLightSurfaceEffects } from "../light-surface-effects";
 import { isTauriApp } from "./native";
 

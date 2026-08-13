@@ -7,11 +7,13 @@ import {
   LockKeyhole,
   LogOut,
   Mic2,
+  Moon,
   Palette,
   RotateCcw,
   Save,
   Settings,
   ShieldCheck,
+  Sun,
   Trash2,
   Trophy,
   Upload,
@@ -285,7 +287,7 @@ export function GlobalSettings({
       <section className="global-settings" role="dialog" aria-modal="true" aria-label="Configurações do Labstar" onMouseDown={(event) => event.stopPropagation()}>
         <aside className="global-settings-nav">
           <div className="global-settings-brand"><span>★</span><div><strong>LABSTAR</strong><small>Configurações</small></div></div>
-          <nav>
+          <nav data-labstar-liquid-group>
             {tabs.map(({ id, label, icon: Icon }) => (
               <button key={id} className={tab === id ? "active" : ""} type="button" onClick={() => setTab(id)}>
                 <Icon size={16} /> {label}
@@ -380,6 +382,14 @@ export function GlobalSettings({
           {tab === "appearance" && (
             <div className="settings-sections">
               <SettingsSection title="Interface" description="Ajustes visuais aplicados no aplicativo inteiro.">
+                <div className="settings-theme-group" role="radiogroup" aria-label="Tema do Labstar" data-labstar-liquid-group>
+                  <button type="button" role="radio" aria-checked={draft.themeMode === "light"} onClick={() => update("themeMode", "light")}>
+                    <Sun size={15} /><span><strong>Claro</strong><small>Neumorfismo e liquid UI</small></span>
+                  </button>
+                  <button type="button" role="radio" aria-checked={draft.themeMode === "dark"} onClick={() => update("themeMode", "dark")}>
+                    <Moon size={15} /><span><strong>Escuro</strong><small>Neumorfismo escuro do Labstar</small></span>
+                  </button>
+                </div>
                 <SettingsField label="Densidade">
                   <select value={draft.density} onChange={(event) => update("density", event.target.value as AppSettings["density"])}><option value="comfortable">Confortável</option><option value="compact">Compacta</option></select>
                 </SettingsField>

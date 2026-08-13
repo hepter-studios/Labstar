@@ -633,7 +633,7 @@ export default function Home() {
 
       <section className={`workspace ${view === "equipe" ? "team-workspace" : ""} ${view === "colaboracao" ? "collaboration-workspace" : ""} ${view === "mapa" && editorOpen ? "editor-open" : ""}`}>
         <nav className="rail" aria-label="Navegação principal">
-          <div className="rail-group">
+          <div className="rail-group" data-labstar-liquid-group>
             <button data-tooltip="Visão geral" className={view === "visao" ? "active" : ""} onClick={() => setView("visao")} aria-label="Visão geral"><LayoutDashboard size={18} /></button>
             <button data-tooltip="Mapa" className={view === "mapa" ? "active" : ""} onClick={openProjectMap} aria-label="Mapa da organização"><Network size={18} /></button>
             <button data-tooltip="Central de trabalho" className={view === "colaboracao" ? "active" : ""} onClick={() => setView("colaboracao")} aria-label="Central de trabalho"><MessagesSquare size={18} /></button>
@@ -813,7 +813,7 @@ export default function Home() {
               {inspectorMode === "edit" && <>
               <fieldset className="card-theme-picker">
                 <legend>Aparência do cartão</legend>
-                <div role="radiogroup" aria-label="Cor do cartão">
+                <div role="radiogroup" aria-label="Cor do cartão" data-labstar-liquid-group>
                   {(Object.keys(cardThemeMeta) as CardTheme[]).map((theme) => {
                     const option = cardThemeMeta[theme];
                     const active = cardThemeFor(selected) === theme;
@@ -1233,7 +1233,7 @@ function TeamDirectory({ nodes, currentMember, onMemberUpdated }: { nodes: Struc
         <header className="team-head">
           <div><span className="overline">ADMINISTRAÇÃO / CARGOS</span><h1>Cargos e permissões</h1><p>Crie uma hierarquia profissional com cor, escudo e permissões próprias.</p></div>
         </header>
-        <div className="team-section-tabs">
+        <div className="team-section-tabs" data-labstar-liquid-group>
           <button onClick={() => setTeamTab("members")}><Users size={15} /> Membros</button>
           <button className="active" onClick={() => setTeamTab("roles")}><ShieldCheck size={15} /> Cargos</button>
         </div>
@@ -1251,7 +1251,7 @@ function TeamDirectory({ nodes, currentMember, onMemberUpdated }: { nodes: Struc
           <button type="button" onClick={() => setInviteOpen(true)}><UserPlus size={14} /> Autorizar membro</button>
         </div>}
       </header>
-      <div className="team-section-tabs">
+      <div className="team-section-tabs" data-labstar-liquid-group>
         <button className="active" onClick={() => setTeamTab("members")}><Users size={15} /> Membros</button>
         {canManage && <button onClick={() => setTeamTab("roles")}><ShieldCheck size={15} /> Cargos</button>}
         <span>Conectado como {currentMember.name}</span>

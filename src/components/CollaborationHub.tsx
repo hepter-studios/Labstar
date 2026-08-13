@@ -147,7 +147,7 @@ export function CollaborationHub({ member, initialChannelId, soundEnabled = true
 
   return (
     <div className={`collaboration-server-mode ${surface === "home" ? "communication-home-active" : ""} ${surface === "direct" ? "communication-direct-active" : ""} ${surface === "workspace" ? "communication-channels-active" : ""}`}>
-      <nav className="workspace-surface-rail" aria-label="Áreas da Central de trabalho">
+      <nav className="workspace-surface-rail" aria-label="Áreas da Central de trabalho" data-labstar-liquid-group>
         <button
           type="button"
           className={`workspace-home-entry ${surface === "home" ? "active" : ""}`}

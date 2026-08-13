@@ -1,36 +1,59 @@
 /*
- * LABSTAR — modo claro neomórfico, restrito a superfícies neutras.
- * Cartões de projetos, núcleos, categorias, cores semânticas e cores de marca
- * ficam fora desta camada de propósito.
+ * Labstar light mode
+ * ------------------
+ * Esta camada troca somente superfícies neutras. Cores de projetos, núcleos,
+ * cargos, presença, estados e ações semânticas continuam sob a autoridade dos
+ * componentes originais.
  */
 
 html[data-labstar-theme="light"] {
+  --bg: #e9edf5;
+  --panel: #e9edf5;
+  --panel-raised: #edf1f8;
+  --line: rgba(82, 94, 121, .15);
+  --line-strong: rgba(72, 84, 111, .25);
+  --text: #3c4358;
+  --muted: #70798f;
+  --dim: #979fb0;
   --neu-base: #e9edf5;
+  --neu-base-raised: #edf1f8;
   --neu-shadow-lt: #ffffff;
   --neu-shadow-dk: #c3cadb;
-  --neu-ink: #3c4358;
-  --neu-ink-muted: #70798f;
-  --neu-line: rgba(91, 103, 132, .16);
-  --neu-raised-shadow: 8px 8px 17px rgba(195, 202, 219, .74), -8px -8px 17px rgba(255, 255, 255, .9);
-  --neu-raised-shadow-sm: 5px 5px 11px rgba(195, 202, 219, .72), -5px -5px 11px rgba(255, 255, 255, .9);
-  --neu-inset-shadow: inset 6px 6px 13px rgba(195, 202, 219, .8), inset -6px -6px 13px rgba(255, 255, 255, .92);
+  --neu-ink: #343b50;
+  --neu-ink-muted: #616b82;
+  --neu-disabled: #949daf;
+  --neu-line: rgba(82, 94, 121, .15);
+  --neu-raised-shadow:
+    5px 5px 12px rgba(180, 190, 211, .46),
+    -5px -5px 12px rgba(255, 255, 255, .7);
+  --neu-raised-shadow-sm:
+    3px 3px 8px rgba(180, 190, 211, .45),
+    -3px -3px 8px rgba(255, 255, 255, .68);
+  --neu-inset-shadow:
+    inset 3px 3px 8px rgba(184, 193, 213, .58),
+    inset -3px -3px 8px rgba(255, 255, 255, .72);
+  --neu-overlay-shadow:
+    12px 12px 28px rgba(166, 177, 200, .44),
+    -8px -8px 22px rgba(255, 255, 255, .64);
   color-scheme: light;
 }
 
-.neu-flat {
-  background: var(--neu-base) !important;
+html[data-labstar-theme="light"] .neu-flat {
+  border-color: var(--neu-line);
+  background: var(--neu-base);
+  box-shadow: none;
 }
 
-.neu-raised {
-  border-color: transparent !important;
-  background: var(--neu-base) !important;
-  box-shadow: var(--neu-raised-shadow) !important;
+html[data-labstar-theme="light"] .neu-raised {
+  border-color: transparent;
+  background: var(--neu-base);
+  box-shadow: var(--neu-raised-shadow);
 }
 
-.neu-inset {
-  border-color: transparent !important;
-  background: var(--neu-base) !important;
-  box-shadow: var(--neu-inset-shadow) !important;
+html[data-labstar-theme="light"] .neu-inset {
+  border-color: transparent;
+  background: var(--neu-base);
+  box-shadow: var(--neu-inset-shadow);
 }
 
 .labstar-neu-effect-defs {
@@ -41,6 +64,57 @@ html[data-labstar-theme="light"] {
   pointer-events: none;
 }
 
+.labstar-soap-layer {
+  display: none;
+}
+
+.message-scroll-content,
+.dm-message-scroll-content {
+  display: contents;
+}
+
+.settings-theme-group {
+  padding: 7px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px;
+  border: 1px solid rgba(255, 255, 255, .07);
+  border-radius: 11px;
+  background: #090c12;
+}
+
+.settings-theme-group > button {
+  min-height: 48px;
+  padding: 0 11px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  border: 1px solid rgba(255, 255, 255, .07);
+  border-radius: 8px;
+  color: #737d8e;
+  background: #0c1017;
+  cursor: pointer;
+}
+
+.settings-theme-group > button[aria-checked="true"] {
+  border-color: rgba(139, 174, 255, .28);
+  color: #d9e3f8;
+  background: rgba(104, 139, 218, .12);
+}
+
+.settings-theme-group > button > span {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  text-align: left;
+}
+
+.settings-theme-group > button small {
+  margin-top: 2px;
+  color: #626c7d;
+  font-size: 8px;
+}
+
 html[data-labstar-theme="light"],
 html[data-labstar-theme="light"] body,
 html[data-labstar-theme="light"] #root,
@@ -49,111 +123,175 @@ html[data-labstar-theme="light"] .app {
   color: var(--neu-ink) !important;
 }
 
-/* ---------- chrome global ---------- */
-html[data-labstar-theme="light"] .header {
-  border-bottom-color: var(--neu-line) !important;
-  background: rgba(233, 237, 245, .96) !important;
-  box-shadow: 0 8px 21px rgba(166, 176, 198, .22), inset 0 -1px rgba(255, 255, 255, .78) !important;
-  backdrop-filter: blur(20px) saturate(1.02) !important;
+html[data-labstar-theme="light"] input::placeholder,
+html[data-labstar-theme="light"] textarea::placeholder {
+  color: #929bad;
 }
 
-/* A marca mantém a própria cor; só recebe uma base que garante contraste. */
+html[data-labstar-theme="light"] :where(button, input, textarea, select):disabled {
+  color: var(--neu-disabled);
+}
+
+html[data-labstar-theme="light"] :where(button, input, textarea, select):focus-visible {
+  outline-color: #6f82c2;
+}
+
+/* Chrome global: mesma geometria do tema escuro. */
+html[data-labstar-theme="light"] .header {
+  border-bottom-color: var(--neu-line);
+  background: rgba(233, 237, 245, .96);
+  box-shadow: 0 7px 18px rgba(175, 185, 206, .24), inset 0 -1px rgba(255, 255, 255, .72);
+  backdrop-filter: blur(18px) saturate(.98);
+}
+
 html[data-labstar-theme="light"] .header .brand {
-  width: max-content;
-  padding: 9px 11px;
-  border-radius: 11px;
-  background: #485166;
-  box-shadow: 5px 5px 12px rgba(182, 191, 210, .5), -4px -4px 10px rgba(255, 255, 255, .72);
+  background: transparent;
+  box-shadow: none;
+}
+
+html[data-labstar-theme="light"] .wordmark,
+html[data-labstar-theme="light"] .wordmark .star-letter {
+  color: #343b50;
+}
+
+html[data-labstar-theme="light"] .wordmark .star-letter {
+  filter: drop-shadow(0 2px 4px rgba(83, 95, 128, .22));
 }
 
 html[data-labstar-theme="light"] .global-search,
 html[data-labstar-theme="light"] .channel-search,
 html[data-labstar-theme="light"] .dm-search,
+html[data-labstar-theme="light"] .member-search,
+html[data-labstar-theme="light"] .workspace-admin-search,
 html[data-labstar-theme="light"] .message-toolbar label,
 html[data-labstar-theme="light"] .dm-conversation-actions label {
-  border-color: transparent !important;
+  border-color: transparent;
+  color: var(--neu-ink-muted);
+  background: var(--neu-base);
+  box-shadow: var(--neu-inset-shadow);
+}
+
+html[data-labstar-theme="light"] .global-search {
   background: var(--neu-base) !important;
-  box-shadow: var(--neu-inset-shadow) !important;
 }
 
-html[data-labstar-theme="light"] .global-search input,
-html[data-labstar-theme="light"] .channel-search input,
-html[data-labstar-theme="light"] .dm-search input,
-html[data-labstar-theme="light"] .message-toolbar input,
-html[data-labstar-theme="light"] .dm-conversation-actions input {
-  color: var(--neu-ink) !important;
-  background: transparent !important;
+:is(html[data-labstar-theme="light"], html[data-labstar-theme="dark"]) :where(
+  .global-search,
+  .channel-search,
+  .dm-search,
+  .member-search,
+  .workspace-admin-search,
+  .message-toolbar label,
+  .dm-conversation-actions label
+) input {
+  color: var(--neu-ink);
+  background: transparent;
 }
 
-html[data-labstar-theme="light"] input::placeholder,
-html[data-labstar-theme="light"] textarea::placeholder {
-  color: #929caf !important;
+html[data-labstar-theme="light"] .global-search kbd,
+html[data-labstar-theme="light"] .dm-search-hint {
+  border-color: var(--neu-line);
+  color: var(--neu-ink-muted);
+  background: rgba(255, 255, 255, .3);
 }
 
-html[data-labstar-theme="light"] .header .icon-button,
-html[data-labstar-theme="light"] .header .labstar-theme-toggle,
-html[data-labstar-theme="light"] .rail-bottom > button {
-  border-color: transparent !important;
-  color: #667187 !important;
-  background: var(--neu-base) !important;
-  box-shadow: var(--neu-raised-shadow-sm) !important;
+html[data-labstar-theme="light"] .sync-state {
+  color: var(--neu-ink-muted);
 }
 
-html[data-labstar-theme="light"] .header .icon-button:active,
-html[data-labstar-theme="light"] .header .labstar-theme-toggle:active,
-html[data-labstar-theme="light"] .rail-bottom > button:active {
-  box-shadow: inset 4px 4px 9px rgba(195, 202, 219, .82), inset -4px -4px 9px rgba(255, 255, 255, .92) !important;
+html[data-labstar-theme="light"] :where(
+  .header .icon-button,
+  .header .labstar-theme-toggle,
+  .rail-bottom > button,
+  .organization-switcher-trigger
+) {
+  border-color: transparent;
+  color: #5f6a82;
+  background: var(--neu-base);
+  box-shadow: var(--neu-raised-shadow-sm);
 }
 
-/* CTA mantém o matiz original; apenas ganha profundidade. */
+html[data-labstar-theme="light"] :where(
+  .header .icon-button,
+  .header .labstar-theme-toggle,
+  .rail-bottom > button,
+  .organization-switcher-trigger
+):active {
+  box-shadow: var(--neu-inset-shadow);
+}
+
+html[data-labstar-theme="light"] .organization-switcher-trigger :where(strong, span) {
+  color: var(--neu-ink);
+}
+
+/* Criar núcleo mantém o papel de CTA e recebe apenas a pele de vidro pastel. */
 html[data-labstar-theme="light"] .create-button {
-  box-shadow: 5px 5px 12px rgba(183, 191, 210, .58), -5px -5px 12px rgba(255, 255, 255, .78) !important;
+  border-color: rgba(255, 255, 255, .76);
+  color: #30384e;
+  background:
+    radial-gradient(circle at 18% 8%, rgba(255, 255, 255, .94), transparent 38%),
+    linear-gradient(135deg, rgba(221, 209, 255, .96), rgba(184, 221, 255, .94));
+  box-shadow:
+    inset 0 2px 3px rgba(255, 255, 255, .78),
+    inset 0 -4px 8px rgba(114, 134, 181, .16),
+    5px 6px 13px rgba(173, 184, 207, .52),
+    -4px -4px 11px rgba(255, 255, 255, .72);
 }
 
-/* ---------- navegação principal + grupos líquidos ---------- */
-html[data-labstar-theme="light"] .rail {
-  border-right-color: var(--neu-line) !important;
-  background: var(--neu-base) !important;
-  box-shadow: 8px 0 20px rgba(174, 184, 205, .2), inset -1px 0 rgba(255, 255, 255, .74) !important;
+html[data-labstar-theme="light"] .create-button:hover {
+  background:
+    radial-gradient(circle at 18% 8%, rgba(255, 255, 255, .98), transparent 40%),
+    linear-gradient(135deg, #e2d6ff, #bfddff);
 }
 
-html[data-labstar-theme="light"] .labstar-liquid-group {
-  position: relative !important;
+/* Navegação líquida: somente grupos marcados explicitamente no JSX. */
+html[data-labstar-theme="light"] [data-labstar-liquid-group] {
+  position: relative;
   isolation: isolate;
 }
 
-html[data-labstar-theme="light"] .rail-group.labstar-liquid-group,
-html[data-labstar-theme="light"] .workspace-surface-rail.labstar-liquid-group,
-html[data-labstar-theme="light"] .dm-inbox-tabs.labstar-liquid-group {
-  border-radius: 18px;
-  background: var(--neu-base) !important;
-  box-shadow: var(--neu-raised-shadow-sm) !important;
+html[data-labstar-theme="light"] :where(
+  .rail-group,
+  .workspace-surface-rail,
+  .global-settings-nav nav,
+  .workspace-settings-nav nav,
+  .dm-home-tabs,
+  .dm-inbox-tabs,
+  .work-items-summary,
+  .team-section-tabs,
+  .settings-theme-group,
+  .card-theme-picker [role="radiogroup"]
+)[data-labstar-liquid-group] {
+  border-color: transparent;
+  background: var(--neu-base);
+  box-shadow: var(--neu-raised-shadow-sm);
 }
 
-html[data-labstar-theme="light"] .global-settings-nav nav.labstar-liquid-group,
-html[data-labstar-theme="light"] .dm-navigation.labstar-liquid-group,
-html[data-labstar-theme="light"] .card-theme-picker [role="radiogroup"].labstar-liquid-group {
-  border-radius: 15px;
-  background: var(--neu-base) !important;
-  box-shadow: inset 4px 4px 9px rgba(195, 202, 219, .58), inset -4px -4px 9px rgba(255, 255, 255, .72) !important;
+html[data-labstar-theme="light"] :where(
+  .global-settings-nav nav,
+  .workspace-settings-nav nav,
+  .settings-theme-group,
+  .card-theme-picker [role="radiogroup"]
+)[data-labstar-liquid-group] {
+  box-shadow: var(--neu-inset-shadow);
 }
 
-html[data-labstar-theme="light"] .labstar-liquid-group > button {
-  position: relative !important;
+html[data-labstar-theme="light"] [data-labstar-liquid-group] > button {
+  position: relative;
   z-index: 2;
   border-color: transparent !important;
+  color: var(--neu-ink-muted);
   background: transparent !important;
   box-shadow: none !important;
 }
 
-html[data-labstar-theme="light"] .labstar-liquid-group > button:not(.active):not([aria-checked="true"]):not([aria-selected="true"]) {
-  color: var(--neu-ink-muted) !important;
-}
-
-html[data-labstar-theme="light"] .labstar-liquid-group > button.active,
-html[data-labstar-theme="light"] .labstar-liquid-group > button[aria-checked="true"],
-html[data-labstar-theme="light"] .labstar-liquid-group > button[aria-selected="true"] {
-  color: var(--neu-ink) !important;
+html[data-labstar-theme="light"] [data-labstar-liquid-group] > button:is(
+  .active,
+  [aria-current="page"],
+  [aria-selected="true"],
+  [aria-checked="true"]
+) {
+  color: var(--neu-ink);
 }
 
 html[data-labstar-theme="light"] .labstar-liquid-indicator {
@@ -163,15 +301,24 @@ html[data-labstar-theme="light"] .labstar-liquid-indicator {
   top: 0;
   width: var(--liquid-w, 36px);
   height: var(--liquid-h, 36px);
-  border: 1px solid rgba(255, 255, 255, .6);
-  border-radius: min(14px, 34%);
+  border: 1px solid rgba(255, 255, 255, .66);
+  border-radius: min(15px, 38%);
   pointer-events: none;
   opacity: 0;
-  background: color-mix(in srgb, var(--accent, #8baeff) 16%, rgba(242, 246, 255, .78));
-  box-shadow: inset 0 2px 4px rgba(255, 255, 255, .78), inset 0 -3px 6px rgba(124, 143, 183, .18), 0 5px 12px rgba(174, 185, 208, .28);
+  background:
+    radial-gradient(circle at 28% 16%, rgba(255, 255, 255, .88), transparent 42%),
+    linear-gradient(135deg, rgba(213, 199, 255, .78), rgba(174, 216, 255, .72));
+  box-shadow:
+    inset 0 2px 4px rgba(255, 255, 255, .78),
+    inset 0 -4px 8px rgba(104, 127, 178, .17),
+    0 5px 12px rgba(165, 177, 203, .27);
   filter: url(#labstar-goo-small);
   transform: translate3d(var(--liquid-x, 0), var(--liquid-y, 0), 0);
-  transition: transform .55s cubic-bezier(.34, 1.56, .4, 1), width .55s cubic-bezier(.34, 1.56, .4, 1), height .55s cubic-bezier(.34, 1.56, .4, 1), opacity .18s ease;
+  transition:
+    transform .55s cubic-bezier(.34, 1.46, .42, 1),
+    width .55s cubic-bezier(.34, 1.46, .42, 1),
+    height .55s cubic-bezier(.34, 1.46, .42, 1),
+    opacity .16s ease;
 }
 
 html[data-labstar-theme="light"] .labstar-liquid-indicator::after {
@@ -188,108 +335,674 @@ html[data-labstar-theme="light"] .labstar-liquid-indicator::after {
 }
 
 html[data-labstar-theme="light"] .labstar-liquid-indicator.is-moving::after {
-  animation: labstar-liquid-drip .58s cubic-bezier(.34, 1.56, .4, 1);
+  animation: labstar-liquid-drip .58s cubic-bezier(.34, 1.46, .42, 1);
 }
 
 @keyframes labstar-liquid-drip {
-  0% { opacity: .7; transform: translate(-50%, -50%) scale(.85); }
-  45% { opacity: .5; transform: translate(-10%, -50%) scale(.58); }
-  100% { opacity: 0; transform: translate(45%, -50%) scale(.12); }
+  0% { opacity: .64; transform: translate(-50%, -50%) scale(.8); }
+  48% { opacity: .42; transform: translate(-8%, -50%) scale(.52); }
+  100% { opacity: 0; transform: translate(42%, -50%) scale(.12); }
 }
 
-/* ---------- central de trabalho: só superfícies neutras ---------- */
-html[data-labstar-theme="light"] .workspace.collaboration-workspace,
-html[data-labstar-theme="light"] .collaboration-server-mode,
-html[data-labstar-theme="light"] .collaboration-shell,
-html[data-labstar-theme="light"] .direct-hub {
+/* Central de trabalho e visão geral. */
+html[data-labstar-theme="light"] :where(
+  .workspace,
+  .overview,
+  .overview.dashboard-work-surface,
+  .dashboard-work-shell,
+  .dashboard-work-shell > .work-home,
+  .work-home,
+  .work-home-loading,
+  .dashboard-work-loading,
+  .communication-home,
+  .communication-home-loading
+) {
+  color: var(--neu-ink);
+  background: var(--neu-base);
+}
+
+html[data-labstar-theme="light"] .dashboard-server-strip {
+  border-color: var(--neu-line);
+  color: var(--neu-ink);
+  background: rgba(233, 237, 245, .92);
+  box-shadow: 0 5px 13px rgba(178, 188, 210, .2);
+}
+
+html[data-labstar-theme="light"] :where(
+  .work-home-head,
+  .communication-home-head,
+  .work-items-head,
+  .work-focus-panel > header,
+  .work-capture-panel > header,
+  .work-activity-panel > header,
+  .work-files-panel > header,
+  .communication-panel > header
+) :where(h1, h2, h3, strong) {
+  color: var(--neu-ink);
+}
+
+html[data-labstar-theme="light"] :where(
+  .work-home-head,
+  .communication-home-head,
+  .work-items-head,
+  .work-focus-panel > header,
+  .work-capture-panel > header,
+  .work-activity-panel > header,
+  .work-files-panel > header,
+  .communication-panel > header
+) :where(p, small) {
+  color: var(--neu-ink-muted);
+}
+
+html[data-labstar-theme="light"] :where(.work-home-eyebrow, .communication-eyebrow) {
+  color: #4e649c;
+}
+
+html[data-labstar-theme="light"] .dashboard-server-strip strong {
+  color: var(--neu-ink);
+}
+
+html[data-labstar-theme="light"] .dashboard-server-strip :where(small, p),
+html[data-labstar-theme="light"] .work-focus-panel > header small,
+html[data-labstar-theme="light"] .work-capture-panel > header small {
+  color: var(--neu-ink-muted) !important;
+}
+
+html[data-labstar-theme="light"] .work-items-summary > button b {
   color: var(--neu-ink) !important;
+}
+
+html[data-labstar-theme="light"] :where(
+  .work-home-head-actions button:not(:last-child),
+  .work-home-head-actions .icon,
+  .communication-head-actions button:not(.primary),
+  .work-items-head button,
+  .work-activity-panel header button
+) {
+  border-color: transparent;
+  color: #59657d;
+  background: var(--neu-base);
+  box-shadow: var(--neu-raised-shadow-sm);
+}
+
+html[data-labstar-theme="light"] :where(
+  .work-home-metrics article,
+  .communication-home-metrics article,
+  .metric-grid article,
+  .work-items-center,
+  .work-focus-panel,
+  .work-capture-panel,
+  .work-activity-panel,
+  .work-files-panel,
+  .communication-panel,
+  .portfolio-panel,
+  .health-panel,
+  .attention-panel
+) {
+  border-color: transparent;
+  color: var(--neu-ink);
+  background: var(--neu-base);
+  box-shadow: var(--neu-raised-shadow);
+}
+
+html[data-labstar-theme="light"] :where(
+  .work-home-metrics,
+  .communication-home-metrics,
+  .metric-grid
+) article > span,
+html[data-labstar-theme="light"] :where(
+  .work-home-metrics,
+  .communication-home-metrics,
+  .metric-grid
+) article > small {
+  color: var(--neu-ink-muted);
+}
+
+html[data-labstar-theme="light"] :where(
+  .work-home-metrics,
+  .communication-home-metrics,
+  .metric-grid
+) article > strong {
+  color: var(--neu-ink);
+}
+
+html[data-labstar-theme="light"] :where(
+  .work-items-head,
+  .work-focus-panel > header,
+  .work-capture-panel > header,
+  .work-activity-panel > header,
+  .work-files-panel > header,
+  .communication-panel > header,
+  .panel-head
+) {
+  border-color: var(--neu-line);
+}
+
+html[data-labstar-theme="light"] .work-items-summary {
+  border-color: var(--neu-line);
+}
+
+html[data-labstar-theme="light"] .work-items-summary > button.danger {
+  color: inherit;
+}
+
+html[data-labstar-theme="light"] :where(
+  .work-items-empty,
+  .work-list-empty,
+  .work-focus-empty,
+  .communication-empty
+) {
+  color: var(--neu-ink-muted);
+  background: rgba(255, 255, 255, .18);
+}
+
+html[data-labstar-theme="light"] :where(
+  .work-items-empty,
+  .work-list-empty,
+  .work-focus-empty,
+  .communication-empty
+) strong {
+  color: var(--neu-ink);
+}
+
+html[data-labstar-theme="light"] .work-items-notice {
+  color: #586b9d;
+  background: rgba(111, 139, 203, .08);
+}
+
+html[data-labstar-theme="light"] :where(
+  .work-capture-panel textarea,
+  .work-capture-panel select,
+  .work-item-modal input,
+  .work-item-modal textarea,
+  .work-item-modal select
+) {
+  border-color: transparent;
+  color: var(--neu-ink);
+  background: var(--neu-base);
+  box-shadow: var(--neu-inset-shadow);
+}
+
+html[data-labstar-theme="light"] :where(
+  .work-focus-list > button,
+  .work-activity-list > button,
+  .work-files-list > button,
+  .communication-list > button,
+  .communication-file-grid > button,
+  .communication-people-grid > button,
+  .work-item
+) {
+  border-color: var(--neu-line);
+  color: var(--neu-ink);
+  background: transparent;
+}
+
+html[data-labstar-theme="light"] :where(
+  .work-focus-list > button,
+  .work-activity-list > button,
+  .work-files-list > button,
+  .communication-list > button,
+  .communication-file-grid > button,
+  .communication-people-grid > button,
+  .work-item
+):hover {
+  background: rgba(255, 255, 255, .28);
+}
+
+html[data-labstar-theme="light"] :where(
+  .work-focus-list,
+  .work-activity-list,
+  .work-files-list,
+  .communication-list,
+  .communication-file-grid,
+  .communication-people-grid,
+  .work-item-main
+) :where(strong, b) {
+  color: var(--neu-ink);
+}
+
+html[data-labstar-theme="light"] :where(
+  .work-focus-list,
+  .work-activity-list,
+  .work-files-list,
+  .communication-list,
+  .communication-file-grid,
+  .communication-people-grid,
+  .work-item-main
+) :where(small, time, p) {
+  color: var(--neu-ink-muted);
+}
+
+/* Mapa: cenário planetário e cartões permanecem visualmente originais. */
+html[data-labstar-theme="light"] .node-card {
+  color: #f7f9ff;
+}
+
+html[data-labstar-theme="light"] :where(.canvas-meta, .zoom-controls, .canvas-tip) {
+  border-color: transparent;
+  color: var(--neu-ink-muted);
+  background: var(--neu-base);
+  box-shadow: var(--neu-raised-shadow-sm);
+}
+
+html[data-labstar-theme="light"] .zoom-controls button {
+  color: var(--neu-ink-muted);
+}
+
+/* Equipe e administração de membros. Badges e estados não são recoloridos. */
+html[data-labstar-theme="light"] :where(.team-page, .roles-page) {
+  color: var(--neu-ink);
+  background: var(--neu-base);
+}
+
+html[data-labstar-theme="light"] .team-head :where(h1, p) {
+  color: var(--neu-ink);
+}
+
+html[data-labstar-theme="light"] .team-head p {
+  color: var(--neu-ink-muted);
+}
+
+html[data-labstar-theme="light"] :where(
+  .team-metrics article,
+  .member-list-panel,
+  .member-editor,
+  .roles-list-panel,
+  .role-editor,
+  .professional-roles-manager
+) {
+  border-color: transparent;
+  color: var(--neu-ink);
+  background: var(--neu-base);
+  box-shadow: var(--neu-raised-shadow);
+}
+
+html[data-labstar-theme="light"] :where(
+  .member-list-head,
+  .member-profile,
+  .team-section-tabs
+) {
+  border-color: var(--neu-line);
+}
+
+html[data-labstar-theme="light"] :where(
+  .member-list-head,
+  .member-profile,
+  .member-list
+) :where(strong, b) {
+  color: var(--neu-ink);
+}
+
+html[data-labstar-theme="light"] :where(
+  .member-list-head,
+  .member-profile,
+  .member-list
+) :where(small, .member-area) {
+  color: var(--neu-ink-muted);
+}
+
+html[data-labstar-theme="light"] .member-list > button {
+  border-color: var(--neu-line);
+  background: transparent;
+}
+
+html[data-labstar-theme="light"] .member-list > button:is(:hover, .active) {
+  background: rgba(255, 255, 255, .28);
+}
+
+html[data-labstar-theme="light"] :where(
+  .member-fields input,
+  .member-fields select,
+  .role-editor input,
+  .role-editor select,
+  .role-editor textarea
+) {
+  border-color: transparent;
+  color: var(--neu-ink);
+  background: var(--neu-base);
+  box-shadow: var(--neu-inset-shadow);
+}
+
+/* Canais e DMs: ambiente claro; cores de espaço, cargo e presença permanecem. */
+html[data-labstar-theme="light"] :where(
+  .collaboration-server-mode,
+  .collaboration-shell,
+  .communication-home-overlay,
+  .direct-hub,
+  .channel-content,
+  .message-room,
+  .dm-home-main,
+  .dm-conversation,
+  .dm-inbox
+) {
+  color: var(--neu-ink);
+  background: var(--neu-base);
+}
+
+html[data-labstar-theme="light"] .workspace.collaboration-workspace,
+html[data-labstar-theme="light"] .dm-home-main,
+html[data-labstar-theme="light"] .dm-inbox {
+  color: var(--neu-ink);
   background: var(--neu-base) !important;
 }
 
-html[data-labstar-theme="light"] .collaboration-shell::before,
-html[data-labstar-theme="light"] .collaboration-server-mode::after,
-html[data-labstar-theme="light"] .direct-hub::before,
-html[data-labstar-theme="light"] .direct-hub::after {
-  opacity: 0 !important;
+html[data-labstar-theme="light"] .dm-home-main {
+  border-right-color: var(--neu-line);
 }
 
-html[data-labstar-theme="light"] .space-rail,
-html[data-labstar-theme="light"] .channel-sidebar,
-html[data-labstar-theme="light"] .channel-members,
-html[data-labstar-theme="light"] .dm-space-rail,
-html[data-labstar-theme="light"] .dm-sidebar,
-html[data-labstar-theme="light"] .dm-directory,
-html[data-labstar-theme="light"] .dm-own-profile {
-  border-color: var(--neu-line) !important;
-  background: var(--neu-base) !important;
+html[data-labstar-theme="light"] .dm-inbox {
+  border-left-color: var(--neu-line);
 }
 
-html[data-labstar-theme="light"] .space-rail,
-html[data-labstar-theme="light"] .dm-space-rail {
-  box-shadow: 7px 0 17px rgba(185, 195, 215, .2), inset -1px 0 rgba(255, 255, 255, .72) !important;
+html[data-labstar-theme="light"] .dm-home-header strong,
+html[data-labstar-theme="light"] .dm-inbox > header strong,
+html[data-labstar-theme="light"] .dm-home-empty h2,
+html[data-labstar-theme="light"] .dm-inbox-empty strong {
+  color: var(--neu-ink);
 }
 
-html[data-labstar-theme="light"] .channel-sidebar,
-html[data-labstar-theme="light"] .dm-sidebar,
-html[data-labstar-theme="light"] .dm-directory {
-  box-shadow: 7px 0 18px rgba(185, 195, 215, .16), inset -1px 0 rgba(255, 255, 255, .68) !important;
+html[data-labstar-theme="light"] .dm-home-empty p,
+html[data-labstar-theme="light"] .dm-inbox-empty span {
+  color: var(--neu-ink-muted);
+}
+
+html[data-labstar-theme="light"] .dm-home-contact-grid > button {
+  border-color: transparent;
+  color: var(--neu-ink);
+  background: var(--neu-base);
+  box-shadow: var(--neu-raised-shadow-sm);
+}
+
+html[data-labstar-theme="light"] .dm-home-contact-grid > button strong {
+  color: var(--neu-ink);
+}
+
+html[data-labstar-theme="light"] :where(
+  .collaboration-shell::before,
+  .collaboration-server-mode::after,
+  .direct-hub::before,
+  .direct-hub::after
+) {
+  opacity: 0;
+}
+
+html[data-labstar-theme="light"] :where(
+  .rail,
+  .space-rail,
+  .channel-sidebar,
+  .channel-members,
+  .dm-space-rail,
+  .dm-sidebar,
+  .dm-directory,
+  .dm-own-profile,
+  .dm-profile-panel
+) {
+  border-color: var(--neu-line);
+  background: var(--neu-base);
+}
+
+html[data-labstar-theme="light"] .rail {
+  box-shadow: 7px 0 18px rgba(174, 185, 207, .22), inset -1px 0 rgba(255, 255, 255, .7);
+}
+
+html[data-labstar-theme="light"] :where(.space-rail, .dm-space-rail, .channel-sidebar, .dm-sidebar) {
+  box-shadow: 6px 0 16px rgba(178, 188, 210, .18);
 }
 
 html[data-labstar-theme="light"] .channel-members {
-  box-shadow: -7px 0 18px rgba(185, 195, 215, .14), inset 1px 0 rgba(255, 255, 255, .68) !important;
+  box-shadow: -6px 0 16px rgba(178, 188, 210, .16);
 }
 
-html[data-labstar-theme="light"] .space-header,
-html[data-labstar-theme="light"] .channel-header,
-html[data-labstar-theme="light"] .channel-user,
-html[data-labstar-theme="light"] .dm-conversation-header,
-html[data-labstar-theme="light"] .message-toolbar,
-html[data-labstar-theme="light"] .dm-own-profile {
-  border-color: var(--neu-line) !important;
-  background: rgba(233, 237, 245, .96) !important;
+html[data-labstar-theme="light"] :where(
+  .space-header,
+  .channel-header,
+  .channel-user,
+  .dm-home-header,
+  .dm-conversation-header,
+  .dm-inbox > header,
+  .message-toolbar,
+  .dm-own-profile
+) {
+  border-color: var(--neu-line);
+  background: rgba(233, 237, 245, .95);
 }
 
-html[data-labstar-theme="light"] .space-title strong,
-html[data-labstar-theme="light"] .channel-heading strong,
-html[data-labstar-theme="light"] .channel-members > header strong,
-html[data-labstar-theme="light"] .channel-member-row b,
-html[data-labstar-theme="light"] .dm-conversation-person strong,
+html[data-labstar-theme="light"] :where(
+  .space-title,
+  .channel-heading,
+  .channel-members > header,
+  .channel-member-row,
+  .dm-conversation-person,
+  .dm-home-header,
+  .dm-inbox > header,
+  .dm-thread-intro,
+  .dm-own-profile
+) :where(strong, h2) {
+  color: var(--neu-ink);
+}
+
+html[data-labstar-theme="light"] :where(
+  .space-title,
+  .channel-heading,
+  .channel-members > header,
+  .channel-member-row,
+  .dm-conversation-person,
+  .dm-thread-intro,
+  .dm-own-profile
+) :where(small, p, span) {
+  color: var(--neu-ink-muted);
+}
+
+html[data-labstar-theme="light"] :where(
+  .channel-list > button,
+  .dm-contact-entry,
+  .dm-navigation > button,
+  .channel-member-row
+) {
+  border-color: transparent;
+  color: var(--neu-ink-muted);
+  background: transparent;
+}
+
+html[data-labstar-theme="light"] .channel-list > button.active {
+  color: var(--neu-ink);
+}
+
+html[data-labstar-theme="light"] :where(.new-category, .channel-quick-menu-trigger) {
+  color: var(--neu-ink-muted);
+}
+
+html[data-labstar-theme="light"] :where(
+  .channel-list > button,
+  .dm-contact-entry,
+  .dm-navigation > button,
+  .channel-member-row
+):hover {
+  background: rgba(255, 255, 255, .28);
+}
+
+html[data-labstar-theme="light"] :where(
+  .channel-list > button.active,
+  .dm-contact-entry.active,
+  .dm-navigation > button.active
+) {
+  color: var(--neu-ink);
+  background: rgba(189, 207, 255, .24);
+}
+
+html[data-labstar-theme="light"] .dm-contact-entry :where(strong, small) {
+  color: inherit;
+}
+
+html[data-labstar-theme="light"] :where(
+  .dm-home-tabs,
+  .dm-inbox-tabs,
+  .dm-inbox-list,
+  .dm-profile-actions
+) {
+  border-color: var(--neu-line);
+}
+
+html[data-labstar-theme="light"] .dm-inbox-list {
+  background: rgba(255, 255, 255, .16);
+}
+
+html[data-labstar-theme="light"] .dm-inbox-list article {
+  border-color: var(--neu-line);
+}
+
+html[data-labstar-theme="light"] .dm-inbox-list article :where(strong, small, time, em) {
+  color: var(--neu-ink-muted);
+}
+
+html[data-labstar-theme="light"] .dm-inbox-list article strong {
+  color: var(--neu-ink);
+}
+
+html[data-labstar-theme="light"] .dm-home-empty :where(h2, p) {
+  color: var(--neu-ink);
+}
+
+html[data-labstar-theme="light"] .dm-home-empty p {
+  color: var(--neu-ink-muted);
+}
+
+html[data-labstar-theme="light"] .dm-orbit > span {
+  border-color: rgba(255, 255, 255, .58);
+  color: #6477aa;
+  background: linear-gradient(145deg, #eff3fa, #dfe5f0);
+  box-shadow: var(--neu-raised-shadow-sm);
+}
+
+html[data-labstar-theme="light"] :where(.message-scroll, .dm-message-scroll) {
+  isolation: isolate;
+  color: var(--neu-ink);
+  background: var(--neu-base);
+  scrollbar-color: #aeb8cb transparent;
+}
+
+html[data-labstar-theme="light"] :where(.channel-welcome, .dm-thread-intro) {
+  border-color: var(--neu-line);
+}
+
+html[data-labstar-theme="light"] .channel-welcome h2,
 html[data-labstar-theme="light"] .dm-thread-intro h2 {
-  color: var(--neu-ink) !important;
+  color: var(--neu-ink);
 }
 
-html[data-labstar-theme="light"] .space-title small,
-html[data-labstar-theme="light"] .channel-heading small,
-html[data-labstar-theme="light"] .channel-member-row small,
-html[data-labstar-theme="light"] .dm-conversation-person small,
-html[data-labstar-theme="light"] .dm-thread-intro span,
-html[data-labstar-theme="light"] .dm-thread-intro p,
-html[data-labstar-theme="light"] .message-toolbar > span {
-  color: var(--neu-ink-muted) !important;
+html[data-labstar-theme="light"] .channel-welcome p,
+html[data-labstar-theme="light"] .dm-thread-intro :where(span, p) {
+  color: var(--neu-ink-muted);
 }
 
-html[data-labstar-theme="light"] .channel-list > button:not(.active),
-html[data-labstar-theme="light"] .dm-contact-list > button:not(.active),
-html[data-labstar-theme="light"] .new-category {
-  color: var(--neu-ink-muted) !important;
+html[data-labstar-theme="light"] :where(.chat-message, .dm-message):hover {
+  background: rgba(255, 255, 255, .25);
 }
 
-html[data-labstar-theme="light"] .channel-list > button:not(.active):hover,
-html[data-labstar-theme="light"] .dm-contact-list > button:not(.active):hover,
-html[data-labstar-theme="light"] .channel-member-row:hover {
-  border-color: rgba(255, 255, 255, .45) !important;
-  background: rgba(255, 255, 255, .28) !important;
+html[data-labstar-theme="light"] :where(
+  .message-body,
+  .message-body > p,
+  .developer-message-content,
+  .dm-message-body,
+  .dm-message-body > p
+) {
+  color: var(--neu-ink);
 }
 
-/* ---------- conversas: gooey real, fixo no viewport do scroller ---------- */
-html[data-labstar-theme="light"] .message-scroll.labstar-soap-enabled,
-html[data-labstar-theme="light"] .dm-message-scroll.labstar-soap-enabled {
-  position: relative !important;
-  isolation: isolate !important;
+html[data-labstar-theme="light"] :where(
+  .message-body > header time,
+  .message-body > header em,
+  .dm-message-body header time,
+  .dm-message-body header em
+) {
+  color: var(--neu-ink-muted);
+}
+
+html[data-labstar-theme="light"] :where(.message-actions, .dm-message-actions) {
+  border-color: var(--neu-line) !important;
   background: var(--neu-base) !important;
+  box-shadow: var(--neu-raised-shadow-sm) !important;
 }
 
+html[data-labstar-theme="light"] :where(
+  .message-composer,
+  .dm-composer,
+  .developer-composer
+) {
+  border-color: var(--neu-line);
+  background: linear-gradient(transparent, rgba(233, 237, 245, .98) 22%);
+}
+
+html[data-labstar-theme="light"] :where(
+  .message-composer .composer-row,
+  .dm-composer > div:last-of-type,
+  .composer-shell
+) {
+  border-color: transparent;
+  background: var(--neu-base);
+  box-shadow: var(--neu-inset-shadow);
+}
+
+html[data-labstar-theme="light"] :where(
+  .message-composer textarea,
+  .message-composer input,
+  .dm-composer textarea,
+  .dm-composer input,
+  .developer-composer textarea
+) {
+  color: var(--neu-ink);
+  background: transparent;
+}
+
+html[data-labstar-theme="light"] :where(
+  .message-composer button:not(.send-message),
+  .dm-composer button:not(.dm-send),
+  .developer-composer button
+) {
+  color: var(--neu-ink-muted);
+  background: transparent;
+  box-shadow: none;
+}
+
+html[data-labstar-theme="light"] .direct-hub.dm-v6 .dm-composer {
+  background: linear-gradient(transparent, rgba(233, 237, 245, .98) 22%) !important;
+}
+
+html[data-labstar-theme="light"] .direct-hub.dm-v6 .dm-composer > div:last-of-type {
+  border-color: transparent !important;
+  background: var(--neu-base) !important;
+  box-shadow: var(--neu-inset-shadow) !important;
+}
+
+html[data-labstar-theme="light"] .direct-hub.dm-v6 .dm-composer textarea {
+  color: var(--neu-ink) !important;
+  background: transparent !important;
+}
+
+html[data-labstar-theme="light"] :where(
+  .dm-profile-panel h2,
+  .dm-profile-panel strong,
+  .dm-shared-item strong
+) {
+  color: var(--neu-ink);
+}
+
+html[data-labstar-theme="light"] :where(
+  .dm-profile-panel p,
+  .dm-profile-panel small,
+  .dm-profile-panel h3
+) {
+  color: var(--neu-ink-muted);
+}
+
+html[data-labstar-theme="light"] .dm-profile-actions {
+  background: var(--neu-base);
+  box-shadow: var(--neu-inset-shadow);
+}
+
+/* Bolhas de sabão: sticky no viewport do scroller e conteúdo isolado acima. */
 html[data-labstar-theme="light"] .labstar-soap-layer {
+  display: block;
   position: sticky;
   z-index: 0;
   top: 0;
@@ -304,23 +1017,46 @@ html[data-labstar-theme="light"] .labstar-soap-field {
   left: 0;
   top: 0;
   width: 100%;
-  height: var(--soap-viewport-h, 560px);
+  height: 1px;
   overflow: hidden;
   pointer-events: none;
-  filter: url(#labstar-goo-bubbles);
+}
+
+html[data-labstar-theme="light"] :where(
+  .message-scroll-content,
+  .dm-message-scroll-content
+) {
+  display: block;
+  position: relative;
+  z-index: 1;
+  pointer-events: none;
+}
+
+html[data-labstar-theme="light"] :where(
+  .message-scroll-content,
+  .dm-message-scroll-content
+) > * {
+  pointer-events: auto;
 }
 
 html[data-labstar-theme="light"] .labstar-soap-bubble {
   position: absolute;
   display: block;
-  border: 1px solid rgba(255, 255, 255, .55);
+  border: 1px solid rgba(255, 255, 255, .62);
   border-radius: 50%;
-  opacity: .38;
+  opacity: .52;
   pointer-events: auto;
   touch-action: none;
   cursor: grab;
-  background: radial-gradient(circle at 30% 26%, rgba(255, 255, 255, .96) 0%, rgba(255, 255, 255, .34) 30%, var(--soap-tint, rgba(207, 232, 255, .34)) 64%, rgba(255, 255, 255, .04) 100%);
-  box-shadow: inset -6px -6px 14px rgba(120, 140, 190, .15), inset 5px 5px 10px rgba(255, 255, 255, .64);
+  background:
+    radial-gradient(circle at 28% 23%, rgba(255, 255, 255, .98) 0 5%, rgba(255, 255, 255, .42) 8%, transparent 30%),
+    radial-gradient(circle at 67% 72%, var(--soap-tint) 0, rgba(255, 255, 255, .12) 58%, transparent 76%),
+    conic-gradient(from 205deg, rgba(255, 176, 218, .42), rgba(143, 207, 255, .4), rgba(205, 173, 255, .42), rgba(151, 236, 207, .36), rgba(255, 176, 218, .42));
+  box-shadow:
+    inset -9px -9px 18px rgba(106, 127, 172, .14),
+    inset 7px 7px 14px rgba(255, 255, 255, .62),
+    0 9px 22px rgba(150, 164, 195, .16);
+  filter: var(--soap-filter);
   animation: labstar-soap-float var(--soap-duration, 16s) ease-in-out var(--soap-delay, -4s) infinite;
   will-change: transform;
 }
@@ -328,272 +1064,836 @@ html[data-labstar-theme="light"] .labstar-soap-bubble {
 html[data-labstar-theme="light"] .labstar-soap-bubble::before {
   content: "";
   position: absolute;
-  inset: 10%;
+  inset: 9%;
   border-radius: 50%;
-  opacity: .72;
-  background: conic-gradient(from 200deg, rgba(255, 214, 232, .32), rgba(207, 232, 255, .32), rgba(230, 217, 255, .32), rgba(211, 255, 233, .32), rgba(255, 214, 232, .32));
+  opacity: .58;
+  background: conic-gradient(from 180deg, rgba(255, 205, 229, .28), rgba(180, 222, 255, .25), rgba(222, 204, 255, .28), rgba(188, 244, 223, .24), rgba(255, 205, 229, .28));
   mix-blend-mode: overlay;
 }
 
 html[data-labstar-theme="light"] .labstar-soap-bubble::after {
   content: "";
   position: absolute;
-  left: 22%;
-  top: 16%;
-  width: 26%;
-  height: 16%;
+  left: 20%;
+  top: 14%;
+  width: 27%;
+  height: 15%;
   border-radius: 50%;
-  background: rgba(255, 255, 255, .88);
+  background: rgba(255, 255, 255, .9);
   filter: blur(1px);
+  transform: rotate(-18deg);
 }
 
 html[data-labstar-theme="light"] .labstar-soap-bubble.is-dragging {
-  z-index: 3;
+  z-index: 2;
   cursor: grabbing;
-  opacity: .48;
+  opacity: .54;
+}
+
+html[data-labstar-theme="light"] .labstar-soap-bubble.is-placed {
+  will-change: auto;
 }
 
 html[data-labstar-theme="light"] .labstar-soap-bubble.is-popping {
-  animation: none !important;
-  transition: transform .27s ease-out, opacity .27s ease-out;
-  transform: scale(1.42) !important;
-  opacity: 0 !important;
-}
-
-html[data-labstar-theme="light"] .message-scroll.labstar-soap-enabled > :not(.labstar-soap-layer),
-html[data-labstar-theme="light"] .dm-message-scroll.labstar-soap-enabled > :not(.labstar-soap-layer) {
-  position: relative;
-  z-index: 1;
-}
-
-html[data-labstar-theme="light"] .chat-message:hover,
-html[data-labstar-theme="light"] .dm-message:hover {
-  background: rgba(255, 255, 255, .22) !important;
-}
-
-html[data-labstar-theme="light"] .message-body,
-html[data-labstar-theme="light"] .message-body p,
-html[data-labstar-theme="light"] .developer-message-content,
-html[data-labstar-theme="light"] .dm-message-body,
-html[data-labstar-theme="light"] .dm-message-body p {
-  color: var(--neu-ink) !important;
-}
-
-html[data-labstar-theme="light"] .message-composer,
-html[data-labstar-theme="light"] .dm-composer,
-html[data-labstar-theme="light"] .developer-composer,
-html[data-labstar-theme="light"] .composer-shell {
-  border-color: transparent !important;
-  background: var(--neu-base) !important;
-  box-shadow: var(--neu-inset-shadow) !important;
-}
-
-html[data-labstar-theme="light"] .message-composer textarea,
-html[data-labstar-theme="light"] .message-composer input,
-html[data-labstar-theme="light"] .dm-composer textarea,
-html[data-labstar-theme="light"] .dm-composer input {
-  color: var(--neu-ink) !important;
-  background: transparent !important;
-}
-
-html[data-labstar-theme="light"] .message-composer button:not(.dm-send),
-html[data-labstar-theme="light"] .dm-composer button:not(.dm-send),
-html[data-labstar-theme="light"] .developer-composer button {
-  border-color: transparent !important;
-  background: var(--neu-base) !important;
-  box-shadow: 4px 4px 9px rgba(195, 202, 219, .68), -4px -4px 9px rgba(255, 255, 255, .86) !important;
+  animation: labstar-soap-pop .32s ease-out forwards !important;
 }
 
 @keyframes labstar-soap-float {
   0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
-  33% { transform: translate3d(var(--soap-tx1, 24px), var(--soap-ty1, -18px), 0) scale(var(--soap-s1, 1.06)); }
-  66% { transform: translate3d(var(--soap-tx2, -20px), var(--soap-ty2, 22px), 0) scale(var(--soap-s2, .94)); }
+  34% { transform: translate3d(var(--soap-tx1, 24px), var(--soap-ty1, -18px), 0) scale(var(--soap-s1, 1.06)); }
+  67% { transform: translate3d(var(--soap-tx2, -20px), var(--soap-ty2, 22px), 0) scale(var(--soap-s2, .94)); }
 }
 
-/* ---------- Configurações ---------- */
-html[data-labstar-theme="light"] .global-settings-backdrop {
-  background: rgba(218, 225, 237, .7) !important;
-  backdrop-filter: blur(17px) saturate(.96) !important;
+@keyframes labstar-soap-pop {
+  0% { opacity: .48; transform: scale(1); filter: var(--soap-filter) saturate(1); }
+  58% { opacity: .22; transform: scale(1.2); filter: var(--soap-filter) saturate(1.45); }
+  100% { opacity: 0; transform: scale(1.42); filter: var(--soap-filter) saturate(.7); }
 }
 
-html[data-labstar-theme="light"] .global-settings,
-html[data-labstar-theme="light"] .settings-section,
-html[data-labstar-theme="light"] .settings-security-card,
-html[data-labstar-theme="light"] .achievements-summary,
-html[data-labstar-theme="light"] .achievement-card {
-  border-color: transparent !important;
-  background: var(--neu-base) !important;
-  box-shadow: var(--neu-raised-shadow) !important;
+/* Configurações globais e de espaço. */
+html[data-labstar-theme="light"] :where(
+  .global-settings-backdrop,
+  .workspace-settings-backdrop
+) {
+  background: rgba(212, 220, 234, .72);
+  backdrop-filter: blur(15px) saturate(.92);
 }
 
-html[data-labstar-theme="light"] .global-settings-nav,
-html[data-labstar-theme="light"] .global-settings-content,
-html[data-labstar-theme="light"] .global-settings-footer,
-html[data-labstar-theme="light"] .global-settings-head {
-  border-color: var(--neu-line) !important;
-  background: var(--neu-base) !important;
+html[data-labstar-theme="light"] :where(
+  .global-settings,
+  .workspace-settings-center
+) {
+  border-color: rgba(255, 255, 255, .54);
+  color: var(--neu-ink);
+  background: var(--neu-base);
+  box-shadow: var(--neu-overlay-shadow);
 }
 
-html[data-labstar-theme="light"] .global-settings-brand strong,
-html[data-labstar-theme="light"] .global-settings-head h2,
-html[data-labstar-theme="light"] .settings-section > header strong,
-html[data-labstar-theme="light"] .settings-toggle-copy strong,
-html[data-labstar-theme="light"] .settings-profile-row strong,
-html[data-labstar-theme="light"] .achievement-copy > strong {
+html[data-labstar-theme="light"] :where(
+  .global-settings-nav,
+  .global-settings-content,
+  .global-settings-head,
+  .global-settings-footer,
+  .workspace-settings-nav,
+  .workspace-settings-content,
+  .workspace-settings-head,
+  .workspace-settings-foot,
+  .workspace-settings-scroll
+) {
+  border-color: var(--neu-line);
+  color: var(--neu-ink);
+  background: var(--neu-base);
+}
+
+html[data-labstar-theme="light"] :where(
+  .global-settings-brand,
+  .global-settings-head,
+  .settings-section,
+  .settings-toggle-copy,
+  .settings-profile-row,
+  .achievement-copy,
+  .workspace-settings-identity,
+  .workspace-settings-head,
+  .workspace-admin-section
+) :where(strong, h2, h3) {
+  color: var(--neu-ink);
+}
+
+html[data-labstar-theme="light"] :where(
+  .global-settings-brand,
+  .global-settings-head,
+  .settings-section,
+  .settings-toggle-copy,
+  .settings-profile-row,
+  .achievement-copy,
+  .workspace-settings-identity,
+  .workspace-settings-head,
+  .workspace-admin-section
+) :where(small, p, span) {
+  color: var(--neu-ink-muted);
+}
+
+html[data-labstar-theme="light"] :where(
+  .settings-section,
+  .settings-security-card,
+  .achievements-summary,
+  .achievement-card,
+  .workspace-admin-section,
+  .workspace-overview-card,
+  .channel-permission-editor
+) {
+  border-color: transparent;
+  background: var(--neu-base);
+  box-shadow: var(--neu-raised-shadow);
+}
+
+html[data-labstar-theme="light"] .settings-section > header strong {
   color: var(--neu-ink) !important;
 }
 
-html[data-labstar-theme="light"] .global-settings-brand small,
-html[data-labstar-theme="light"] .global-settings-head small,
-html[data-labstar-theme="light"] .settings-section > header p,
-html[data-labstar-theme="light"] .settings-toggle-copy small,
-html[data-labstar-theme="light"] .settings-status,
-html[data-labstar-theme="light"] .achievement-copy > p,
-html[data-labstar-theme="light"] .achievement-copy > small {
+html[data-labstar-theme="light"] .settings-section > header p {
   color: var(--neu-ink-muted) !important;
 }
 
-html[data-labstar-theme="light"] .settings-field input,
-html[data-labstar-theme="light"] .settings-field select,
-html[data-labstar-theme="light"] .settings-field textarea {
-  border-color: transparent !important;
-  color: var(--neu-ink) !important;
-  background: var(--neu-base) !important;
-  box-shadow: var(--neu-inset-shadow) !important;
+html[data-labstar-theme="light"] .global-settings-brand > span {
+  color: #91a6ec;
 }
 
-html[data-labstar-theme="light"] .settings-field input:focus,
-html[data-labstar-theme="light"] .settings-field select:focus,
-html[data-labstar-theme="light"] .settings-field textarea:focus {
-  outline: none !important;
-  box-shadow: var(--neu-inset-shadow), 0 0 0 3px rgba(125, 111, 201, .1) !important;
+html[data-labstar-theme="light"] :where(
+  .settings-field input,
+  .settings-field select,
+  .settings-field textarea,
+  .workspace-admin-section input,
+  .workspace-admin-section select,
+  .workspace-admin-section textarea
+) {
+  border-color: transparent;
+  color: var(--neu-ink);
+  background: var(--neu-base);
+  box-shadow: var(--neu-inset-shadow);
 }
 
-html[data-labstar-theme="light"] .global-settings-head > button,
-html[data-labstar-theme="light"] .settings-profile-actions button,
-html[data-labstar-theme="light"] .settings-inline-actions button,
-html[data-labstar-theme="light"] .achievements-summary > button {
-  border-color: transparent !important;
-  color: #626d83 !important;
-  background: var(--neu-base) !important;
-  box-shadow: var(--neu-raised-shadow-sm) !important;
+html[data-labstar-theme="light"] :where(
+  .global-settings-head > button,
+  .settings-profile-actions button,
+  .settings-inline-actions button,
+  .achievements-summary > button,
+  .workspace-settings-head > button,
+  .workspace-admin-section header button
+) {
+  border-color: transparent;
+  color: #5d687f;
+  background: var(--neu-base);
+  box-shadow: var(--neu-raised-shadow-sm);
 }
 
-html[data-labstar-theme="light"] .global-settings-head > button:active,
-html[data-labstar-theme="light"] .settings-profile-actions button:active,
-html[data-labstar-theme="light"] .settings-inline-actions button:active,
-html[data-labstar-theme="light"] .achievements-summary > button:active {
-  box-shadow: inset 4px 4px 9px rgba(195, 202, 219, .78), inset -4px -4px 9px rgba(255, 255, 255, .9) !important;
-}
-
-/* Botão de salvar mantém a cor de ação já existente. */
 html[data-labstar-theme="light"] .global-settings-footer > button {
-  box-shadow: var(--neu-raised-shadow-sm) !important;
+  box-shadow: var(--neu-raised-shadow-sm);
 }
 
 html[data-labstar-theme="light"] .settings-toggle > i {
-  border-color: transparent !important;
-  background: var(--neu-base) !important;
-  box-shadow: inset 3px 3px 7px rgba(195, 202, 219, .8), inset -3px -3px 7px rgba(255, 255, 255, .9) !important;
+  border-color: transparent;
+  background: var(--neu-base);
+  box-shadow: var(--neu-inset-shadow);
 }
 
 html[data-labstar-theme="light"] .settings-toggle > i::after {
-  box-shadow: 2px 2px 5px rgba(170, 180, 201, .58), -2px -2px 5px rgba(255, 255, 255, .88) !important;
+  box-shadow: 2px 2px 5px rgba(159, 171, 196, .55), -2px -2px 5px rgba(255, 255, 255, .84);
 }
 
-/* settings-danger, alertas, status e cores semânticas ficam intencionalmente sem override. */
+html[data-labstar-theme="light"] .settings-theme-group {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
 
-/* ---------- modo de edição / inspector: tratamento neutro, sem tocar no cartão ---------- */
-html[data-labstar-theme="light"] .inspector,
-html[data-labstar-theme="light"] .card-theme-picker,
-html[data-labstar-theme="light"] .integration-fields,
-html[data-labstar-theme="light"] .zoom-controls,
-html[data-labstar-theme="light"] .canvas-meta {
+html[data-labstar-theme="light"] .settings-theme-group > button {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+html[data-labstar-theme="light"] .settings-theme-group > button > span {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  text-align: left;
+}
+
+html[data-labstar-theme="light"] .settings-theme-group :where(strong, small) {
+  color: inherit;
+}
+
+/* Inspector: muda somente o painel e os controles, não .node-card. */
+html[data-labstar-theme="light"] :where(
+  .inspector,
+  .card-theme-picker,
+  .integration-fields,
+  .project-inspector-summary
+) {
   border-color: transparent !important;
+  color: var(--neu-ink);
   background: var(--neu-base) !important;
   box-shadow: var(--neu-raised-shadow) !important;
 }
 
-html[data-labstar-theme="light"] .inspector-head,
-html[data-labstar-theme="light"] .inspector footer {
+html[data-labstar-theme="light"] :where(.inspector-head, .inspector footer) {
+  border-color: var(--neu-line);
+  background: var(--neu-base);
+}
+
+html[data-labstar-theme="light"] :where(
+  .inspector-head,
+  .inspector,
+  .integration-heading
+) :where(strong, legend, label) {
+  color: var(--neu-ink);
+}
+
+html[data-labstar-theme="light"] :where(
+  .inspector-head,
+  .inspector,
+  .integration-heading
+) :where(small, .canvas-tip) {
+  color: var(--neu-ink-muted);
+}
+
+html[data-labstar-theme="light"] :where(
+  .field-grid input,
+  .field-grid select,
+  .field-grid textarea,
+  .integration-fields input,
+  .integration-fields select,
+  .integration-fields textarea
+) {
+  border-color: transparent;
+  color: var(--neu-ink);
+  background: var(--neu-base);
+  box-shadow: var(--neu-inset-shadow);
+}
+
+html[data-labstar-theme="light"] .card-theme-picker button {
+  color: var(--neu-ink-muted) !important;
+}
+
+html[data-labstar-theme="light"] .card-theme-picker button[aria-checked="true"] {
+  color: var(--neu-ink) !important;
+}
+
+/* Modais, menus, popovers e superfícies administrativas neutras. */
+html[data-labstar-theme="light"] :where(
+  .modal-backdrop,
+  .command-palette-backdrop,
+  .work-item-modal-backdrop,
+  .message-work-backdrop,
+  .channel-access-backdrop,
+  .markdown-studio-backdrop,
+  .workspace-settings-backdrop,
+  .organization-modal-backdrop,
+  .safety-confirm-backdrop,
+  .universal-profile-backdrop,
+  .delegated-admin-backdrop,
+  .project-modal-backdrop
+) {
+  background: rgba(209, 218, 233, .72) !important;
+  backdrop-filter: blur(14px) saturate(.92) !important;
+}
+
+html[data-labstar-theme="light"] :where(
+  .invite-modal,
+  .work-modal,
+  .legal-modal,
+  .work-item-modal,
+  .message-work-modal,
+  .channel-access-modal,
+  .command-palette,
+  .notifications-panel,
+  .markdown-studio,
+  .workspace-settings-center,
+  .organization-modal,
+  .delegated-admin-modal,
+  .executive-summary-modal,
+  .project-details-modal,
+  .project-document-modal
+) {
+  border-color: rgba(255, 255, 255, .5) !important;
+  color: var(--neu-ink) !important;
+  background: var(--neu-base) !important;
+  box-shadow: var(--neu-overlay-shadow) !important;
+}
+
+html[data-labstar-theme="light"] :where(
+  .invite-modal,
+  .work-modal,
+  .legal-modal,
+  .work-item-modal,
+  .message-work-modal,
+  .channel-access-modal,
+  .command-palette,
+  .notifications-panel,
+  .markdown-studio,
+  .organization-modal,
+  .delegated-admin-modal,
+  .executive-summary-modal,
+  .project-details-modal,
+  .project-document-modal
+) :where(header, footer) {
   border-color: var(--neu-line) !important;
   background: var(--neu-base) !important;
 }
 
-html[data-labstar-theme="light"] .inspector-head strong,
-html[data-labstar-theme="light"] .inspector legend,
-html[data-labstar-theme="light"] .field-grid label,
-html[data-labstar-theme="light"] .integration-heading strong {
+html[data-labstar-theme="light"] :where(
+  .invite-modal,
+  .work-modal,
+  .legal-modal,
+  .work-item-modal,
+  .message-work-modal,
+  .channel-access-modal,
+  .command-palette,
+  .notifications-panel,
+  .markdown-studio,
+  .organization-modal,
+  .delegated-admin-modal,
+  .executive-summary-modal,
+  .project-details-modal,
+  .project-document-modal
+) :where(h1, h2, h3, strong, label) {
   color: var(--neu-ink) !important;
 }
 
-html[data-labstar-theme="light"] .inspector-head small,
-html[data-labstar-theme="light"] .integration-heading small,
-html[data-labstar-theme="light"] .canvas-meta,
-html[data-labstar-theme="light"] .canvas-tip {
-  color: var(--neu-ink-muted) !important;
+html[data-labstar-theme="light"] :where(
+  .invite-modal,
+  .work-modal,
+  .legal-modal,
+  .work-item-modal,
+  .message-work-modal,
+  .channel-access-modal,
+  .command-palette,
+  .notifications-panel,
+  .markdown-studio,
+  .organization-modal,
+  .delegated-admin-modal,
+  .executive-summary-modal,
+  .project-details-modal,
+  .project-document-modal
+) :where(p, small, span, time) {
+  color: var(--neu-ink-muted);
 }
 
-html[data-labstar-theme="light"] .field-grid input,
-html[data-labstar-theme="light"] .field-grid select,
-html[data-labstar-theme="light"] .field-grid textarea,
-html[data-labstar-theme="light"] .integration-fields input,
-html[data-labstar-theme="light"] .integration-fields select,
-html[data-labstar-theme="light"] .integration-fields textarea {
+html[data-labstar-theme="light"] :where(
+  .invite-modal,
+  .work-modal,
+  .legal-modal,
+  .work-item-modal,
+  .message-work-modal,
+  .channel-access-modal,
+  .command-palette,
+  .notifications-panel,
+  .markdown-studio,
+  .organization-modal,
+  .delegated-admin-modal,
+  .executive-summary-modal,
+  .project-details-modal,
+  .project-document-modal
+) :where(input, textarea, select) {
   border-color: transparent !important;
   color: var(--neu-ink) !important;
   background: var(--neu-base) !important;
   box-shadow: var(--neu-inset-shadow) !important;
 }
 
-/* ---------- overlays neutros ---------- */
-html[data-labstar-theme="light"] .command-palette,
-html[data-labstar-theme="light"] .workspace-menu,
-html[data-labstar-theme="light"] .context-menu,
-html[data-labstar-theme="light"] .member-quick-card,
-html[data-labstar-theme="light"] .global-search-results,
-html[data-labstar-theme="light"] .dm-emoji-picker,
-html[data-labstar-theme="light"] .emoji-picker {
-  border-color: rgba(255, 255, 255, .56) !important;
+html[data-labstar-theme="light"] :where(
+  .channel-access-section,
+  .channel-restrictions fieldset,
+  .channel-visibility-choice > button,
+  .channel-level-grid label,
+  .channel-role-grid label,
+  .channel-member-access-list label,
+  .channel-readonly-toggle,
+  .project-details-scroll section,
+  .message-work-origin
+) {
+  border-color: var(--neu-line) !important;
   color: var(--neu-ink) !important;
-  background: rgba(233, 237, 245, .98) !important;
-  box-shadow: 12px 12px 28px rgba(186, 196, 216, .58), -10px -10px 25px rgba(255, 255, 255, .76) !important;
+  background: transparent !important;
 }
 
-/* ---------- movimento e fallback mobile ---------- */
-html[data-labstar-theme="light"][data-labstar-motion="reduced"] .labstar-liquid-indicator,
-html[data-labstar-theme="light"][data-labstar-motion="reduced"] .labstar-soap-bubble,
-html[data-labstar-theme="light"][data-labstar-motion="reduced"] .labstar-liquid-indicator::after {
+html[data-labstar-theme="light"] :where(
+  .context-menu,
+  .dm-message-menu,
+  .channel-message-actions-menu,
+  .workspace-quick-menu,
+  .workspace-menu,
+  .developer-create-menu,
+  .organization-switcher-menu,
+  .global-search-results,
+  .labstar-global-results,
+  .dm-emoji-picker,
+  .emoji-picker
+) {
+  border-color: rgba(255, 255, 255, .5) !important;
+  color: var(--neu-ink) !important;
+  background: rgba(233, 237, 245, .98) !important;
+  box-shadow: var(--neu-overlay-shadow) !important;
+}
+
+html[data-labstar-theme="light"] :where(
+  .context-menu,
+  .dm-message-menu,
+  .channel-message-actions-menu,
+  .workspace-quick-menu,
+  .workspace-menu,
+  .developer-create-menu,
+  .organization-switcher-menu,
+  .global-search-results,
+  .labstar-global-results
+) :where(button, strong) {
+  color: var(--neu-ink);
+  background: transparent;
+}
+
+html[data-labstar-theme="light"] :where(
+  .context-menu,
+  .dm-message-menu,
+  .channel-message-actions-menu,
+  .workspace-quick-menu,
+  .workspace-menu,
+  .developer-create-menu,
+  .organization-switcher-menu,
+  .global-search-results,
+  .labstar-global-results
+) button:hover {
+  background: rgba(255, 255, 255, .3);
+}
+
+/* Tema escuro: o mesmo relevo neumórfico, sem alterar superfícies autorais. */
+html[data-labstar-theme="dark"] {
+  --neu-base: #0c1119;
+  --neu-base-raised: #111823;
+  --neu-ink: #eef3fb;
+  --neu-ink-muted: #a4afc1;
+  --neu-disabled: #697486;
+  --neu-line: rgba(164, 181, 211, .12);
+  --neu-raised-shadow:
+    7px 7px 16px rgba(0, 0, 0, .56),
+    -5px -5px 14px rgba(38, 49, 68, .48);
+  --neu-raised-shadow-sm:
+    4px 4px 10px rgba(0, 0, 0, .5),
+    -3px -3px 9px rgba(38, 49, 68, .42);
+  --neu-inset-shadow:
+    inset 4px 4px 9px rgba(0, 0, 0, .58),
+    inset -3px -3px 8px rgba(39, 51, 70, .4);
+  --neu-overlay-shadow:
+    15px 15px 34px rgba(0, 0, 0, .62),
+    -8px -8px 24px rgba(39, 51, 70, .34);
+}
+
+html[data-labstar-theme="dark"] .neu-flat {
+  border-color: var(--neu-line);
+  background: var(--neu-base);
+  box-shadow: none;
+}
+
+html[data-labstar-theme="dark"] .neu-raised {
+  border-color: transparent;
+  background: var(--neu-base-raised);
+  box-shadow: var(--neu-raised-shadow);
+}
+
+html[data-labstar-theme="dark"] .neu-inset {
+  border-color: transparent;
+  background: var(--neu-base);
+  box-shadow: var(--neu-inset-shadow);
+}
+
+html[data-labstar-theme="dark"] .header {
+  border-bottom-color: var(--neu-line);
+  background: rgba(12, 17, 25, .96);
+  box-shadow: 0 9px 24px rgba(0, 0, 0, .4), inset 0 -1px rgba(164, 181, 211, .06);
+  backdrop-filter: blur(18px) saturate(.9);
+}
+
+html[data-labstar-theme="dark"] .header .brand {
+  background: transparent;
+  box-shadow: none;
+}
+
+html[data-labstar-theme="dark"] :where(
+  .global-search,
+  .channel-search,
+  .dm-search,
+  .member-search,
+  .workspace-admin-search,
+  .message-toolbar label,
+  .dm-conversation-actions label
+) {
+  border-color: transparent;
+  color: var(--neu-ink-muted);
+  background: var(--neu-base) !important;
+  box-shadow: var(--neu-inset-shadow);
+}
+
+html[data-labstar-theme="dark"] :where(
+  .global-search,
+  .channel-search,
+  .dm-search,
+  .member-search,
+  .workspace-admin-search,
+  .message-toolbar label,
+  .dm-conversation-actions label
+) input {
+  color: var(--neu-ink);
+  background: transparent;
+}
+
+html[data-labstar-theme="dark"] :where(
+  .header .icon-button,
+  .header .labstar-theme-toggle,
+  .rail-bottom > button,
+  .organization-switcher-trigger
+) {
+  border-color: transparent;
+  color: var(--neu-ink-muted);
+  background: var(--neu-base);
+  box-shadow: var(--neu-raised-shadow-sm);
+}
+
+html[data-labstar-theme="dark"] .organization-switcher-trigger span {
+  color: var(--neu-ink) !important;
+}
+
+html[data-labstar-theme="dark"] .global-search kbd,
+html[data-labstar-theme="dark"] .dm-search-hint,
+html[data-labstar-theme="dark"] .dashboard-server-strip small {
+  color: var(--neu-ink-muted);
+}
+
+html[data-labstar-theme="dark"] .create-button {
+  border-color: rgba(188, 206, 242, .16);
+  color: #f4f7ff;
+  background:
+    radial-gradient(circle at 18% 8%, rgba(255, 255, 255, .2), transparent 38%),
+    linear-gradient(135deg, rgba(77, 65, 126, .96), rgba(44, 84, 125, .96));
+  box-shadow:
+    inset 0 2px 3px rgba(255, 255, 255, .14),
+    inset 0 -5px 10px rgba(0, 0, 0, .24),
+    var(--neu-raised-shadow-sm);
+}
+
+html[data-labstar-theme="dark"] [data-labstar-liquid-group] {
+  position: relative;
+  isolation: isolate;
+}
+
+html[data-labstar-theme="dark"] :where(
+  .rail-group,
+  .workspace-surface-rail,
+  .global-settings-nav nav,
+  .workspace-settings-nav nav,
+  .dm-home-tabs,
+  .dm-inbox-tabs,
+  .work-items-summary,
+  .team-section-tabs,
+  .settings-theme-group,
+  .card-theme-picker [role="radiogroup"]
+)[data-labstar-liquid-group] {
+  border-color: transparent;
+  background: var(--neu-base);
+  box-shadow: var(--neu-raised-shadow-sm);
+}
+
+html[data-labstar-theme="dark"] :where(
+  .global-settings-nav nav,
+  .workspace-settings-nav nav,
+  .settings-theme-group,
+  .card-theme-picker [role="radiogroup"]
+)[data-labstar-liquid-group] {
+  box-shadow: var(--neu-inset-shadow);
+}
+
+html[data-labstar-theme="dark"] [data-labstar-liquid-group] > button {
+  position: relative;
+  z-index: 2;
+  border-color: transparent !important;
+  color: var(--neu-ink-muted);
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+html[data-labstar-theme="dark"] [data-labstar-liquid-group] > button:is(
+  .active,
+  [aria-current="page"],
+  [aria-selected="true"],
+  [aria-checked="true"]
+) {
+  color: var(--neu-ink);
+}
+
+html[data-labstar-theme="dark"] .labstar-liquid-indicator {
+  position: absolute;
+  z-index: 1;
+  left: 0;
+  top: 0;
+  width: var(--liquid-w, 36px);
+  height: var(--liquid-h, 36px);
+  border: 1px solid rgba(202, 215, 244, .16);
+  border-radius: min(15px, 38%);
+  pointer-events: none;
+  opacity: 0;
+  background:
+    radial-gradient(circle at 28% 16%, rgba(255, 255, 255, .2), transparent 42%),
+    linear-gradient(135deg, rgba(90, 72, 145, .86), rgba(49, 96, 143, .84));
+  box-shadow:
+    inset 0 2px 4px rgba(255, 255, 255, .16),
+    inset 0 -4px 8px rgba(0, 0, 0, .28),
+    0 6px 15px rgba(0, 0, 0, .42);
+  filter: url(#labstar-goo-small);
+  transform: translate3d(var(--liquid-x, 0), var(--liquid-y, 0), 0);
+  transition:
+    transform .55s cubic-bezier(.34, 1.46, .42, 1),
+    width .55s cubic-bezier(.34, 1.46, .42, 1),
+    height .55s cubic-bezier(.34, 1.46, .42, 1),
+    opacity .16s ease;
+}
+
+html[data-labstar-theme="dark"] .labstar-liquid-indicator::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  opacity: 0;
+  background: inherit;
+  transform: translate(-50%, -50%) scale(.2);
+}
+
+html[data-labstar-theme="dark"] .labstar-liquid-indicator.is-moving::after {
+  animation: labstar-liquid-drip .58s cubic-bezier(.34, 1.46, .42, 1);
+}
+
+html[data-labstar-theme="dark"] :where(
+  .rail,
+  .workspace-surface-rail,
+  .work-home-metrics article,
+  .communication-home-metrics article,
+  .metric-grid article,
+  .work-items-panel,
+  .work-focus-panel,
+  .work-activity-panel,
+  .work-files-panel,
+  .communication-panel,
+  .team-metrics article,
+  .member-list-panel,
+  .member-editor,
+  .roles-list-panel,
+  .role-editor,
+  .dm-home-contact-grid > button,
+  .dm-profile-panel,
+  .settings-section,
+  .settings-security-card,
+  .workspace-admin-section
+) {
+  border-color: transparent;
+  box-shadow: var(--neu-raised-shadow);
+}
+
+html[data-labstar-theme="dark"] :where(
+  .channel-sidebar,
+  .channel-members,
+  .dm-sidebar,
+  .dm-directory,
+  .dm-inbox,
+  .global-settings-nav,
+  .workspace-settings-nav
+) {
+  border-color: var(--neu-line);
+  box-shadow: var(--neu-raised-shadow-sm);
+}
+
+html[data-labstar-theme="dark"] :where(
+  .message-composer .composer-row,
+  .dm-composer > div:last-of-type,
+  .composer-shell,
+  .member-search,
+  .field-grid input,
+  .field-grid select,
+  .field-grid textarea,
+  .settings-section input,
+  .settings-section textarea,
+  .settings-section select
+) {
+  border-color: transparent;
+  box-shadow: var(--neu-inset-shadow);
+}
+
+html[data-labstar-theme="dark"] :where(
+  .global-settings-dialog,
+  .workspace-settings-dialog,
+  .invite-modal,
+  .work-modal,
+  .legal-modal,
+  .work-item-modal,
+  .project-details-modal,
+  .project-document-modal,
+  .organization-modal,
+  .context-menu,
+  .workspace-menu,
+  .organization-switcher-menu,
+  .global-search-results,
+  .labstar-global-results
+) {
+  border-color: var(--neu-line) !important;
+  box-shadow: var(--neu-overlay-shadow) !important;
+}
+
+html[data-labstar-theme="dark"] :where(
+  .global-settings-dialog,
+  .workspace-settings-dialog
+) {
+  background: var(--neu-base) !important;
+}
+
+html[data-labstar-theme="dark"] :where(p, small, time, label) {
+  text-shadow: none;
+}
+
+html[data-labstar-theme="dark"] :where(button, input, textarea, select):disabled {
+  color: var(--neu-disabled);
+}
+
+html[data-labstar-theme="dark"] :where(
+  .global-settings-head small,
+  .global-settings-footer span,
+  .global-settings-brand small
+) {
+  color: var(--neu-ink-muted);
+}
+
+html[data-labstar-theme="dark"] .settings-theme-group > button small {
+  color: #c8d1df;
+}
+
+/* Semântica: perigo, sucesso, aviso, presença, CTA e links mantêm as cores originais. */
+:is(html[data-labstar-theme="light"], html[data-labstar-theme="dark"]) :where(
+  .settings-danger,
+  .danger,
+  .error,
+  .success,
+  .warning,
+  .online,
+  .offline,
+  .dm-send,
+  .send-message,
+  .primary
+) {
+  filter: none;
+}
+
+/* Movimento reduzido interno e do sistema. */
+:is(
+  html[data-labstar-theme="light"][data-labstar-motion="reduced"],
+  html[data-labstar-theme="dark"][data-labstar-motion="reduced"]
+) :where(
+  .labstar-liquid-indicator,
+  .labstar-liquid-indicator::after,
+  .labstar-soap-bubble
+) {
   animation: none !important;
   transition-duration: .001ms !important;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  html[data-labstar-theme="light"] .labstar-liquid-indicator,
-  html[data-labstar-theme="light"] .labstar-soap-bubble,
-  html[data-labstar-theme="light"] .labstar-liquid-indicator::after {
+  :is(html[data-labstar-theme="light"], html[data-labstar-theme="dark"]) :where(
+    .labstar-liquid-indicator,
+    .labstar-liquid-indicator::after,
+    .labstar-soap-bubble
+  ) {
     animation: none !important;
     transition-duration: .001ms !important;
   }
 }
 
+/* Mobile: mantém 3 bolhas e desliga somente o filtro caro. */
 @media (max-width: 820px) {
   html[data-labstar-theme="light"] .global-settings {
-    box-shadow: none !important;
-  }
-
-  /* No mobile o SVG gooey é desligado; permanecem só 3 bolhas leves. */
-  html[data-labstar-theme="light"] .labstar-soap-field {
-    filter: none !important;
+    box-shadow: none;
   }
 
   html[data-labstar-theme="light"] .labstar-soap-bubble {
-    opacity: .27;
+    filter: none;
+  }
+
+  html[data-labstar-theme="light"] .labstar-soap-bubble {
+    width: min(118px, 30vw) !important;
+    height: min(118px, 30vw) !important;
+    opacity: .32;
+  }
+
+  html[data-labstar-theme="light"] .labstar-soap-bubble:nth-child(n + 4) {
+    display: none;
+  }
+
+  html[data-labstar-theme="light"] .settings-theme-group {
+    grid-template-columns: 1fr;
+  }
+
+  html[data-labstar-theme="light"] :where(
+    .header,
+    .rail,
+    .workspace,
+    .collaboration-server-mode,
+    .direct-hub,
+    .global-settings,
+    .workspace-settings-center
+  ) {
+    background-color: var(--neu-base) !important;
   }
 }
 
-@supports not (filter: url(#labstar-goo-bubbles)) {
-  html[data-labstar-theme="light"] .labstar-soap-field {
-    filter: none !important;
+@supports not (filter: url("#labstar-goo-small")) {
+  html[data-labstar-theme="light"] :where(.labstar-liquid-indicator, .labstar-soap-bubble) {
+    filter: none;
   }
 }
