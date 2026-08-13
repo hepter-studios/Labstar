@@ -124,7 +124,7 @@ export function WorkspaceSettingsCenter({
             </span>
             <div><strong>{space.name}</strong><small>Configurações do Espaço</small></div>
           </div>
-          <nav>
+          <nav data-labstar-liquid-group>
             {tabs.map(({ id, label, icon: Icon }) => (
               <button key={id} className={tab === id ? "active" : ""} type="button" onClick={() => setTab(id)}><Icon size={15} /> {label}</button>
             ))}

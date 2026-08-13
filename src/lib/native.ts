@@ -90,10 +90,9 @@ export async function initializeNativeBridge(): Promise<Unlisten> {
 
   return tauri.event.listen<ValidatedDeepLink>("labstar://deep-link", (event) => {
     void processDeepLink(event.payload)
-      .then(() => window.location.reload())
       .catch(() => {
         window.sessionStorage.setItem(NATIVE_ERROR_KEY, "native_deep_link_failed");
-        window.location.reload();
+        window.dispatchEvent(new CustomEvent(ACCESS_CHANGED_EVENT));
       });
   });
 }

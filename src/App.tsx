@@ -68,7 +68,7 @@ import {
 import { memberPresenceStatus, useMemberPresence } from "./lib/presence";
 import { Avatar } from "./components/Avatar";
 import { CollaborationHub } from "./components/CollaborationHub";
-import { LabstarAccessLoader, MascotCelebrationHost, ProjectLottieExperience, celebrateWithMascot } from "./components/LottieExperience";
+import { LabstarAccessLoader, MapAmbientFlybys, MascotCelebrationHost, ProjectLottieExperience, SoundToggleLottie, celebrateWithMascot } from "./components/LottieExperience";
 import { NotificationsButton } from "./components/NotificationsPanel";
 import { CurrentProfileConnection, MemberProfileConnection } from "./components/ProfileConnectionsBridge";
 import { RoleBadge, RoleManager } from "./components/RoleManager";
@@ -200,6 +200,7 @@ export default function Home() {
   const [projectLoadToken, setProjectLoadToken] = useState(0);
   const [zoom, setZoom] = useState(0.78);
   const [sound, setSound] = useState(true);
+  const [soundFeedbackToken, setSoundFeedbackToken] = useState(0);
   const [search, setSearch] = useState("");
   const [quickPanel, setQuickPanel] = useState<"profile" | "help" | "summary" | null>(null);
   const [githubConnectionResult] = useState(() => takeGithubProfileConnectionResult());
@@ -625,7 +626,7 @@ export default function Home() {
             setQuickPanel(null);
             setView("colaboracao");
           }} />
-          <button className="icon-button" data-tooltip={sound ? "Desativar som" : "Ativar som"} onClick={() => setSound((value) => !value)} aria-label="Ativar ou desativar som">{sound ? <Volume2 size={15} /> : <VolumeX size={15} />}</button>
+          <button className="icon-button" data-tooltip={sound ? "Desativar som" : "Ativar som"} onClick={() => { setSound((value) => !value); setSoundFeedbackToken((value) => value + 1); }} aria-label="Ativar ou desativar som">{sound ? <Volume2 size={15} /> : <VolumeX size={15} />}</button>
           <button className="create-button" onClick={() => addNode(null)}><Plus size={14} /> Criar núcleo</button>
           <button className="avatar avatar-button" onClick={() => setQuickPanel(quickPanel === "profile" ? null : "profile")} aria-label="Perfil"><Avatar name={session.member.name} url={session.member.avatarUrl} size="sm" /></button>
         </div>
@@ -633,7 +634,7 @@ export default function Home() {
 
       <section className={`workspace ${view === "equipe" ? "team-workspace" : ""} ${view === "colaboracao" ? "collaboration-workspace" : ""} ${view === "mapa" && editorOpen ? "editor-open" : ""}`}>
         <nav className="rail" aria-label="Navegação principal">
-          <div className="rail-group">
+          <div className="rail-group" data-labstar-liquid-group>
             <button data-tooltip="Visão geral" className={view === "visao" ? "active" : ""} onClick={() => setView("visao")} aria-label="Visão geral"><LayoutDashboard size={18} /></button>
             <button data-tooltip="Mapa" className={view === "mapa" ? "active" : ""} onClick={openProjectMap} aria-label="Mapa da organização"><Network size={18} /></button>
             <button data-tooltip="Central de trabalho" className={view === "colaboracao" ? "active" : ""} onClick={() => setView("colaboracao")} aria-label="Central de trabalho"><MessagesSquare size={18} /></button>
@@ -650,6 +651,7 @@ export default function Home() {
               <>
                 <img className="project-sky-poster" src="/project-sky-poster.png" alt="" aria-hidden="true" />
                 <Suspense fallback={null}><ProjectSpaceAnimation /></Suspense>
+                <MapAmbientFlybys />
               </>
             )}
             <div className="cosmic-effects" aria-hidden="true">
@@ -714,7 +716,7 @@ export default function Home() {
                       data-card-tone={cardThemeMeta[cardTheme].tone}
                       tabIndex={0}
                       role="button"
-                      title="Clique duas vezes para inspecionar o perfil"
+                      title="Clique duas vezes para editar o núcleo"
                       aria-label={`Selecionar ${meta.label.toLocaleLowerCase()} ${node.name}`}
                       className={`node-card ${selectedId === node.id ? "selected" : ""} ${draggingId === node.id ? "dragging" : ""} ${matches ? "" : "search-muted"}`}
                       style={{ left: node.x, top: node.y, "--accent": meta.color, "--status": status.color } as React.CSSProperties}
@@ -724,7 +726,7 @@ export default function Home() {
                         event.stopPropagation();
                         dragRef.current = null;
                         setDraggingId(null);
-                        openInspector(node.id);
+                        openEditor(node.id);
                       }}
                       onKeyDown={(event) => {
                         if (event.key !== "Enter" && event.key !== " ") return;
@@ -813,7 +815,7 @@ export default function Home() {
               {inspectorMode === "edit" && <>
               <fieldset className="card-theme-picker">
                 <legend>Aparência do cartão</legend>
-                <div role="radiogroup" aria-label="Cor do cartão">
+                <div role="radiogroup" aria-label="Cor do cartão" data-labstar-liquid-group>
                   {(Object.keys(cardThemeMeta) as CardTheme[]).map((theme) => {
                     const option = cardThemeMeta[theme];
                     const active = cardThemeFor(selected) === theme;
@@ -897,6 +899,7 @@ export default function Home() {
       )}
       {legalOpen && <LegalModal anchored onClose={() => setLegalOpen(false)} />}
       <ProjectLottieExperience projectLoadToken={projectLoadToken} />
+      <SoundToggleLottie token={soundFeedbackToken} />
       <MascotCelebrationHost memberId={session.member.id} />
     </main>
   );
@@ -1233,7 +1236,7 @@ function TeamDirectory({ nodes, currentMember, onMemberUpdated }: { nodes: Struc
         <header className="team-head">
           <div><span className="overline">ADMINISTRAÇÃO / CARGOS</span><h1>Cargos e permissões</h1><p>Crie uma hierarquia profissional com cor, escudo e permissões próprias.</p></div>
         </header>
-        <div className="team-section-tabs">
+        <div className="team-section-tabs" data-labstar-liquid-group>
           <button onClick={() => setTeamTab("members")}><Users size={15} /> Membros</button>
           <button className="active" onClick={() => setTeamTab("roles")}><ShieldCheck size={15} /> Cargos</button>
         </div>
@@ -1251,7 +1254,7 @@ function TeamDirectory({ nodes, currentMember, onMemberUpdated }: { nodes: Struc
           <button type="button" onClick={() => setInviteOpen(true)}><UserPlus size={14} /> Autorizar membro</button>
         </div>}
       </header>
-      <div className="team-section-tabs">
+      <div className="team-section-tabs" data-labstar-liquid-group>
         <button className="active" onClick={() => setTeamTab("members")}><Users size={15} /> Membros</button>
         {canManage && <button onClick={() => setTeamTab("roles")}><ShieldCheck size={15} /> Cargos</button>}
         <span>Conectado como {currentMember.name}</span>

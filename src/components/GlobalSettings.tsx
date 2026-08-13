@@ -7,11 +7,13 @@ import {
   LockKeyhole,
   LogOut,
   Mic2,
+  Moon,
   Palette,
   RotateCcw,
   Save,
   Settings,
   ShieldCheck,
+  Sun,
   Trash2,
   Trophy,
   Upload,
@@ -27,7 +29,7 @@ import {
   saveAppSettings,
   type AppSettings,
 } from "../lib/app-settings";
-import { ACHIEVEMENT_CATALOG, syncOwnAchievements, type AchievementKey, type AchievementProgress } from "../lib/achievements";
+import { ACHIEVEMENTS_REFRESH_EVENT, ACHIEVEMENT_CATALOG, syncOwnAchievements, type AchievementKey, type AchievementProgress } from "../lib/achievements";
 import { secureSignOut } from "../lib/access";
 import {
   deviceNotificationStateMessage,
@@ -89,12 +91,14 @@ export function GlobalSettings({
   const [cameras, setCameras] = useState<MediaDeviceInfo[]>([]);
   const [achievements, setAchievements] = useState<AchievementProgress[]>([]);
   const [achievementState, setAchievementState] = useState<"idle" | "loading" | "ready" | "pending" | "error">("idle");
+  const [inspectedAchievementKey, setInspectedAchievementKey] = useState<AchievementKey | null>(initialAchievementKey ?? null);
   const avatarInput = useRef<HTMLInputElement>(null);
 
   useEffect(() => setDraft(settings), [settings]);
   useEffect(() => setProfileName(member.name), [member.name]);
   useEffect(() => setProfileBio(member.bio ?? ""), [member.bio]);
   useEffect(() => { if (initialTab) setTab(initialTab); }, [initialTab]);
+  useEffect(() => { if (initialAchievementKey) setInspectedAchievementKey(initialAchievementKey); }, [initialAchievementKey]);
 
   useEffect(() => {
     if (tab !== "achievements" || !initialAchievementKey) return undefined;
@@ -105,9 +109,12 @@ export function GlobalSettings({
   }, [initialAchievementKey, tab]);
 
   useEffect(() => {
-    if (tab !== "achievements" || achievementState !== "idle") return;
-    void refreshAchievements();
-  }, [achievementState, tab]);
+    if (tab !== "achievements") return undefined;
+    const refresh = () => void refreshAchievements();
+    refresh();
+    window.addEventListener(ACHIEVEMENTS_REFRESH_EVENT, refresh);
+    return () => window.removeEventListener(ACHIEVEMENTS_REFRESH_EVENT, refresh);
+  }, [tab]);
 
   useEffect(() => {
     const close = (event: KeyboardEvent) => {
@@ -285,7 +292,7 @@ export function GlobalSettings({
       <section className="global-settings" role="dialog" aria-modal="true" aria-label="Configurações do Labstar" onMouseDown={(event) => event.stopPropagation()}>
         <aside className="global-settings-nav">
           <div className="global-settings-brand"><span>★</span><div><strong>LABSTAR</strong><small>Configurações</small></div></div>
-          <nav>
+          <nav data-labstar-liquid-group>
             {tabs.map(({ id, label, icon: Icon }) => (
               <button key={id} className={tab === id ? "active" : ""} type="button" onClick={() => setTab(id)}>
                 <Icon size={16} /> {label}
@@ -360,7 +367,21 @@ export function GlobalSettings({
                     const target = saved?.target ?? achievement.target;
                     const unlocked = Boolean(saved?.unlockedAt);
                     return (
-                      <article className={`achievement-card ${unlocked ? "unlocked" : "locked"} ${achievement.key === initialAchievementKey ? "inspected" : ""}`} data-achievement-key={achievement.key} key={achievement.key}>
+                      <article
+                        className={`achievement-card ${unlocked ? "unlocked" : "locked"} ${achievement.key === inspectedAchievementKey ? "inspected" : ""}`}
+                        data-achievement-key={achievement.key}
+                        role="button"
+                        tabIndex={0}
+                        aria-pressed={achievement.key === inspectedAchievementKey}
+                        aria-label={`Inspecionar conquista ${achievement.title}`}
+                        onClick={() => setInspectedAchievementKey(achievement.key)}
+                        onKeyDown={(event) => {
+                          if (event.key !== "Enter" && event.key !== " ") return;
+                          event.preventDefault();
+                          setInspectedAchievementKey(achievement.key);
+                        }}
+                        key={achievement.key}
+                      >
                         <div className="achievement-art" data-kind={achievement.kind}><LottieAnimation kind={achievement.kind} posterFrame={"posterFrame" in achievement ? achievement.posterFrame : undefined} preserveAspectRatio="xMidYMid meet" /></div>
                         <div className="achievement-copy">
                           <span><b>{achievement.rarity}</b>{unlocked ? <em>Desbloqueada</em> : <em><LockKeyhole size={10} /> Bloqueada</em>}</span>
@@ -380,6 +401,14 @@ export function GlobalSettings({
           {tab === "appearance" && (
             <div className="settings-sections">
               <SettingsSection title="Interface" description="Ajustes visuais aplicados no aplicativo inteiro.">
+                <div className="settings-theme-group" role="radiogroup" aria-label="Tema do Labstar" data-labstar-liquid-group>
+                  <button type="button" role="radio" aria-checked={draft.themeMode === "light"} onClick={() => update("themeMode", "light")}>
+                    <Sun size={15} /><span><strong>Claro</strong><small>Neumorfismo e liquid UI</small></span>
+                  </button>
+                  <button type="button" role="radio" aria-checked={draft.themeMode === "dark"} onClick={() => update("themeMode", "dark")}>
+                    <Moon size={15} /><span><strong>Escuro</strong><small>Neumorfismo escuro do Labstar</small></span>
+                  </button>
+                </div>
                 <SettingsField label="Densidade">
                   <select value={draft.density} onChange={(event) => update("density", event.target.value as AppSettings["density"])}><option value="comfortable">Confortável</option><option value="compact">Compacta</option></select>
                 </SettingsField>

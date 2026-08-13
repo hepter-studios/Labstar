@@ -14,6 +14,7 @@ const MAX_DEVICE_ID_LENGTH: usize = 512;
 pub struct AppSettings {
     pub version: u32,
     pub start_view: String,
+    pub theme_mode: String,
     pub density: String,
     pub nebula_intensity: String,
     pub reduced_motion: bool,
@@ -31,6 +32,7 @@ impl Default for AppSettings {
         Self {
             version: 1,
             start_view: "colaboracao".to_string(),
+            theme_mode: "dark".to_string(),
             density: "comfortable".to_string(),
             nebula_intensity: "subtle".to_string(),
             reduced_motion: false,
@@ -53,6 +55,9 @@ impl AppSettings {
             "mapa" | "visao" | "colaboracao" | "equipe"
         ) {
             return Err("settings_invalid_start_view".to_string());
+        }
+        if !matches!(self.theme_mode.as_str(), "dark" | "light") {
+            return Err("settings_invalid_theme_mode".to_string());
         }
         if !matches!(self.density.as_str(), "comfortable" | "compact") {
             return Err("settings_invalid_density".to_string());
@@ -141,6 +146,15 @@ mod tests {
             "settings_invalid_start_view"
         );
 
+        let invalid_theme = AppSettings {
+            theme_mode: "sepia".into(),
+            ..Default::default()
+        };
+        assert_eq!(
+            invalid_theme.validated().unwrap_err(),
+            "settings_invalid_theme_mode"
+        );
+
         let invalid_density = AppSettings {
             density: "huge".into(),
             ..Default::default()
@@ -164,6 +178,7 @@ mod tests {
     fn accepts_supported_settings() {
         let settings = AppSettings::default().validated().unwrap();
         assert_eq!(settings.start_view, "colaboracao");
+        assert_eq!(settings.theme_mode, "dark");
         assert_eq!(settings.density, "comfortable");
     }
 }

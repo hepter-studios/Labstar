@@ -12,17 +12,38 @@
     <link rel="stylesheet" href="/organization-entry-neumorphism.css" />
     <link rel="stylesheet" href="/organization-management.css" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="apple-mobile-web-app-title" content="Labstar" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <meta name="theme-color" content="#030407" />
+    <meta name="theme-color" content="#e9edf5" />
     <meta name="description" content="Labstar — organização privada de empresas, projetos e equipes." />
+    <script>
+      (() => {
+        let theme = "light";
+        try {
+          const saved = JSON.parse(localStorage.getItem("labstar-app-settings-v1") || "null");
+          if (saved?.themeMode === "dark") theme = "dark";
+        } catch {
+          // Preferências corrompidas voltam ao tema inicial seguro.
+        }
+        document.documentElement.dataset.labstarTheme = theme;
+        document.documentElement.style.colorScheme = theme;
+        document.querySelector('meta[name="theme-color"]')?.setAttribute("content", theme === "dark" ? "#030407" : "#e9edf5");
+      })();
+    </script>
+    <style>
+      html, body, #root, #root > main { background: #e9edf5; color: #343b50; }
+      html[data-labstar-theme="dark"],
+      html[data-labstar-theme="dark"] body,
+      html[data-labstar-theme="dark"] #root,
+      html[data-labstar-theme="dark"] #root > main { background: #030407; color: #f7f9ff; }
+    </style>
     <title>Labstar</title>
   </head>
-  <body style="margin:0;background:#030407;color:#f7f9ff">
+  <body style="margin:0">
     <div id="root">
-      <main style="min-height:100vh;background:#030407"></main>
+      <main style="min-height:100vh"></main>
     </div>
     <script src="/boot-guard.js"></script>
     <script type="module" src="/src/main.tsx"></script>

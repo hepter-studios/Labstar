@@ -23,6 +23,7 @@ import {
 } from "../lib/supabase";
 import { isDevPreviewMode } from "../lib/devPreviewMode";
 import { Avatar } from "./Avatar";
+import { DarkAmbientLottie } from "./DarkAmbientLottie";
 
 type CommunicationHomeProps = {
   member: Member;
@@ -271,7 +272,7 @@ export function CommunicationHome({ member, onOpenChannel, onOpenDirect }: Commu
                 </button>
               );
             })}
-            {!recentChannels.length && <div className="communication-empty"><MessageSquareText size={22} /><strong>{refreshing ? "Carregando conversas…" : "Nenhuma conversa recente"}</strong><span>{refreshing ? "Você já pode usar a Central enquanto os dados chegam." : "Abra um servidor na coluna esquerda e comece por um canal."}</span></div>}
+            {!recentChannels.length && <div className="communication-empty"><DarkAmbientLottie kind="happy-spaceman" posterFrame={24} /><MessageSquareText size={22} /><strong>{refreshing ? "Carregando conversas…" : "Nenhuma conversa recente"}</strong><span>{refreshing ? "Você já pode usar a Central enquanto os dados chegam." : "Abra um servidor na coluna esquerda e comece por um canal."}</span></div>}
           </div>
         </section>
 

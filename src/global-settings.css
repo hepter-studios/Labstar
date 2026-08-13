@@ -248,7 +248,9 @@
   border-radius:12px;
   background:linear-gradient(145deg,#0d121d,#070a10);
   box-shadow:6px 7px 17px rgba(0,0,0,.32),inset 1px 1px rgba(255,255,255,.025);
+  cursor:pointer;
 }
+.achievement-card:focus-visible { outline:2px solid rgba(111,157,255,.72); outline-offset:3px; }
 .achievement-card.unlocked { border-color:rgba(107,151,255,.22); box-shadow:7px 9px 22px rgba(0,0,0,.38),-3px -3px 11px rgba(39,52,76,.16),inset 1px 1px rgba(255,255,255,.035); }
 .achievement-card.inspected { scroll-margin:28px; border-color:rgba(111,157,255,.68); box-shadow:0 0 0 2px rgba(91,139,255,.16),0 0 32px rgba(66,111,222,.2),7px 9px 22px rgba(0,0,0,.38); }
 .achievement-art { width:124px; height:140px; padding:4px; box-sizing:border-box; display:grid; place-items:center; overflow:hidden; }

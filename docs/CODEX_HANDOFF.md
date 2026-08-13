@@ -161,3 +161,26 @@ Uma falha de atualização jamais pode impedir login ou uso da versão instalada
 - troca de conta disponível em qualquer estado bloqueante;
 - CORS restrito somente às origens oficiais;
 - nenhum merge até todos os testes reais estarem registrados como aprovados.
+
+## Atualização de interface — 13 de agosto de 2026
+
+O lote de acabamento visual e estabilidade da prévia local passou a adotar estas regras:
+
+- a primeira abertura usa tema claro; uma preferência já salva continua sendo respeitada antes do primeiro render;
+- claro/escuro permanecem temas, enquanto o relevo neumórfico é usado apenas onde favorece controles e seleções;
+- no escuro, estruturas e cartões grandes são planos e profissionais; botões, campos e seleções preservam o efeito tátil;
+- Lotties contextuais aparecem somente em estados vazios ou áreas sem interação, nunca sobre conteúdo ou controles;
+- áreas de conversa usam mascotes relacionados a mensagens apenas no tema escuro;
+- o céu planetário escuro mantém uma travessia rara do astronauta sobre o foguete, atrás de cartões e conexões;
+- o botão de som apresenta brevemente o astronauta de fones, sem capturar eventos e respeitando movimento reduzido;
+- a criação de uma segunda organização não troca automaticamente a superfície ativa nem bloqueia a aplicação;
+- a prévia local possui persistência isolada para testar o CRUD de organizações sem alterar o caminho de produção;
+- o catálogo de conquistas sempre reconcilia as respostas do backend com as 16 missões oficiais, sem inventar desbloqueios;
+- service worker, callback nativo e recuperação de sessão não recarregam a página automaticamente; recarregar permanece uma ação explícita do usuário.
+
+Validação realizada neste lote:
+
+- build TypeScript/Vite;
+- `cargo check` e build Tauri 2 debug sem bundle, com `Labstar.exe` gerado;
+- fluxos de tema, DMs, mapa, criação/exclusão de organização e estabilidade sem recarga na prévia;
+- layouts 1366×768, 1600×900 e 1920×1080, sem overflow horizontal nem novos erros de console.

@@ -24,8 +24,8 @@
         "resizable": true,
         "fullscreen": false,
         "visible": true,
-        "theme": "Dark",
-        "backgroundColor": "#030407",
+        "theme": "Light",
+        "backgroundColor": "#e9edf5",
         "shadow": true
       }
     ],

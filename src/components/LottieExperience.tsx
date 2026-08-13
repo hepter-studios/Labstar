@@ -1,6 +1,6 @@
 import { X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { ACHIEVEMENTS_REFRESH_EVENT, ACHIEVEMENT_CATALOG, requestOpenAchievement, syncOwnAchievements, type AchievementKey } from "../lib/achievements";
+import { ACHIEVEMENTS_REFRESH_EVENT, ACHIEVEMENT_CATALOG, syncOwnAchievements, type AchievementKey } from "../lib/achievements";
 import { LottieAnimation } from "./LottieAnimation";
 import type { OnboardingLottieKind } from "../lib/onboarding-lotties";
 import "../lottie-experience.css";
@@ -66,6 +66,73 @@ export function LabstarAccessLoader() {
     <main className="access-screen labstar-access-loader" aria-label="Carregando Labstar" aria-live="polite" aria-busy="true">
       <LottieAnimation kind="rocket" className="labstar-access-loader-animation" preserveAspectRatio="xMidYMid meet" />
     </main>
+  );
+}
+
+function readMapAmbientState() {
+  const root = document.documentElement;
+  return root.dataset.labstarTheme === "dark"
+    && root.dataset.labstarMotion !== "reduced"
+    && !window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    && window.matchMedia("(min-width: 701px)").matches;
+}
+
+export function MapAmbientFlybys() {
+  const [enabled, setEnabled] = useState(readMapAmbientState);
+
+  useEffect(() => {
+    const update = () => setEnabled(readMapAmbientState());
+    const root = document.documentElement;
+    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const desktop = window.matchMedia("(min-width: 701px)");
+    const observer = new MutationObserver(update);
+    observer.observe(root, { attributes: true, attributeFilter: ["data-labstar-theme", "data-labstar-motion"] });
+    reduced.addEventListener("change", update);
+    desktop.addEventListener("change", update);
+    return () => {
+      observer.disconnect();
+      reduced.removeEventListener("change", update);
+      desktop.removeEventListener("change", update);
+    };
+  }, []);
+
+  if (!enabled) return null;
+
+  return (
+    <div className="map-ambient-flybys" aria-hidden="true">
+      <LottieAnimation kind="rocket" className="map-ambient-flyby map-ambient-rocket" preserveAspectRatio="xMidYMid meet" speed={.86} />
+    </div>
+  );
+}
+
+export function SoundToggleLottie({ token }: { token: number }) {
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    if (token <= 0) return undefined;
+    setVisible(false);
+    const frame = window.requestAnimationFrame(() => setVisible(true));
+    const timer = window.setTimeout(() => setVisible(false), 2_650);
+    return () => {
+      window.cancelAnimationFrame(frame);
+      window.clearTimeout(timer);
+    };
+  }, [token]);
+
+  if (!visible) return null;
+  const reduced = document.documentElement.dataset.labstarMotion === "reduced"
+    || window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  return (
+    <div className="sound-toggle-lottie" aria-hidden="true">
+      <LottieAnimation
+        key={token}
+        kind="astronaut-headphones"
+        className="sound-toggle-lottie-animation"
+        loop={!reduced}
+        posterFrame={reduced ? 48 : undefined}
+        preserveAspectRatio="xMidYMid meet"
+      />
+    </div>
   );
 }
 
@@ -174,23 +241,17 @@ export function MascotCelebrationHost({ memberId }: { memberId?: string }) {
   if (!celebration) return null;
   const variant = celebration.variant ?? "happy";
   const mascot = MASCOT_VARIANTS[variant];
-  const achievement = celebration.achievementKey
-    ? ACHIEVEMENT_CATALOG.find((item) => item.key === celebration.achievementKey)
-    : undefined;
+  const achievementCelebration = variant === "achievement";
   return (
-    <aside className={`lottie-mascot-celebration ${variant}`} aria-live="polite">
-      <button type="button" onClick={() => setCelebration(null)} aria-label="Dispensar mascote"><X size={14} /></button>
+    <aside className={`lottie-mascot-celebration ${variant}`} aria-live="polite" aria-label={achievementCelebration ? "Conquista desbloqueada" : undefined}>
+      {!achievementCelebration && <button type="button" onClick={() => setCelebration(null)} aria-label="Dispensar mascote"><X size={14} /></button>}
       <LottieAnimation key={celebration.key} kind={celebration.kind ?? mascot.kind} className="lottie-mascot-animation" preserveAspectRatio="xMidYMid meet" />
-      <span className="lottie-mascot-message">
-        {variant === "achievement" && <em>Conquista desbloqueada{achievement ? ` · ${achievement.rarity}` : ""}</em>}
-        <strong>{celebration.title || mascot.title}</strong>
-        {celebration.message && <small>{celebration.message}</small>}
-        {celebration.achievementKey && (
-          <button type="button" onClick={() => { requestOpenAchievement(celebration.achievementKey!); setCelebration(null); }}>
-            Inspecionar conquista
-          </button>
-        )}
-      </span>
+      {!achievementCelebration && (
+        <span className="lottie-mascot-message">
+          <strong>{celebration.title || mascot.title}</strong>
+          {celebration.message && <small>{celebration.message}</small>}
+        </span>
+      )}
     </aside>
   );
 }

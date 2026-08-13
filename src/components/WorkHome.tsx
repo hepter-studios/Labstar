@@ -33,6 +33,7 @@ import {
   type Member,
   type ScheduledMeeting,
 } from "../lib/supabase";
+import { DarkAmbientLottie } from "./DarkAmbientLottie";
 
 type WorkNode = {
   id: string;
@@ -316,7 +317,7 @@ export function WorkHome({ member, onOpenChannel, onOpenDirect }: WorkHomeProps)
               </button>
             ))}
             {!attentionNodes.length && !upcomingMeetings.length && !unreadNotifications.length && (
-              <div className="work-focus-empty"><CheckCircle2 size={22} /><strong>Nada urgente agora</strong><span>Você pode avançar no trabalho planejado.</span></div>
+              <div className="work-focus-empty"><DarkAmbientLottie kind="victory-sign" posterFrame={20} /><CheckCircle2 size={22} /><strong>Nada urgente agora</strong><span>Você pode avançar no trabalho planejado.</span></div>
             )}
           </div>
         </section>
@@ -357,7 +358,7 @@ export function WorkHome({ member, onOpenChannel, onOpenDirect }: WorkHomeProps)
                 </button>
               );
             })}
-            {!recentMessages.length && <div className="work-list-empty"><MessageSquareText size={21} /><span>As conversas recentes aparecerão aqui.</span></div>}
+            {!recentMessages.length && <div className="work-list-empty"><DarkAmbientLottie kind="astronaut-headphones" posterFrame={48} className="work-conversation-lottie" /><MessageSquareText size={21} /><span>As conversas recentes aparecerão aqui.</span></div>}
           </div>
         </section>
 
