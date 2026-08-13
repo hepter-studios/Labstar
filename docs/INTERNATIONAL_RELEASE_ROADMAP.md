@@ -1,194 +1,186 @@
-# Plano interno para lançamento internacional do Labstar
+# 🌍 Labstar International Release Roadmap
 
-Atualizado em 10 de agosto de 2026.
+Updated: **August 13, 2026**.
 
-O lançamento internacional só deve acontecer depois que o produto estiver seguro, testado, operável e documentado internamente. Este plano evita publicar uma base ainda instável apenas porque o instalador já existe.
+Labstar is evolving from a Hepter Studios-only internal tool into a **public multi-organization product**. The central rule is now:
 
-## Princípios
+> **Labstar can be public. Organizations created inside Labstar remain private by default.**
 
-- segurança antes de velocidade;
-- autorização central no backend Rust;
-- isolamento real entre empresas;
-- documentação e recuperação antes de escala;
-- tradução não substitui internacionalização;
-- inglês é a língua-fonte e fallback do produto;
-- nenhum lançamento público sem assinatura digital e plano de rollback.
+This roadmap covers global, commercial, operational and privacy readiness. Developer-adoption features are tracked in [`LABSTAR_EVOLUTION_ROADMAP.md`](LABSTAR_EVOLUTION_ROADMAP.md).
 
-## Fase 0 — Fundação técnica
+## 🌌 Principles
 
-Já construída ou em validação:
+- security before growth;
+- protected authorization remains enforced by the Rust backend;
+- organization isolation exists in database, API, Realtime, storage and integrations;
+- external integrations use least privilege;
+- public developer data is explicit opt-in;
+- public repository visibility never implies public customer data;
+- English is the product source/fallback language;
+- signed releases and rollback precede broad desktop distribution;
+- documentation, backup and incident recovery precede scale.
 
-- React, TypeScript e PWA;
-- Tauri 2 e Rust local;
-- API central Rust publicada;
-- Supabase Auth e PostgreSQL;
-- Google e GitHub OAuth;
-- convites de uso único;
-- backup e migrações de acesso;
-- EXE e MSI privados;
-- CI de web e Rust;
-- documentação de continuidade.
+## Phase 0 — Public product foundation
 
-## Fase 1 — Alpha interna confiável
+- make `organization_id` a hard tenancy boundary wherever organization data exists;
+- separate platform administration from organization administration;
+- support one account belonging to multiple organizations;
+- inventory RLS, Storage and Realtime rules for every organization-scoped resource;
+- keep public profile data in a separate public projection instead of weakening private tables;
+- remove assumptions that Hepter Studios is the only possible organization;
+- keep repository licensing separate from SaaS/product Terms of Use.
 
-Objetivo: permitir uso diário pela equipe sem perda de acesso ou dados.
+**Exit criterion:** two independent test organizations can coexist with no cross-organization data, event or permission leakage.
 
-- concluir matriz de autenticação e convites;
-- corrigir escolha e troca de conta;
-- criar vinculação explícita de Google e GitHub;
-- corrigir imagens, avatares e indicador online;
-- validar desktop em resoluções mínimas e comuns;
-- testar instalação, remoção e atualização manual;
-- criar logs operacionais sem dados sensíveis;
-- adicionar monitoramento de disponibilidade e erros;
-- documentar recuperação de acesso e incidentes;
-- validar backup e restauração em ambiente separado.
+## Phase 1 — Reliable multi-organization alpha
 
-**Critério de saída:** a equipe interna usa o produto por um período definido sem falhas críticas de acesso, perda de dados ou bloqueios sem recuperação.
+- complete authentication and membership matrix;
+- organization creation/onboarding;
+- multi-organization account switching;
+- explicit identity linking where required;
+- isolate members, channels, projects, files and notifications;
+- isolate Realtime Presence/Broadcast;
+- isolate Storage access;
+- define owner/admin/member boundaries;
+- administrative audit trail;
+- operational logs without secrets;
+- availability/error monitoring;
+- backup and restoration test in a separate environment.
 
-## Fase 2 — Segurança e operação empresarial
+**Exit criterion:** external test organizations can complete daily workflows without cross-tenant exposure, unrecoverable access failures or data loss.
 
-- revisão completa de RLS e permissões;
-- testes de autorização por papel e empresa;
-- rate limiting nos endpoints sensíveis;
-- proteção contra abuso de convites;
-- rotação e inventário de secrets;
-- auditoria de ações administrativas;
-- política de retenção e exclusão de dados;
-- plano de resposta a incidentes;
-- testes automatizados de backend e fluxos críticos;
-- análise de dependências e atualizações de segurança;
-- política de backup com retenção maior que Artifacts temporários;
-- exercício real de restauração.
+## Phase 2 — Security and enterprise operations
 
-**Critério de saída:** riscos críticos conhecidos resolvidos e procedimentos operacionais testados.
+- full RLS/API authorization review;
+- automated negative tests proving tenant A cannot access tenant B;
+- rate limiting on sensitive endpoints;
+- invitation abuse protection;
+- webhook signature verification and idempotent ingestion;
+- secret inventory and rotation;
+- retention/deletion design;
+- incident response process;
+- dependency/security update policy;
+- recurring restoration exercises;
+- threat modeling for integrations, CLI auth, public profiles and organization provisioning;
+- public vulnerability reporting process through [`../SECURITY.md`](../SECURITY.md).
 
-## Fase 3 — Distribuição profissional do desktop
+## Phase 3 — Professional desktop distribution
 
-- certificado de assinatura de código para Windows;
-- assinatura do EXE, MSI e updater;
-- canal de atualização estável e canal de teste;
-- verificação criptográfica dos pacotes;
-- Release privada automatizada;
-- rollback de versão;
-- teste em Windows 10 e Windows 11;
-- política de versões e changelog;
-- telemetria opcional e transparente;
-- instalação sem privilégios administrativos quando possível.
+- Windows code signing;
+- signed EXE/MSI/updater artifacts;
+- stable and preview update channels;
+- cryptographic package verification;
+- release automation and rollback;
+- supported Windows test matrix;
+- version/changelog policy;
+- optional transparent telemetry;
+- privacy-aware crash diagnostics;
+- deep-link compatibility across releases.
 
-**Critério de saída:** Windows reconhece o editor e uma atualização pode ser instalada e revertida sem reinstalação manual completa.
+## Phase 4 — Internationalization
 
-## Fase 4 — Internacionalização real
-
-Estratégia de resolução de idioma:
+Language resolution target:
 
 ```text
-preferência do usuário
-→ padrão da organização
-→ idioma do sistema/navegador
-→ inglês
+user preference
+→ organization default
+→ OS/browser language
+→ English
 ```
 
-- introduzir biblioteca e estrutura de i18n;
-- retirar textos fixos dos componentes;
-- usar inglês (`en`) como língua-fonte e fallback canônico;
-- português brasileiro (`pt-BR`) como primeira tradução completa;
-- detectar automaticamente idioma suportado no primeiro acesso;
-- seletor de idioma por usuário;
-- idioma padrão configurável por organização;
-- preferência do usuário sempre prevalece sobre a organização;
-- datas, horas, números e moedas por localidade;
-- suporte consistente a fusos horários, independente do idioma;
-- mensagens de e-mail e notificações localizadas;
-- cargos e áreas com nomes personalizáveis;
-- layouts preparados para textos maiores;
-- testes com caracteres internacionais;
-- preparar RTL antes de idiomas que o exijam;
-- busca e ordenação compatíveis com localidade;
-- formatos de telefone e endereço configuráveis.
+- structured i18n framework;
+- English (`en`) as canonical source/fallback;
+- Brazilian Portuguese (`pt-BR`) as first complete translation;
+- user language selector;
+- organization default language;
+- localized dates, times, numbers and currencies;
+- timezone support independent of UI language;
+- localized emails/notifications;
+- international character and longer-text testing;
+- accessibility review;
+- RTL preparation before adding RTL languages.
 
-**Critério de saída:** uma organização em inglês usa todos os fluxos obrigatórios sem encontrar textos fixos em português.
+**Exit criterion:** an English-first organization completes every critical workflow without fixed Portuguese product text.
 
-## Fase 5 — Infraestrutura global
+## Phase 5 — Global infrastructure
 
-- medir latência por região;
-- escolher regiões adicionais para API e banco quando necessário;
-- CDN para assets públicos;
-- serviço TURN profissional para voz e vídeo;
-- filas para tarefas assíncronas e notificações;
-- e-mail transacional com reputação e domínio verificado;
-- observabilidade centralizada;
-- alertas de disponibilidade, latência e erros;
-- limites por organização e plano;
-- testes de carga;
-- plano de continuidade e desastre;
-- revisão de custos por região.
+- measure real latency by region before adding regions;
+- CDN for public assets;
+- TURN infrastructure before promising global voice/video reliability;
+- async queues for jobs and notifications;
+- transactional email with verified domain;
+- centralized observability;
+- availability/latency/error alerts;
+- per-organization and per-plan quotas;
+- load testing;
+- disaster recovery plan;
+- GitHub rate-limit strategy;
+- data residency evaluation for enterprise customers.
 
-**Critério de saída:** usuários fora do Brasil recebem desempenho e confiabilidade aceitáveis.
+## Phase 6 — Commercial and legal readiness
 
-## Fase 6 — Produto comercial e conformidade
+Pre-release planning documents live in:
 
-- definição de planos e cobrança;
-- isolamento multiempresa revisado;
-- termos de uso;
-- política de privacidade;
-- contratos empresariais;
-- LGPD e análise de GDPR;
-- consentimento e preferências de comunicação;
-- exportação e exclusão de dados;
-- subprocessadores documentados;
-- política de suporte e SLA;
-- canal de denúncia de segurança;
-- páginas públicas de status e segurança.
+- [`legal/TERMS_OF_USE_DRAFT.md`](legal/TERMS_OF_USE_DRAFT.md)
+- [`legal/PRIVACY_NOTICE_DRAFT.md`](legal/PRIVACY_NOTICE_DRAFT.md)
+- [`../SECURITY.md`](../SECURITY.md)
 
-A documentação jurídica exige revisão profissional nas jurisdições de lançamento.
+Before a broad commercial launch:
 
-## Fase 7 — Beta internacional controlada
+- plans and billing;
+- export/deletion procedures;
+- retention schedule;
+- subprocessors inventory;
+- support policy and enterprise SLA direction;
+- LGPD/GDPR assessment where applicable;
+- professional review of Terms and Privacy Notice;
+- public status/security pages;
+- separate decision on repository software licensing/source-available strategy.
 
-- selecionar poucas empresas convidadas;
-- onboarding acompanhado;
-- ambientes e permissões separados;
-- métricas de ativação, retenção e erros;
-- coleta estruturada de feedback;
-- suporte em português e inglês;
-- congelamento de mudanças críticas próximo às releases;
-- plano de rollback por versão;
-- revisão de custos reais por organização.
+## Phase 7 — Controlled external beta
 
-**Critério de saída:** clientes externos usam o produto e os problemas possuem processo de resposta previsível.
+- onboard a small number of external organizations;
+- verify isolation before each onboarding wave;
+- measure activation, retention, errors and cost per organization;
+- structured feedback;
+- Portuguese and English support;
+- release freeze/rollback rules;
+- validate the developer-adoption roadmap with real engineering teams.
 
-## Fase 8 — Lançamento internacional
+## Phase 8 — International launch
 
-- domínio e marca internacional;
-- site comercial em inglês e português;
-- documentação de produto;
-- tutoriais e central de ajuda;
-- página de preços;
+- commercial site in English and Portuguese;
+- public product docs/help center;
+- pricing;
 - status page;
-- suporte e processo de vendas;
-- releases assinadas;
-- atualização automática estável;
-- política pública de segurança;
-- monitoramento contínuo de conversão, disponibilidade e custo.
+- sales/support process;
+- signed stable releases;
+- stable auto-update;
+- reviewed Terms, Privacy and Security policies;
+- continuous monitoring of conversion, uptime, latency and cost;
+- clear onboarding paths for individual developers and organizations.
 
-## Itens que bloqueiam qualquer lançamento público hoje
+## 🔭 Connection to the Evolution Roadmap
 
-- matriz de autenticação ainda incompleta;
-- GitHub ainda não vinculado explicitamente ao proprietário;
-- instaladores sem assinatura digital;
-- updater ainda não configurado;
-- falta de teste de restauração completa;
-- isolamento multiempresa ainda em implementação;
-- internacionalização estrutural ainda não implementada;
-- documentação jurídica ainda inexistente;
-- observabilidade e suporte ainda incompletos.
+| Evolution feature | International foundation |
+| --- | --- |
+| GitHub Org Integration | multi-org permissions + integration security |
+| Command Palette | permission-aware navigation |
+| GitHub Pulse | webhook reliability + Realtime isolation |
+| CLI | secure auth + stable API |
+| PR War Rooms | tenant isolation + event model |
+| Context Graph | permission-aware data + retention controls |
+| Public Dev Profile | explicit public/private projection + consent |
+| Developer Platform | stable APIs + scoped credentials + abuse controls |
 
-## Regra de decisão
+## 🚧 What blocks broad commercial launch today
 
-Uma fase só é marcada como concluída quando existem:
+Public development is not blocked. A broad commercial release still requires validated multi-organization isolation, signed desktop distribution, updater/rollback, restoration testing, structural i18n, mature observability/support, billing boundaries, external beta evidence, integration security testing and professional legal review.
 
-1. evidências de teste;
-2. responsável;
-3. documentação atualizada;
-4. plano de rollback;
-5. aprovação do proprietário.
+## ✅ Completion rule
+
+A phase is complete only with test evidence, a responsible owner, updated documentation, recovery/rollback planning when applicable, security/privacy review for affected boundaries, and owner approval.
+
+<p align="center">🌌　⭐　🪐　🌍　🚀　🛰️　🌍　🪐　⭐　🌌</p>
+
+<p align="center"><strong>Global product. Private organizations. Explicit public surfaces.</strong></p>
