@@ -110,12 +110,28 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .node-links { margin-left: auto; display: flex; align-items: center; gap: 4px; }
 .node-links a { width: 22px; height: 22px; display: grid; place-items: center; border: 1px solid rgba(255,255,255,.06); border-radius: 6px; color: #6f7b95; background: rgba(255,255,255,.018); text-decoration: none; }
 .node-links a:hover { color: #c9d6f6; border-color: rgba(139,174,255,.22); background: rgba(139,174,255,.06); }
+.node-inspection-layer { position: absolute; z-index: 30; inset: 0; display: grid; place-items: center; padding: 58px 70px; box-sizing: border-box; background: rgba(1,2,7,.48); backdrop-filter: blur(4px); cursor: zoom-out; animation: node-inspection-backdrop-in .18s ease-out both; }
+.node-card.node-card-inspection { position: relative; inset: auto; z-index: 1; margin: 0; cursor: default; transform: scale(2.05); transform-origin: center; animation: node-inspection-card-in .2s cubic-bezier(.2,.78,.25,1) both; }
+.node-card.node-card-inspection:focus { outline: none; }
+.node-card.node-card-inspection > p { white-space: normal; line-height: 1.45; }
+.node-card.node-card-inspection .node-top button { cursor: pointer; }
+.node-card.node-card-inspection .node-links a { cursor: pointer; }
 .zoom-controls { position: absolute; z-index: 12; right: 18px; bottom: 18px; padding: 4px; display: flex; align-items: center; gap: 3px; border: 1px solid var(--line); border-radius: 9px; background: rgba(7,9,13,.88); backdrop-filter: blur(14px); box-shadow: 0 12px 30px #0007; }
 .zoom-controls button { width: 29px; height: 29px; display: grid; place-items: center; border: 0; border-radius: 6px; color: #606672; background: transparent; cursor: pointer; }
 .zoom-controls button:hover { color: #cbd1dc; background: rgba(255,255,255,.035); }
 .zoom-controls span { width: 41px; text-align: center; color: #5a606b; font-size: 7px; font-variant-numeric: tabular-nums; }
 .zoom-controls > i { width: 1px; height: 16px; background: var(--line); }
 .canvas-tip { position: absolute; z-index: 10; left: 22px; bottom: 20px; color: #3d424d; font-size: 7px; }
+
+@keyframes node-inspection-backdrop-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes node-inspection-card-in {
+  from { opacity: 0; transform: scale(1.72); }
+  to { opacity: 1; transform: scale(2.05); }
+}
 
 .inspector { padding: 20px 17px; overflow-y: auto; border-left: 1px solid var(--line); background: #050609; z-index: 20; scrollbar-width: thin; scrollbar-color: #232630 transparent; }
 .inspector-head { display: grid; grid-template-columns: 40px 1fr 26px; align-items: center; gap: 10px; padding-bottom: 18px; margin-bottom: 18px; border-bottom: 1px solid var(--line); }
@@ -546,6 +562,12 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   .canvas-meta { left: 14px; top: 12px; }
   .zoom-controls { right: 10px; bottom: 69px; }
   .canvas-tip { display: none; }
+  .node-inspection-layer { padding: 42px 30px 92px; }
+  .node-card.node-card-inspection { transform: scale(1.55); }
+  @keyframes node-inspection-card-in {
+    from { opacity: 0; transform: scale(1.28); }
+    to { opacity: 1; transform: scale(1.55); }
+  }
   .inspector { left: 9px; right: 9px; top: auto; bottom: 67px; width: auto; height: min(72vh, 580px); transform: translateY(calc(100% + 90px)); }
   .inspector.open { transform: translateY(0); }
   .overview { padding: 20px 14px 85px; }
@@ -570,6 +592,20 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   .legal-modal > footer { grid-template-columns: 18px 1fr; }
   .legal-modal > footer button { grid-column: 1/-1; width: 100%; }
   .legal-content { padding: 18px; }
+}
+
+@media (max-width: 460px) {
+  .node-inspection-layer { padding: 34px 16px 86px; }
+  .node-card.node-card-inspection { transform: scale(1.16); }
+  @keyframes node-inspection-card-in {
+    from { opacity: 0; transform: scale(.96); }
+    to { opacity: 1; transform: scale(1.16); }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .node-inspection-layer,
+  .node-card.node-card-inspection { animation: none; }
 }
 
 @media (prefers-reduced-motion: reduce) {
