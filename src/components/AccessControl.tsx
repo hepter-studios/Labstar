@@ -89,10 +89,12 @@ export function AccessControl({ children }: { children: ReactNode }) {
   const [inspection, setInspection] = useState<InviteInspection | null>(null);
   const [error, setError] = useState("");
 
-  const refresh = useCallback(async () => {
-    setStage("loading");
-    setIdentity(null);
-    setError("");
+  const refresh = useCallback(async (showLoader = false) => {
+    if (showLoader) {
+      setStage("loading");
+      setIdentity(null);
+      setError("");
+    }
     try {
       const token = getPendingInviteToken();
       if (token) setInspection(await inspectInvite(token));
@@ -106,16 +108,20 @@ export function AccessControl({ children }: { children: ReactNode }) {
       setIdentity(result);
       setStage(result.authorization);
     } catch (cause) {
+      if (!showLoader) return;
       setError(accessErrorMessage(cause));
       setStage("error");
     }
   }, []);
 
   useEffect(() => {
-    void refresh();
+    void refresh(true);
     const unsubscribe = subscribeToAccessChanges((event) => {
       if (event === "INITIAL_SESSION" || event === "TOKEN_REFRESHED") return;
-      void refresh();
+      // Supabase can emit SIGNED_IN again when a tab regains focus. Refresh the
+      // identity in place so a healthy workspace never turns into a full-page
+      // loading screen merely because the session was reaffirmed.
+      void refresh(false);
     });
     return unsubscribe;
   }, [refresh]);
@@ -171,9 +177,9 @@ export function AccessControl({ children }: { children: ReactNode }) {
       <h1>Não foi possível concluir o acesso.</h1>
       <p>{error || "O serviço de identidade não respondeu como esperado."}</p>
       <div className="access-v2-actions">
-        <button type="button" onClick={() => void refresh()}><RotateCcw size={15} /> Tentar novamente</button>
+        <button type="button" onClick={() => void refresh(true)}><RotateCcw size={15} /> Tentar novamente</button>
         <button className="access-v2-secondary" type="button" onClick={() => void secureSignOut()}><LogOut size={15} /> Entrar com outra conta</button>
-        {getPendingInviteToken() && <button className="access-v2-secondary" type="button" onClick={() => { clearPendingInviteToken(); void refresh(); }}>Remover convite</button>}
+        {getPendingInviteToken() && <button className="access-v2-secondary" type="button" onClick={() => { clearPendingInviteToken(); void refresh(true); }}>Remover convite</button>}
       </div>
     </AccessFrame>
   );

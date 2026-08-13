@@ -18,7 +18,28 @@ export type MascotCelebrationDetail = {
 
 const MASCOT_EVENT = "labstar:mascot-celebrate";
 const MASCOT_COOLDOWN_MS = 45_000;
+const MAP_AMBIENT_ROTATION_MS = 16_000;
 let lastMascotCelebrationAt = 0;
+
+type MapAmbientScene = "diagonal" | "planet-large" | "planet-small" | "floating";
+
+const MAP_AMBIENT_LOTTIES: ReadonlyArray<{ kind: OnboardingLottieKind; scene: MapAmbientScene; speed?: number }> = [
+  { kind: "astronaut-illustration", scene: "diagonal", speed: .92 },
+  { kind: "astronaut-orbit", scene: "planet-large", speed: .8 },
+  { kind: "happy-spaceman", scene: "floating", speed: .78 },
+  { kind: "astronaut-cosmos", scene: "diagonal", speed: .72 },
+  { kind: "astronaut-solo", scene: "planet-small", speed: .8 },
+  { kind: "star-in-hand", scene: "floating", speed: .74 },
+  { kind: "victory-sign", scene: "planet-large", speed: .76 },
+  { kind: "astronaut-flow", scene: "diagonal", speed: .72 },
+  { kind: "space-boy-developer", scene: "floating", speed: .7 },
+  { kind: "cute-astronaut-mug", scene: "planet-small", speed: .76 },
+  { kind: "astronaut-coffee", scene: "floating", speed: .72 },
+  { kind: "catch-the-fish", scene: "diagonal", speed: .68 },
+  { kind: "free-consultation", scene: "planet-large", speed: .72 },
+  { kind: "crying-astronaut", scene: "floating", speed: .72 },
+  { kind: "astronaut-headphones", scene: "planet-small", speed: .74 },
+];
 
 const MASCOT_VARIANTS: Record<MascotCelebrationVariant, { kind: OnboardingLottieKind; title: string }> = {
   happy: { kind: "happy-spaceman", title: "Órbita atualizada" },
@@ -71,14 +92,14 @@ export function LabstarAccessLoader() {
 
 function readMapAmbientState() {
   const root = document.documentElement;
-  return root.dataset.labstarTheme === "dark"
-    && root.dataset.labstarMotion !== "reduced"
+  return root.dataset.labstarMotion !== "reduced"
     && !window.matchMedia("(prefers-reduced-motion: reduce)").matches
     && window.matchMedia("(min-width: 701px)").matches;
 }
 
 export function MapAmbientFlybys() {
   const [enabled, setEnabled] = useState(readMapAmbientState);
+  const [activeIndex, setActiveIndex] = useState(0);
 
   useEffect(() => {
     const update = () => setEnabled(readMapAmbientState());
@@ -86,7 +107,7 @@ export function MapAmbientFlybys() {
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)");
     const desktop = window.matchMedia("(min-width: 701px)");
     const observer = new MutationObserver(update);
-    observer.observe(root, { attributes: true, attributeFilter: ["data-labstar-theme", "data-labstar-motion"] });
+    observer.observe(root, { attributes: true, attributeFilter: ["data-labstar-motion"] });
     reduced.addEventListener("change", update);
     desktop.addEventListener("change", update);
     return () => {
@@ -96,11 +117,27 @@ export function MapAmbientFlybys() {
     };
   }, []);
 
+  useEffect(() => {
+    if (!enabled) return undefined;
+    const advance = () => {
+      if (!document.hidden) setActiveIndex((current) => (current + 1) % MAP_AMBIENT_LOTTIES.length);
+    };
+    const timer = window.setInterval(advance, MAP_AMBIENT_ROTATION_MS);
+    return () => window.clearInterval(timer);
+  }, [enabled]);
+
   if (!enabled) return null;
+  const ambient = MAP_AMBIENT_LOTTIES[activeIndex];
 
   return (
     <div className="map-ambient-flybys" aria-hidden="true">
-      <LottieAnimation kind="rocket" className="map-ambient-flyby map-ambient-rocket" preserveAspectRatio="xMidYMid meet" speed={.86} />
+      <LottieAnimation
+        key={`${ambient.kind}-${activeIndex}`}
+        kind={ambient.kind}
+        className={`map-ambient-flyby map-ambient-${ambient.scene} map-ambient-${ambient.kind}`}
+        preserveAspectRatio="xMidYMid meet"
+        speed={ambient.speed ?? .75}
+      />
     </div>
   );
 }

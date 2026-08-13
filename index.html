@@ -16,7 +16,7 @@
     <meta name="apple-mobile-web-app-title" content="Labstar" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <meta name="theme-color" content="#e9edf5" />
+    <meta name="theme-color" content="#010207" />
     <meta name="description" content="Labstar — organização privada de empresas, projetos e equipes." />
     <script>
       (() => {
@@ -29,15 +29,22 @@
         }
         document.documentElement.dataset.labstarTheme = theme;
         document.documentElement.style.colorScheme = theme;
-        document.querySelector('meta[name="theme-color"]')?.setAttribute("content", theme === "dark" ? "#030407" : "#e9edf5");
       })();
     </script>
     <style>
-      html, body, #root, #root > main { background: #e9edf5; color: #343b50; }
-      html[data-labstar-theme="dark"],
-      html[data-labstar-theme="dark"] body,
-      html[data-labstar-theme="dark"] #root,
-      html[data-labstar-theme="dark"] #root > main { background: #030407; color: #f7f9ff; }
+      html:not([data-labstar-boot="ready"]),
+      html:not([data-labstar-boot="ready"]) body,
+      html:not([data-labstar-boot="ready"]) #root,
+      html:not([data-labstar-boot="ready"]) #root > main {
+        background-color: #010207;
+        background-image:
+          radial-gradient(circle at 12% 18%, rgba(255,255,255,.72) 0 .55px, transparent .95px),
+          radial-gradient(circle at 78% 16%, rgba(128,165,255,.58) 0 .65px, transparent 1.05px),
+          radial-gradient(circle at 32% 72%, rgba(255,255,255,.46) 0 .5px, transparent .9px),
+          radial-gradient(circle at 86% 72%, rgba(255,255,255,.62) 0 .55px, transparent .95px);
+        background-size: 137px 147px, 193px 181px, 223px 211px, 277px 263px;
+        color: #f7f9ff;
+      }
     </style>
     <title>Labstar</title>
   </head>
