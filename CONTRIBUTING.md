@@ -1,64 +1,75 @@
-# Contribuindo com o Labstar
+# 🤝 Contributing to Labstar
 
-Este é um projeto privado. Somente colaboradores autorizados podem abrir branches, issues, pull requests, builds ou acessar documentação operacional.
+Labstar is developed publicly by Hepter Studios, but the architecture is still moving quickly and contribution scope is curated.
 
-## Leitura obrigatória
+External issues, feedback and pull requests are welcome. For substantial changes, open or join an issue first so work is not duplicated or built against a direction that is about to change.
 
-Antes da primeira alteração:
+> Public repository visibility does not currently imply an open-source license. No software license is included at this time.
 
-1. `README.md`;
-2. `docs/PROJECT_MAP.md`;
-3. `docs/TEAM_ONBOARDING.md`;
-4. `docs/ARCHITECTURE_DECISIONS.md`;
-5. issue e PR relacionados ao trabalho.
+## Start here
 
-## Branch correta
+Before making a significant change, read:
 
-Não comece automaticamente pela `main`.
+1. [`README.md`](README.md)
+2. [`docs/LABSTAR_EVOLUTION_ROADMAP.md`](docs/LABSTAR_EVOLUTION_ROADMAP.md)
+3. [`docs/PROJECT_MAP.md`](docs/PROJECT_MAP.md)
+4. [`docs/ARCHITECTURE_DECISIONS.md`](docs/ARCHITECTURE_DECISIONS.md)
+5. [`SECURITY.md`](SECURITY.md)
+6. the issue or PR related to your work
 
-- backend Rust: derive de `feat/rust-backend-clean`;
-- autenticação e membros: derive de `fix/auth-membership-access`;
-- integração da interface com API: derive de `feat/auth-rust-api-integration`;
-- Tauri/Rust local: derive de `feat/tauri2-rust-foundation`;
-- aplicativo integrado: derive de `feat/tauri-auth-rust-integration`.
+## Good contribution targets
 
-Use nomes curtos:
+Good public contribution areas include:
 
-- `fix/...` para correções;
-- `feat/...` para funcionalidades;
-- `docs/...` para documentação;
-- `test/...` para testes;
-- `chore/...` para manutenção.
+- reproducible bug reports;
+- accessibility improvements;
+- documentation fixes;
+- localization/i18n groundwork;
+- tests;
+- UI polish that preserves product behavior;
+- small well-scoped fixes;
+- integration proposals aligned with the roadmap.
+
+For database migrations, authentication, organization isolation, permissions, release signing, billing or security-sensitive integration work, discuss the change first.
+
+## Branches
+
+Use short branch names:
+
+- `fix/...` for fixes;
+- `feat/...` for product work;
+- `docs/...` for documentation;
+- `test/...` for tests;
+- `chore/...` for maintenance.
+
+Do not assume an old feature branch documented in historical notes is still the correct base. Use the current GitHub issue/PR state and `main` unless maintainers specify otherwise.
 
 ## Commits
 
-Um commit deve ter uma responsabilidade clara e mensagem em português ou inglês consistente.
+Keep commits focused on one responsibility.
 
-Exemplos:
+Examples:
 
-- `Corrige troca de conta quando a API está indisponível`;
-- `Permite origem oficial do Tauri no CORS`;
-- `Documenta processo de assinatura do updater`.
+- `fix: prevent cross-organization channel lookup`
+- `feat: add command palette action registry`
+- `docs: clarify GitHub integration permissions`
 
-Não misture refatoração ampla, migração e mudança visual no mesmo commit.
+Avoid mixing a broad refactor, database migration and visual redesign in one commit.
 
-## Pull request
+## Pull requests
 
-Todo PR precisa informar:
+A useful PR description explains:
 
-- objetivo;
-- branch base;
-- arquitetura afetada;
-- riscos;
-- testes executados;
-- screenshots sem dados sensíveis, quando úteis;
-- impacto em instalador, banco e infraestrutura;
-- plano de rollback;
-- itens ainda pendentes.
+- the problem and objective;
+- architecture affected;
+- security/privacy impact;
+- tests executed;
+- screenshots without sensitive data when UI is affected;
+- database/infrastructure impact;
+- rollback considerations;
+- known follow-up work.
 
-PRs empilhados permanecem em rascunho até a validação real.
-
-## Validação
+## Validation
 
 ### Web
 
@@ -77,58 +88,65 @@ cargo test --locked --manifest-path src-tauri/Cargo.toml --all-features
 
 ### Backend
 
-Execute os equivalentes no diretório `backend` da branch correspondente.
+Run the equivalent formatting, linting and test commands in `backend/` for backend changes.
 
-A CI verde é obrigatória, mas não substitui testes reais de OAuth, convite, instalação ou migração.
+Green CI is required when checks exist, but it does not replace real validation of OAuth, permissions, migrations, desktop installation or organization isolation.
 
-## Segurança
+## Security and privacy
 
-Nunca envie:
+Never commit or paste into public issues/PRs:
 
-- senha do banco;
-- `service_role`;
-- OAuth Client Secret;
-- token Fly.io;
-- chave privada do updater;
-- certificado ou senha de assinatura;
-- bearer token;
-- token completo de convite;
-- backup de produção;
-- `.env.local`.
+- database passwords;
+- Supabase service-role keys;
+- OAuth client secrets;
+- infrastructure tokens;
+- updater/signing private keys;
+- bearer/session tokens;
+- complete invitation tokens;
+- production backups;
+- `.env.local`;
+- private organization messages/files;
+- private repository information not intended for disclosure.
 
-Variáveis `VITE_` são públicas e não podem receber segredo.
+Frontend variables prefixed with `VITE_` are public at runtime and must never contain secrets.
 
-## Banco
+Potential vulnerabilities should follow [`SECURITY.md`](SECURITY.md), not a public exploit report.
 
-Mudanças no banco exigem:
+## Database and tenancy changes
 
-1. issue;
-2. backup novo;
-3. revisão do SQL;
-4. execução de uma migração por vez;
-5. validação da API e da matriz de acesso;
-6. documentação e rollback.
+Database changes that touch organization-scoped data should include:
 
-## Dependências
+1. migration review;
+2. explicit `organization_id`/tenant reasoning;
+3. authorization/RLS review;
+4. negative tests proving another organization cannot access the data;
+5. rollback/recovery notes;
+6. updated documentation.
 
-Antes de adicionar pacote:
+## Dependencies
 
-- confirme que não existe solução já presente;
-- verifique manutenção e licença;
-- evite dependência para tarefa pequena;
-- revise impacto no bundle e superfície de ataque;
-- atualize lockfiles;
-- documente o motivo no PR.
+Before adding a package:
 
-## Interface
+- confirm the capability does not already exist;
+- check maintenance and license compatibility;
+- avoid a dependency for trivial work;
+- consider bundle/runtime/security impact;
+- update lockfiles;
+- explain the dependency in the PR.
 
-- preservar proporções de imagens;
-- não esconder erros de acesso;
-- sempre oferecer recuperação ou troca de conta;
-- validar teclado, foco, contraste e textos longos;
-- testar resoluções definidas no checklist;
-- preparar novos textos para futura internacionalização.
+## Product and UI principles
 
-## Regra crítica
+- preserve image aspect ratios;
+- never hide authorization errors behind generic success UI;
+- offer recovery/account switching where access can fail;
+- support keyboard and focus navigation;
+- maintain readable contrast;
+- prepare new user-facing text for i18n;
+- keep developer workflows fast;
+- keep private organization data private by default.
 
-Nenhum colaborador deve fazer merge, publicar nova produção, distribuir instalador ou alterar secrets sem autorização do proprietário e evidências do checklist aplicável.
+## Community behavior
+
+Participation is also governed by [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md).
+
+<p align="center">⭐ Build carefully. Keep the orbit clean. ⭐</p>
