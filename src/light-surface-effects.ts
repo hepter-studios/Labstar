@@ -240,8 +240,18 @@ function makeSoapBubble(field: HTMLElement, index: number, compact: boolean) {
   return bubble;
 }
 
+function syncBubbleLayerSize(scroll: HTMLElement, layer: HTMLElement) {
+  layer.style.setProperty("--soap-viewport-h", `${Math.max(1, scroll.clientHeight)}px`);
+}
+
 function ensureBubbleLayer(scroll: HTMLElement) {
-  if (bubbleLayers.has(scroll) || !scroll.isConnected) return;
+  if (!scroll.isConnected) return;
+  const existing = bubbleLayers.get(scroll);
+  if (existing?.isConnected) {
+    syncBubbleLayerSize(scroll, existing);
+    return;
+  }
+  if (existing) bubbleLayers.delete(scroll);
 
   const layer = document.createElement("div");
   layer.className = "labstar-soap-layer";
@@ -256,9 +266,11 @@ function ensureBubbleLayer(scroll: HTMLElement) {
     field.appendChild(makeSoapBubble(field, index, compact));
   }
 
+  syncBubbleLayerSize(scroll, layer);
   scroll.prepend(layer);
   scroll.classList.add("labstar-soap-enabled");
   bubbleLayers.set(scroll, layer);
+  resizeObserver?.observe(scroll);
 }
 
 function updateBubbleLayers() {
@@ -269,6 +281,7 @@ function updateBubbleLayers() {
         layer?.remove();
         scroll.classList.remove("labstar-soap-enabled");
         bubbleLayers.delete(scroll);
+        resizeObserver?.unobserve(scroll);
       });
     }
     return;
