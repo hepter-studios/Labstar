@@ -30,6 +30,7 @@ Labstar is evolving into a **public multi-organization product** while keeping o
 
 - [`../CONTRIBUTING.md`](../CONTRIBUTING.md) — contribution workflow and validation
 - [`../SECURITY.md`](../SECURITY.md) — private vulnerability reporting and organization-isolation boundary
+- [`../SUPPORT.md`](../SUPPORT.md) — public support and bug-reporting guidance
 - [`../CODE_OF_CONDUCT.md`](../CODE_OF_CONDUCT.md) — expected behavior in public project spaces
 
 ## ⚖️ Legal and privacy drafts
