@@ -614,14 +614,14 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 
 .notifications-wrap { position: relative; }
 .notification-button > i { position: absolute; right: -4px; top: -4px; min-width: 17px; height: 17px; padding: 0 4px; display: grid; place-items: center; border: 2px solid #050609; border-radius: 10px; color: #fff; background: #e05d68; font: 700 8px/1 Inter,sans-serif; }
-.notifications-panel { position: absolute; z-index: 90; right: 0; top: 44px; width: min(380px,calc(100vw - 24px)); max-height: min(620px,calc(100vh - 90px)); display: grid; grid-template-rows: auto auto minmax(0,1fr); border: 1px solid var(--line-strong); border-radius: 14px; background: rgba(8,10,15,.985); box-shadow: 0 28px 90px #000e; overflow: hidden; }
+.notifications-panel { position: absolute; z-index: 90; right: 0; top: 44px; width: min(380px,calc(100vw - 24px)); max-height: min(620px,calc(100vh - 90px)); display: flex; flex-direction: column; border: 1px solid var(--line-strong); border-radius: 14px; background: rgba(8,10,15,.985); box-shadow: 0 28px 90px #000e; overflow: hidden; }
 .notifications-panel > header { min-height: 64px; padding: 13px 15px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--line); }
 .notifications-panel > header > div { display: flex; flex-direction: column; gap: 3px; }
 .notifications-panel > header strong { font-size: 13px; }
 .notifications-panel > header small { color: #68717e; font-size: 10px; }
 .notifications-panel > header button { width: 30px; height: 30px; display: grid; place-items: center; border: 0; border-radius: 8px; color: #6e7580; background: transparent; cursor: pointer; }
 .mark-all { min-height: 36px; padding: 0 15px; display: flex; align-items: center; gap: 7px; border: 0; border-bottom: 1px solid var(--line); color: #88a8ed; background: rgba(139,174,255,.035); font-size: 10px; cursor: pointer; }
-.notifications-list { overflow-y: auto; }
+.notifications-list { min-height: 0; flex: 1 1 auto; overflow-y: auto; }
 .notifications-list > button { width: 100%; padding: 13px 15px; display: grid; grid-template-columns: 8px 1fr; gap: 8px; border: 0; border-bottom: 1px solid rgba(255,255,255,.045); text-align: left; background: transparent; cursor: pointer; }
 .notifications-list > button:hover { background: rgba(255,255,255,.025); }
 .notifications-list > button > i { width: 6px; height: 6px; margin-top: 5px; border-radius: 50%; background: transparent; }
