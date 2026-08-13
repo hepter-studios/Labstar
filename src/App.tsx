@@ -207,7 +207,7 @@ export default function Home() {
   const [notificationChannelId, setNotificationChannelId] = useState<string | null>(null);
   const [legalOpen, setLegalOpen] = useState(false);
   const [editorOpen, setEditorOpen] = useState(false);
-  const [inspectorMode, setInspectorMode] = useState<"view" | "edit">("edit");
+  const [inspectedId, setInspectedId] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
   const [sync, setSync] = useState<SyncState>("carregando");
   const [manualSave, setManualSave] = useState<ManualSaveState>("idle");
@@ -216,6 +216,8 @@ export default function Home() {
   const searchRef = useRef<HTMLInputElement>(null);
   const viewportRef = useRef<HTMLDivElement>(null);
   const boardRef = useRef<HTMLDivElement>(null);
+  const inspectedCardRef = useRef<HTMLElement>(null);
+  const inspectedOriginRef = useRef<HTMLElement | null>(null);
   const dragRef = useRef<{ id: string; dx: number; dy: number } | null>(null);
   const panRef = useRef<{ x: number; y: number; left: number; top: number } | null>(null);
   const zoomRef = useRef(zoom);
@@ -427,6 +429,11 @@ export default function Home() {
 
   useEffect(() => {
     const shortcuts = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && inspectedId) {
+        event.preventDefault();
+        closeInspector();
+        return;
+      }
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") {
         event.preventDefault();
         searchRef.current?.focus();
@@ -438,7 +445,16 @@ export default function Home() {
     };
     window.addEventListener("keydown", shortcuts);
     return () => window.removeEventListener("keydown", shortcuts);
-  }, [view, nodes]);
+  }, [view, nodes, inspectedId]);
+
+  useEffect(() => {
+    if (!inspectedId) return;
+    inspectedCardRef.current?.focus();
+  }, [inspectedId]);
+
+  useEffect(() => {
+    if (view !== "mapa") setInspectedId(null);
+  }, [view]);
 
   const selected = nodes.find((node) => node.id === selectedId) ?? null;
   const connections = useMemo(() => nodes.flatMap((node) => {
@@ -458,18 +474,28 @@ export default function Home() {
   }
 
   function openEditor(id: string) {
+    setInspectedId(null);
     selectNode(id);
-    setInspectorMode("edit");
     setEditorOpen(true);
   }
 
   function openInspector(id: string) {
+    inspectedOriginRef.current = Array.from(document.querySelectorAll<HTMLElement>(".node-card:not(.node-card-inspection)"))
+      .find((candidate) => candidate.dataset.projectNodeId === id) ?? null;
+    dragRef.current = null;
+    setDraggingId(null);
+    setEditorOpen(false);
     selectNode(id);
-    setInspectorMode("view");
-    setEditorOpen(true);
+    setInspectedId(id);
+  }
+
+  function closeInspector() {
+    setInspectedId(null);
+    window.requestAnimationFrame(() => inspectedOriginRef.current?.focus());
   }
 
   function addNode(parentId: string | null = selectedId) {
+    setInspectedId(null);
     const parent = nodes.find((node) => node.id === parentId);
     const siblings = nodes.filter((node) => node.parentId === parentId).length;
     const id = `node-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
@@ -493,7 +519,6 @@ export default function Home() {
     setNodes((current) => [...current, next]);
     setView("mapa");
     selectNode(id);
-    setInspectorMode("edit");
     setEditorOpen(true);
     window.requestAnimationFrame(() => {
       const card = Array.from(document.querySelectorAll<HTMLElement>(".node-card")).find((candidate) => candidate.dataset.projectNodeId === id);
@@ -716,7 +741,7 @@ export default function Home() {
                       data-card-tone={cardThemeMeta[cardTheme].tone}
                       tabIndex={0}
                       role="button"
-                      title="Clique duas vezes para editar o núcleo"
+                      title="Clique duas vezes para inspecionar o núcleo"
                       aria-label={`Selecionar ${meta.label.toLocaleLowerCase()} ${node.name}`}
                       className={`node-card ${selectedId === node.id ? "selected" : ""} ${draggingId === node.id ? "dragging" : ""} ${matches ? "" : "search-muted"}`}
                       style={{ left: node.x, top: node.y, "--accent": meta.color, "--status": status.color } as React.CSSProperties}
@@ -726,7 +751,7 @@ export default function Home() {
                         event.stopPropagation();
                         dragRef.current = null;
                         setDraggingId(null);
-                        openEditor(node.id);
+                        openInspector(node.id);
                       }}
                       onKeyDown={(event) => {
                         if (event.key !== "Enter" && event.key !== " ") return;
@@ -777,7 +802,74 @@ export default function Home() {
               <i />
               <button data-tooltip="Enquadrar tudo" onClick={fitMap} aria-label="Enquadrar toda a estrutura"><Focus size={14} /></button>
             </div>
-            <div className="canvas-tip">Zoom suave pela roda · Arraste o fundo para navegar · Arraste cartões para organizar</div>
+            <div className="canvas-tip">Zoom suave pela roda · Arraste o fundo para navegar · Duplo clique inspeciona</div>
+            {inspectedId && (() => {
+              const node = nodes.find((candidate) => candidate.id === inspectedId);
+              if (!node) return null;
+              const meta = kindMeta[node.kind];
+              const status = statusMeta[node.status];
+              const cardTheme = cardThemeFor(node);
+              const NodeIcon = meta.Icon;
+              const childCount = nodes.filter((candidate) => candidate.parentId === node.id).length;
+              return (
+                <div
+                  className="node-inspection-layer"
+                  role="presentation"
+                  onPointerDown={(event) => {
+                    if (event.target === event.currentTarget) closeInspector();
+                  }}
+                >
+                  <article
+                    ref={inspectedCardRef}
+                    className="node-card node-card-inspection selected"
+                    data-card-theme={cardTheme}
+                    data-card-tone={cardThemeMeta[cardTheme].tone}
+                    role="dialog"
+                    aria-modal="true"
+                    aria-label={`Inspecionando ${node.name}`}
+                    tabIndex={-1}
+                    style={{ "--accent": meta.color, "--status": status.color } as React.CSSProperties}
+                    onKeyDown={(event) => {
+                      if (event.key !== "Tab") return;
+                      const focusable = Array.from(event.currentTarget.querySelectorAll<HTMLElement>("button:not(:disabled), a[href]"));
+                      if (!focusable.length) return;
+                      const first = focusable[0];
+                      const last = focusable[focusable.length - 1];
+                      if (event.shiftKey && (document.activeElement === first || document.activeElement === event.currentTarget)) {
+                        event.preventDefault();
+                        last.focus();
+                      } else if (!event.shiftKey && document.activeElement === last) {
+                        event.preventDefault();
+                        first.focus();
+                      }
+                    }}
+                  >
+                    <div className="node-top">
+                      <span className="node-symbol"><NodeIcon size={16} strokeWidth={1.55} /></span>
+                      <span className="node-kind">{meta.label}</span>
+                      <span className="node-actions">
+                        <button data-tooltip="Fechar inspeção" aria-label={`Fechar inspeção de ${node.name}`} onClick={closeInspector}><X size={13} /></button>
+                        <button data-tooltip="Editar bloco" aria-label={`Editar ${node.name}`} onClick={() => openEditor(node.id)}><Pencil size={13} /></button>
+                        <button data-tooltip="Adicionar conexão" aria-label={`Adicionar conexão em ${node.name}`} onClick={() => addNode(node.id)}><Plus size={15} /></button>
+                      </span>
+                    </div>
+                    <h2>{node.name}</h2>
+                    <p>{node.description}</p>
+                    <div className="node-status"><i />{status.label}<span>{node.progress}%</span></div>
+                    <div className="progress-track"><i style={{ width: `${node.progress}%` }} /></div>
+                    <footer>
+                      <span className="owner-avatar">{node.owner.slice(0, 2).toUpperCase()}</span>
+                      <span>{node.owner}</span>
+                      <span className="node-links">
+                        {node.githubUrl && <a data-tooltip="Abrir GitHub" href={externalUrl(node.githubUrl)} target="_blank" rel="noreferrer" aria-label={`Abrir GitHub de ${node.name}`}><Github size={11} /></a>}
+                        {node.websiteUrl && <a data-tooltip="Abrir site" href={externalUrl(node.websiteUrl)} target="_blank" rel="noreferrer" aria-label={`Abrir site de ${node.name}`}><Globe2 size={11} /></a>}
+                        {childCount > 0 && <em><Network size={10} /> {childCount}</em>}
+                      </span>
+                    </footer>
+                  </article>
+                </div>
+              );
+            })()}
           </section>
         ) : view === "visao" ? (
           <Overview
@@ -801,18 +893,17 @@ export default function Home() {
           />
         )}
 
-        {view === "mapa" && editorOpen && <aside className={`inspector ${selected ? "open" : ""} ${inspectorMode === "view" ? "read-only" : ""}`} data-inspector-mode={inspectorMode}>
+        {view === "mapa" && editorOpen && <aside className={`inspector ${selected ? "open" : ""}`}>
           {selected ? (
             <>
               <div className="inspector-head">
                 <span className="inspector-symbol" style={{ "--accent": kindMeta[selected.kind].color } as React.CSSProperties}>
                   {(() => { const Icon = kindMeta[selected.kind].Icon; return <Icon size={18} strokeWidth={1.5} />; })()}
                 </span>
-                <div><small>{inspectorMode === "view" ? "Visualização" : kindMeta[selected.kind].label}</small><strong>{selected.name}</strong>{inspectorMode === "view" && <span className="inspector-mode-badge">Somente leitura</span>}</div>
+                <div><small>{kindMeta[selected.kind].label}</small><strong>{selected.name}</strong></div>
                 <button onClick={() => setEditorOpen(false)} aria-label="Fechar painel"><X size={16} /></button>
               </div>
 
-              {inspectorMode === "edit" && <>
               <fieldset className="card-theme-picker">
                 <legend>Aparência do cartão</legend>
                 <div role="radiogroup" aria-label="Cor do cartão" data-labstar-liquid-group>
@@ -879,7 +970,6 @@ export default function Home() {
                 {manualSave === "error" ? <CloudOff size={11} /> : <Check size={11} />}
                 {manualSave === "error" ? "Não foi possível confirmar no banco" : "O botão confirma a gravação no banco"}
               </div>
-              </>}
             </>
           ) : (
             <div className="inspector-empty"><Network size={24} /><p>Selecione um núcleo para visualizar e editar suas informações.</p></div>
