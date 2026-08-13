@@ -200,17 +200,22 @@ function makeSoapBubble(field: HTMLElement, index: number, compact: boolean) {
     if (event.button !== 0) return;
     const fieldRect = field.getBoundingClientRect();
     const bubbleRect = bubble.getBoundingClientRect();
+    const visualLeft = bubbleRect.left - fieldRect.left;
+    const visualTop = bubbleRect.top - fieldRect.top;
+    bubble.style.left = `${visualLeft}px`;
+    bubble.style.top = `${visualTop}px`;
+    bubble.style.animation = "none";
+    bubble.style.transform = "none";
     drag = {
       pointerId: event.pointerId,
       startX: event.clientX,
       startY: event.clientY,
-      originLeft: bubbleRect.left - fieldRect.left,
-      originTop: bubbleRect.top - fieldRect.top,
+      originLeft: visualLeft,
+      originTop: visualTop,
       moved: false,
     };
     bubble.setPointerCapture(event.pointerId);
     bubble.classList.add("is-dragging");
-    bubble.style.animationPlayState = "paused";
   });
 
   bubble.addEventListener("pointermove", (event) => {
@@ -230,7 +235,6 @@ function makeSoapBubble(field: HTMLElement, index: number, compact: boolean) {
     const shouldPop = !drag.moved;
     try { bubble.releasePointerCapture(event.pointerId); } catch { /* pointer already released */ }
     bubble.classList.remove("is-dragging");
-    bubble.style.animationPlayState = drag.moved ? "paused" : "running";
     drag = null;
     if (shouldPop) pop();
   };
