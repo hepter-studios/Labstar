@@ -1,8 +1,10 @@
+import "../light-neumorphism.css";
 import { isTauriApp } from "./native";
 
 export type AppSettings = {
   version: number;
   startView: "mapa" | "visao" | "colaboracao" | "equipe";
+  themeMode: "dark" | "light";
   density: "comfortable" | "compact";
   nebulaIntensity: "off" | "subtle" | "visible";
   reducedMotion: boolean;
@@ -18,6 +20,7 @@ export type AppSettings = {
 export const DEFAULT_APP_SETTINGS: AppSettings = {
   version: 1,
   startView: "colaboracao",
+  themeMode: "dark",
   density: "comfortable",
   nebulaIntensity: "subtle",
   reducedMotion: false,
@@ -41,6 +44,9 @@ function normalize(value: Partial<AppSettings> | null | undefined): AppSettings 
     startView: ["mapa", "visao", "colaboracao", "equipe"].includes(value?.startView ?? "")
       ? value!.startView as AppSettings["startView"]
       : DEFAULT_APP_SETTINGS.startView,
+    themeMode: ["dark", "light"].includes(value?.themeMode ?? "")
+      ? value!.themeMode as AppSettings["themeMode"]
+      : DEFAULT_APP_SETTINGS.themeMode,
     density: ["comfortable", "compact"].includes(value?.density ?? "")
       ? value!.density as AppSettings["density"]
       : DEFAULT_APP_SETTINGS.density,
@@ -105,6 +111,8 @@ export async function resetAppSettings(): Promise<AppSettings> {
 
 export function applyAppSettings(settings: AppSettings) {
   const root = document.documentElement;
+  root.dataset.labstarTheme = settings.themeMode;
+  root.style.colorScheme = settings.themeMode;
   root.dataset.labstarDensity = settings.density;
   root.dataset.labstarNebula = settings.nebulaIntensity;
   root.dataset.labstarMotion = settings.reducedMotion ? "reduced" : "full";
