@@ -1,8 +1,10 @@
 import { supabaseClient } from "./supabase";
+import { isDevPreviewMode } from "./devPreviewMode";
 
 export const PRIMARY_ORGANIZATION_ID = "00000000-0000-4000-8000-000000000001";
 export const ACTIVE_ORGANIZATION_KEY = "labstar-active-organization-v1";
 export const ORGANIZATION_CHANGED_EVENT = "labstar:organization-changed";
+const PREVIEW_ORGANIZATIONS_KEY = "labstar-dev-preview-organizations-v1";
 
 export type OrganizationRole = "owner" | "admin" | "manager" | "member" | "viewer";
 
@@ -105,6 +107,19 @@ function organizationRuleError(code: string) {
   return Object.assign(new Error(code), { code });
 }
 
+function readPreviewOrganizations() {
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(PREVIEW_ORGANIZATIONS_KEY) ?? "[]");
+    return Array.isArray(parsed) ? parsed as Organization[] : [];
+  } catch {
+    return [];
+  }
+}
+
+function writePreviewOrganizations(organizations: Organization[]) {
+  window.localStorage.setItem(PREVIEW_ORGANIZATIONS_KEY, JSON.stringify(organizations));
+}
+
 function throwRpcError(error: { code?: string; message?: string } | null | undefined): never {
   if (migrationMissing(error)) throw migrationRequiredError();
   throw error;
@@ -120,6 +135,9 @@ export function normalizeGlobalHandle(value: string) {
 }
 
 export async function listMyOrganizations(): Promise<Organization[]> {
+  if (isDevPreviewMode()) {
+    return [PRIMARY_ORGANIZATION, ...readPreviewOrganizations().filter((organization) => organization.id !== PRIMARY_ORGANIZATION_ID)];
+  }
   if (!supabaseClient) return import.meta.env.DEV ? [PRIMARY_ORGANIZATION] : [];
 
   const { data, error } = await requireClient().rpc("list_my_organizations");
@@ -133,6 +151,9 @@ export async function listMyOrganizations(): Promise<Organization[]> {
 export async function isOrganizationHandleAvailable(handle: string): Promise<boolean> {
   const normalized = normalizeGlobalHandle(handle);
   if (normalized.length < 3 || normalized.length > 48) return false;
+  if (isDevPreviewMode()) {
+    return ![PRIMARY_ORGANIZATION, ...readPreviewOrganizations()].some((organization) => organization.slug === normalized);
+  }
   const { data, error } = await requireClient().rpc("organization_handle_available", { candidate: normalized });
   if (error) throwRpcError(error);
   return data === true;
@@ -154,6 +175,32 @@ export async function claimUsername(username: string): Promise<string> {
 }
 
 export async function createOrganization(name: string, slug = ""): Promise<Organization> {
+  if (isDevPreviewMode()) {
+    const organizations = [PRIMARY_ORGANIZATION, ...readPreviewOrganizations()];
+    const organizationName = name.trim();
+    if (organizationName.length < 2 || organizationName.length > 80) throw organizationRuleError("invalid_organization_name");
+    const baseSlug = normalizeGlobalHandle(slug || organizationName);
+    if (baseSlug.length < 3 || baseSlug.length > 48) throw organizationRuleError("invalid_organization_handle");
+    let nextSlug = baseSlug;
+    let suffix = 2;
+    while (organizations.some((organization) => organization.slug === nextSlug)) {
+      if (slug.trim()) throw organizationRuleError("organization_handle_taken");
+      nextSlug = `${baseSlug.slice(0, 44)}-${suffix}`;
+      suffix += 1;
+    }
+    const created: Organization = {
+      id: globalThis.crypto?.randomUUID?.() ?? `preview-${Date.now()}`,
+      name: organizationName,
+      slug: nextSlug,
+      role: "owner",
+      isPrimaryLegacy: false,
+      defaultLocale: "pt-BR",
+      enabledLocales: ["pt-BR", "en"],
+      createdAt: new Date().toISOString(),
+    };
+    writePreviewOrganizations([...readPreviewOrganizations(), created]);
+    return created;
+  }
   const { data, error } = await requireClient().rpc("create_organization", {
     organization_name: name.trim(),
     desired_slug: slug.trim() ? normalizeGlobalHandle(slug) : null,
@@ -179,6 +226,12 @@ export async function updateOrganizationProfile(organizationId: string, name: st
     if (!available) throw organizationRuleError("organization_handle_taken");
   }
 
+  if (isDevPreviewMode()) {
+    const updated = { ...current, name: name.trim(), slug: normalized };
+    writePreviewOrganizations(readPreviewOrganizations().map((organization) => organization.id === organizationId ? updated : organization));
+    return updated;
+  }
+
   const { data, error } = await requireClient().rpc("update_organization_profile", {
     target_organization_id: organizationId,
     organization_name: name.trim(),
@@ -191,6 +244,7 @@ export async function updateOrganizationProfile(organizationId: string, name: st
 }
 
 export async function listOrganizationAccounts(organizationId: string): Promise<OrganizationAccount[]> {
+  if (isDevPreviewMode()) return [];
   const { data, error } = await requireClient().rpc("list_organization_accounts", {
     target_organization_id: organizationId,
   });
@@ -205,6 +259,7 @@ export async function setOrganizationAccountRole(
   authUserId: string,
   role: OrganizationRole,
 ) {
+  if (isDevPreviewMode()) return;
   const { error } = await requireClient().rpc("set_organization_account_role", {
     target_organization_id: organizationId,
     target_auth_user_id: authUserId,
@@ -214,6 +269,13 @@ export async function setOrganizationAccountRole(
 }
 
 export async function deleteOrganization(organizationId: string, confirmationSlug: string) {
+  if (isDevPreviewMode()) {
+    const current = readPreviewOrganizations().find((organization) => organization.id === organizationId);
+    if (!current) throw organizationRuleError("organization_not_found");
+    if (current.slug !== normalizeGlobalHandle(confirmationSlug)) throw organizationRuleError("organization_delete_confirmation_mismatch");
+    writePreviewOrganizations(readPreviewOrganizations().filter((organization) => organization.id !== organizationId));
+    return;
+  }
   const { error } = await requireClient().rpc("delete_organization", {
     target_organization_id: organizationId,
     confirmation_slug: normalizeGlobalHandle(confirmationSlug),

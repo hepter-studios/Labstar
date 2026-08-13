@@ -16,6 +16,7 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { secureSignOut } from "../lib/access";
+import { LottieAnimation } from "./LottieAnimation";
 import {
   PRIMARY_ORGANIZATION_ID,
   clearActiveOrganization,
@@ -75,6 +76,7 @@ export function OrganizationSwitcherPortal() {
   const [name, setName] = useState("");
   const [slug, setSlug] = useState("");
   const [error, setError] = useState("");
+  const [createdNotice, setCreatedNotice] = useState<Organization | null>(null);
 
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsLoading, setSettingsLoading] = useState(false);
@@ -166,6 +168,7 @@ export function OrganizationSwitcherPortal() {
   function choose(organization: Organization) {
     setSelected(organization);
     setActiveOrganization(organization);
+    setCreatedNotice(null);
     setMenuOpen(false);
   }
 
@@ -177,12 +180,18 @@ export function OrganizationSwitcherPortal() {
     try {
       const created = await createOrganization(name, slug);
       setOrganizations((current) => [...current.filter((organization) => organization.id !== created.id), created]);
-      setSelected(created);
-      setActiveOrganization(created);
+      // A criação não troca o contexto ativo silenciosamente. A troca anterior
+      // abria a superfície isolada da nova organização sobre todo o aplicativo,
+      // dando a impressão de travamento e podendo expor um contexto incoerente.
+      if (!selected) {
+        setSelected(created);
+        setActiveOrganization(created);
+      }
+      setCreatedNotice(created);
       setName("");
       setSlug("");
       setCreateOpen(false);
-      setMenuOpen(false);
+      setMenuOpen(true);
     } catch (cause) {
       setError(errorMessage(cause));
     } finally {
@@ -324,6 +333,14 @@ export function OrganizationSwitcherPortal() {
 
           {error && <div className="organization-switcher-error">{error}</div>}
 
+          {createdNotice && (
+            <div className="organization-created-notice" role="status">
+              <LottieAnimation kind="free-consultation" textReplacement="ORGANIZAÇÃO" className="organization-created-lottie" preserveAspectRatio="xMidYMid meet" />
+              <div><strong>{createdNotice.name} foi criada</strong><small>Ela já está disponível no seletor. Seu ambiente atual permaneceu aberto.</small></div>
+              <button type="button" onClick={() => setCreatedNotice(null)} aria-label="Fechar confirmação"><X size={13} /></button>
+            </div>
+          )}
+
           <footer className="organization-switcher-footer">
             <button type="button" onClick={() => { setError(""); setCreateOpen(true); }}><Plus size={15} /> Criar organização</button>
             {canEditSelected && <button className="organization-manage-button" type="button" onClick={openSettings} aria-label="Configurações da organização"><Settings2 size={14} /></button>}
@@ -343,6 +360,9 @@ export function OrganizationSwitcherPortal() {
           <button type="button" disabled={creating} onClick={() => setCreateOpen(false)} aria-label="Fechar"><X size={16} /></button>
         </header>
         <form onSubmit={submitCreate}>
+          <div className="organization-create-illustration">
+            <LottieAnimation kind="free-consultation" textReplacement="ORGANIZAÇÃO" preserveAspectRatio="xMidYMid meet" />
+          </div>
           <label>Nome da organização<input autoFocus required minLength={2} maxLength={80} value={name} onChange={(event) => setName(event.target.value)} placeholder="Acme Labs" /></label>
           <label>Handle <small>Opcional. Precisa ser único no Labstar.</small><input maxLength={48} value={slug} onChange={(event) => setSlug(event.target.value)} placeholder="acme-labs" /></label>
           <div className="organization-modal-note">
@@ -409,7 +429,7 @@ export function OrganizationSwitcherPortal() {
           </section>
 
           {canOwnSelected && (
-            <section className="organization-settings-section organization-danger-zone">
+            <section className="organization-settings-section organization-danger-zone" data-labstar-destructive-confirmation="true">
               <div className="organization-settings-heading"><Trash2 size={15} /><div><strong>Zona de perigo</strong><small>{selected.isPrimaryLegacy ? "A organização principal é protegida." : "Esta ação apaga a organização e não pode ser desfeita."}</small></div></div>
               {selected.isPrimaryLegacy ? (
                 <div className="organization-protected-note"><ShieldCheck size={14} /> Hepter Studios não pode ser apagada por esta tela.</div>

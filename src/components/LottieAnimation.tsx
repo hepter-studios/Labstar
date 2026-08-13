@@ -10,6 +10,7 @@ export function LottieAnimation({
   speed = 1,
   preserveAspectRatio = "xMidYMid slice",
   posterFrame,
+  textReplacement,
 }: {
   kind: OnboardingLottieKind;
   className?: string;
@@ -17,6 +18,7 @@ export function LottieAnimation({
   speed?: number;
   preserveAspectRatio?: string;
   posterFrame?: number;
+  textReplacement?: string;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const [failed, setFailed] = useState(false);
@@ -39,6 +41,24 @@ export function LottieAnimation({
       .then((sourceData) => {
         if (disposed || !ref.current) return;
         const animationData = structuredClone(sourceData);
+        if (textReplacement) {
+          const layers = Array.isArray(animationData.layers) ? animationData.layers : [];
+          for (const layer of layers) {
+            if (!layer || typeof layer !== "object" || (layer as { ty?: unknown }).ty !== 5) continue;
+            const textFrames = (layer as { t?: { d?: { k?: unknown } } }).t?.d?.k;
+            if (!Array.isArray(textFrames)) continue;
+            for (const frame of textFrames) {
+              const style = (frame as { s?: Record<string, unknown> })?.s;
+              if (!style) continue;
+              style.t = textReplacement;
+              style.f = "Inter";
+              style.s = 154;
+              style.lh = 180;
+            }
+          }
+          animationData.fonts = { list: [{ fName: "Inter", fFamily: "Inter", fStyle: "Bold", ascent: 75 }] };
+          delete animationData.chars;
+        }
         const expectedLayerCount = Array.isArray(animationData.layers) ? animationData.layers.length : 0;
 
         ref.current.replaceChildren();
@@ -120,7 +140,7 @@ export function LottieAnimation({
       instance?.destroy();
       container.replaceChildren();
     };
-  }, [kind, loop, posterFrame, preserveAspectRatio, speed]);
+  }, [kind, loop, posterFrame, preserveAspectRatio, speed, textReplacement]);
 
   return <div ref={ref} className={`labstar-lottie ${failed ? "failed" : ""} ${ready ? "ready" : ""} ${className}`.trim()} aria-hidden="true" />;
 }

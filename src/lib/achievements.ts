@@ -79,13 +79,25 @@ export async function syncOwnAchievements(): Promise<AchievementProgress[]> {
     throw error;
   }
 
-  const known = new Set<string>(ACHIEVEMENT_CATALOG.map((achievement) => achievement.key));
-  return ((data ?? []) as AchievementRow[])
-    .filter((row) => typeof row.achievement_key === "string" && known.has(row.achievement_key))
-    .map((row) => ({
-      key: row.achievement_key as AchievementKey,
-      progress: numeric(row.progress, 0),
-      target: Math.max(1, numeric(row.target, 1)),
-      unlockedAt: typeof row.unlocked_at === "string" ? row.unlocked_at : null,
-    }));
+  const rows = new Map(
+    ((data ?? []) as AchievementRow[])
+      .filter((row): row is AchievementRow & { achievement_key: AchievementKey } => (
+        typeof row.achievement_key === "string"
+        && ACHIEVEMENT_CATALOG.some((achievement) => achievement.key === row.achievement_key)
+      ))
+      .map((row) => [row.achievement_key, row]),
+  );
+
+  // O banco pode ser atualizado alguns segundos depois do catálogo do cliente.
+  // Normalizar pela lista oficial mantém todas as missões visíveis sem inventar
+  // desbloqueios ou substituir o progresso real já persistido.
+  return ACHIEVEMENT_CATALOG.map((achievement) => {
+    const row = rows.get(achievement.key);
+    return {
+      key: achievement.key,
+      progress: numeric(row?.progress, 0),
+      target: Math.max(1, numeric(row?.target, achievement.target)),
+      unlockedAt: typeof row?.unlocked_at === "string" ? row.unlocked_at : null,
+    };
+  });
 }

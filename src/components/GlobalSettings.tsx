@@ -29,7 +29,7 @@ import {
   saveAppSettings,
   type AppSettings,
 } from "../lib/app-settings";
-import { ACHIEVEMENT_CATALOG, syncOwnAchievements, type AchievementKey, type AchievementProgress } from "../lib/achievements";
+import { ACHIEVEMENTS_REFRESH_EVENT, ACHIEVEMENT_CATALOG, syncOwnAchievements, type AchievementKey, type AchievementProgress } from "../lib/achievements";
 import { secureSignOut } from "../lib/access";
 import {
   deviceNotificationStateMessage,
@@ -109,9 +109,12 @@ export function GlobalSettings({
   }, [initialAchievementKey, tab]);
 
   useEffect(() => {
-    if (tab !== "achievements" || achievementState !== "idle") return;
-    void refreshAchievements();
-  }, [achievementState, tab]);
+    if (tab !== "achievements") return undefined;
+    const refresh = () => void refreshAchievements();
+    refresh();
+    window.addEventListener(ACHIEVEMENTS_REFRESH_EVENT, refresh);
+    return () => window.removeEventListener(ACHIEVEMENTS_REFRESH_EVENT, refresh);
+  }, [tab]);
 
   useEffect(() => {
     const close = (event: KeyboardEvent) => {

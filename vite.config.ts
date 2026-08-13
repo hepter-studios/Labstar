@@ -26,7 +26,7 @@ export default defineConfig({
   plugins: [
     react(),
     ...(!isDesktopBuild ? [VitePWA({
-      registerType: "autoUpdate",
+      registerType: "prompt",
       includeAssets: ["favicon.ico", "favicon.svg", "favicon-180.png"],
       manifest: {
         id: "/",
@@ -34,8 +34,8 @@ export default defineConfig({
         short_name: "Labstar",
         description: "Ambiente privado para empresas, projetos e equipes.",
         lang: "pt-BR",
-        theme_color: "#030407",
-        background_color: "#030407",
+        theme_color: "#e9edf5",
+        background_color: "#e9edf5",
         display: "standalone",
         orientation: "any",
         start_url: "/",
@@ -54,8 +54,8 @@ export default defineConfig({
         // deployment even after Cloudflare is already serving the new build.
         navigateFallback: null,
         cleanupOutdatedCaches: true,
-        skipWaiting: true,
-        clientsClaim: true,
+        skipWaiting: false,
+        clientsClaim: false,
         // Entry points and styles use content hashes and must come from the
         // current HTML, not from a worker that can outlive a deployment.
         // The service worker remains available for push notifications and only

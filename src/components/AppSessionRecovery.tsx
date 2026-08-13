@@ -28,7 +28,7 @@ export function AppSessionRecovery() {
         if (previous && now - previous < RECOVERY_WINDOW_MS) return;
 
         window.sessionStorage.setItem(RECOVERY_KEY, String(now));
-        window.location.reload();
+        window.dispatchEvent(new CustomEvent("labstar:access-changed"));
       } catch {
         // O AccessControl permanece responsável por mostrar a causa real do Rust.
       } finally {

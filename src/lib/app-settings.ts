@@ -20,7 +20,7 @@ export type AppSettings = {
 export const DEFAULT_APP_SETTINGS: AppSettings = {
   version: 1,
   startView: "colaboracao",
-  themeMode: "dark",
+  themeMode: "light",
   density: "comfortable",
   nebulaIntensity: "subtle",
   reducedMotion: false,
@@ -113,6 +113,7 @@ export function applyAppSettings(settings: AppSettings) {
   const root = document.documentElement;
   root.dataset.labstarTheme = settings.themeMode;
   root.style.colorScheme = settings.themeMode;
+  document.querySelector('meta[name="theme-color"]')?.setAttribute("content", settings.themeMode === "dark" ? "#030407" : "#e9edf5");
   root.dataset.labstarDensity = settings.density;
   root.dataset.labstarNebula = settings.nebulaIntensity;
   root.dataset.labstarMotion = settings.reducedMotion ? "reduced" : "full";
