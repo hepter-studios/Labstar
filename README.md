@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/assets/labstar-readme-hero.svg" alt="Labstar" width="100%" />
+  <img src="docs/assets/labstar-readme-hero.webp" alt="Labstar" width="100%" />
 </p>
 
 <h1 align="center">Labstar</h1>
