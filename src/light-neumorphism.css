@@ -1,428 +1,552 @@
 /*
- * LABSTAR — modo claro neomórfico
- * Inspirado no protótipo Gooey + Neumorfismo enviado para o preview.
- * O tema é estritamente interno ao Labstar e só é ativado por
- * html[data-labstar-theme="light"]. O tema escuro permanece intacto.
+ * LABSTAR — modo claro neomórfico, restrito a superfícies neutras.
+ * Cartões de projetos, núcleos, categorias, cores semânticas e cores de marca
+ * ficam fora desta camada de propósito.
  */
 
 html[data-labstar-theme="light"] {
-  --bg: #e9edf5;
-  --panel: #e9edf5;
-  --panel-raised: #eef2f8;
-  --line: rgba(107, 118, 145, .16);
-  --line-strong: rgba(91, 103, 132, .26);
-  --text: #3c4358;
-  --muted: #7d879d;
-  --dim: #9ca5b7;
-  --accent: #718fd9;
-  --work-bg: #e9edf5;
-  --work-bg-deep: #e9edf5;
-  --work-panel: #e9edf5;
-  --work-panel-2: #edf1f7;
-  --work-panel-3: #f0f3f9;
-  --work-line: rgba(104, 117, 148, .15);
-  --work-line-strong: rgba(93, 107, 140, .24);
-  --work-text: #3c4358;
-  --work-muted: #7f899d;
-  --work-dim: #9aa3b5;
-  --work-blue: #6f8fd9;
-  --work-blue-soft: rgba(111, 143, 217, .13);
-  --work-blue-glow: rgba(111, 143, 217, .18);
-  --neo-base: #e9edf5;
-  --neo-raised: #edf1f8;
-  --neo-light: #ffffff;
-  --neo-dark: #c3cadb;
-  --neo-dark-soft: rgba(167, 178, 201, .58);
-  --neo-ink: #3c4358;
-  --neo-muted: #8891a6;
-  --neo-purple: #7d6fc9;
-  --neo-lilac: #cdbcff;
-  --neo-blue: #b7d9ff;
+  --neu-base: #e9edf5;
+  --neu-shadow-lt: #ffffff;
+  --neu-shadow-dk: #c3cadb;
+  --neu-ink: #3c4358;
+  --neu-ink-muted: #70798f;
+  --neu-line: rgba(91, 103, 132, .16);
+  --neu-raised-shadow: 8px 8px 17px rgba(195, 202, 219, .74), -8px -8px 17px rgba(255, 255, 255, .9);
+  --neu-raised-shadow-sm: 5px 5px 11px rgba(195, 202, 219, .72), -5px -5px 11px rgba(255, 255, 255, .9);
+  --neu-inset-shadow: inset 6px 6px 13px rgba(195, 202, 219, .8), inset -6px -6px 13px rgba(255, 255, 255, .92);
   color-scheme: light;
+}
+
+.neu-flat {
+  background: var(--neu-base) !important;
+}
+
+.neu-raised {
+  border-color: transparent !important;
+  background: var(--neu-base) !important;
+  box-shadow: var(--neu-raised-shadow) !important;
+}
+
+.neu-inset {
+  border-color: transparent !important;
+  background: var(--neu-base) !important;
+  box-shadow: var(--neu-inset-shadow) !important;
+}
+
+.labstar-neu-effect-defs {
+  position: fixed;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+  pointer-events: none;
 }
 
 html[data-labstar-theme="light"],
 html[data-labstar-theme="light"] body,
 html[data-labstar-theme="light"] #root,
 html[data-labstar-theme="light"] .app {
-  background: var(--neo-base) !important;
-  color: var(--neo-ink) !important;
+  background: var(--neu-base) !important;
+  color: var(--neu-ink) !important;
 }
 
-html[data-labstar-theme="light"] body { color-scheme: light; }
-
+/* ---------- chrome global ---------- */
 html[data-labstar-theme="light"] .header {
-  border-bottom-color: rgba(112, 123, 149, .13) !important;
-  background: rgba(233, 237, 245, .94) !important;
-  box-shadow: 0 8px 22px rgba(166, 176, 198, .24), inset 0 -1px rgba(255,255,255,.72) !important;
-  backdrop-filter: blur(22px) saturate(1.05) !important;
+  border-bottom-color: var(--neu-line) !important;
+  background: rgba(233, 237, 245, .96) !important;
+  box-shadow: 0 8px 21px rgba(166, 176, 198, .22), inset 0 -1px rgba(255, 255, 255, .78) !important;
+  backdrop-filter: blur(20px) saturate(1.02) !important;
 }
 
-html[data-labstar-theme="light"] .wordmark,
-html[data-labstar-theme="light"] .wordmark .star-letter {
-  color: #394256 !important;
-  filter: none !important;
+/* A marca mantém a própria cor; só recebe uma base que garante contraste. */
+html[data-labstar-theme="light"] .header .brand {
+  width: max-content;
+  padding: 9px 11px;
+  border-radius: 11px;
+  background: #485166;
+  box-shadow: 5px 5px 12px rgba(182, 191, 210, .5), -4px -4px 10px rgba(255, 255, 255, .72);
 }
 
 html[data-labstar-theme="light"] .global-search,
 html[data-labstar-theme="light"] .channel-search,
 html[data-labstar-theme="light"] .dm-search,
-html[data-labstar-theme="light"] .message-toolbar label {
+html[data-labstar-theme="light"] .message-toolbar label,
+html[data-labstar-theme="light"] .dm-conversation-actions label {
   border-color: transparent !important;
-  background: var(--neo-base) !important;
-  box-shadow: inset 5px 5px 11px rgba(195, 202, 219, .82), inset -5px -5px 11px rgba(255, 255, 255, .92) !important;
+  background: var(--neu-base) !important;
+  box-shadow: var(--neu-inset-shadow) !important;
 }
 
 html[data-labstar-theme="light"] .global-search input,
 html[data-labstar-theme="light"] .channel-search input,
 html[data-labstar-theme="light"] .dm-search input,
-html[data-labstar-theme="light"] .message-toolbar input { color: var(--neo-ink) !important; }
+html[data-labstar-theme="light"] .message-toolbar input,
+html[data-labstar-theme="light"] .dm-conversation-actions input {
+  color: var(--neu-ink) !important;
+  background: transparent !important;
+}
 
 html[data-labstar-theme="light"] input::placeholder,
-html[data-labstar-theme="light"] textarea::placeholder { color: #9ca5b6 !important; }
-
-html[data-labstar-theme="light"] .rail {
-  border-right-color: rgba(112, 123, 149, .13) !important;
-  background: var(--neo-base) !important;
-  box-shadow: 8px 0 20px rgba(174, 184, 205, .22), inset -1px 0 rgba(255,255,255,.72) !important;
+html[data-labstar-theme="light"] textarea::placeholder {
+  color: #929caf !important;
 }
 
-html[data-labstar-theme="light"] .rail button,
-html[data-labstar-theme="light"] .labstar-theme-toggle,
-html[data-labstar-theme="light"] .icon-button {
+html[data-labstar-theme="light"] .header .icon-button,
+html[data-labstar-theme="light"] .header .labstar-theme-toggle,
+html[data-labstar-theme="light"] .rail-bottom > button {
   border-color: transparent !important;
-  color: #778297 !important;
-  background: var(--neo-base) !important;
-  box-shadow: 5px 5px 11px rgba(195,202,219,.78), -5px -5px 11px rgba(255,255,255,.9) !important;
+  color: #667187 !important;
+  background: var(--neu-base) !important;
+  box-shadow: var(--neu-raised-shadow-sm) !important;
 }
 
-html[data-labstar-theme="light"] .rail button:hover,
-html[data-labstar-theme="light"] .labstar-theme-toggle:hover,
-html[data-labstar-theme="light"] .icon-button:hover {
-  color: #4a5873 !important;
-  transform: translateY(-1px);
+html[data-labstar-theme="light"] .header .icon-button:active,
+html[data-labstar-theme="light"] .header .labstar-theme-toggle:active,
+html[data-labstar-theme="light"] .rail-bottom > button:active {
+  box-shadow: inset 4px 4px 9px rgba(195, 202, 219, .82), inset -4px -4px 9px rgba(255, 255, 255, .92) !important;
 }
 
-html[data-labstar-theme="light"] .rail button.active,
-html[data-labstar-theme="light"] .labstar-theme-toggle.active,
-html[data-labstar-theme="light"] .icon-button:active {
-  color: #6f78b7 !important;
-  background: var(--neo-base) !important;
-  box-shadow: inset 4px 4px 9px rgba(195,202,219,.86), inset -4px -4px 9px rgba(255,255,255,.92) !important;
-  transform: none;
-}
-
+/* CTA mantém o matiz original; apenas ganha profundidade. */
 html[data-labstar-theme="light"] .create-button {
-  border: 0 !important;
-  color: #48536c !important;
-  background: linear-gradient(135deg, #d7cdff, #c7e2ff) !important;
-  box-shadow: 5px 5px 12px rgba(186,194,213,.74), -5px -5px 12px rgba(255,255,255,.86), inset 0 1px rgba(255,255,255,.72) !important;
+  box-shadow: 5px 5px 12px rgba(183, 191, 210, .58), -5px -5px 12px rgba(255, 255, 255, .78) !important;
 }
 
-html[data-labstar-theme="light"] .canvas-shell {
-  background-color: var(--neo-base) !important;
-  background-image: none !important;
+/* ---------- navegação principal + grupos líquidos ---------- */
+html[data-labstar-theme="light"] .rail {
+  border-right-color: var(--neu-line) !important;
+  background: var(--neu-base) !important;
+  box-shadow: 8px 0 20px rgba(174, 184, 205, .2), inset -1px 0 rgba(255, 255, 255, .74) !important;
 }
 
-html[data-labstar-theme="light"] .canvas-shell::before {
-  background: radial-gradient(circle at 17% 22%, rgba(205,188,255,.20), transparent 27%), radial-gradient(circle at 82% 76%, rgba(183,217,255,.25), transparent 29%) !important;
-  opacity: 1 !important;
+html[data-labstar-theme="light"] .labstar-liquid-group {
+  position: relative !important;
+  isolation: isolate;
 }
 
-html[data-labstar-theme="light"] .canvas-shell::after,
-html[data-labstar-theme="light"] .cosmic-effects {
-  opacity: 0 !important;
-  animation: none !important;
+html[data-labstar-theme="light"] .rail-group.labstar-liquid-group,
+html[data-labstar-theme="light"] .workspace-surface-rail.labstar-liquid-group,
+html[data-labstar-theme="light"] .dm-inbox-tabs.labstar-liquid-group {
+  border-radius: 18px;
+  background: var(--neu-base) !important;
+  box-shadow: var(--neu-raised-shadow-sm) !important;
 }
 
-html[data-labstar-theme="light"] .node-card,
-html[data-labstar-theme="light"] .project-card,
-html[data-labstar-theme="light"] .work-home-card,
-html[data-labstar-theme="light"] .dashboard-card,
-html[data-labstar-theme="light"] .communication-home-card {
-  border-color: rgba(255,255,255,.54) !important;
-  background: var(--neo-base) !important;
-  box-shadow: 9px 9px 20px rgba(195,202,219,.76), -9px -9px 20px rgba(255,255,255,.90) !important;
+html[data-labstar-theme="light"] .global-settings-nav nav.labstar-liquid-group,
+html[data-labstar-theme="light"] .dm-navigation.labstar-liquid-group,
+html[data-labstar-theme="light"] .card-theme-picker [role="radiogroup"].labstar-liquid-group {
+  border-radius: 15px;
+  background: var(--neu-base) !important;
+  box-shadow: inset 4px 4px 9px rgba(195, 202, 219, .58), inset -4px -4px 9px rgba(255, 255, 255, .72) !important;
 }
 
-html[data-labstar-theme="light"] .node-card:hover,
-html[data-labstar-theme="light"] .project-card:hover,
-html[data-labstar-theme="light"] .work-home-card:hover {
-  box-shadow: 12px 12px 24px rgba(195,202,219,.80), -10px -10px 22px rgba(255,255,255,.94) !important;
+html[data-labstar-theme="light"] .labstar-liquid-group > button {
+  position: relative !important;
+  z-index: 2;
+  border-color: transparent !important;
+  background: transparent !important;
+  box-shadow: none !important;
 }
 
+html[data-labstar-theme="light"] .labstar-liquid-group > button:not(.active):not([aria-checked="true"]):not([aria-selected="true"]) {
+  color: var(--neu-ink-muted) !important;
+}
+
+html[data-labstar-theme="light"] .labstar-liquid-group > button.active,
+html[data-labstar-theme="light"] .labstar-liquid-group > button[aria-checked="true"],
+html[data-labstar-theme="light"] .labstar-liquid-group > button[aria-selected="true"] {
+  color: var(--neu-ink) !important;
+}
+
+html[data-labstar-theme="light"] .labstar-liquid-indicator {
+  position: absolute;
+  z-index: 1;
+  left: 0;
+  top: 0;
+  width: var(--liquid-w, 36px);
+  height: var(--liquid-h, 36px);
+  border: 1px solid rgba(255, 255, 255, .6);
+  border-radius: min(14px, 34%);
+  pointer-events: none;
+  opacity: 0;
+  background: color-mix(in srgb, var(--accent, #8baeff) 16%, rgba(242, 246, 255, .78));
+  box-shadow: inset 0 2px 4px rgba(255, 255, 255, .78), inset 0 -3px 6px rgba(124, 143, 183, .18), 0 5px 12px rgba(174, 185, 208, .28);
+  filter: url(#labstar-goo-small);
+  transform: translate3d(var(--liquid-x, 0), var(--liquid-y, 0), 0);
+  transition: transform .55s cubic-bezier(.34, 1.56, .4, 1), width .55s cubic-bezier(.34, 1.56, .4, 1), height .55s cubic-bezier(.34, 1.56, .4, 1), opacity .18s ease;
+}
+
+html[data-labstar-theme="light"] .labstar-liquid-indicator::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  opacity: 0;
+  background: inherit;
+  transform: translate(-50%, -50%) scale(.2);
+}
+
+html[data-labstar-theme="light"] .labstar-liquid-indicator.is-moving::after {
+  animation: labstar-liquid-drip .58s cubic-bezier(.34, 1.56, .4, 1);
+}
+
+@keyframes labstar-liquid-drip {
+  0% { opacity: .7; transform: translate(-50%, -50%) scale(.85); }
+  45% { opacity: .5; transform: translate(-10%, -50%) scale(.58); }
+  100% { opacity: 0; transform: translate(45%, -50%) scale(.12); }
+}
+
+/* ---------- central de trabalho: só superfícies neutras ---------- */
 html[data-labstar-theme="light"] .workspace.collaboration-workspace,
 html[data-labstar-theme="light"] .collaboration-server-mode,
 html[data-labstar-theme="light"] .collaboration-shell,
-html[data-labstar-theme="light"] .direct-hub { background: var(--neo-base) !important; }
+html[data-labstar-theme="light"] .direct-hub {
+  color: var(--neu-ink) !important;
+  background: var(--neu-base) !important;
+}
 
 html[data-labstar-theme="light"] .collaboration-shell::before,
 html[data-labstar-theme="light"] .collaboration-server-mode::after,
-html[data-labstar-theme="light"] .direct-hub::after { opacity: 0 !important; }
+html[data-labstar-theme="light"] .direct-hub::before,
+html[data-labstar-theme="light"] .direct-hub::after {
+  opacity: 0 !important;
+}
 
 html[data-labstar-theme="light"] .space-rail,
 html[data-labstar-theme="light"] .channel-sidebar,
 html[data-labstar-theme="light"] .channel-members,
+html[data-labstar-theme="light"] .dm-space-rail,
 html[data-labstar-theme="light"] .dm-sidebar,
-html[data-labstar-theme="light"] .dm-left,
 html[data-labstar-theme="light"] .dm-directory,
 html[data-labstar-theme="light"] .dm-own-profile {
-  border-color: rgba(108, 120, 149, .12) !important;
-  background: var(--neo-base) !important;
+  border-color: var(--neu-line) !important;
+  background: var(--neu-base) !important;
 }
 
 html[data-labstar-theme="light"] .space-rail,
-html[data-labstar-theme="light"] .dm-left { box-shadow: 8px 0 18px rgba(186,196,216,.20), inset -1px 0 rgba(255,255,255,.78) !important; }
+html[data-labstar-theme="light"] .dm-space-rail {
+  box-shadow: 7px 0 17px rgba(185, 195, 215, .2), inset -1px 0 rgba(255, 255, 255, .72) !important;
+}
 
 html[data-labstar-theme="light"] .channel-sidebar,
 html[data-labstar-theme="light"] .dm-sidebar,
-html[data-labstar-theme="light"] .dm-directory { box-shadow: 8px 0 20px rgba(186,196,216,.17), inset -1px 0 rgba(255,255,255,.72) !important; }
+html[data-labstar-theme="light"] .dm-directory {
+  box-shadow: 7px 0 18px rgba(185, 195, 215, .16), inset -1px 0 rgba(255, 255, 255, .68) !important;
+}
 
-html[data-labstar-theme="light"] .channel-members { box-shadow: -8px 0 20px rgba(186,196,216,.14), inset 1px 0 rgba(255,255,255,.72) !important; }
+html[data-labstar-theme="light"] .channel-members {
+  box-shadow: -7px 0 18px rgba(185, 195, 215, .14), inset 1px 0 rgba(255, 255, 255, .68) !important;
+}
 
 html[data-labstar-theme="light"] .space-header,
 html[data-labstar-theme="light"] .channel-header,
-html[data-labstar-theme="light"] .dm-header,
+html[data-labstar-theme="light"] .channel-user,
 html[data-labstar-theme="light"] .dm-conversation-header,
-html[data-labstar-theme="light"] .message-toolbar {
-  border-color: rgba(107,119,146,.12) !important;
-  background: rgba(233,237,245,.88) !important;
+html[data-labstar-theme="light"] .message-toolbar,
+html[data-labstar-theme="light"] .dm-own-profile {
+  border-color: var(--neu-line) !important;
+  background: rgba(233, 237, 245, .96) !important;
 }
 
 html[data-labstar-theme="light"] .space-title strong,
 html[data-labstar-theme="light"] .channel-heading strong,
+html[data-labstar-theme="light"] .channel-members > header strong,
 html[data-labstar-theme="light"] .channel-member-row b,
 html[data-labstar-theme="light"] .dm-conversation-person strong,
-html[data-labstar-theme="light"] .dm-thread-intro h2,
-html[data-labstar-theme="light"] .message-row strong,
-html[data-labstar-theme="light"] .dm-message strong { color: #424a5f !important; }
+html[data-labstar-theme="light"] .dm-thread-intro h2 {
+  color: var(--neu-ink) !important;
+}
 
 html[data-labstar-theme="light"] .space-title small,
 html[data-labstar-theme="light"] .channel-heading small,
 html[data-labstar-theme="light"] .channel-member-row small,
 html[data-labstar-theme="light"] .dm-conversation-person small,
 html[data-labstar-theme="light"] .dm-thread-intro span,
-html[data-labstar-theme="light"] .dm-thread-intro p { color: #858fa4 !important; }
-
-html[data-labstar-theme="light"] .space-list button,
-html[data-labstar-theme="light"] .add-space,
-html[data-labstar-theme="light"] .channel-list button,
-html[data-labstar-theme="light"] .new-category,
-html[data-labstar-theme="light"] .channel-head-actions button,
-html[data-labstar-theme="light"] .dm-contact-list button,
-html[data-labstar-theme="light"] .dm-home-card,
-html[data-labstar-theme="light"] .dm-toolbar button {
-  border-color: transparent !important;
-  color: #738096 !important;
-  background: var(--neo-base) !important;
-  box-shadow: 5px 5px 11px rgba(195,202,219,.70), -5px -5px 11px rgba(255,255,255,.86) !important;
+html[data-labstar-theme="light"] .dm-thread-intro p,
+html[data-labstar-theme="light"] .message-toolbar > span {
+  color: var(--neu-ink-muted) !important;
 }
 
-html[data-labstar-theme="light"] .space-list button.active,
-html[data-labstar-theme="light"] .channel-list button.active,
-html[data-labstar-theme="light"] .channel-head-actions button.active,
-html[data-labstar-theme="light"] .dm-contact-list button.active,
-html[data-labstar-theme="light"] .dm-toolbar button.active {
-  color: #6575b7 !important;
-  box-shadow: inset 4px 4px 9px rgba(195,202,219,.82), inset -4px -4px 9px rgba(255,255,255,.9) !important;
+html[data-labstar-theme="light"] .channel-list > button:not(.active),
+html[data-labstar-theme="light"] .dm-contact-list > button:not(.active),
+html[data-labstar-theme="light"] .new-category {
+  color: var(--neu-ink-muted) !important;
 }
 
-html[data-labstar-theme="light"] .space-list button img,
-html[data-labstar-theme="light"] .space-title > span,
-html[data-labstar-theme="light"] .space-title > span img,
-html[data-labstar-theme="light"] .avatar-media {
-  background: var(--neo-base) !important;
-  border-color: rgba(118,130,158,.12) !important;
+html[data-labstar-theme="light"] .channel-list > button:not(.active):hover,
+html[data-labstar-theme="light"] .dm-contact-list > button:not(.active):hover,
+html[data-labstar-theme="light"] .channel-member-row:hover {
+  border-color: rgba(255, 255, 255, .45) !important;
+  background: rgba(255, 255, 255, .28) !important;
 }
 
-/* Bolhas de sabão: adaptação do vidro pastel do protótipo para o fundo dos chats. */
-html[data-labstar-theme="light"] .message-scroll,
-html[data-labstar-theme="light"] .dm-message-scroll {
+/* ---------- conversas: gooey real, fixo no viewport do scroller ---------- */
+html[data-labstar-theme="light"] .message-scroll.labstar-soap-enabled,
+html[data-labstar-theme="light"] .dm-message-scroll.labstar-soap-enabled {
   position: relative !important;
   isolation: isolate !important;
-  background:
-    radial-gradient(circle at 10% 18%, rgba(255,255,255,.90) 0 1.6%, rgba(255,214,232,.22) 2.1%, rgba(207,232,255,.18) 4.5%, rgba(255,255,255,.04) 7.4%, transparent 8.1%),
-    radial-gradient(circle at 82% 13%, rgba(255,255,255,.88) 0 1.2%, rgba(230,217,255,.22) 1.8%, rgba(211,255,233,.16) 4.1%, rgba(255,255,255,.04) 6.8%, transparent 7.5%),
-    radial-gradient(circle at 70% 66%, rgba(255,255,255,.88) 0 1.4%, rgba(207,232,255,.24) 2.1%, rgba(230,217,255,.15) 4.8%, rgba(255,255,255,.03) 7.7%, transparent 8.4%),
-    radial-gradient(circle at 24% 78%, rgba(255,255,255,.90) 0 1.1%, rgba(211,255,233,.20) 1.8%, rgba(255,238,199,.16) 4.2%, rgba(255,255,255,.04) 6.9%, transparent 7.6%),
-    var(--neo-base) !important;
-  background-size: 520px 520px, 640px 640px, 760px 760px, 590px 590px !important;
-  animation: labstar-soap-field 18s ease-in-out infinite alternate !important;
+  background: var(--neu-base) !important;
 }
 
-html[data-labstar-theme="light"] .message-scroll::before,
-html[data-labstar-theme="light"] .dm-message-scroll::before {
+html[data-labstar-theme="light"] .labstar-soap-layer {
+  position: sticky;
+  z-index: 0;
+  top: 0;
+  width: 100%;
+  height: 0;
+  overflow: visible;
+  pointer-events: none;
+}
+
+html[data-labstar-theme="light"] .labstar-soap-field {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: var(--soap-viewport-h, 560px);
+  overflow: hidden;
+  pointer-events: none;
+  filter: url(#labstar-goo-bubbles);
+}
+
+html[data-labstar-theme="light"] .labstar-soap-bubble {
+  position: absolute;
+  display: block;
+  border: 1px solid rgba(255, 255, 255, .55);
+  border-radius: 50%;
+  opacity: .38;
+  pointer-events: auto;
+  touch-action: none;
+  cursor: grab;
+  background: radial-gradient(circle at 30% 26%, rgba(255, 255, 255, .96) 0%, rgba(255, 255, 255, .34) 30%, var(--soap-tint, rgba(207, 232, 255, .34)) 64%, rgba(255, 255, 255, .04) 100%);
+  box-shadow: inset -6px -6px 14px rgba(120, 140, 190, .15), inset 5px 5px 10px rgba(255, 255, 255, .64);
+  animation: labstar-soap-float var(--soap-duration, 16s) ease-in-out var(--soap-delay, -4s) infinite;
+  will-change: transform;
+}
+
+html[data-labstar-theme="light"] .labstar-soap-bubble::before {
   content: "";
   position: absolute;
-  z-index: 0;
-  inset: 0;
-  pointer-events: none;
-  opacity: .58;
-  background:
-    radial-gradient(circle at 30% 26%, rgba(255,255,255,.96) 0 5%, rgba(255,255,255,.28) 18%, rgba(205,188,255,.18) 34%, rgba(183,217,255,.12) 48%, transparent 60%) 12% 25% / 140px 140px no-repeat,
-    radial-gradient(circle at 30% 26%, rgba(255,255,255,.94) 0 5%, rgba(255,255,255,.26) 18%, rgba(211,255,233,.16) 35%, rgba(255,214,232,.11) 49%, transparent 61%) 82% 42% / 190px 190px no-repeat,
-    radial-gradient(circle at 30% 26%, rgba(255,255,255,.94) 0 5%, rgba(255,255,255,.25) 18%, rgba(207,232,255,.18) 35%, rgba(230,217,255,.10) 49%, transparent 61%) 53% 82% / 116px 116px no-repeat;
-  filter: saturate(1.04) hue-rotate(-7deg);
-  animation: labstar-soap-float 13s ease-in-out infinite alternate;
+  inset: 10%;
+  border-radius: 50%;
+  opacity: .72;
+  background: conic-gradient(from 200deg, rgba(255, 214, 232, .32), rgba(207, 232, 255, .32), rgba(230, 217, 255, .32), rgba(211, 255, 233, .32), rgba(255, 214, 232, .32));
+  mix-blend-mode: overlay;
 }
 
-html[data-labstar-theme="light"] .message-scroll > *,
-html[data-labstar-theme="light"] .dm-message-scroll > * { position: relative; z-index: 1; }
-
-@keyframes labstar-soap-field {
-  from { background-position: 0 0, 30px 0, 0 24px, 22px 18px; }
-  to { background-position: 42px 28px, -28px 44px, 34px -26px, -36px 34px; }
+html[data-labstar-theme="light"] .labstar-soap-bubble::after {
+  content: "";
+  position: absolute;
+  left: 22%;
+  top: 16%;
+  width: 26%;
+  height: 16%;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, .88);
+  filter: blur(1px);
 }
 
-@keyframes labstar-soap-float {
-  from { transform: translate3d(-1.5%, -1%, 0) scale(.985); filter: saturate(1.03) hue-rotate(-10deg); }
-  to { transform: translate3d(2%, 1.5%, 0) scale(1.025); filter: saturate(1.08) hue-rotate(12deg); }
+html[data-labstar-theme="light"] .labstar-soap-bubble.is-dragging {
+  z-index: 3;
+  cursor: grabbing;
+  opacity: .48;
 }
 
-html[data-labstar-theme="light"] .message-row:hover,
-html[data-labstar-theme="light"] .dm-message:hover { background: rgba(255,255,255,.20) !important; }
+html[data-labstar-theme="light"] .labstar-soap-bubble.is-popping {
+  animation: none !important;
+  transition: transform .27s ease-out, opacity .27s ease-out;
+  transform: scale(1.42) !important;
+  opacity: 0 !important;
+}
 
-html[data-labstar-theme="light"] .channel-welcome > span,
-html[data-labstar-theme="light"] .dm-thread-intro .user-avatar { filter: drop-shadow(7px 7px 10px rgba(171,181,203,.34)); }
+html[data-labstar-theme="light"] .message-scroll.labstar-soap-enabled > :not(.labstar-soap-layer),
+html[data-labstar-theme="light"] .dm-message-scroll.labstar-soap-enabled > :not(.labstar-soap-layer) {
+  position: relative;
+  z-index: 1;
+}
+
+html[data-labstar-theme="light"] .chat-message:hover,
+html[data-labstar-theme="light"] .dm-message:hover {
+  background: rgba(255, 255, 255, .22) !important;
+}
+
+html[data-labstar-theme="light"] .message-body,
+html[data-labstar-theme="light"] .message-body p,
+html[data-labstar-theme="light"] .developer-message-content,
+html[data-labstar-theme="light"] .dm-message-body,
+html[data-labstar-theme="light"] .dm-message-body p {
+  color: var(--neu-ink) !important;
+}
 
 html[data-labstar-theme="light"] .message-composer,
 html[data-labstar-theme="light"] .dm-composer,
 html[data-labstar-theme="light"] .developer-composer,
 html[data-labstar-theme="light"] .composer-shell {
   border-color: transparent !important;
-  background: var(--neo-base) !important;
-  box-shadow: inset 7px 7px 15px rgba(195,202,219,.74), inset -7px -7px 15px rgba(255,255,255,.88) !important;
+  background: var(--neu-base) !important;
+  box-shadow: var(--neu-inset-shadow) !important;
 }
 
 html[data-labstar-theme="light"] .message-composer textarea,
 html[data-labstar-theme="light"] .message-composer input,
 html[data-labstar-theme="light"] .dm-composer textarea,
 html[data-labstar-theme="light"] .dm-composer input {
-  color: #465068 !important;
+  color: var(--neu-ink) !important;
   background: transparent !important;
 }
 
-html[data-labstar-theme="light"] .message-composer button,
-html[data-labstar-theme="light"] .dm-composer button,
+html[data-labstar-theme="light"] .message-composer button:not(.dm-send),
+html[data-labstar-theme="light"] .dm-composer button:not(.dm-send),
 html[data-labstar-theme="light"] .developer-composer button {
   border-color: transparent !important;
-  color: #71809b !important;
-  background: var(--neo-base) !important;
-  box-shadow: 4px 4px 9px rgba(195,202,219,.70), -4px -4px 9px rgba(255,255,255,.86) !important;
+  background: var(--neu-base) !important;
+  box-shadow: 4px 4px 9px rgba(195, 202, 219, .68), -4px -4px 9px rgba(255, 255, 255, .86) !important;
 }
 
-html[data-labstar-theme="light"] .message-composer button:active,
-html[data-labstar-theme="light"] .dm-composer button:active,
-html[data-labstar-theme="light"] .developer-composer button:active { box-shadow: inset 3px 3px 7px rgba(195,202,219,.78), inset -3px -3px 7px rgba(255,255,255,.88) !important; }
+@keyframes labstar-soap-float {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+  33% { transform: translate3d(var(--soap-tx1, 24px), var(--soap-ty1, -18px), 0) scale(var(--soap-s1, 1.06)); }
+  66% { transform: translate3d(var(--soap-tx2, -20px), var(--soap-ty2, 22px), 0) scale(var(--soap-s2, .94)); }
+}
 
+/* ---------- Configurações ---------- */
 html[data-labstar-theme="light"] .global-settings-backdrop {
-  background: rgba(222, 228, 239, .72) !important;
-  backdrop-filter: blur(18px) saturate(.96) !important;
+  background: rgba(218, 225, 237, .7) !important;
+  backdrop-filter: blur(17px) saturate(.96) !important;
 }
 
-html[data-labstar-theme="light"] .global-settings {
-  border-color: rgba(255,255,255,.58) !important;
-  background: var(--neo-base) !important;
-  box-shadow: 18px 18px 42px rgba(186,195,215,.64), -16px -16px 36px rgba(255,255,255,.84) !important;
+html[data-labstar-theme="light"] .global-settings,
+html[data-labstar-theme="light"] .settings-section,
+html[data-labstar-theme="light"] .settings-security-card,
+html[data-labstar-theme="light"] .achievements-summary,
+html[data-labstar-theme="light"] .achievement-card {
+  border-color: transparent !important;
+  background: var(--neu-base) !important;
+  box-shadow: var(--neu-raised-shadow) !important;
 }
 
 html[data-labstar-theme="light"] .global-settings-nav,
 html[data-labstar-theme="light"] .global-settings-content,
-html[data-labstar-theme="light"] .global-settings-footer {
-  border-color: rgba(110,122,151,.12) !important;
-  background: var(--neo-base) !important;
-}
-
-html[data-labstar-theme="light"] .global-settings-brand > span {
-  border: 0 !important;
-  color: #6574af !important;
-  background: var(--neo-base) !important;
-  box-shadow: 5px 5px 11px rgba(195,202,219,.75), -5px -5px 11px rgba(255,255,255,.88) !important;
+html[data-labstar-theme="light"] .global-settings-footer,
+html[data-labstar-theme="light"] .global-settings-head {
+  border-color: var(--neu-line) !important;
+  background: var(--neu-base) !important;
 }
 
 html[data-labstar-theme="light"] .global-settings-brand strong,
 html[data-labstar-theme="light"] .global-settings-head h2,
 html[data-labstar-theme="light"] .settings-section > header strong,
 html[data-labstar-theme="light"] .settings-toggle-copy strong,
-html[data-labstar-theme="light"] .settings-profile-row strong { color: #444c61 !important; }
+html[data-labstar-theme="light"] .settings-profile-row strong,
+html[data-labstar-theme="light"] .achievement-copy > strong {
+  color: var(--neu-ink) !important;
+}
 
 html[data-labstar-theme="light"] .global-settings-brand small,
 html[data-labstar-theme="light"] .global-settings-head small,
 html[data-labstar-theme="light"] .settings-section > header p,
 html[data-labstar-theme="light"] .settings-toggle-copy small,
-html[data-labstar-theme="light"] .settings-status { color: #8992a5 !important; }
-
-html[data-labstar-theme="light"] .global-settings-nav button,
-html[data-labstar-theme="light"] .global-settings-head > button,
-html[data-labstar-theme="light"] .settings-profile-actions button,
-html[data-labstar-theme="light"] .settings-inline-actions button,
-html[data-labstar-theme="light"] .global-settings-footer button {
-  border-color: transparent !important;
-  color: #748096 !important;
-  background: var(--neo-base) !important;
-  box-shadow: 5px 5px 11px rgba(195,202,219,.72), -5px -5px 11px rgba(255,255,255,.88) !important;
+html[data-labstar-theme="light"] .settings-status,
+html[data-labstar-theme="light"] .achievement-copy > p,
+html[data-labstar-theme="light"] .achievement-copy > small {
+  color: var(--neu-ink-muted) !important;
 }
-
-html[data-labstar-theme="light"] .global-settings-nav button.active,
-html[data-labstar-theme="light"] .global-settings-nav button:active,
-html[data-labstar-theme="light"] .global-settings-head > button:active,
-html[data-labstar-theme="light"] .settings-inline-actions button:active,
-html[data-labstar-theme="light"] .global-settings-footer button:active {
-  color: #6675b4 !important;
-  background: var(--neo-base) !important;
-  box-shadow: inset 4px 4px 9px rgba(195,202,219,.80), inset -4px -4px 9px rgba(255,255,255,.90) !important;
-}
-
-html[data-labstar-theme="light"] .settings-section,
-html[data-labstar-theme="light"] .settings-security-card,
-html[data-labstar-theme="light"] .achievement-card,
-html[data-labstar-theme="light"] .achievements-summary {
-  border-color: rgba(255,255,255,.55) !important;
-  background: var(--neo-base) !important;
-  box-shadow: 8px 8px 18px rgba(195,202,219,.70), -8px -8px 18px rgba(255,255,255,.88) !important;
-}
-
-html[data-labstar-theme="light"] .settings-section > header,
-html[data-labstar-theme="light"] .settings-profile-row { border-color: rgba(108,120,147,.10) !important; }
 
 html[data-labstar-theme="light"] .settings-field input,
 html[data-labstar-theme="light"] .settings-field select,
 html[data-labstar-theme="light"] .settings-field textarea {
   border-color: transparent !important;
-  color: #4a5369 !important;
-  background: var(--neo-base) !important;
-  box-shadow: inset 5px 5px 11px rgba(195,202,219,.80), inset -5px -5px 11px rgba(255,255,255,.91) !important;
+  color: var(--neu-ink) !important;
+  background: var(--neu-base) !important;
+  box-shadow: var(--neu-inset-shadow) !important;
 }
 
 html[data-labstar-theme="light"] .settings-field input:focus,
 html[data-labstar-theme="light"] .settings-field select:focus,
 html[data-labstar-theme="light"] .settings-field textarea:focus {
   outline: none !important;
-  box-shadow: inset 5px 5px 11px rgba(195,202,219,.82), inset -5px -5px 11px rgba(255,255,255,.94), 0 0 0 3px rgba(125,111,201,.10) !important;
+  box-shadow: var(--neu-inset-shadow), 0 0 0 3px rgba(125, 111, 201, .1) !important;
 }
 
-html[data-labstar-theme="light"] .settings-toggle + .settings-toggle { border-color: rgba(109,121,149,.10) !important; }
+html[data-labstar-theme="light"] .global-settings-head > button,
+html[data-labstar-theme="light"] .settings-profile-actions button,
+html[data-labstar-theme="light"] .settings-inline-actions button,
+html[data-labstar-theme="light"] .achievements-summary > button {
+  border-color: transparent !important;
+  color: #626d83 !important;
+  background: var(--neu-base) !important;
+  box-shadow: var(--neu-raised-shadow-sm) !important;
+}
+
+html[data-labstar-theme="light"] .global-settings-head > button:active,
+html[data-labstar-theme="light"] .settings-profile-actions button:active,
+html[data-labstar-theme="light"] .settings-inline-actions button:active,
+html[data-labstar-theme="light"] .achievements-summary > button:active {
+  box-shadow: inset 4px 4px 9px rgba(195, 202, 219, .78), inset -4px -4px 9px rgba(255, 255, 255, .9) !important;
+}
+
+/* Botão de salvar mantém a cor de ação já existente. */
+html[data-labstar-theme="light"] .global-settings-footer > button {
+  box-shadow: var(--neu-raised-shadow-sm) !important;
+}
 
 html[data-labstar-theme="light"] .settings-toggle > i {
-  border: 0 !important;
-  background: var(--neo-base) !important;
-  box-shadow: inset 3px 3px 7px rgba(195,202,219,.84), inset -3px -3px 7px rgba(255,255,255,.92) !important;
+  border-color: transparent !important;
+  background: var(--neu-base) !important;
+  box-shadow: inset 3px 3px 7px rgba(195, 202, 219, .8), inset -3px -3px 7px rgba(255, 255, 255, .9) !important;
 }
 
 html[data-labstar-theme="light"] .settings-toggle > i::after {
-  background: #a9b2c4 !important;
-  box-shadow: 2px 2px 5px rgba(170,180,201,.64), -2px -2px 5px rgba(255,255,255,.9) !important;
+  box-shadow: 2px 2px 5px rgba(170, 180, 201, .58), -2px -2px 5px rgba(255, 255, 255, .88) !important;
 }
 
-html[data-labstar-theme="light"] .settings-toggle input:checked + i { background: linear-gradient(135deg, rgba(205,188,255,.72), rgba(183,217,255,.76)) !important; }
-html[data-labstar-theme="light"] .settings-toggle input:checked + i::after { background: #f7f9fd !important; }
+/* settings-danger, alertas, status e cores semânticas ficam intencionalmente sem override. */
 
-html[data-labstar-theme="light"] .settings-danger {
-  color: #a45260 !important;
-  background: #f0e8ec !important;
-  box-shadow: 5px 5px 11px rgba(203,190,199,.68), -5px -5px 11px rgba(255,255,255,.84) !important;
+/* ---------- modo de edição / inspector: tratamento neutro, sem tocar no cartão ---------- */
+html[data-labstar-theme="light"] .inspector,
+html[data-labstar-theme="light"] .card-theme-picker,
+html[data-labstar-theme="light"] .integration-fields,
+html[data-labstar-theme="light"] .zoom-controls,
+html[data-labstar-theme="light"] .canvas-meta {
+  border-color: transparent !important;
+  background: var(--neu-base) !important;
+  box-shadow: var(--neu-raised-shadow) !important;
 }
 
+html[data-labstar-theme="light"] .inspector-head,
+html[data-labstar-theme="light"] .inspector footer {
+  border-color: var(--neu-line) !important;
+  background: var(--neu-base) !important;
+}
+
+html[data-labstar-theme="light"] .inspector-head strong,
+html[data-labstar-theme="light"] .inspector legend,
+html[data-labstar-theme="light"] .field-grid label,
+html[data-labstar-theme="light"] .integration-heading strong {
+  color: var(--neu-ink) !important;
+}
+
+html[data-labstar-theme="light"] .inspector-head small,
+html[data-labstar-theme="light"] .integration-heading small,
+html[data-labstar-theme="light"] .canvas-meta,
+html[data-labstar-theme="light"] .canvas-tip {
+  color: var(--neu-ink-muted) !important;
+}
+
+html[data-labstar-theme="light"] .field-grid input,
+html[data-labstar-theme="light"] .field-grid select,
+html[data-labstar-theme="light"] .field-grid textarea,
+html[data-labstar-theme="light"] .integration-fields input,
+html[data-labstar-theme="light"] .integration-fields select,
+html[data-labstar-theme="light"] .integration-fields textarea {
+  border-color: transparent !important;
+  color: var(--neu-ink) !important;
+  background: var(--neu-base) !important;
+  box-shadow: var(--neu-inset-shadow) !important;
+}
+
+/* ---------- overlays neutros ---------- */
 html[data-labstar-theme="light"] .command-palette,
 html[data-labstar-theme="light"] .workspace-menu,
 html[data-labstar-theme="light"] .context-menu,
@@ -430,37 +554,46 @@ html[data-labstar-theme="light"] .member-quick-card,
 html[data-labstar-theme="light"] .global-search-results,
 html[data-labstar-theme="light"] .dm-emoji-picker,
 html[data-labstar-theme="light"] .emoji-picker {
-  border-color: rgba(255,255,255,.56) !important;
-  color: #465067 !important;
-  background: rgba(233,237,245,.98) !important;
-  box-shadow: 12px 12px 28px rgba(186,196,216,.62), -10px -10px 25px rgba(255,255,255,.76) !important;
+  border-color: rgba(255, 255, 255, .56) !important;
+  color: var(--neu-ink) !important;
+  background: rgba(233, 237, 245, .98) !important;
+  box-shadow: 12px 12px 28px rgba(186, 196, 216, .58), -10px -10px 25px rgba(255, 255, 255, .76) !important;
 }
 
-html[data-labstar-theme="light"] .dm-v6 .dm-composer .dm-emoji-picker,
-html[data-labstar-theme="light"] .direct-hub.dm-v6 .dm-composer .dm-emoji-picker > header {
-  border-color: rgba(106,119,149,.12) !important;
-  background: rgba(233,237,245,.98) !important;
-}
-
-html[data-labstar-theme="light"][data-labstar-motion="reduced"] .message-scroll,
-html[data-labstar-theme="light"][data-labstar-motion="reduced"] .dm-message-scroll,
-html[data-labstar-theme="light"][data-labstar-motion="reduced"] .message-scroll::before,
-html[data-labstar-theme="light"][data-labstar-motion="reduced"] .dm-message-scroll::before {
+/* ---------- movimento e fallback mobile ---------- */
+html[data-labstar-theme="light"][data-labstar-motion="reduced"] .labstar-liquid-indicator,
+html[data-labstar-theme="light"][data-labstar-motion="reduced"] .labstar-soap-bubble,
+html[data-labstar-theme="light"][data-labstar-motion="reduced"] .labstar-liquid-indicator::after {
   animation: none !important;
+  transition-duration: .001ms !important;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  html[data-labstar-theme="light"] .message-scroll,
-  html[data-labstar-theme="light"] .dm-message-scroll,
-  html[data-labstar-theme="light"] .message-scroll::before,
-  html[data-labstar-theme="light"] .dm-message-scroll::before { animation: none !important; }
+  html[data-labstar-theme="light"] .labstar-liquid-indicator,
+  html[data-labstar-theme="light"] .labstar-soap-bubble,
+  html[data-labstar-theme="light"] .labstar-liquid-indicator::after {
+    animation: none !important;
+    transition-duration: .001ms !important;
+  }
 }
 
 @media (max-width: 820px) {
-  html[data-labstar-theme="light"] .global-settings { box-shadow: none !important; }
-  html[data-labstar-theme="light"] .message-scroll::before,
-  html[data-labstar-theme="light"] .dm-message-scroll::before {
-    opacity: .42;
-    background-size: 105px 105px, 140px 140px, 90px 90px;
+  html[data-labstar-theme="light"] .global-settings {
+    box-shadow: none !important;
+  }
+
+  /* No mobile o SVG gooey é desligado; permanecem só 3 bolhas leves. */
+  html[data-labstar-theme="light"] .labstar-soap-field {
+    filter: none !important;
+  }
+
+  html[data-labstar-theme="light"] .labstar-soap-bubble {
+    opacity: .27;
+  }
+}
+
+@supports not (filter: url(#labstar-goo-bubbles)) {
+  html[data-labstar-theme="light"] .labstar-soap-field {
+    filter: none !important;
   }
 }
