@@ -5,7 +5,7 @@
 <h1 align="center">LABSTAR</h1>
 
 <p align="center">
-  <strong>A developer-first business workspace where communication, code, projects and operations stay in the same orbit.</strong>
+  <strong>A developer-first organization workspace where people, code, projects and operations stay in the same orbit.</strong>
 </p>
 
 <p align="center">
@@ -37,9 +37,11 @@
 
 ## 🌌 Mission
 
-**Labstar** is a business collaboration platform developed by **Hepter Studios** for teams that build software and run companies around that work.
+**Labstar** is an organization and collaboration platform developed by **Hepter Studios** for people who build, monitor and organize projects together.
 
-The product is evolving beyond a private internal tool into a **public, multi-organization platform**. The key model is simple:
+An **organization** is the neutral root of Labstar. It can represent a software team, startup, company, studio, research lab, open-source group, community, student team or any other group working toward shared projects.
+
+Labstar is evolving beyond a private internal tool into a **public, multi-organization platform**. The key model is simple:
 
 > **Labstar can be public. Your organization is not.**
 
@@ -53,11 +55,11 @@ Labstar is being built around one idea: **keep people, code, context and executi
 
 | Orbit | What lives there |
 | --- | --- |
-| 🌎 **Organizations** | private company spaces, teams, roles, permissions and membership |
+| 🌎 **Organizations** | isolated spaces for teams, roles, permissions, membership and shared work |
 | 💬 **Communication** | channels, direct messages, realtime presence, voice/video direction and notifications |
 | 🧑‍🚀 **People** | members, squads, roles, availability and identity connections |
 | 💻 **Developer Workflows** | GitHub activity, pull requests, reviews, CI events and developer-focused navigation |
-| 🛰️ **Projects & Operations** | projects, operational context, integrations, alerts and business workflows |
+| 🛰️ **Projects & Operations** | projects, code context, integrations, monitoring, alerts and operational workflows |
 | ⚡ **Desktop Experience** | Tauri 2 + Rust, native notifications, deep links and future global shortcuts |
 | 🌐 **Public Layer** | optional public developer profiles and product surfaces that never expose private organization data by default |
 
@@ -69,22 +71,22 @@ The target security boundary is **organization-first isolation**:
 - membership and authorization are enforced by the backend, not trusted to the UI;
 - external integrations receive only the permissions they need;
 - public developer profiles, when introduced, are explicit opt-in;
-- public visibility of this repository does **not** make customer or organization data public.
+- public visibility of this repository does **not** make organization data public.
 
 ---
 
 ## ✨ Why Labstar is becoming developer-first
 
-The next product cycle is focused on making Labstar something a programmer wants to install voluntarily — not merely software a company requires them to use.
+The next product cycle is focused on making Labstar something a programmer wants to install voluntarily — not merely software a team administrator tells them to use.
 
 The roadmap includes:
 
-1. **GitHub Organization Integration** — import teams, members, repositories and permissions instead of rebuilding company structure manually.
+1. **GitHub Organization Integration** — import teams, members, repositories and permissions instead of rebuilding an organization's technical structure manually.
 2. **Command Palette** — `Cmd+K` / `Ctrl+K` navigation across squads, people, PRs, settings and actions.
 3. **GitHub Pulse** — realtime push, PR, review and CI activity inside Labstar with native desktop notifications.
 4. **Labstar CLI** — a terminal companion for login, status, PRs, squads and deep-linking into the desktop app.
 5. **Automatic PR War Rooms** — contextual rooms created around PRs and failed CI runs.
-6. **Public Developer Profiles** — verified GitHub-backed profiles, always opt-in and separated from private company data.
+6. **Public Developer Profiles** — verified GitHub-backed profiles, always opt-in and separated from private organization data.
 7. **Context Graph / Project Memory** — connect code, PRs, incidents, decisions, docs and conversations into searchable project memory.
 8. **Developer Platform & Automations** — APIs, webhooks, integrations and an extension surface so Labstar can become a platform, not a closed app.
 
@@ -108,7 +110,7 @@ Current application version: **`11.2.9`**.
 | Web deployment | Cloudflare Pages |
 | API deployment | Fly.io |
 
-> Labstar is under active development. Public repository visibility is not the same thing as a finished public commercial release.
+> Labstar is under active development. Public repository visibility is not the same thing as a finished public release.
 
 ---
 
@@ -224,7 +226,7 @@ Never place credentials, service-role keys, OAuth client secrets or production t
 Labstar has two complementary roadmaps:
 
 - **[Evolution Roadmap](docs/LABSTAR_EVOLUTION_ROADMAP.md)** — developer adoption, GitHub-native workflows, CLI, realtime, War Rooms, public profiles, Context Graph and extension platform.
-- **[International Release Roadmap](docs/INTERNATIONAL_RELEASE_ROADMAP.md)** — multi-organization isolation, desktop distribution, i18n, global infrastructure, legal readiness and commercial launch.
+- **[International Release Roadmap](docs/INTERNATIONAL_RELEASE_ROADMAP.md)** — multi-organization isolation, desktop distribution, i18n, global infrastructure, legal readiness and broader public launch.
 
 The two roadmaps intentionally meet at the same product model: **a public Labstar platform with private-by-default organizations**.
 
@@ -238,7 +240,7 @@ This repository is publicly visible for product transparency and development vis
 
 Organization data is a separate concern from repository visibility. The product direction is to keep private workspace data isolated while allowing selected public product surfaces only when intentionally enabled.
 
-Public legal documents in this repository are currently **pre-release drafts** and require professional legal review before a commercial launch:
+Public legal documents in this repository are currently **pre-release drafts** and require professional legal review before a broad public launch:
 
 - [Terms of Use — Draft](docs/legal/TERMS_OF_USE_DRAFT.md)
 - [Privacy Notice — Draft](docs/legal/PRIVACY_NOTICE_DRAFT.md)
@@ -261,5 +263,5 @@ Please never publish secrets, private organization data, access tokens, producti
 </p>
 
 <p align="center">
-  <strong>Labstar — keep the company, the code and the people in the same orbit.</strong>
+  <strong>Labstar — keep your organization, your code and your people in the same orbit.</strong>
 </p>
