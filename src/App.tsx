@@ -714,7 +714,7 @@ export default function Home() {
                       data-card-tone={cardThemeMeta[cardTheme].tone}
                       tabIndex={0}
                       role="button"
-                      title="Clique duas vezes para inspecionar o perfil"
+                      title="Clique duas vezes para editar o núcleo"
                       aria-label={`Selecionar ${meta.label.toLocaleLowerCase()} ${node.name}`}
                       className={`node-card ${selectedId === node.id ? "selected" : ""} ${draggingId === node.id ? "dragging" : ""} ${matches ? "" : "search-muted"}`}
                       style={{ left: node.x, top: node.y, "--accent": meta.color, "--status": status.color } as React.CSSProperties}
@@ -724,7 +724,7 @@ export default function Home() {
                         event.stopPropagation();
                         dragRef.current = null;
                         setDraggingId(null);
-                        openInspector(node.id);
+                        openEditor(node.id);
                       }}
                       onKeyDown={(event) => {
                         if (event.key !== "Enter" && event.key !== " ") return;

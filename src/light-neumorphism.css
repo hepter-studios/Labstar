@@ -125,7 +125,7 @@ html[data-labstar-theme="light"] .app {
 
 html[data-labstar-theme="light"] input::placeholder,
 html[data-labstar-theme="light"] textarea::placeholder {
-  color: #929bad;
+  color: #647086;
 }
 
 html[data-labstar-theme="light"] :where(button, input, textarea, select):disabled {
@@ -196,7 +196,7 @@ html[data-labstar-theme="light"] .dm-search-hint {
 }
 
 html[data-labstar-theme="light"] .sync-state {
-  color: var(--neu-ink-muted);
+  color: var(--neu-ink);
 }
 
 html[data-labstar-theme="light"] :where(
@@ -218,6 +218,15 @@ html[data-labstar-theme="light"] :where(
   .organization-switcher-trigger
 ):active {
   box-shadow: var(--neu-inset-shadow);
+}
+
+html[data-labstar-theme="light"] .labstar-theme-toggle.active {
+  color: #4f70ba !important;
+  background: #e1e8f5 !important;
+  box-shadow:
+    inset 0 0 0 1px rgba(78, 112, 186, .16),
+    3px 3px 8px rgba(180, 190, 211, .38),
+    -3px -3px 8px rgba(255, 255, 255, .7) !important;
 }
 
 html[data-labstar-theme="light"] .organization-switcher-trigger :where(strong, span) {
@@ -455,7 +464,7 @@ html[data-labstar-theme="light"] :where(
   .communication-home-metrics,
   .metric-grid
 ) article > small {
-  color: var(--neu-ink-muted);
+  color: #59657d;
 }
 
 html[data-labstar-theme="light"] :where(
@@ -464,6 +473,14 @@ html[data-labstar-theme="light"] :where(
   .metric-grid
 ) article > strong {
   color: var(--neu-ink);
+}
+
+html[data-labstar-theme="light"] .communication-home-metrics article b {
+  color: var(--neu-ink);
+}
+
+html[data-labstar-theme="light"] .communication-home-metrics article small {
+  color: #59657d;
 }
 
 html[data-labstar-theme="light"] :where(
@@ -476,6 +493,36 @@ html[data-labstar-theme="light"] :where(
   .panel-head
 ) {
   border-color: var(--neu-line);
+}
+
+html[data-labstar-theme="light"] .communication-panel > header strong {
+  color: var(--neu-ink);
+}
+
+html[data-labstar-theme="light"] .communication-panel > header small,
+html[data-labstar-theme="light"] .work-activity-panel > header small,
+html[data-labstar-theme="light"] .work-files-panel > header small {
+  color: #59657d;
+}
+
+html[data-labstar-theme="light"] .work-home-shortcuts button {
+  color: #d9e4f6;
+}
+
+html[data-labstar-theme="light"] .work-home-shortcuts button small {
+  color: #8493ab;
+}
+
+html[data-labstar-theme="light"] .work-activity-panel header button {
+  color: #4668a8;
+}
+
+html[data-labstar-theme="light"] .work-capture-panel button:disabled {
+  color: #778196;
+}
+
+html[data-labstar-theme="light"] .work-focus-list em {
+  color: #56647e;
 }
 
 html[data-labstar-theme="light"] .work-items-summary {
@@ -506,7 +553,7 @@ html[data-labstar-theme="light"] :where(
 }
 
 html[data-labstar-theme="light"] .work-items-notice {
-  color: #586b9d;
+  color: #4d5d78;
   background: rgba(111, 139, 203, .08);
 }
 
@@ -580,13 +627,21 @@ html[data-labstar-theme="light"] .node-card {
 
 html[data-labstar-theme="light"] :where(.canvas-meta, .zoom-controls, .canvas-tip) {
   border-color: transparent;
-  color: var(--neu-ink-muted);
+  color: var(--neu-ink);
   background: var(--neu-base);
   box-shadow: var(--neu-raised-shadow-sm);
 }
 
 html[data-labstar-theme="light"] .zoom-controls button {
-  color: var(--neu-ink-muted);
+  color: var(--neu-ink);
+}
+
+html[data-labstar-theme="light"] :where(
+  .canvas-meta > span:not(.warning),
+  .zoom-controls > span,
+  .canvas-tip
+) {
+  color: var(--neu-ink);
 }
 
 /* Equipe e administração de membros. Badges e estados não são recoloridos. */
@@ -663,6 +718,32 @@ html[data-labstar-theme="light"] :where(
   box-shadow: var(--neu-inset-shadow);
 }
 
+html[data-labstar-theme="light"] :where(
+  .assignment-box small,
+  .assignment-list span,
+  .assignment-list b,
+  .member-fields label
+) {
+  color: #596274 !important;
+}
+
+html[data-labstar-theme="light"] .approve-member {
+  border-color: rgba(39, 108, 88, .2);
+  color: #276c58;
+  background: rgba(84, 168, 143, .12);
+}
+
+html[data-labstar-theme="light"] .team-head-actions button.secondary,
+html[data-labstar-theme="light"] .remove-member {
+  border-color: rgba(161, 61, 76, .2) !important;
+  color: #a13d4c !important;
+  background: rgba(186, 92, 107, .1) !important;
+}
+
+html[data-labstar-theme="light"] .team-head .overline {
+  color: #596274 !important;
+}
+
 /* Canais e DMs: ambiente claro; cores de espaço, cargo e presença permanecem. */
 html[data-labstar-theme="light"] :where(
   .collaboration-server-mode,
@@ -677,6 +758,42 @@ html[data-labstar-theme="light"] :where(
 ) {
   color: var(--neu-ink);
   background: var(--neu-base);
+}
+
+/* A navegação interna conserva a geometria original e recebe relevo por botão. */
+html[data-labstar-theme="light"] .workspace-surface-rail {
+  position: fixed;
+  color: var(--neu-ink);
+  background: transparent;
+  box-shadow: none;
+}
+
+html[data-labstar-theme="light"] .workspace-surface-rail > button {
+  border-color: transparent !important;
+  color: #5f6e89 !important;
+  background: var(--neu-base) !important;
+  box-shadow: var(--neu-raised-shadow-sm) !important;
+}
+
+html[data-labstar-theme="light"] .workspace-surface-rail > button:hover {
+  color: #3f5f9e !important;
+  border-color: rgba(92, 126, 198, .16) !important;
+  background: #e6ebf5 !important;
+}
+
+html[data-labstar-theme="light"] .workspace-surface-rail > button.active {
+  color: #315d9f !important;
+  border-color: rgba(91, 130, 215, .24) !important;
+  background: linear-gradient(145deg, #e7edfa, #d8e3f6) !important;
+  box-shadow:
+    inset 2px 2px 5px rgba(166, 179, 204, .36),
+    inset -2px -2px 5px rgba(255, 255, 255, .75),
+    3px 4px 9px rgba(174, 185, 207, .3) !important;
+}
+
+html[data-labstar-theme="light"] .workspace-surface-rail > button > i {
+  background: #5681dc;
+  box-shadow: 0 0 9px rgba(86, 129, 220, .3);
 }
 
 html[data-labstar-theme="light"] .workspace.collaboration-workspace,
@@ -781,6 +898,19 @@ html[data-labstar-theme="light"] :where(
   color: var(--neu-ink);
 }
 
+html[data-labstar-theme="light"] .channel-user strong,
+html[data-labstar-theme="light"] .channel-members > header strong,
+html[data-labstar-theme="light"] .channel-member-row b {
+  color: var(--neu-ink);
+}
+
+html[data-labstar-theme="light"] .channel-user small,
+html[data-labstar-theme="light"] .channel-member-row small,
+html[data-labstar-theme="light"] .channel-category > header span,
+html[data-labstar-theme="light"] .member-group-label {
+  color: #59657d;
+}
+
 html[data-labstar-theme="light"] :where(
   .space-title,
   .channel-heading,
@@ -809,7 +939,18 @@ html[data-labstar-theme="light"] .channel-list > button.active {
 }
 
 html[data-labstar-theme="light"] :where(.new-category, .channel-quick-menu-trigger) {
-  color: var(--neu-ink-muted);
+  color: #59657d;
+}
+
+html[data-labstar-theme="light"] .channel-quick-menu-trigger {
+  color: #536178 !important;
+}
+
+html[data-labstar-theme="light"] .space-title > span {
+  border-color: rgba(82, 113, 173, .16);
+  color: #5872a2;
+  background: #dfe7f4;
+  box-shadow: inset 2px 2px 5px rgba(169, 181, 203, .32), inset -2px -2px 5px rgba(255, 255, 255, .72);
 }
 
 html[data-labstar-theme="light"] :where(
@@ -828,6 +969,52 @@ html[data-labstar-theme="light"] :where(
 ) {
   color: var(--neu-ink);
   background: rgba(189, 207, 255, .24);
+}
+
+html[data-labstar-theme="light"] .dm-navigation > button {
+  border-color: transparent;
+  color: #5f6b82;
+  background: transparent;
+  box-shadow: none;
+}
+
+html[data-labstar-theme="light"] .dm-navigation > button:hover {
+  color: #3d5683;
+  background: rgba(183, 204, 245, .2);
+}
+
+html[data-labstar-theme="light"] .dm-navigation > button.active {
+  border-color: rgba(83, 125, 210, .2);
+  color: #304f87;
+  background: linear-gradient(90deg, rgba(184, 205, 248, .38), rgba(213, 224, 246, .2));
+  box-shadow: inset 3px 0 #5884df;
+}
+
+html[data-labstar-theme="light"] .dm-navigation > button svg {
+  color: #6079a6;
+}
+
+html[data-labstar-theme="light"] .dm-navigation > button.active svg {
+  color: #3564b3;
+}
+
+html[data-labstar-theme="light"] .dm-navigation > button b {
+  color: #365c99;
+  background: rgba(117, 154, 230, .14);
+}
+
+html[data-labstar-theme="light"] .dm-list-heading,
+html[data-labstar-theme="light"] .dm-list-heading button {
+  color: #59657d;
+}
+
+html[data-labstar-theme="light"] .dm-own-profile > b {
+  color: #34765e;
+}
+
+html[data-labstar-theme="light"] .dm-inbox-tabs button b {
+  color: #365c99;
+  background: rgba(117, 154, 230, .14);
 }
 
 html[data-labstar-theme="light"] .dm-contact-entry :where(strong, small) {
@@ -872,6 +1059,11 @@ html[data-labstar-theme="light"] .dm-orbit > span {
   color: #6477aa;
   background: linear-gradient(145deg, #eff3fa, #dfe5f0);
   box-shadow: var(--neu-raised-shadow-sm);
+}
+
+html[data-labstar-theme="light"] .dm-orbit {
+  background-image: url('/cosmic-chat-light.svg');
+  filter: drop-shadow(0 16px 28px rgba(93, 122, 174, .16));
 }
 
 html[data-labstar-theme="light"] :where(.message-scroll, .dm-message-scroll) {
@@ -1418,6 +1610,48 @@ html[data-labstar-theme="light"] :where(
   .project-document-modal
 ) :where(p, small, span, time) {
   color: var(--neu-ink-muted);
+}
+
+html[data-labstar-theme="light"] .notifications-panel .notifications-list b {
+  color: var(--neu-ink) !important;
+}
+
+html[data-labstar-theme="light"] .notifications-panel .notifications-list p {
+  color: #59657d;
+}
+
+html[data-labstar-theme="light"] .notifications-panel .notifications-list time {
+  color: #707b91;
+}
+
+html[data-labstar-theme="light"] .notifications-panel .notification-kind {
+  border-color: rgba(76, 104, 161, .16);
+  color: #526b9f;
+  background: rgba(185, 202, 235, .24);
+}
+
+html[data-labstar-theme="light"] .notifications-panel .notification-kind.announcement {
+  border-color: rgba(154, 113, 29, .2);
+  color: #946a16;
+  background: rgba(230, 203, 145, .22);
+}
+
+html[data-labstar-theme="light"] .notifications-panel .notification-tabs > button {
+  color: #647089;
+}
+
+html[data-labstar-theme="light"] .notifications-panel .notification-tabs > button.active {
+  border-color: rgba(69, 105, 181, .2);
+  color: #3f609f;
+  background: rgba(177, 199, 244, .24);
+}
+
+html[data-labstar-theme="light"] .notifications-panel .notifications-head-actions > button {
+  color: #5e6b83;
+}
+
+html[data-labstar-theme="light"] .notifications-panel > header small {
+  color: #59657d;
 }
 
 html[data-labstar-theme="light"] :where(

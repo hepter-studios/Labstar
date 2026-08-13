@@ -1,0 +1,20 @@
+<svg viewBox="0 0 640 480" xmlns="http://www.w3.org/2000/svg" aria-label="Três balões de conversa em azul suave">
+  <defs>
+    <radialGradient id="lightGlow" cx="50%" cy="52%" r="55%"><stop offset="0%" stop-color="#8fb5ef" stop-opacity=".28"/><stop offset="55%" stop-color="#b9cef0" stop-opacity=".13"/><stop offset="100%" stop-color="#dce6f5" stop-opacity="0"/></radialGradient>
+    <linearGradient id="front" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#dbe7f7"/><stop offset="52%" stop-color="#c3d4ed"/><stop offset="100%" stop-color="#aebfda"/></linearGradient>
+    <linearGradient id="back" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#e5edf8"/><stop offset="100%" stop-color="#cbd9ed"/></linearGradient>
+    <radialGradient id="dot" cx="35%" cy="30%" r="75%"><stop offset="0%" stop-color="#ffffff"/><stop offset="100%" stop-color="#6987b4"/></radialGradient>
+    <radialGradient id="planet" cx="32%" cy="26%" r="70%"><stop offset="0%" stop-color="#7898c4"/><stop offset="55%" stop-color="#5576a5"/><stop offset="100%" stop-color="#355781"/></radialGradient>
+    <filter id="softShadow" x="-30%" y="-30%" width="160%" height="160%"><feDropShadow dx="0" dy="8" stdDeviation="9" flood-color="#7188ad" flood-opacity=".2"/></filter>
+  </defs>
+  <rect width="640" height="480" fill="url(#lightGlow)"/>
+  <circle cx="320" cy="240" r="165" fill="none" stroke="#7fa0cf" stroke-opacity=".18" stroke-width="1.5"/>
+  <circle cx="320" cy="240" r="151" fill="none" stroke="#91add4" stroke-opacity=".12"/>
+  <g fill="#6585b2" opacity=".6"><circle cx="154" cy="80" r="1.3"/><circle cx="442" cy="94" r="1.2"/><circle cx="538" cy="214" r="1.1"/><circle cx="140" cy="315" r="1.1"/><circle cx="420" cy="392" r="1.2"/></g>
+  <g opacity=".72"><circle cx="490" cy="70" r="24" fill="url(#planet)"/><circle cx="150" cy="116" r="9" fill="url(#planet)"/><circle cx="438" cy="408" r="7" fill="url(#planet)"/></g>
+  <g filter="url(#softShadow)" opacity=".82"><path d="M145 205Q145 176 174 176H300Q329 176 329 205V272Q329 301 300 301H252L236 324Q233 328 233 322V301H174Q145 301 145 272Z" fill="url(#back)" stroke="#8da7cd" stroke-width="1.6"/></g>
+  <g filter="url(#softShadow)" opacity=".78"><path d="M356 228Q356 202 382 202H492Q518 202 518 228V286Q518 312 492 312H463V335Q463 339 460 336L439 312H382Q356 312 356 286Z" fill="url(#back)" stroke="#8da7cd" stroke-width="1.6"/></g>
+  <g filter="url(#softShadow)"><path d="M194 108Q194 78 224 78H387Q417 78 417 108V193Q417 223 387 223H298L271 252Q267 257 267 249V223H224Q194 223 194 193Z" fill="url(#front)" stroke="#6f8fbc" stroke-width="1.9"/></g>
+  <g><circle cx="258" cy="146" r="10.2" fill="url(#dot)"/><circle cx="307" cy="146" r="10.2" fill="url(#dot)"/><circle cx="356" cy="146" r="10.2" fill="url(#dot)"/></g>
+  <g opacity=".38" fill="#718db4"><circle cx="410" cy="261" r="8"/><circle cx="441" cy="261" r="8"/><circle cx="472" cy="261" r="8"/></g>
+</svg>
