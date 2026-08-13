@@ -30,6 +30,7 @@ import {
   type AppSettings,
 } from "../lib/app-settings";
 import { ACHIEVEMENTS_REFRESH_EVENT, ACHIEVEMENT_CATALOG, syncOwnAchievements, type AchievementKey, type AchievementProgress } from "../lib/achievements";
+import { loadOnboardingLottie } from "../lib/onboarding-lotties";
 import { secureSignOut } from "../lib/access";
 import {
   deviceNotificationStateMessage,
@@ -99,6 +100,16 @@ export function GlobalSettings({
   useEffect(() => setProfileBio(member.bio ?? ""), [member.bio]);
   useEffect(() => { if (initialTab) setTab(initialTab); }, [initialTab]);
   useEffect(() => { if (initialAchievementKey) setInspectedAchievementKey(initialAchievementKey); }, [initialAchievementKey]);
+
+  useEffect(() => {
+    // These two image-heavy posters were the last cards to become visible when
+    // the achievements tab opened. Warm only their lazy chunks while the user
+    // is already in Settings; LottieAnimation will retry normally if needed.
+    void Promise.allSettled([
+      loadOnboardingLottie("happy-spaceman"),
+      loadOnboardingLottie("astronaut-solo"),
+    ]);
+  }, []);
 
   useEffect(() => {
     if (tab !== "achievements" || !initialAchievementKey) return undefined;
