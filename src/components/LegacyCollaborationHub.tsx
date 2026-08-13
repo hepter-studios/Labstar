@@ -103,6 +103,7 @@ import { GithubWebhookSettings } from "./IntegrationWebhookBridge";
 import { DeveloperComposerTools, handleDeveloperComposerKeyDown } from "./DeveloperComposerTools";
 import { DeveloperCreateMenu, DeveloperMarkdownStudio, README_TEMPLATE } from "./DeveloperMarkdownStudio";
 import { SoapBubbleField } from "./SoapBubbleField";
+import { DarkAmbientLottie } from "./DarkAmbientLottie";
 import {
   GithubIntegrationMessage,
   normalizeIntegrationMessageBody,
@@ -345,7 +346,7 @@ export function CollaborationHub({ member, initialChannelId, soundEnabled = true
                 : <MessageRoom channel={selectedChannel} space={selectedSpace!} member={member} />}
           </>
         ) : (
-          <div className="channel-empty"><MessageSquare size={28} /><h2>Escolha um canal</h2><p>As conversas, arquivos e decisões ficam organizadas por categoria.</p></div>
+          <div className="channel-empty"><DarkAmbientLottie kind="space-boy-developer" posterFrame={80} className="channel-conversation-lottie" /><MessageSquare size={28} /><h2>Escolha um canal</h2><p>As conversas, arquivos e decisões ficam organizadas por categoria.</p></div>
         )}
       </main>
 

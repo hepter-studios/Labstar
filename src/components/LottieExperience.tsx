@@ -69,6 +69,73 @@ export function LabstarAccessLoader() {
   );
 }
 
+function readMapAmbientState() {
+  const root = document.documentElement;
+  return root.dataset.labstarTheme === "dark"
+    && root.dataset.labstarMotion !== "reduced"
+    && !window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    && window.matchMedia("(min-width: 701px)").matches;
+}
+
+export function MapAmbientFlybys() {
+  const [enabled, setEnabled] = useState(readMapAmbientState);
+
+  useEffect(() => {
+    const update = () => setEnabled(readMapAmbientState());
+    const root = document.documentElement;
+    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const desktop = window.matchMedia("(min-width: 701px)");
+    const observer = new MutationObserver(update);
+    observer.observe(root, { attributes: true, attributeFilter: ["data-labstar-theme", "data-labstar-motion"] });
+    reduced.addEventListener("change", update);
+    desktop.addEventListener("change", update);
+    return () => {
+      observer.disconnect();
+      reduced.removeEventListener("change", update);
+      desktop.removeEventListener("change", update);
+    };
+  }, []);
+
+  if (!enabled) return null;
+
+  return (
+    <div className="map-ambient-flybys" aria-hidden="true">
+      <LottieAnimation kind="rocket" className="map-ambient-flyby map-ambient-rocket" preserveAspectRatio="xMidYMid meet" speed={.86} />
+    </div>
+  );
+}
+
+export function SoundToggleLottie({ token }: { token: number }) {
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    if (token <= 0) return undefined;
+    setVisible(false);
+    const frame = window.requestAnimationFrame(() => setVisible(true));
+    const timer = window.setTimeout(() => setVisible(false), 2_650);
+    return () => {
+      window.cancelAnimationFrame(frame);
+      window.clearTimeout(timer);
+    };
+  }, [token]);
+
+  if (!visible) return null;
+  const reduced = document.documentElement.dataset.labstarMotion === "reduced"
+    || window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  return (
+    <div className="sound-toggle-lottie" aria-hidden="true">
+      <LottieAnimation
+        key={token}
+        kind="astronaut-headphones"
+        className="sound-toggle-lottie-animation"
+        loop={!reduced}
+        posterFrame={reduced ? 48 : undefined}
+        preserveAspectRatio="xMidYMid meet"
+      />
+    </div>
+  );
+}
+
 export function MascotCelebrationHost({ memberId }: { memberId?: string }) {
   const [celebration, setCelebration] = useState<(MascotCelebrationDetail & { key: number }) | null>(null);
 

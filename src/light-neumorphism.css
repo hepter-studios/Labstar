@@ -869,7 +869,12 @@ html[data-labstar-theme="light"] .dm-home-contact-grid > button {
 }
 
 html[data-labstar-theme="light"] .dm-home-contact-grid > button strong {
-  color: var(--neu-ink);
+  color: var(--neu-ink) !important;
+}
+
+html[data-labstar-theme="light"] .dm-v6 .dm-contact-main strong,
+html[data-labstar-theme="light"] .dm-v6 .dm-home-contact-grid strong {
+  color: #202b42 !important;
 }
 
 html[data-labstar-theme="light"] :where(

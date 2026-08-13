@@ -38,6 +38,99 @@
   height: 100% !important;
 }
 
+.map-ambient-flybys {
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.map-ambient-flyby {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+  will-change: transform, opacity;
+  filter: drop-shadow(0 12px 22px rgba(0, 0, 0, .28));
+}
+
+.map-ambient-rocket {
+  left: -150px;
+  top: 67%;
+  width: 102px;
+  height: 132px;
+  animation: map-ambient-rocket-flight 36s linear -25s infinite;
+}
+
+.map-ambient-rocket > svg {
+  overflow: visible !important;
+  transform: scale(1.65) rotate(64deg);
+}
+
+@keyframes map-ambient-rocket-flight {
+  0%, 70% {
+    opacity: 0;
+    transform: translate3d(-10vw, 11vh, 0) scale(.58) rotate(-4deg);
+  }
+  72% { opacity: 0; }
+  74% { opacity: .8; }
+  84% {
+    opacity: .72;
+    transform: translate3d(62vw, -34vh, 0) scale(.82) rotate(2deg);
+  }
+  89% {
+    opacity: 0;
+    transform: translate3d(124vw, -62vh, 0) scale(.48) rotate(6deg);
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(124vw, -62vh, 0) scale(.48) rotate(6deg);
+  }
+}
+
+html[data-labstar-motion="reduced"] .map-ambient-flybys {
+  display: none;
+}
+
+@media (prefers-reduced-motion: reduce), (max-width: 700px) {
+  .map-ambient-flybys { display: none; }
+}
+
+.sound-toggle-lottie {
+  position: fixed;
+  z-index: 2250;
+  right: 18px;
+  bottom: 74px;
+  width: clamp(96px, 8.5vw, 132px);
+  aspect-ratio: 1;
+  overflow: visible;
+  pointer-events: none;
+  filter: drop-shadow(0 14px 22px rgba(9, 18, 38, .22));
+  animation: sound-toggle-lottie-arrive .24s ease-out both;
+}
+
+.sound-toggle-lottie-animation {
+  width: 100%;
+  height: 100%;
+}
+
+@keyframes sound-toggle-lottie-arrive {
+  from { opacity: 0; transform: translate3d(0, -8px, 0) scale(.88); }
+  to { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sound-toggle-lottie { animation: none; }
+}
+
+@media (max-width: 700px) {
+  .sound-toggle-lottie {
+    right: 12px;
+    bottom: 74px;
+    width: 92px;
+  }
+}
+
 .lottie-project-loading {
   position: fixed;
   z-index: 15000;

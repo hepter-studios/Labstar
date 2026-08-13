@@ -68,7 +68,7 @@ import {
 import { memberPresenceStatus, useMemberPresence } from "./lib/presence";
 import { Avatar } from "./components/Avatar";
 import { CollaborationHub } from "./components/CollaborationHub";
-import { LabstarAccessLoader, MascotCelebrationHost, ProjectLottieExperience, celebrateWithMascot } from "./components/LottieExperience";
+import { LabstarAccessLoader, MapAmbientFlybys, MascotCelebrationHost, ProjectLottieExperience, SoundToggleLottie, celebrateWithMascot } from "./components/LottieExperience";
 import { NotificationsButton } from "./components/NotificationsPanel";
 import { CurrentProfileConnection, MemberProfileConnection } from "./components/ProfileConnectionsBridge";
 import { RoleBadge, RoleManager } from "./components/RoleManager";
@@ -200,6 +200,7 @@ export default function Home() {
   const [projectLoadToken, setProjectLoadToken] = useState(0);
   const [zoom, setZoom] = useState(0.78);
   const [sound, setSound] = useState(true);
+  const [soundFeedbackToken, setSoundFeedbackToken] = useState(0);
   const [search, setSearch] = useState("");
   const [quickPanel, setQuickPanel] = useState<"profile" | "help" | "summary" | null>(null);
   const [githubConnectionResult] = useState(() => takeGithubProfileConnectionResult());
@@ -625,7 +626,7 @@ export default function Home() {
             setQuickPanel(null);
             setView("colaboracao");
           }} />
-          <button className="icon-button" data-tooltip={sound ? "Desativar som" : "Ativar som"} onClick={() => setSound((value) => !value)} aria-label="Ativar ou desativar som">{sound ? <Volume2 size={15} /> : <VolumeX size={15} />}</button>
+          <button className="icon-button" data-tooltip={sound ? "Desativar som" : "Ativar som"} onClick={() => { setSound((value) => !value); setSoundFeedbackToken((value) => value + 1); }} aria-label="Ativar ou desativar som">{sound ? <Volume2 size={15} /> : <VolumeX size={15} />}</button>
           <button className="create-button" onClick={() => addNode(null)}><Plus size={14} /> Criar núcleo</button>
           <button className="avatar avatar-button" onClick={() => setQuickPanel(quickPanel === "profile" ? null : "profile")} aria-label="Perfil"><Avatar name={session.member.name} url={session.member.avatarUrl} size="sm" /></button>
         </div>
@@ -650,6 +651,7 @@ export default function Home() {
               <>
                 <img className="project-sky-poster" src="/project-sky-poster.png" alt="" aria-hidden="true" />
                 <Suspense fallback={null}><ProjectSpaceAnimation /></Suspense>
+                <MapAmbientFlybys />
               </>
             )}
             <div className="cosmic-effects" aria-hidden="true">
@@ -897,6 +899,7 @@ export default function Home() {
       )}
       {legalOpen && <LegalModal anchored onClose={() => setLegalOpen(false)} />}
       <ProjectLottieExperience projectLoadToken={projectLoadToken} />
+      <SoundToggleLottie token={soundFeedbackToken} />
       <MascotCelebrationHost memberId={session.member.id} />
     </main>
   );
