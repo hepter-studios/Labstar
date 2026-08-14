@@ -39,6 +39,7 @@ pub fn router(state: AppState) -> Result<Router, axum::http::header::InvalidHead
 
     Ok(Router::new()
         .route("/health/live", get(live))
+        .route("/health/ready", get(ready))
         .route("/v1/admin/accounts", delete(accounts::delete_account))
         .fallback(not_found)
         .with_state(state.clone())
@@ -73,6 +74,28 @@ async fn live(State(_state): State<AppState>) -> Json<HealthResponse> {
         service: "labstar-admin-api",
         version: env!("CARGO_PKG_VERSION"),
     })
+}
+
+async fn ready(State(state): State<AppState>) -> Result<Json<HealthResponse>, StatusCode> {
+    let endpoint = state
+        .config
+        .endpoint("rest/v1/")
+        .map_err(|_| StatusCode::SERVICE_UNAVAILABLE)?;
+    state
+        .http
+        .get(endpoint)
+        .header("apikey", &state.config.supabase_service_role_key)
+        .bearer_auth(&state.config.supabase_service_role_key)
+        .send()
+        .await
+        .and_then(reqwest::Response::error_for_status)
+        .map_err(|_| StatusCode::SERVICE_UNAVAILABLE)?;
+
+    Ok(Json(HealthResponse {
+        status: "ready",
+        service: "labstar-admin-api",
+        version: env!("CARGO_PKG_VERSION"),
+    }))
 }
 
 async fn not_found() -> ApiError {

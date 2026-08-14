@@ -90,6 +90,13 @@ jobs:
           grep -q '"status":"ok"' live.json
           grep -q '"service":"labstar-admin-api"' live.json
 
+          curl --fail --silent --show-error \
+            --retry 8 --retry-all-errors --retry-delay 5 \
+            --connect-timeout 20 --max-time 60 \
+            "$API_URL/health/ready" | tee ready.json
+          grep -q '"status":"ready"' ready.json
+          grep -q '"service":"labstar-admin-api"' ready.json
+
           status="$(curl --silent --show-error \
             --output unauthorized.json --write-out '%{http_code}' \
             --request DELETE \
