@@ -98,13 +98,13 @@
   transform: scale(1.48) rotate(7deg);
 }
 
-.map-ambient-astronaut-flow.map-ambient-diagonal {
+.map-ambient-astronaut-cosmos.map-ambient-diagonal {
   right: -190px;
   left: auto;
   animation-name: map-ambient-diagonal-flight-reverse;
 }
 
-.map-ambient-astronaut-flow.map-ambient-diagonal > svg {
+.map-ambient-astronaut-cosmos.map-ambient-diagonal > svg {
   transform: scale(1.48) rotate(-7deg);
 }
 

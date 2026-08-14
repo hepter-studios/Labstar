@@ -25,20 +25,9 @@ type MapAmbientScene = "diagonal" | "planet-large" | "planet-small" | "floating"
 
 const MAP_AMBIENT_LOTTIES: ReadonlyArray<{ kind: OnboardingLottieKind; scene: MapAmbientScene; speed?: number }> = [
   { kind: "astronaut-illustration", scene: "diagonal", speed: .92 },
-  { kind: "astronaut-flow", scene: "diagonal", speed: .72 },
   { kind: "astronaut-orbit", scene: "planet-large", speed: .8 },
-  { kind: "happy-spaceman", scene: "floating", speed: .78 },
   { kind: "astronaut-cosmos", scene: "diagonal", speed: .72 },
   { kind: "astronaut-solo", scene: "planet-small", speed: .8 },
-  { kind: "star-in-hand", scene: "floating", speed: .74 },
-  { kind: "victory-sign", scene: "planet-large", speed: .76 },
-  { kind: "space-boy-developer", scene: "floating", speed: .7 },
-  { kind: "cute-astronaut-mug", scene: "planet-small", speed: .76 },
-  { kind: "astronaut-coffee", scene: "floating", speed: .72 },
-  { kind: "catch-the-fish", scene: "diagonal", speed: .68 },
-  { kind: "free-consultation", scene: "planet-large", speed: .72 },
-  { kind: "crying-astronaut", scene: "floating", speed: .72 },
-  { kind: "astronaut-headphones", scene: "planet-small", speed: .74 },
 ];
 
 const MASCOT_VARIANTS: Record<MascotCelebrationVariant, { kind: OnboardingLottieKind; title: string }> = {

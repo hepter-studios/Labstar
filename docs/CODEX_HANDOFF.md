@@ -171,7 +171,7 @@ O lote de acabamento visual e estabilidade da prévia local passou a adotar esta
 - no escuro, estruturas e cartões grandes são planos e profissionais; botões, campos e seleções preservam o efeito tátil;
 - Lotties contextuais aparecem somente em estados vazios ou áreas sem interação, nunca sobre conteúdo ou controles;
 - áreas de conversa usam mascotes relacionados a mensagens apenas no tema escuro;
-- o céu planetário escuro mantém uma travessia rara do astronauta sobre o foguete, atrás de cartões e conexões;
+- o céu planetário alterna somente quatro mascotes contextuais: astronauta sobre o foguete, flutuando com o foguete, voando com capa e sobre a lua; o astronauta com capa cruza da direita para a esquerda, sempre atrás de cartões e conexões;
 - o botão de som apresenta brevemente o astronauta de fones, sem capturar eventos e respeitando movimento reduzido;
 - a criação de uma segunda organização não troca automaticamente a superfície ativa nem bloqueia a aplicação;
 - a prévia local possui persistência isolada para testar o CRUD de organizações sem alterar o caminho de produção;
