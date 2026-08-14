@@ -8,6 +8,7 @@ use tauri::{AppHandle, Manager, State, UserAttentionType};
 use tauri_plugin_notification::NotificationExt;
 use tauri_plugin_opener::OpenerExt;
 
+// O diagnóstico nativo informa apenas a arquitetura ativa, sem expor credenciais.
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct NativeHealth {
