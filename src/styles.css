@@ -319,6 +319,8 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .member-fields label:last-child, .member-fields label.full { grid-column: 1/-1; }
 .member-fields input, .member-fields select, .invite-modal input, .invite-modal select { width: 100%; margin-top: 6px; padding: 9px; border: 1px solid var(--line); border-radius: 8px; outline: 0; color: #d4d8e0; background: #0a0c11; font-size: 8px; }
 .member-fields input:disabled, .member-fields select:disabled { color: #626975; opacity: .8; }
+.member-fields label > small { display: block; margin-top: 5px; color: #717b8d; font-size: 8px; line-height: 1.4; }
+.member-fields input[readonly] { color: #8e99aa; cursor: not-allowed; }
 .assignment-box { margin-top: 14px; padding-top: 13px; border-top: 1px solid var(--line); }
 .assignment-box > div:first-child { display: flex; flex-direction: column; gap: 3px; }
 .assignment-box strong { font-size: 8px; }

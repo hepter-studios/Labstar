@@ -32,6 +32,8 @@ import {
 import { ACHIEVEMENTS_REFRESH_EVENT, ACHIEVEMENT_CATALOG, syncOwnAchievements, type AchievementKey, type AchievementProgress } from "../lib/achievements";
 import { loadOnboardingLottie } from "../lib/onboarding-lotties";
 import { secureSignOut } from "../lib/access";
+import { saveDevPreviewProfile } from "../lib/devPreview";
+import { isDevPreviewMode } from "../lib/devPreviewMode";
 import {
   deviceNotificationStateMessage,
   disableDeviceNotifications,
@@ -155,7 +157,9 @@ export function GlobalSettings({
     setSaving(true);
     setStatus("Salvando perfil...");
     try {
-      const updated = await updateOwnProfile(member.id, profileName, profileBio);
+      const updated = isDevPreviewMode()
+        ? saveDevPreviewProfile(member, profileName, profileBio)
+        : await updateOwnProfile(member.id, profileName, profileBio);
       onMemberUpdated(updated);
       setStatus("Perfil atualizado");
     } catch {

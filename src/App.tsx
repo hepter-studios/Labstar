@@ -62,6 +62,7 @@ import {
   uploadOwnAvatar,
   updateOwnProfile,
   updateMember as updateRemoteMember,
+  type MemberAdministrationUpdate,
   type Member,
   type JobRole,
 } from "./lib/supabase";
@@ -73,6 +74,8 @@ import { NotificationsButton } from "./components/NotificationsPanel";
 import { CurrentProfileConnection, MemberProfileConnection } from "./components/ProfileConnectionsBridge";
 import { RoleBadge, RoleManager } from "./components/RoleManager";
 import { takeGithubProfileConnectionResult, type GithubProfileConnectionResult } from "./lib/profile-connections";
+import { devPreviewCurrentMember, saveDevPreviewProfile } from "./lib/devPreview";
+import { isDevPreviewMode } from "./lib/devPreviewMode";
 
 type NodeKind = "holding" | "empresa" | "area" | "produto" | "projeto";
 type NodeStatus = "planejamento" | "ativo" | "atencao" | "concluido";
@@ -184,10 +187,6 @@ function playTone() {
   });
 }
 
-function isDevPreviewMode() {
-  return import.meta.env.DEV && new URLSearchParams(window.location.search).has("preview");
-}
-
 export default function Home() {
   const [showProjectLottieBackground, setShowProjectLottieBackground] = useState(() => window.matchMedia("(min-width: 701px)").matches);
   const [projectSkyEnabled, setProjectSkyEnabled] = useState(() => window.matchMedia("(min-width: 701px)").matches);
@@ -272,23 +271,10 @@ export default function Home() {
     let cancelled = false;
     async function loadSession() {
       if (isDevPreviewMode()) {
+        const previewMember = devPreviewCurrentMember();
         setSession({
-          user: { displayName: "Mackson Victor", email: "preview@labstar.local", fullName: "Mackson Victor" },
-          member: {
-            id: "preview-member",
-            email: "preview@labstar.local",
-            name: "Mackson Victor",
-            status: "active",
-            role: "owner",
-            jobTitle: "CEO",
-            area: "Direção",
-            assignments: ["labstar"],
-            createdAt: new Date().toISOString(),
-            lastSeenAt: new Date().toISOString(),
-            avatarPath: "",
-            avatarUrl: "",
-            jobRoles: [{ id: "preview-role", name: "CEO", department: "Diretoria", color: "#ef5b62", icon: "star", position: 10, permissions: ["manage_members", "manage_channels", "manage_projects"] }],
-          },
+          user: { displayName: previewMember.name, email: previewMember.email, fullName: previewMember.name },
+          member: previewMember,
         });
         setSessionState("ativo");
         return;
@@ -306,22 +292,14 @@ export default function Home() {
           setBlockedIdentity({ email: identity.user.email ?? "Conta não autorizada" });
           setSessionState("nao_convidado");
         } else {
-          let member = identity.member;
-          const legacyOwnerNames = new Set(["fundador labstar", "hepter studios", "fundador"]);
-          if (member.role === "owner" && legacyOwnerNames.has(member.name.trim().toLocaleLowerCase())) {
-            try {
-              member = await updateRemoteMember(member.id, { name: "Mackson Victor" });
-            } catch {
-              // A edição manual continua disponível na área Equipe.
-            }
-          }
+          const member = identity.member;
           if (cancelled) return;
           const fullName = identity.user.user_metadata?.full_name
             ?? identity.user.user_metadata?.name
             ?? null;
           setSession({
             user: {
-              displayName: fullName ?? identity.user.email ?? identity.member.name,
+              displayName: member.name,
               email: identity.user.email ?? identity.member.email,
               fullName,
             },
@@ -1140,7 +1118,7 @@ function TeamDirectory({ nodes, currentMember, onMemberUpdated }: { nodes: Struc
 
   useEffect(() => { loadMembers(); }, []);
 
-  async function patchMember(id: string, updates: Partial<Member>) {
+  async function patchMember(id: string, updates: MemberAdministrationUpdate) {
     setMessage("Salvando alterações...");
     try {
       const updated = await updateRemoteMember(id, updates);
@@ -1175,7 +1153,6 @@ function TeamDirectory({ nodes, currentMember, onMemberUpdated }: { nodes: Struc
     try {
       const [updated, assignedRoles] = await Promise.all([
         updateRemoteMember(memberDraft.id, {
-          name: memberDraft.name,
           jobTitle: memberDraft.jobTitle,
           area: memberDraft.area,
           role: memberDraft.role,
@@ -1405,7 +1382,7 @@ function TeamDirectory({ nodes, currentMember, onMemberUpdated }: { nodes: Struc
               )}
 
               {memberForm && <div className="member-fields">
-                <label className="full">Nome completo<input value={memberForm.name} disabled={!editingSelected} onChange={(event) => setMemberDraft((current) => current ? { ...current, name: event.target.value } : current)} placeholder="Nome profissional do membro" /></label>
+                <label className="full">Nome do perfil<input value={memberForm.name} readOnly aria-readonly="true" /><small>Somente esta pessoa pode alterar o próprio nome nas configurações da conta.</small></label>
                 <label>Cargo<input value={memberForm.jobTitle} disabled={!editingSelected} onChange={(event) => setMemberDraft((current) => current ? { ...current, jobTitle: event.target.value } : current)} placeholder="Ex.: Desenvolvedor de jogos" /></label>
                 <label>Área<input value={memberForm.area} disabled={!editingSelected} onChange={(event) => setMemberDraft((current) => current ? { ...current, area: event.target.value } : current)} placeholder="Ex.: Labstar Games" /></label>
                 <label>Nível de acesso<select value={memberForm.role} disabled={!editingSelected || selected.role === "owner" || selected.id === currentMember.id} onChange={(event) => setMemberDraft((current) => current ? { ...current, role: event.target.value as Member["role"] } : current)}>
@@ -1446,7 +1423,7 @@ function TeamDirectory({ nodes, currentMember, onMemberUpdated }: { nodes: Struc
 
               {editingSelected && (
                 <div className="member-actions">
-                  <button className="approve-member" type="button" disabled={savingMember || !memberDraft?.name.trim()} onClick={() => void saveMemberEdit()}>{savingMember ? <LoaderCircle className="spin" size={14} /> : <Save size={14} />} {savingMember ? "Salvando…" : "Salvar alterações"}</button>
+                  <button className="approve-member" type="button" disabled={savingMember} onClick={() => void saveMemberEdit()}>{savingMember ? <LoaderCircle className="spin" size={14} /> : <Save size={14} />} {savingMember ? "Salvando…" : "Salvar alterações"}</button>
                   <button className="suspend-member" type="button" disabled={savingMember} onClick={cancelMemberEdit}><X size={14} /> Cancelar edição</button>
                 </div>
               )}
@@ -1577,7 +1554,9 @@ function QuickPanel({
   async function saveProfileName() {
     setProfileState("Salvando nome...");
     try {
-      const updated = await updateOwnProfile(session.member.id, profileName);
+      const updated = isDevPreviewMode()
+        ? saveDevPreviewProfile(session.member, profileName)
+        : await updateOwnProfile(session.member.id, profileName);
       onMemberUpdated(updated);
       setProfileState("Perfil salvo");
     } catch {

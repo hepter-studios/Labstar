@@ -60,6 +60,7 @@ import {
   listIntegrationRules,
   listSocialPosts,
   loadCollaboration,
+  MEMBER_PROFILE_UPDATED_EVENT,
   pinMessage,
   saveSocialPost,
   saveIntegrationRule,
@@ -175,6 +176,16 @@ export function CollaborationHub({ member, initialChannelId, soundEnabled = true
   const [integrationsOpen, setIntegrationsOpen] = useState(false);
   const [showMembers, setShowMembers] = useState(true);
   const onlineMemberIds = useMemberPresence(member.id);
+
+  useEffect(() => {
+    const updateProfile = (event: Event) => {
+      const updated = (event as CustomEvent<Member>).detail;
+      if (!updated?.id) return;
+      setMembers((current) => current.map((item) => item.id === updated.id ? updated : item));
+    };
+    window.addEventListener(MEMBER_PROFILE_UPDATED_EVENT, updateProfile);
+    return () => window.removeEventListener(MEMBER_PROFILE_UPDATED_EVENT, updateProfile);
+  }, []);
 
   async function refresh() {
     setLoading(true);

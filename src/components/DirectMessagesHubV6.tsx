@@ -79,6 +79,7 @@ import {
   loadCollaboration,
   markAllNotificationsRead,
   markNotificationRead,
+  MEMBER_PROFILE_UPDATED_EVENT,
   type CollaborationSpace,
   type LabstarNotification,
   type Member,
@@ -175,6 +176,16 @@ export function DirectMessagesHub({ member, onOpenWorkspace }: Props) {
   const [spaces, setSpaces] = useState<CollaborationSpace[]>([]);
   const [firstChannels, setFirstChannels] = useState<Record<string, string>>({});
   const [members, setMembers] = useState<Member[]>([]);
+
+  useEffect(() => {
+    const updateProfile = (event: Event) => {
+      const updated = (event as CustomEvent<Member>).detail;
+      if (!updated?.id) return;
+      setMembers((current) => current.map((item) => item.id === updated.id ? updated : item));
+    };
+    window.addEventListener(MEMBER_PROFILE_UPDATED_EVENT, updateProfile);
+    return () => window.removeEventListener(MEMBER_PROFILE_UPDATED_EVENT, updateProfile);
+  }, []);
   const [threads, setThreads] = useState<DirectThreadSummary[]>([]);
   const [notifications, setNotifications] = useState<LabstarNotification[]>([]);
   const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);

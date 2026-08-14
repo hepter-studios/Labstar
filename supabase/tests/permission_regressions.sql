@@ -3,7 +3,7 @@ begin;
 create extension if not exists pgtap with schema extensions;
 set local search_path = public, extensions, pg_catalog;
 
-select plan(54);
+select plan(56);
 
 select ok(
   to_regprocedure('public.delete_labstar_account(text,text)') is null,
@@ -141,6 +141,23 @@ select ok(
 select ok(
   to_regprocedure('public.update_own_profile(text,text)') is null,
   'a assinatura antiga do perfil foi removida'
+);
+select ok(
+  to_regprocedure('public.update_own_display_name(text)') is not null,
+  'o nome global é atualizado somente pela própria conta'
+);
+select ok(
+  exists (
+    select 1
+    from pg_trigger trigger_row
+    join pg_class relation on relation.oid = trigger_row.tgrelid
+    join pg_namespace namespace on namespace.oid = relation.relnamespace
+    where namespace.nspname = 'public'
+      and relation.relname = 'members'
+      and trigger_row.tgname = 'protect_member_owned_profile_fields'
+      and not trigger_row.tgisinternal
+  ),
+  'campos pessoais do membro são protegidos contra edição administrativa'
 );
 select ok(not has_table_privilege('anon', 'public._sqlx_migrations', 'SELECT'), 'anon não lê o histórico interno do backend Rust');
 select ok(not has_table_privilege('anon', 'public._sqlx_migrations', 'INSERT'), 'anon não cria versões falsas do backend Rust');

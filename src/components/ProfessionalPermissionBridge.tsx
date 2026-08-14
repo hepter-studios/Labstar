@@ -159,7 +159,6 @@ function DelegatedMemberManager({ currentMemberId, canManageRoles }: { currentMe
     setNotice("Salvando…");
     try {
       const updated = await updateMember(draft.id, {
-        name: draft.name,
         jobTitle: draft.jobTitle,
         area: draft.area,
         role: draft.role,
@@ -209,17 +208,17 @@ function DelegatedMemberManager({ currentMemberId, canManageRoles }: { currentMe
         {inviteOpen ? <form className="delegated-member-form" onSubmit={(event) => void addMember(event)}>
           <h3>Adicionar membro</h3>
           <label>E-mail<input type="email" required value={invite.email} onChange={(event) => setInvite({ ...invite, email: event.target.value })} /></label>
-          <label>Nome<input value={invite.name} onChange={(event) => setInvite({ ...invite, name: event.target.value })} /></label>
+          <label>Nome inicial<input value={invite.name} onChange={(event) => setInvite({ ...invite, name: event.target.value })} /><small>A pessoa poderá escolher o próprio nome depois de entrar.</small></label>
           <div><label>Cargo informado<input value={invite.jobTitle} onChange={(event) => setInvite({ ...invite, jobTitle: event.target.value })} /></label><label>Área<input value={invite.area} onChange={(event) => setInvite({ ...invite, area: event.target.value })} /></label></div>
           <label>Nível<select value={invite.role} onChange={(event) => setInvite({ ...invite, role: event.target.value as typeof invite.role })}><option value="manager">Gestor</option><option value="member">Membro</option><option value="viewer">Convidado</option></select></label>
           <button className="primary" disabled={saving || !invite.email.trim()} type="submit">{saving ? <LoaderCircle className="spin" size={14} /> : <UserPlus size={14} />} Autorizar</button>
         </form> : draft && selected ? <div className="delegated-member-form">
           <h3>{selected.name}</h3>
-          <label>Nome<input value={draft.name} onChange={(event) => setDraft({ ...draft, name: event.target.value })} /></label>
+          <label>Nome do perfil<input value={draft.name} readOnly aria-readonly="true" /><small>Somente esta pessoa pode alterar o próprio nome.</small></label>
           <div><label>Cargo informado<input value={draft.jobTitle} onChange={(event) => setDraft({ ...draft, jobTitle: event.target.value })} /></label><label>Área<input value={draft.area} onChange={(event) => setDraft({ ...draft, area: event.target.value })} /></label></div>
           <div><label>Nível<select value={draft.role} onChange={(event) => setDraft({ ...draft, role: event.target.value as Member["role"] })}><option value="manager">Gestor</option><option value="member">Membro</option><option value="viewer">Convidado</option></select></label><label>Status<select value={draft.status} onChange={(event) => setDraft({ ...draft, status: event.target.value as Member["status"] })}><option value="active">Ativo</option><option value="pending">Pendente</option><option value="suspended">Suspenso</option></select></label></div>
           {canManageRoles && <fieldset><legend>Cargos profissionais</legend><div className="delegated-role-list">{roles.map((role) => { const selectedOrder = draft.jobRoles.findIndex((item) => item.id === role.id); const checked = selectedOrder >= 0; return <label key={role.id} className={checked ? "active" : ""}><input type="checkbox" checked={checked} onChange={() => setDraft({ ...draft, jobRoles: checked ? draft.jobRoles.filter((item) => item.id !== role.id) : [...draft.jobRoles, role] })} />{checked && <em aria-label={`Ordem ${selectedOrder + 1}`}>{selectedOrder + 1}</em>}<span style={{ "--role-color": role.color } as React.CSSProperties} /><b>{role.name}</b></label>; })}</div></fieldset>}
-          <button type="button" className="primary" disabled={saving || !draft.name.trim()} onClick={() => void save()}>{saving ? <LoaderCircle className="spin" size={14} /> : <Save size={14} />} Salvar</button>
+          <button type="button" className="primary" disabled={saving} onClick={() => void save()}>{saving ? <LoaderCircle className="spin" size={14} /> : <Save size={14} />} Salvar</button>
         </div> : <div className="delegated-admin-empty">Nenhum membro disponível para administração.</div>}
         {notice && <p className="delegated-admin-notice">{notice}</p>}
       </main>

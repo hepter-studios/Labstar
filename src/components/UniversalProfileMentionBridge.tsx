@@ -13,12 +13,15 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import {
+  MEMBER_PROFILE_UPDATED_EVENT,
   listMembers,
   loadCollaboration,
   type CollaborationSpace,
   type LabstarChannel,
   type Member,
 } from "../lib/supabase";
+import { devPreviewCollaboration, devPreviewCurrentMember, devPreviewMembers } from "../lib/devPreview";
+import { isDevPreviewMode } from "../lib/devPreviewMode";
 import { Avatar } from "./Avatar";
 
 type FieldElement = HTMLInputElement | HTMLTextAreaElement;
@@ -288,6 +291,14 @@ export function UniversalProfileMentionBridge() {
     if (!force && Date.now() - loadedAtRef.current < 45_000) return;
     if (loadingRef.current) return loadingRef.current;
     const task = (async () => {
+      if (isDevPreviewMode()) {
+        const collaboration = devPreviewCollaboration();
+        setMembers(devPreviewMembers(devPreviewCurrentMember()));
+        setSpaces(collaboration.spaces);
+        setChannels(collaboration.channels);
+        loadedAtRef.current = Date.now();
+        return;
+      }
       const [membersResult, collaborationResult] = await Promise.allSettled([listMembers(), loadCollaboration()]);
       if (membersResult.status === "fulfilled") setMembers(membersResult.value.members);
       if (collaborationResult.status === "fulfilled") {
@@ -305,6 +316,17 @@ export function UniversalProfileMentionBridge() {
     const interval = window.setInterval(() => void loadDirectory(true), 60_000);
     return () => window.clearInterval(interval);
   }, [loadDirectory]);
+
+  useEffect(() => {
+    const updateProfile = (event: Event) => {
+      const updated = (event as CustomEvent<Member>).detail;
+      if (!updated?.id) return;
+      setMembers((current) => current.map((member) => member.id === updated.id ? updated : member));
+      setProfile((current) => current?.id === updated.id ? updated : current);
+    };
+    window.addEventListener(MEMBER_PROFILE_UPDATED_EVENT, updateProfile);
+    return () => window.removeEventListener(MEMBER_PROFILE_UPDATED_EVENT, updateProfile);
+  }, []);
 
   const memberByName = useMemo(() => {
     const map = new Map<string, Member>();

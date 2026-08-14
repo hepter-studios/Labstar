@@ -9,30 +9,12 @@ import {
 } from "../lib/app-settings";
 import { OPEN_ACHIEVEMENT_EVENT, type AchievementKey } from "../lib/achievements";
 import { getCurrentAccessIdentity } from "../lib/access";
+import { devPreviewCurrentMember } from "../lib/devPreview";
+import { isDevPreviewMode } from "../lib/devPreviewMode";
 import { getCurrentIdentity, MEMBER_PROFILE_UPDATED_EVENT, type Member } from "../lib/supabase";
 import { GlobalSettings } from "./GlobalSettings";
 
 const MOBILE_SETTINGS_QUERY = "(max-width: 760px)";
-const DEV_PREVIEW_MEMBER: Member = {
-  id: "00000000-0000-4000-8000-000000000099",
-  email: "preview@labstar.dev",
-  name: "Mackson",
-  status: "active",
-  role: "owner",
-  jobTitle: "Fundador",
-  area: "Direção",
-  assignments: [],
-  createdAt: new Date(0).toISOString(),
-  lastSeenAt: new Date(0).toISOString(),
-  avatarPath: "",
-  avatarUrl: "",
-  jobRoles: [],
-};
-
-function isDevPreviewMode() {
-  return import.meta.env.DEV && new URLSearchParams(window.location.search).has("preview");
-}
-
 export function GlobalSettingsPortal() {
   const [target, setTarget] = useState<Element | null>(null);
   const [mobileLauncher, setMobileLauncher] = useState(false);
@@ -88,7 +70,7 @@ export function GlobalSettingsPortal() {
         const preferences = await loadAppSettings().catch(() => DEFAULT_APP_SETTINGS);
         if (!cancelled) {
           setSettings(preferences);
-          setMember(DEV_PREVIEW_MEMBER);
+          setMember(devPreviewCurrentMember());
           setSettingsLoaded(true);
         }
         return;

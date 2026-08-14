@@ -1,4 +1,65 @@
-import type { ChannelCategory, CollaborationSpace, LabstarChannel, Member } from "./supabase";
+import { MEMBER_PROFILE_UPDATED_EVENT, type ChannelCategory, type CollaborationSpace, type LabstarChannel, type Member } from "./supabase";
+
+const DEV_PREVIEW_PROFILE_KEY = "labstar-dev-preview-profile-v1";
+
+type DevPreviewProfile = {
+  name?: string;
+  bio?: string;
+};
+
+export function loadDevPreviewProfile(member: Member): Member {
+  try {
+    const stored = JSON.parse(window.localStorage.getItem(DEV_PREVIEW_PROFILE_KEY) ?? "{}") as DevPreviewProfile;
+    const name = typeof stored.name === "string" ? stored.name.trim().slice(0, 100) : "";
+    const bio = typeof stored.bio === "string" ? stored.bio.trim().slice(0, 300) : member.bio;
+    return { ...member, name: name || member.name, bio };
+  } catch {
+    return member;
+  }
+}
+
+export function saveDevPreviewProfile(member: Member, name: string, bio?: string): Member {
+  const cleanName = name.trim().slice(0, 100);
+  if (cleanName.length < 2) throw new Error("invalid_profile_name");
+  const updated = {
+    ...member,
+    name: cleanName,
+    bio: bio === undefined ? member.bio : bio.trim().slice(0, 300),
+  };
+  window.localStorage.setItem(DEV_PREVIEW_PROFILE_KEY, JSON.stringify({
+    name: updated.name,
+    bio: updated.bio ?? "",
+  } satisfies DevPreviewProfile));
+  window.dispatchEvent(new CustomEvent<Member>(MEMBER_PROFILE_UPDATED_EVENT, { detail: updated }));
+  return updated;
+}
+
+export function devPreviewCurrentMember(): Member {
+  const timestamp = new Date().toISOString();
+  return loadDevPreviewProfile({
+    id: "preview-member",
+    email: "preview@labstar.local",
+    name: "Mackson Victor",
+    status: "active",
+    role: "owner",
+    jobTitle: "CEO",
+    area: "Direção",
+    assignments: ["labstar"],
+    createdAt: timestamp,
+    lastSeenAt: timestamp,
+    avatarPath: "",
+    avatarUrl: "",
+    jobRoles: [{
+      id: "preview-role",
+      name: "CEO",
+      department: "Diretoria",
+      color: "#ef5b62",
+      icon: "star",
+      position: 10,
+      permissions: ["manage_members", "manage_channels", "manage_projects"],
+    }],
+  });
+}
 
 export function devPreviewCollaboration() {
   const spaces: CollaborationSpace[] = [

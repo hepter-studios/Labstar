@@ -177,6 +177,8 @@ O lote de acabamento visual e estabilidade da prévia local passou a adotar esta
 - a prévia local possui persistência isolada para testar o CRUD de organizações sem alterar o caminho de produção;
 - o catálogo de conquistas sempre reconcilia as respostas do backend com as 16 missões oficiais, sem inventar desbloqueios;
 - service worker, callback nativo e recuperação de sessão não recarregam a página automaticamente; recarregar permanece uma ação explícita do usuário.
+- o nome exibido pertence ao perfil global da própria conta e persiste entre recargas e organizações; administradores continuam gerenciando cargo, área, acesso, status e núcleos, mas não podem alterar nome, bio ou avatar de outra pessoa;
+- a prévia local persiste nome e bio do usuário de teste em armazenamento isolado, sem escrever dados fictícios no Supabase.
 
 Validação realizada neste lote:
 

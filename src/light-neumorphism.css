@@ -760,9 +760,15 @@ html[data-labstar-theme="light"] :where(
   .assignment-box small,
   .assignment-list span,
   .assignment-list b,
-  .member-fields label
+  .member-fields label,
+  .member-fields label > small
 ) {
   color: #596274 !important;
+}
+
+html[data-labstar-theme="light"] .member-fields input[readonly] {
+  color: #596274;
+  background: rgba(226, 231, 241, .72);
 }
 
 html[data-labstar-theme="light"] .approve-member {

@@ -40,6 +40,11 @@ export type Member = {
   jobRoles: JobRole[];
 };
 
+export type MemberAdministrationUpdate = Partial<Pick<
+  Member,
+  "status" | "role" | "jobTitle" | "area" | "assignments"
+>>;
+
 export const MEMBER_PROFILE_UPDATED_EVENT = "labstar:member-profile-updated";
 
 function publishMemberProfile(member: Member) {
@@ -267,6 +272,21 @@ async function enrichAuthorizedMember(member: Member): Promise<Member> {
   }
 }
 
+async function withOwnAccountDisplayName(user: User, member: Member): Promise<Member> {
+  try {
+    const { data, error } = await requireClient()
+      .from("account_profiles")
+      .select("display_name")
+      .eq("auth_user_id", user.id)
+      .maybeSingle();
+    if (error) return member;
+    const displayName = String(data?.display_name ?? "").trim();
+    return displayName ? { ...member, name: displayName } : member;
+  } catch {
+    return member;
+  }
+}
+
 function fallbackBlockedMember(user: User, status: "pending" | "suspended"): Member {
   const email = user.email?.trim().toLowerCase() ?? "";
   const metadataName = String(user.user_metadata?.full_name ?? user.user_metadata?.name ?? "").trim();
@@ -337,15 +357,13 @@ async function memberFromActiveOrganization(user: User): Promise<Member | null> 
   }
 }
 
-function memberToUpdates(updates: Partial<Member>) {
+function memberToUpdates(updates: MemberAdministrationUpdate) {
   const patch: Record<string, unknown> = {};
-  if (typeof updates.name === "string") patch.name = updates.name.trim();
   if (updates.status) patch.status = updates.status;
   if (updates.role) patch.role = updates.role;
   if (typeof updates.jobTitle === "string") patch.job_title = updates.jobTitle.trim();
   if (typeof updates.area === "string") patch.area = updates.area.trim();
   if (Array.isArray(updates.assignments)) patch.assignments = updates.assignments;
-  if (typeof updates.avatarPath === "string") patch.avatar_path = updates.avatarPath || null;
   return patch;
 }
 
@@ -374,7 +392,8 @@ export async function getCurrentIdentity(): Promise<{ user: User; member: Member
   try {
     const identity = await getBackendIdentity(session.access_token);
     const authorized = memberFromBackend({ ...identity.member, email: identity.email });
-    return { user: session.user, member: await enrichAuthorizedMember(authorized) };
+    const enriched = await enrichAuthorizedMember(authorized);
+    return { user: session.user, member: await withOwnAccountDisplayName(session.user, enriched) };
   } catch (error) {
     if (!(error instanceof BackendApiError)) throw error;
 
@@ -383,7 +402,12 @@ export async function getCurrentIdentity(): Promise<{ user: User; member: Member
       // access. A verified organization_account grants access only to that org and
       // must not manufacture a legacy members row or grant Hepter permissions.
       const organizationMember = await memberFromActiveOrganization(session.user);
-      return { user: session.user, member: organizationMember };
+      return {
+        user: session.user,
+        member: organizationMember
+          ? await withOwnAccountDisplayName(session.user, organizationMember)
+          : null,
+      };
     }
 
     if (error.code === "member_pending" || error.code === "member_suspended") {
@@ -397,12 +421,14 @@ export async function getCurrentIdentity(): Promise<{ user: User; member: Member
           .maybeSingle();
         if (data) {
           const roles = await listRolesForMember(String(data.id));
-          return { user: session.user, member: await memberFromRow(data as MemberRow, roles) };
+          const member = await memberFromRow(data as MemberRow, roles);
+          return { user: session.user, member: await withOwnAccountDisplayName(session.user, member) };
         }
       } catch {
         // O estado de autorização vem do Rust; o Supabase é apenas enriquecimento visual.
       }
-      return { user: session.user, member: fallbackBlockedMember(session.user, status) };
+      const member = fallbackBlockedMember(session.user, status);
+      return { user: session.user, member: await withOwnAccountDisplayName(session.user, member) };
     }
 
     throw error;
@@ -459,7 +485,7 @@ export async function listMembers() {
   };
 }
 
-export async function updateMember(id: string, updates: Partial<Member>) {
+export async function updateMember(id: string, updates: MemberAdministrationUpdate) {
   const { data, error } = await requireClient()
     .from("members")
     .update(memberToUpdates(updates))
@@ -715,14 +741,36 @@ export async function uploadOwnAvatar(memberId: string, file: File) {
 }
 
 export async function updateOwnProfile(memberId: string, name: string, bio?: string, avatarPath?: string | null) {
-  const { data, error } = await requireClient().rpc("update_own_profile", {
-    new_name: name.trim() || null,
+  const client = requireClient();
+  const cleanName = name.trim().slice(0, 100);
+  if (cleanName.length < 2) throw new Error("invalid_profile_name");
+
+  const { error: displayNameError } = await client.rpc("update_own_display_name", {
+    new_display_name: cleanName,
+  });
+  if (displayNameError) throw displayNameError;
+
+  // Mantém metadados visuais compatíveis com clientes antigos e provedores OAuth.
+  // A autorização nunca usa user_metadata; o perfil global permanece no banco.
+  await client.auth.updateUser({ data: { full_name: cleanName, name: cleanName } }).catch(() => undefined);
+
+  const { data, error } = await client.rpc("update_own_profile", {
+    new_name: null,
     new_avatar_path: avatarPath === undefined ? null : avatarPath,
     new_bio: bio === undefined ? null : bio,
   });
-  if (error) throw error;
-  const roles = await listRolesForMember(memberId);
-  const member = await memberFromRow((Array.isArray(data) ? data[0] : data) as MemberRow, roles);
+  if (error && error.code !== "42501") throw error;
+
+  let member: Member | null = null;
+  if (!error && data) {
+    const roles = await listRolesForMember(memberId);
+    member = await memberFromRow((Array.isArray(data) ? data[0] : data) as MemberRow, roles);
+  } else {
+    const identity = await getCurrentIdentity();
+    member = identity?.member ?? null;
+  }
+  if (!member) throw new Error("member_not_found");
+  member = { ...member, name: cleanName };
   publishMemberProfile(member);
   requestAchievementRefresh();
   return member;
