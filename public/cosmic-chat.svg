@@ -1,0 +1,25 @@
+<svg viewBox="0 0 640 480" xmlns="http://www.w3.org/2000/svg" aria-label="Ilustração espacial com balões de conversa">
+  <defs>
+    <radialGradient id="bgGlow" cx="50%" cy="52%" r="55%"><stop offset="0%" stop-color="#0d2f5d" stop-opacity=".55"/><stop offset="38%" stop-color="#082247" stop-opacity=".32"/><stop offset="72%" stop-color="#04142c" stop-opacity=".12"/><stop offset="100%" stop-color="#031023" stop-opacity="0"/></radialGradient>
+    <radialGradient id="planet" cx="32%" cy="26%" r="70%"><stop offset="0%" stop-color="#506c89"/><stop offset="30%" stop-color="#29425d"/><stop offset="70%" stop-color="#12263f"/><stop offset="100%" stop-color="#081321"/></radialGradient>
+    <linearGradient id="bubbleFront" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#2a3f5e" stop-opacity=".94"/><stop offset="45%" stop-color="#17283f" stop-opacity=".96"/><stop offset="100%" stop-color="#0b1729" stop-opacity=".98"/></linearGradient>
+    <linearGradient id="bubbleBack" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#20334f" stop-opacity=".42"/><stop offset="100%" stop-color="#091527" stop-opacity=".72"/></linearGradient>
+    <radialGradient id="dot" cx="35%" cy="30%" r="75%"><stop offset="0%" stop-color="#bacadc"/><stop offset="100%" stop-color="#7187a0"/></radialGradient>
+    <filter id="blur10" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="10"/></filter>
+    <filter id="blur4" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="4"/></filter>
+    <filter id="bubbleShadow" x="-30%" y="-30%" width="160%" height="160%"><feDropShadow dx="0" dy="10" stdDeviation="10" flood-color="#01050d" flood-opacity=".34"/></filter>
+  </defs>
+  <rect width="640" height="480" fill="url(#bgGlow)"/>
+  <circle cx="320" cy="250" r="145" fill="#0f3d79" opacity=".14" filter="url(#blur10)"/><circle cx="320" cy="250" r="125" fill="#082d5d" opacity=".12" filter="url(#blur10)"/>
+  <circle cx="320" cy="240" r="165" fill="none" stroke="#7fb1e2" stroke-opacity=".16" stroke-width="1.5"/><circle cx="320" cy="240" r="151" fill="none" stroke="#7fb1e2" stroke-opacity=".10" stroke-width="1.1"/><circle cx="320" cy="240" r="119" fill="none" stroke="#7fb1e2" stroke-opacity=".07"/>
+  <path d="M248 89 A165 165 0 0 1 416 87" fill="none" stroke="#8bb7e4" stroke-opacity=".16"/><path d="M235 375 A165 165 0 0 0 404 387" fill="none" stroke="#8bb7e4" stroke-opacity=".08"/>
+  <g fill="#b8dcff" opacity=".72"><circle cx="154" cy="80" r="1.2"/><circle cx="268" cy="95" r="1"/><circle cx="442" cy="94" r="1.1"/><circle cx="492" cy="138" r="1"/><circle cx="538" cy="214" r="1.1"/><circle cx="168" cy="192" r="1"/><circle cx="140" cy="315" r="1"/><circle cx="250" cy="370" r="1"/><circle cx="420" cy="392" r="1.1"/><circle cx="492" cy="334" r="1"/></g>
+  <g opacity=".82"><circle cx="480" cy="186" r="2.4" fill="#d9eeff"/><path d="M480 176V196M470 186H490" stroke="#c7e6ff" stroke-width=".8" opacity=".82"/><circle cx="156" cy="330" r="2" fill="#d9eeff"/><path d="M156 322V338M148 330H164" stroke="#c7e6ff" stroke-width=".7" opacity=".76"/></g>
+  <g opacity=".86"><circle cx="490" cy="70" r="24" fill="url(#planet)"/><circle cx="150" cy="116" r="9" fill="url(#planet)" opacity=".82"/><circle cx="427" cy="102" r="6.5" fill="url(#planet)" opacity=".8"/><circle cx="438" cy="408" r="7" fill="url(#planet)" opacity=".76"/><circle cx="99" cy="334" r="6.5" fill="url(#planet)" opacity=".74"/></g>
+  <ellipse cx="320" cy="392" rx="128" ry="34" fill="#1f69b4" opacity=".05" filter="url(#blur10)"/><ellipse cx="350" cy="405" rx="95" ry="20" fill="#8bc1ff" opacity=".03" filter="url(#blur10)"/>
+  <g filter="url(#bubbleShadow)" opacity=".78"><path d="M145 205 Q145 176 174 176 H300 Q329 176 329 205 V272 Q329 301 300 301 H252 L236 324 Q233 328 233 322 V301 H174 Q145 301 145 272 Z" fill="url(#bubbleBack)" stroke="#84acd5" stroke-opacity=".14" stroke-width="1.6"/></g>
+  <g filter="url(#bubbleShadow)" opacity=".72"><path d="M356 228 Q356 202 382 202 H492 Q518 202 518 228 V286 Q518 312 492 312 H463 V335 Q463 339 460 336 L439 312 H382 Q356 312 356 286 Z" fill="url(#bubbleBack)" stroke="#84acd5" stroke-opacity=".13" stroke-width="1.6"/></g>
+  <g filter="url(#bubbleShadow)"><path d="M194 108 Q194 78 224 78 H387 Q417 78 417 108 V193 Q417 223 387 223 H298 L271 252 Q267 257 267 249 V223 H224 Q194 223 194 193 Z" fill="url(#bubbleFront)" stroke="#9dbadc" stroke-opacity=".34" stroke-width="1.9"/></g>
+  <g opacity=".98"><circle cx="258" cy="146" r="10.2" fill="url(#dot)"/><circle cx="307" cy="146" r="10.2" fill="url(#dot)"/><circle cx="356" cy="146" r="10.2" fill="url(#dot)"/></g>
+  <g opacity=".28" fill="#627a97"><circle cx="410" cy="261" r="8"/><circle cx="441" cy="261" r="8"/><circle cx="472" cy="261" r="8"/></g>
+</svg>

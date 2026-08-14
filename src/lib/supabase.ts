@@ -1,4 +1,14 @@
-import { createClient, type RealtimeChannel, type SupabaseClient, type User } from "@supabase/supabase-js";
+import { type RealtimeChannel, type SupabaseClient, type User } from "@supabase/supabase-js";
+import { secureSignOut } from "./access";
+import { BackendApiError, getBackendIdentity, type BackendMember } from "./backend";
+import { authClient } from "./auth-client";
+import { requestAchievementRefresh } from "./achievements";
+import {
+  defaultAttachmentMessage,
+  normalizeDeveloperFile,
+  uploadContentType,
+  validateChatFiles,
+} from "./programmer-files";
 
 export type MemberRole = "owner" | "admin" | "manager" | "member" | "viewer";
 export type MemberStatus = "pending" | "active" | "suspended";
@@ -21,12 +31,39 @@ export type Member = {
   role: MemberRole;
   jobTitle: string;
   area: string;
+  bio?: string;
   assignments: string[];
   createdAt: string;
   lastSeenAt: string;
   avatarPath: string;
   avatarUrl: string;
   jobRoles: JobRole[];
+};
+
+export type MemberAdministrationUpdate = Partial<Pick<
+  Member,
+  "status" | "role" | "jobTitle" | "area" | "assignments"
+>>;
+
+export const MEMBER_PROFILE_UPDATED_EVENT = "labstar:member-profile-updated";
+
+function publishMemberProfile(member: Member) {
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent<Member>(MEMBER_PROFILE_UPDATED_EVENT, { detail: member }));
+  }
+}
+
+export type MemberRemovalResult = {
+  outcome: "removed" | "suspended";
+  member: Member | null;
+  reason: string;
+};
+
+export type AccountDeletionResult = {
+  outcome: "deleted";
+  memberId: string | null;
+  authIdentityDeleted: boolean;
+  cleanupWarning: string | null;
 };
 
 type MemberRow = {
@@ -37,10 +74,18 @@ type MemberRow = {
   role: MemberRole;
   job_title: string;
   area: string;
+  bio?: string | null;
   assignments: string[] | null;
   created_at: string;
   last_seen_at: string;
   avatar_path?: string | null;
+};
+
+type AccountOrganizationRow = {
+  id?: string | null;
+  name?: string | null;
+  role?: string | null;
+  created_at?: string | null;
 };
 
 export type CollaborationSpace = {
@@ -142,25 +187,13 @@ export type IntegrationRule = {
   events: string[];
   enabled: boolean;
   renewalDate: string;
+  webhookToken: string;
+  lastEventAt: string;
+  deliveredCount: number;
 };
 
-const supabaseUrl = (import.meta.env.VITE_SUPABASE_URL ?? "").replace(/\/rest\/v1\/?$/, "");
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY ?? "";
-
-export const isSupabaseConfigured =
-  supabaseUrl.startsWith("https://") &&
-  supabaseAnonKey.length > 40 &&
-  !supabaseAnonKey.includes("cole_a_chave");
-
-export const supabaseClient: SupabaseClient | null = isSupabaseConfigured
-  ? createClient(supabaseUrl, supabaseAnonKey, {
-      auth: {
-        persistSession: true,
-        autoRefreshToken: true,
-        detectSessionInUrl: true,
-      },
-    })
-  : null;
+export const isSupabaseConfigured = Boolean(authClient);
+export const supabaseClient: SupabaseClient | null = authClient;
 
 function requireClient() {
   if (!supabaseClient) throw new Error("supabase_not_configured");
@@ -195,6 +228,7 @@ async function memberFromRow(row: MemberRow, jobRoles: JobRole[] = []): Promise<
     role: row.role,
     jobTitle: row.job_title ?? "",
     area: row.area ?? "",
+    bio: row.bio ?? "",
     assignments: Array.isArray(row.assignments) ? row.assignments : [],
     createdAt: row.created_at,
     lastSeenAt: row.last_seen_at,
@@ -204,15 +238,132 @@ async function memberFromRow(row: MemberRow, jobRoles: JobRole[] = []): Promise<
   };
 }
 
-function memberToUpdates(updates: Partial<Member>) {
+function memberFromBackend(member: BackendMember): Member {
+  return {
+    id: member.id,
+    email: member.email,
+    name: member.name,
+    status: member.status,
+    role: member.role,
+    jobTitle: member.jobTitle ?? "",
+    area: member.area ?? "",
+    bio: "",
+    assignments: [],
+    createdAt: "",
+    lastSeenAt: new Date().toISOString(),
+    avatarPath: "",
+    avatarUrl: "",
+    jobRoles: [],
+  };
+}
+
+async function enrichAuthorizedMember(member: Member): Promise<Member> {
+  try {
+    const { data, error } = await requireClient()
+      .from("members")
+      .select("*")
+      .eq("id", member.id)
+      .maybeSingle();
+    if (error || !data) return member;
+    const roles = await listRolesForMember(member.id);
+    return memberFromRow(data as MemberRow, roles);
+  } catch {
+    return member;
+  }
+}
+
+async function withOwnAccountDisplayName(user: User, member: Member): Promise<Member> {
+  try {
+    const { data, error } = await requireClient()
+      .from("account_profiles")
+      .select("display_name")
+      .eq("auth_user_id", user.id)
+      .maybeSingle();
+    if (error) return member;
+    const displayName = String(data?.display_name ?? "").trim();
+    return displayName ? { ...member, name: displayName } : member;
+  } catch {
+    return member;
+  }
+}
+
+function fallbackBlockedMember(user: User, status: "pending" | "suspended"): Member {
+  const email = user.email?.trim().toLowerCase() ?? "";
+  const metadataName = String(user.user_metadata?.full_name ?? user.user_metadata?.name ?? "").trim();
+  return {
+    id: user.id,
+    email,
+    name: metadataName || email.split("@")[0] || "Membro Labstar",
+    status,
+    role: "viewer",
+    jobTitle: "",
+    area: "",
+    bio: "",
+    assignments: [],
+    createdAt: "",
+    lastSeenAt: new Date().toISOString(),
+    avatarPath: "",
+    avatarUrl: "",
+    jobRoles: [],
+  };
+}
+
+function validOrganizationRole(value: unknown): MemberRole {
+  return value === "owner" || value === "admin" || value === "manager" || value === "viewer"
+    ? value
+    : "member";
+}
+
+async function memberFromActiveOrganization(user: User): Promise<Member | null> {
+  try {
+    const { data, error } = await requireClient().rpc("list_my_organizations");
+    if (error || !Array.isArray(data) || data.length === 0) return null;
+
+    let activeOrganizationId = "";
+    try {
+      activeOrganizationId = window.localStorage.getItem("labstar-active-organization-v1") ?? "";
+    } catch {
+      // O vínculo confirmado pelo banco continua sendo a fonte de verdade.
+    }
+
+    const rows = data as AccountOrganizationRow[];
+    const organization = rows.find((row) => String(row.id ?? "") === activeOrganizationId) ?? rows[0];
+    if (!organization?.id) return null;
+
+    const email = user.email?.trim().toLowerCase() ?? "";
+    const metadataName = String(user.user_metadata?.full_name ?? user.user_metadata?.name ?? "").trim();
+    const role = validOrganizationRole(organization.role);
+    const avatarUrl = String(user.user_metadata?.avatar_url ?? user.user_metadata?.picture ?? "");
+
+    return {
+      // organization_accounts is keyed by auth_user_id, so the authenticated UUID
+      // is the stable identity inside an organization that has no legacy member row.
+      id: user.id,
+      email,
+      name: metadataName || email.split("@")[0] || "Membro Labstar",
+      status: "active",
+      role,
+      jobTitle: role === "owner" ? "Proprietário" : "",
+      area: String(organization.name ?? "Organização"),
+      assignments: [],
+      createdAt: String(organization.created_at ?? ""),
+      lastSeenAt: new Date().toISOString(),
+      avatarPath: "",
+      avatarUrl,
+      jobRoles: [],
+    };
+  } catch {
+    return null;
+  }
+}
+
+function memberToUpdates(updates: MemberAdministrationUpdate) {
   const patch: Record<string, unknown> = {};
-  if (typeof updates.name === "string") patch.name = updates.name.trim();
   if (updates.status) patch.status = updates.status;
   if (updates.role) patch.role = updates.role;
   if (typeof updates.jobTitle === "string") patch.job_title = updates.jobTitle.trim();
   if (typeof updates.area === "string") patch.area = updates.area.trim();
   if (Array.isArray(updates.assignments)) patch.assignments = updates.assignments;
-  if (typeof updates.avatarPath === "string") patch.avatar_path = updates.avatarPath || null;
   return patch;
 }
 
@@ -221,7 +372,7 @@ export async function requestMagicLink(email: string) {
   const { error } = await requireClient().auth.signInWithOtp({
     email: normalizedEmail,
     options: {
-      shouldCreateUser: true,
+      shouldCreateUser: false,
       emailRedirectTo: window.location.origin,
     },
   });
@@ -229,9 +380,7 @@ export async function requestMagicLink(email: string) {
 }
 
 export async function signOut() {
-  const { error } = await requireClient().auth.signOut();
-  if (error) throw error;
-  window.location.assign("/");
+  await secureSignOut();
 }
 
 export async function getCurrentIdentity(): Promise<{ user: User; member: Member | null } | null> {
@@ -240,18 +389,50 @@ export async function getCurrentIdentity(): Promise<{ user: User; member: Member
   if (sessionError) throw sessionError;
   if (!session?.user?.email) return null;
 
-  const email = session.user.email.trim().toLowerCase();
-  const { data, error } = await supabase
-    .from("members")
-    .select("*")
-    .eq("email", email)
-    .maybeSingle();
+  try {
+    const identity = await getBackendIdentity(session.access_token);
+    const authorized = memberFromBackend({ ...identity.member, email: identity.email });
+    const enriched = await enrichAuthorizedMember(authorized);
+    return { user: session.user, member: await withOwnAccountDisplayName(session.user, enriched) };
+  } catch (error) {
+    if (!(error instanceof BackendApiError)) throw error;
 
-  if (error) throw error;
-  if (!data) return { user: session.user, member: null };
+    if (error.code === "member_not_authorized") {
+      // Legacy Hepter Studios membership is not the same thing as Labstar account
+      // access. A verified organization_account grants access only to that org and
+      // must not manufacture a legacy members row or grant Hepter permissions.
+      const organizationMember = await memberFromActiveOrganization(session.user);
+      return {
+        user: session.user,
+        member: organizationMember
+          ? await withOwnAccountDisplayName(session.user, organizationMember)
+          : null,
+      };
+    }
 
-  const roles = await listRolesForMember(String(data.id));
-  return { user: session.user, member: await memberFromRow(data as MemberRow, roles) };
+    if (error.code === "member_pending" || error.code === "member_suspended") {
+      const status = error.code === "member_pending" ? "pending" : "suspended";
+      try {
+        const email = session.user.email.trim().toLowerCase();
+        const { data } = await supabase
+          .from("members")
+          .select("*")
+          .eq("email", email)
+          .maybeSingle();
+        if (data) {
+          const roles = await listRolesForMember(String(data.id));
+          const member = await memberFromRow(data as MemberRow, roles);
+          return { user: session.user, member: await withOwnAccountDisplayName(session.user, member) };
+        }
+      } catch {
+        // O estado de autorização vem do Rust; o Supabase é apenas enriquecimento visual.
+      }
+      const member = fallbackBlockedMember(session.user, status);
+      return { user: session.user, member: await withOwnAccountDisplayName(session.user, member) };
+    }
+
+    throw error;
+  }
 }
 
 export async function loadWorkspace<T>() {
@@ -297,12 +478,14 @@ export async function listMembers() {
     rolesByMember.set(memberId, [...(rolesByMember.get(memberId) ?? []), jobRoleFromRow(roleRow)]);
   }
   return {
-    members: await Promise.all((data as MemberRow[]).map((row) => memberFromRow(row, rolesByMember.get(row.id) ?? []))),
+    members: await Promise.all((data as MemberRow[])
+      .filter((row) => !row.email.toLocaleLowerCase().endsWith("@labstar.invalid"))
+      .map((row) => memberFromRow(row, rolesByMember.get(row.id) ?? []))),
     canManage,
   };
 }
 
-export async function updateMember(id: string, updates: Partial<Member>) {
+export async function updateMember(id: string, updates: MemberAdministrationUpdate) {
   const { data, error } = await requireClient()
     .from("members")
     .update(memberToUpdates(updates))
@@ -312,6 +495,120 @@ export async function updateMember(id: string, updates: Partial<Member>) {
   if (error) throw error;
   const roles = await listRolesForMember(id);
   return memberFromRow(data as MemberRow, roles);
+}
+
+function memberRemovalError(code: string) {
+  return Object.assign(new Error(code), { code });
+}
+
+export async function removeTeamMember(id: string): Promise<MemberRemovalResult> {
+  const identity = await getCurrentIdentity();
+  if (!identity?.member) throw memberRemovalError("member_not_authorized");
+  if (identity.member.role !== "owner" && identity.member.role !== "admin") {
+    throw memberRemovalError("permission_denied");
+  }
+  if (identity.member.id === id) throw memberRemovalError("self_removal_forbidden");
+
+  const client = requireClient();
+  const { data: targetData, error: targetError } = await client
+    .from("members")
+    .select("*")
+    .eq("id", id)
+    .maybeSingle();
+  if (targetError) throw targetError;
+  if (!targetData) throw memberRemovalError("member_not_found");
+  const target = targetData as MemberRow;
+  if (target.role === "owner") throw memberRemovalError("owner_removal_forbidden");
+
+  const { data, error } = await client.rpc("remove_team_member", { target_member_id: id });
+  if (!error) {
+    const row = (Array.isArray(data) ? data[0] : data) as { outcome?: string; reason?: string } | null;
+    if (row?.outcome === "removed") {
+      return { outcome: "removed", member: null, reason: row.reason ?? "access_removed" };
+    }
+    if (row?.outcome === "suspended") {
+      const roles = await listRolesForMember(id);
+      const { data: suspendedData, error: suspendedError } = await client.from("members").select("*").eq("id", id).single();
+      if (suspendedError) throw suspendedError;
+      return {
+        outcome: "suspended",
+        member: await memberFromRow(suspendedData as MemberRow, roles),
+        reason: row.reason ?? "history_preserved",
+      };
+    }
+    throw memberRemovalError("invalid_removal_response");
+  }
+
+  const missingRpc = error.code === "PGRST202"
+    || error.message?.toLocaleLowerCase().includes("schema cache")
+    || error.message?.toLocaleLowerCase().includes("could not find the function");
+  if (!missingRpc) throw error;
+
+  const suspended = await updateMember(id, { status: "suspended" });
+  return {
+    outcome: "suspended",
+    member: suspended,
+    reason: "safe_fallback",
+  };
+}
+
+export async function permanentlyDeleteTeamAccount(
+  email: string,
+  confirmationEmail: string,
+): Promise<AccountDeletionResult> {
+  const normalizedEmail = email.trim().toLocaleLowerCase();
+  const normalizedConfirmation = confirmationEmail.trim().toLocaleLowerCase();
+  if (!normalizedEmail || normalizedEmail !== normalizedConfirmation) {
+    throw memberRemovalError("confirmation_email_mismatch");
+  }
+
+  const apiBaseUrl = import.meta.env.VITE_LABSTAR_API_URL?.trim().replace(/\/$/, "");
+  if (!apiBaseUrl) throw memberRemovalError("admin_api_unavailable");
+
+  const { data: sessionData, error: sessionError } = await requireClient().auth.getSession();
+  if (sessionError || !sessionData.session?.access_token) {
+    throw memberRemovalError("authentication_failed");
+  }
+
+  const controller = new AbortController();
+  const timeout = window.setTimeout(() => controller.abort(), 35_000);
+  let response: Response;
+  try {
+    response = await fetch(`${apiBaseUrl}/v1/admin/accounts`, {
+      method: "DELETE",
+      headers: {
+        Authorization: `Bearer ${sessionData.session.access_token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        email: normalizedEmail,
+        confirmation_email: normalizedConfirmation,
+      }),
+      signal: controller.signal,
+    });
+  } catch {
+    throw memberRemovalError("admin_api_unavailable");
+  } finally {
+    window.clearTimeout(timeout);
+  }
+
+  const payload = await response.json().catch(() => null) as {
+    outcome?: string;
+    member_id?: string | null;
+    auth_identity_deleted?: boolean;
+    cleanup_warning?: string | null;
+    error?: { code?: string; message?: string };
+  } | null;
+  if (!response.ok) {
+    throw memberRemovalError(payload?.error?.code || "account_deletion_failed");
+  }
+  if (payload?.outcome !== "deleted") throw memberRemovalError("invalid_account_deletion_response");
+  return {
+    outcome: "deleted",
+    memberId: payload.member_id ?? null,
+    authIdentityDeleted: Boolean(payload.auth_identity_deleted),
+    cleanupWarning: payload.cleanup_warning ?? null,
+  };
 }
 
 export async function inviteMember(input: {
@@ -391,27 +688,26 @@ export async function deleteJobRole(id: string) {
 export async function listRolesForMember(memberId: string) {
   const { data, error } = await requireClient()
     .from("member_job_roles")
-    .select("job_role:job_roles(*)")
-    .eq("member_id", memberId);
-  if (error) return [];
+    .select("position,is_primary,job_role:job_roles(*)")
+    .eq("member_id", memberId)
+    .order("position", { ascending: true });
+  if (error) throw error;
   return (data ?? []).flatMap((row) => {
     const value = (row as { job_role?: Record<string, unknown> | Record<string, unknown>[] | null }).job_role;
     const role = Array.isArray(value) ? value[0] : value;
     return role ? [jobRoleFromRow(role)] : [];
-  }).sort((a, b) => a.position - b.position);
+  });
 }
 
 export async function setMemberJobRoles(memberId: string, roleIds: string[]) {
-  const supabase = requireClient();
-  const { error: deleteError } = await supabase.from("member_job_roles").delete().eq("member_id", memberId);
-  if (deleteError) throw deleteError;
-  if (roleIds.length) {
-    const { error: insertError } = await supabase.from("member_job_roles").insert(
-      roleIds.map((jobRoleId, index) => ({ member_id: memberId, job_role_id: jobRoleId, is_primary: index === 0 })),
-    );
-    if (insertError) throw insertError;
-  }
-  return listRolesForMember(memberId);
+  const { error } = await requireClient().rpc("set_member_job_roles", {
+    target_member_id: memberId,
+    ordered_job_role_ids: [...new Set(roleIds)],
+  });
+  if (error) throw error;
+  const roles = await listRolesForMember(memberId);
+  requestAchievementRefresh();
+  return roles;
 }
 
 function safeFileName(name: string) {
@@ -434,20 +730,50 @@ export async function uploadOwnAvatar(memberId: string, file: File) {
   const { data, error } = await requireClient().rpc("update_own_profile", {
     new_name: null,
     new_avatar_path: path,
+    new_bio: null,
   });
   if (error) throw error;
   const roles = await listRolesForMember(memberId);
-  return memberFromRow((Array.isArray(data) ? data[0] : data) as MemberRow, roles);
+  const member = await memberFromRow((Array.isArray(data) ? data[0] : data) as MemberRow, roles);
+  publishMemberProfile(member);
+  requestAchievementRefresh();
+  return member;
 }
 
-export async function updateOwnProfile(memberId: string, name: string, avatarPath?: string | null) {
-  const { data, error } = await requireClient().rpc("update_own_profile", {
-    new_name: name.trim() || null,
-    new_avatar_path: avatarPath === undefined ? null : avatarPath,
+export async function updateOwnProfile(memberId: string, name: string, bio?: string, avatarPath?: string | null) {
+  const client = requireClient();
+  const cleanName = name.trim().slice(0, 100);
+  if (cleanName.length < 2) throw new Error("invalid_profile_name");
+
+  const { error: displayNameError } = await client.rpc("update_own_display_name", {
+    new_display_name: cleanName,
   });
-  if (error) throw error;
-  const roles = await listRolesForMember(memberId);
-  return memberFromRow((Array.isArray(data) ? data[0] : data) as MemberRow, roles);
+  if (displayNameError) throw displayNameError;
+
+  // Mantém metadados visuais compatíveis com clientes antigos e provedores OAuth.
+  // A autorização nunca usa user_metadata; o perfil global permanece no banco.
+  await client.auth.updateUser({ data: { full_name: cleanName, name: cleanName } }).catch(() => undefined);
+
+  const { data, error } = await client.rpc("update_own_profile", {
+    new_name: null,
+    new_avatar_path: avatarPath === undefined ? null : avatarPath,
+    new_bio: bio === undefined ? null : bio,
+  });
+  if (error && error.code !== "42501") throw error;
+
+  let member: Member | null = null;
+  if (!error && data) {
+    const roles = await listRolesForMember(memberId);
+    member = await memberFromRow((Array.isArray(data) ? data[0] : data) as MemberRow, roles);
+  } else {
+    const identity = await getCurrentIdentity();
+    member = identity?.member ?? null;
+  }
+  if (!member) throw new Error("member_not_found");
+  member = { ...member, name: cleanName };
+  publishMemberProfile(member);
+  requestAchievementRefresh();
+  return member;
 }
 
 export async function removeOwnAvatar(memberId: string, currentPath: string) {
@@ -455,7 +781,9 @@ export async function removeOwnAvatar(memberId: string, currentPath: string) {
   if (error) throw error;
   if (currentPath) await requireClient().storage.from("labstar-files").remove([currentPath]);
   const roles = await listRolesForMember(memberId);
-  return memberFromRow((Array.isArray(data) ? data[0] : data) as MemberRow, roles);
+  const member = await memberFromRow((Array.isArray(data) ? data[0] : data) as MemberRow, roles);
+  publishMemberProfile(member);
+  return member;
 }
 
 export async function loadCollaboration() {
@@ -579,6 +907,9 @@ export async function listIntegrationRules(spaceId: string) {
     events: Array.isArray(row.events) ? row.events.map(String) : [],
     enabled: Boolean(row.enabled),
     renewalDate: String(row.renewal_date ?? ""),
+    webhookToken: String(row.webhook_token ?? ""),
+    lastEventAt: String(row.last_event_at ?? ""),
+    deliveredCount: Number(row.delivered_count ?? 0),
   }));
 }
 
@@ -602,6 +933,16 @@ export async function saveIntegrationRule(rule: IntegrationRule) {
 export async function removeIntegrationRule(id: string) {
   const { error } = await requireClient().from("integration_rules").delete().eq("id", id);
   if (error) throw error;
+}
+
+export async function rotateIntegrationWebhookToken(id: string) {
+  const { data, error } = await requireClient().rpc("rotate_integration_webhook_token", {
+    target_rule_id: id,
+  });
+  if (error) throw error;
+  const token = String(data ?? "");
+  if (!token) throw new Error("integration_webhook_token_missing");
+  return token;
 }
 
 export async function listMessages(channelId: string) {
@@ -659,8 +1000,9 @@ export async function sendMessage(input: {
   replyTo?: string | null;
   files?: File[];
 }) {
-  const files = input.files ?? [];
-  const body = input.body.trim() || (files.some((file) => file.type.startsWith("image/")) ? "Enviou uma imagem" : `Enviou ${files.length} arquivo(s)`);
+  const files = (input.files ?? []).map(normalizeDeveloperFile);
+  validateChatFiles(files);
+  const body = input.body.trim() || defaultAttachmentMessage(files);
   const { data: message, error } = await requireClient().from("channel_messages").insert({
     channel_id: input.channelId,
     author_id: input.authorId,
@@ -668,24 +1010,37 @@ export async function sendMessage(input: {
     reply_to: input.replyTo ?? null,
   }).select("*").single();
   if (error) throw error;
-  for (const file of files.slice(0, 8)) {
-    if (file.size > 20 * 1024 * 1024) throw new Error("file_too_large");
-    const path = `spaces/${input.spaceId}/channels/${input.channelId}/${message.id}/${Date.now()}-${safeFileName(file.name)}`;
-    const { error: uploadError } = await requireClient().storage.from("labstar-files").upload(path, file, {
-      cacheControl: "3600",
-      contentType: file.type || "application/octet-stream",
-      upsert: false,
-    });
-    if (uploadError) throw uploadError;
-    const { error: attachmentError } = await requireClient().from("channel_message_attachments").insert({
-      message_id: message.id,
-      file_name: file.name,
-      file_path: path,
-      mime_type: file.type || "application/octet-stream",
-      size_bytes: file.size,
-    });
-    if (attachmentError) throw attachmentError;
+  const uploadedPaths: string[] = [];
+  try {
+    for (const [index, file] of files.entries()) {
+      const path = `spaces/${input.spaceId}/channels/${input.channelId}/${message.id}/${Date.now()}-${index}-${safeFileName(file.name)}`;
+      const contentType = uploadContentType(file);
+      const { error: uploadError } = await requireClient().storage.from("labstar-files").upload(path, file, {
+        cacheControl: "3600",
+        contentType,
+        upsert: false,
+      });
+      if (uploadError) throw uploadError;
+      uploadedPaths.push(path);
+      const { error: attachmentError } = await requireClient().from("channel_message_attachments").insert({
+        message_id: message.id,
+        file_name: file.name,
+        file_path: path,
+        mime_type: contentType,
+        size_bytes: file.size,
+      });
+      if (attachmentError) throw attachmentError;
+    }
+  } catch (uploadError) {
+    if (uploadedPaths.length) await requireClient().storage.from("labstar-files").remove(uploadedPaths).catch(() => undefined);
+    try {
+      await requireClient().from("channel_messages").delete().eq("id", message.id);
+    } catch {
+      // A falha original do upload é mais útil para quem enviou.
+    }
+    throw uploadError;
   }
+  requestAchievementRefresh();
   return message;
 }
 

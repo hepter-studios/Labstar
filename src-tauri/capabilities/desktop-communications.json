@@ -1,0 +1,11 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "desktop-communications",
+  "description": "Permissões nativas mínimas para notificações e atenção de chamadas privadas.",
+  "windows": ["main"],
+  "platforms": ["linux", "macOS", "windows"],
+  "permissions": [
+    "allow-request-main-window-attention",
+    "allow-show-native-notification"
+  ]
+}

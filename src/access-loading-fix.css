@@ -1,0 +1,39 @@
+.access-screen:not(.brand-intro):not(.labstar-access-loader) > p {
+  width: 58px !important;
+  height: 58px !important;
+  margin: 0 !important;
+  position: relative !important;
+  z-index: 2 !important;
+  display: grid !important;
+  place-items: center !important;
+  overflow: visible !important;
+  color: transparent !important;
+  font-size: 0 !important;
+  letter-spacing: 0 !important;
+  animation: none !important;
+}
+
+/* O carregamento de acesso é controlado exclusivamente pelo foguete Lottie.
+ * Nenhum estado legado pode injetar uma segunda estrela por pseudo-elemento. */
+.access-screen:not(.brand-intro):not(.labstar-access-loader) > p::before {
+  display: none !important;
+  content: none !important;
+}
+
+.access-screen:not(.brand-intro):not(.labstar-access-loader) > p::after {
+  display: none !important;
+  content: none !important;
+}
+
+/* A abertura mostra apenas o wordmark animado: sem a linha de progresso embaixo. */
+.brand-intro .intro-progress {
+  display: none !important;
+}
+
+@media (max-width: 760px) {
+  /* No celular o wordmark de abertura precisa ter presença semelhante à versão desktop. */
+  .brand-intro .wordmark.large {
+    font-size: clamp(34px, 8vw, 38px) !important;
+  }
+
+}

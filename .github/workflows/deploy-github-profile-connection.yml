@@ -1,0 +1,97 @@
+name: Publicar conexão GitHub do perfil
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirmation:
+        description: "Digite DEPLOY_GITHUB_PROFILE"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: labstar-github-profile-function
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: github.event.inputs.confirmation == 'DEPLOY_GITHUB_PROFILE'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      PROJECT_REF: pgzwyngxsxnheulvusdq
+      LABSTAR_GH_PROFILE_CLIENT_ID: ${{ secrets.LABSTAR_GH_PROFILE_CLIENT_ID }}
+      LABSTAR_GH_PROFILE_CLIENT_SECRET: ${{ secrets.LABSTAR_GH_PROFILE_CLIENT_SECRET }}
+      GITHUB_PROFILE_CALLBACK_URL: https://pgzwyngxsxnheulvusdq.supabase.co/functions/v1/github-profile-connection
+      LABSTAR_PROFILE_ALLOWED_ORIGINS: https://labstar.pages.dev,http://tauri.localhost,https://tauri.localhost
+    steps:
+      - name: Baixar código
+        uses: actions/checkout@v4
+
+      - name: Validar segredos
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${SUPABASE_ACCESS_TOKEN:-}" || { echo "SUPABASE_ACCESS_TOKEN ausente"; exit 1; }
+          test -n "${LABSTAR_GH_PROFILE_CLIENT_ID:-}" || { echo "LABSTAR_GH_PROFILE_CLIENT_ID ausente"; exit 1; }
+          test -n "${LABSTAR_GH_PROFILE_CLIENT_SECRET:-}" || { echo "LABSTAR_GH_PROFILE_CLIENT_SECRET ausente"; exit 1; }
+          test -f supabase/functions/github-profile-connection/index.ts
+
+      - name: Configurar Supabase CLI
+        uses: supabase/setup-cli@v2
+        with:
+          version: latest
+
+      - name: Publicar segredos da função
+        shell: bash
+        run: |
+          set -euo pipefail
+          supabase secrets set \
+            GITHUB_PROFILE_CLIENT_ID="$LABSTAR_GH_PROFILE_CLIENT_ID" \
+            GITHUB_PROFILE_CLIENT_SECRET="$LABSTAR_GH_PROFILE_CLIENT_SECRET" \
+            GITHUB_PROFILE_CALLBACK_URL="$GITHUB_PROFILE_CALLBACK_URL" \
+            LABSTAR_PROFILE_ALLOWED_ORIGINS="$LABSTAR_PROFILE_ALLOWED_ORIGINS" \
+            --project-ref "$PROJECT_REF"
+
+      - name: Publicar função OAuth
+        shell: bash
+        run: |
+          set -euo pipefail
+          supabase functions deploy github-profile-connection \
+            --project-ref "$PROJECT_REF" \
+            --no-verify-jwt
+
+      - name: Auditar função publicada
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          response_file="$(mktemp)"
+          status=""
+
+          for attempt in $(seq 1 12); do
+            status="$(curl --silent --show-error \
+              --output "$response_file" \
+              --write-out '%{http_code}' \
+              --request POST \
+              --header 'Content-Type: application/json' \
+              --header 'Origin: https://labstar.pages.dev' \
+              --data '{"returnTo":"https://labstar.pages.dev/"}' \
+              "$GITHUB_PROFILE_CALLBACK_URL" || true)"
+
+            if [ "$status" = "401" ] && grep -q 'authentication_required' "$response_file"; then
+              echo "Função OAuth publicada, configurada e protegida corretamente."
+              exit 0
+            fi
+
+            echo "Tentativa ${attempt}/12: HTTP ${status:-sem-resposta}; aguardando propagação..."
+            sleep 5
+          done
+
+          echo "A função não respondeu como esperado."
+          echo "Status final: ${status:-sem-resposta}"
+          cat "$response_file"
+          exit 1

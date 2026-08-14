@@ -1,0 +1,63 @@
+/* Correção raiz do espaço vazio da Dashboard e alinhamento real da navegação de Configurações no mobile. */
+@media (max-width: 760px) {
+  /*
+   * O espaço não vinha dos cards da WorkHome. A camada mobile-final reservava
+   * padding-bottom na própria .overview.dashboard-work-surface, mesmo com a
+   * navegação inferior já sendo position: fixed. Isso encurtava a área útil
+   * da Dashboard e deixava uma faixa vazia imediatamente acima da navegação.
+   */
+  .overview.dashboard-work-surface {
+    padding-bottom: 0 !important;
+  }
+
+  .overview.dashboard-work-surface > [data-labstar-dashboard-work],
+  .dashboard-work-shell {
+    width: 100% !important;
+    height: 100% !important;
+    min-height: 0 !important;
+    padding-bottom: 0 !important;
+  }
+
+  .dashboard-work-shell {
+    grid-template-rows: auto minmax(0, 1fr) !important;
+  }
+
+  .dashboard-work-shell > .work-home {
+    grid-row: 2 !important;
+    height: 100% !important;
+    min-height: 0 !important;
+    padding-bottom: 14px !important;
+    overflow-y: auto !important;
+  }
+
+  /*
+   * O texto da aba é um text-node ao lado do SVG. Mesmo com font-size: 0 ele
+   * ainda participa do layout. Por isso o ícone parecia torto dentro do
+   * quadrado. O SVG agora é posicionado pelo centro geométrico do botão.
+   */
+  .global-settings-nav nav button {
+    position: relative !important;
+    display: block !important;
+    width: var(--phase5-touch, 44px) !important;
+    min-width: var(--phase5-touch, 44px) !important;
+    height: var(--phase5-touch, 44px) !important;
+    min-height: var(--phase5-touch, 44px) !important;
+    padding: 0 !important;
+    gap: 0 !important;
+    line-height: 0 !important;
+    font-size: 0 !important;
+    text-indent: 0 !important;
+  }
+
+  .global-settings-nav nav button > svg {
+    position: absolute !important;
+    left: 50% !important;
+    top: 50% !important;
+    width: 18px !important;
+    height: 18px !important;
+    margin: 0 !important;
+    transform: translate(-50%, -50%) !important;
+    translate: none !important;
+    flex: none !important;
+  }
+}

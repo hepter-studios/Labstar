@@ -1,0 +1,116 @@
+name: Aplicar GitHub e notificações v15
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirmation:
+        description: "Digite APPLY_V15 para confirmar backup e migração"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: labstar-database-migration-v15
+  cancel-in-progress: false
+
+jobs:
+  migrate:
+    if: github.event.inputs.confirmation == 'APPLY_V15'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      DATABASE_URL: ${{ secrets.SUPABASE_DATABASE_URL }}
+    steps:
+      - name: Baixar código
+        uses: actions/checkout@v4
+
+      - name: Validar configuração
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${DATABASE_URL:-}" || exit 1
+          test -f supabase/labstar-supabase-v15-profile-connections-notifications.sql
+          test -f supabase/labstar-supabase-v15b-profile-connections-no-auth.sql
+          test -f supabase/labstar-supabase-v15c-github-profile-oauth.sql
+          test -f supabase/labstar-supabase-v15d-notification-hardening.sql
+
+      - name: Preparar cliente PostgreSQL 17
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          docker pull --quiet postgres:17-alpine
+
+          pg17_bin="$RUNNER_TEMP/postgresql-17-bin"
+          mkdir -p "$pg17_bin"
+
+          cat > "$pg17_bin/pg_dump" <<'SCRIPT'
+          #!/usr/bin/env bash
+          set -euo pipefail
+          exec docker run --rm -i \
+            --volume "$PWD:/workspace" \
+            --workdir /workspace \
+            postgres:17-alpine \
+            pg_dump "$@"
+          SCRIPT
+
+          cat > "$pg17_bin/psql" <<'SCRIPT'
+          #!/usr/bin/env bash
+          set -euo pipefail
+          exec docker run --rm -i \
+            --volume "$PWD:/workspace" \
+            --workdir /workspace \
+            postgres:17-alpine \
+            psql "$@"
+          SCRIPT
+
+          chmod +x "$pg17_bin/pg_dump" "$pg17_bin/psql"
+          echo "$pg17_bin" >> "$GITHUB_PATH"
+
+          "$pg17_bin/pg_dump" --version
+          "$pg17_bin/psql" --version
+
+      - name: Gerar backup antes da migração
+        shell: bash
+        run: |
+          set -euo pipefail
+          pg_dump --version
+          mkdir -p database-backup
+          pg_dump --format=custom --no-owner --no-privileges "$DATABASE_URL" > database-backup/labstar-before-v15.dump
+          pg_dump --schema-only --no-owner --no-privileges "$DATABASE_URL" > database-backup/labstar-before-v15-schema.sql
+
+      - name: Guardar backup privado
+        uses: actions/upload-artifact@v4
+        with:
+          name: labstar-before-v15-${{ github.run_id }}
+          path: database-backup/
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Aplicar migrações v15
+        shell: bash
+        run: |
+          set -euo pipefail
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f supabase/labstar-supabase-v15-profile-connections-notifications.sql
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f supabase/labstar-supabase-v15b-profile-connections-no-auth.sql
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f supabase/labstar-supabase-v15c-github-profile-oauth.sql
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f supabase/labstar-supabase-v15d-notification-hardening.sql
+
+      - name: Auditar instalação
+        shell: bash
+        run: |
+          set -euo pipefail
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 <<'SQL'
+          select
+            exists(select 1 from information_schema.columns where table_schema='public' and table_name='members' and column_name='github_profile') as github_profile,
+            to_regprocedure('public.set_member_github_profile(uuid,jsonb)') is not null as github_oauth_writer,
+            to_regprocedure('public.consume_github_profile_state(text)') is not null as github_state_consumer,
+            to_regprocedure('public.clear_own_github_profile()') is not null as github_disconnect,
+            to_regprocedure('public.set_own_github_profile(jsonb)') is null as client_write_removed,
+            exists(select 1 from pg_trigger where tgname='direct_message_notification' and not tgisinternal) as dm_notifications,
+            exists(select 1 from pg_trigger where tgname='channel_message_notification' and not tgisinternal) as channel_notifications,
+            exists(select 1 from pg_trigger where tgname='member_job_role_notification' and not tgisinternal) as role_notifications,
+            exists(select 1 from pg_publication_tables where pubname='supabase_realtime' and schemaname='public' and tablename='notifications') as notifications_realtime;
+          SQL

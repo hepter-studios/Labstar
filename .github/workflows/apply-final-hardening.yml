@@ -1,0 +1,113 @@
+name: Aplicar endurecimento final de segurança
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "supabase/migrations/20260810010000_server_side_account_deletion_and_permission_hardening.sql"
+      - "supabase/migrations/20260810020000_members_assignments_jsonb_contract.sql"
+      - "supabase/tests/permission_regressions.sql"
+      - ".github/workflows/apply-final-hardening.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: labstar-final-hardening
+  cancel-in-progress: false
+
+jobs:
+  migrate:
+    name: Backup, migração e auditoria de permissões
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - name: Baixar código oficial
+        uses: actions/checkout@v4
+
+      - name: Validar conexão protegida
+        shell: bash
+        env:
+          SUPABASE_DATABASE_URL: ${{ secrets.SUPABASE_DATABASE_URL }}
+        run: |
+          set -euo pipefail
+          if [ -z "${SUPABASE_DATABASE_URL:-}" ]; then
+            echo "O secret SUPABASE_DATABASE_URL não está configurado."
+            exit 1
+          fi
+
+      - name: Preparar PostgreSQL 17
+        run: |
+          docker pull postgres:17-bookworm
+          docker run --rm postgres:17-bookworm psql --version
+
+      - name: Backup antes da migração
+        shell: bash
+        env:
+          SUPABASE_DATABASE_URL: ${{ secrets.SUPABASE_DATABASE_URL }}
+        run: |
+          set -euo pipefail
+          mkdir -p backup
+          timestamp="$(date -u +'%Y-%m-%dT%H-%M-%SZ')"
+          docker run --rm \
+            -e SUPABASE_DATABASE_URL \
+            -e PGSSLMODE=require \
+            -e BACKUP_TIMESTAMP="${timestamp}" \
+            -v "${PWD}/backup:/backup" \
+            postgres:17-bookworm \
+            bash -euo pipefail -c '
+              pg_dump --dbname="${SUPABASE_DATABASE_URL}" --format=custom --no-owner --no-privileges --file="/backup/labstar-before-final-hardening-${BACKUP_TIMESTAMP}.dump"
+            '
+          sha256sum backup/*.dump > backup/SHA256SUMS.txt
+
+      - name: Aplicar endurecimento final
+        shell: bash
+        env:
+          SUPABASE_DATABASE_URL: ${{ secrets.SUPABASE_DATABASE_URL }}
+        run: |
+          set -euo pipefail
+          docker run --rm \
+            -e SUPABASE_DATABASE_URL \
+            -e PGSSLMODE=require \
+            -v "${PWD}:/workspace:ro" \
+            postgres:17-bookworm \
+            psql "${SUPABASE_DATABASE_URL}" --set ON_ERROR_STOP=1 \
+              --file /workspace/supabase/migrations/20260810010000_server_side_account_deletion_and_permission_hardening.sql
+          docker run --rm \
+            -e SUPABASE_DATABASE_URL \
+            -e PGSSLMODE=require \
+            -v "${PWD}:/workspace:ro" \
+            postgres:17-bookworm \
+            psql "${SUPABASE_DATABASE_URL}" --set ON_ERROR_STOP=1 \
+              --file /workspace/supabase/migrations/20260810020000_members_assignments_jsonb_contract.sql
+
+      - name: Testar grants, RLS e contratos
+        shell: bash
+        env:
+          SUPABASE_DATABASE_URL: ${{ secrets.SUPABASE_DATABASE_URL }}
+        run: |
+          set -euo pipefail
+          docker run --rm \
+            -e SUPABASE_DATABASE_URL \
+            -e PGSSLMODE=require \
+            -v "${PWD}:/workspace:ro" \
+            postgres:17-bookworm \
+            psql "${SUPABASE_DATABASE_URL}" --set ON_ERROR_STOP=1 \
+              --file /workspace/supabase/tests/permission_regressions.sql \
+              | tee final-hardening-audit.txt
+          grep -Eq "1\.\.[1-9][0-9]*" final-hardening-audit.txt
+          ! grep -q "not ok" final-hardening-audit.txt
+
+      - name: Guardar backup privado e auditoria
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: labstar-before-final-hardening-${{ github.run_number }}
+          path: |
+            backup/
+            final-hardening-audit.txt
+          if-no-files-found: warn
+          retention-days: 7
+          compression-level: 6

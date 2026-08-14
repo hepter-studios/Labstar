@@ -1,0 +1,85 @@
+/* Ajustes mobile cirurgicos: Dashboard sem faixa vazia e icones de Configuracoes centralizados. */
+@media (max-width: 760px) {
+  .overview.dashboard-work-surface,
+  .overview.dashboard-work-surface > [data-labstar-dashboard-work],
+  .dashboard-work-shell {
+    min-height: 0 !important;
+  }
+
+  .dashboard-work-shell {
+    grid-template-rows: auto minmax(0, 1fr) !important;
+    align-content: stretch !important;
+  }
+
+  .dashboard-work-shell > .work-home {
+    grid-row: 2 !important;
+    align-self: stretch !important;
+    min-height: 0 !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+  }
+
+  .dashboard-work-shell .work-home-grid,
+  .dashboard-work-shell .work-home-grid.lower,
+  .dashboard-work-shell .work-home-shortcuts {
+    position: static !important;
+    inset: auto !important;
+    float: none !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    height: auto !important;
+    min-height: 0 !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+
+  .dashboard-work-shell .work-home-grid,
+  .dashboard-work-shell .work-home-grid.lower {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 10px !important;
+    margin: 10px 0 0 !important;
+  }
+
+  .dashboard-work-shell .work-home-shortcuts {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 8px !important;
+    margin: 10px 0 0 !important;
+  }
+
+  .dashboard-work-shell > .work-home {
+    padding-bottom: 14px !important;
+    scroll-padding-bottom: calc(var(--labstar-mobile-bottom-nav, 66px) + var(--labstar-mobile-safe-bottom, 8px) + 10px);
+  }
+
+  .global-settings-nav nav button {
+    width: var(--phase5-touch, 44px) !important;
+    min-width: var(--phase5-touch, 44px) !important;
+    height: var(--phase5-touch, 44px) !important;
+    min-height: var(--phase5-touch, 44px) !important;
+    padding: 0 !important;
+    display: grid !important;
+    place-items: center !important;
+    align-items: center !important;
+    justify-items: center !important;
+    gap: 0 !important;
+    line-height: 0 !important;
+    text-align: center !important;
+    font-size: 0 !important;
+  }
+
+  .global-settings-nav nav button > svg {
+    position: static !important;
+    inset: auto !important;
+    display: block !important;
+    width: 18px !important;
+    height: 18px !important;
+    margin: 0 !important;
+    flex: none !important;
+    transform: none !important;
+    translate: none !important;
+  }
+}

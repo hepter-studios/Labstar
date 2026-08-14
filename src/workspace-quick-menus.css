@@ -1,0 +1,378 @@
+@import "./access-loading-fix.css";
+
+.workspace-quick-menu {
+  position: fixed;
+  z-index: 2350;
+  width: 245px;
+  padding: 7px;
+  overflow: hidden;
+  border: 1px solid rgba(137,165,222,.16);
+  border-radius: 12px;
+  background: linear-gradient(180deg, rgba(10,14,22,.992), rgba(6,9,15,.992));
+  box-shadow: 0 24px 70px rgba(0,0,0,.62), inset 0 1px rgba(255,255,255,.035);
+  backdrop-filter: blur(18px) saturate(1.08);
+  animation: workspace-menu-enter .14s ease-out;
+}
+
+.workspace-quick-menu > header {
+  min-height: 34px;
+  padding: 0 5px 7px 9px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  border-bottom: 1px solid rgba(137,165,222,.08);
+}
+
+.workspace-quick-menu > header strong {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #c4d0e3;
+  font-size: 9px;
+  font-weight: 760;
+  letter-spacing: .01em;
+}
+
+.workspace-quick-menu > header button {
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 7px;
+  color: #667287;
+  background: transparent;
+  cursor: pointer;
+}
+
+.workspace-quick-menu > header button:hover {
+  color: #edf3ff;
+  background: rgba(255,255,255,.045);
+}
+
+.workspace-quick-menu > div {
+  padding-top: 5px;
+  display: grid;
+  gap: 2px;
+}
+
+.workspace-quick-menu > div > button {
+  min-height: 33px;
+  padding: 0 9px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  color: #8f9db2;
+  background: transparent;
+  font: inherit;
+  font-size: 9px;
+  text-align: left;
+  cursor: pointer;
+  transition: color .14s ease, border-color .14s ease, background .14s ease, transform .14s ease;
+}
+
+.workspace-quick-menu > div > button:hover {
+  color: #e8eef8;
+  border-color: rgba(77,129,245,.12);
+  background: rgba(77,129,245,.065);
+}
+
+.workspace-quick-menu > div > button:active {
+  transform: translateY(1px);
+}
+
+.workspace-quick-menu > div > button:disabled {
+  opacity: .62;
+  cursor: wait;
+}
+
+.workspace-menu-separator {
+  height: 1px;
+  margin: 5px 5px 4px;
+  display: block;
+  background: rgba(137,165,222,.085);
+}
+
+.workspace-quick-menu > div > button.danger {
+  color: #df7f8a;
+}
+
+.workspace-quick-menu > div > button.danger:hover,
+.workspace-quick-menu > div > button.danger.confirm {
+  border-color: rgba(225,91,105,.2);
+  color: #ffb0b8;
+  background: rgba(170,42,55,.12);
+}
+
+.workspace-quick-menu > div > p {
+  margin: 4px 5px 2px;
+  padding: 8px 9px;
+  border: 1px solid rgba(139,174,255,.1);
+  border-radius: 8px;
+  color: #8090a7;
+  background: rgba(10,15,24,.72);
+  font-size: 8px;
+  line-height: 1.45;
+}
+
+.workspace-quick-menu > div > p.warning {
+  border-color: rgba(225,91,105,.15);
+  color: #d79aa2;
+  background: rgba(110,34,44,.09);
+}
+
+.channel-list > button {
+  position: relative;
+  grid-template-columns: 18px minmax(0,1fr) auto 25px;
+  transition: background .14s ease, border-color .14s ease, color .14s ease;
+}
+
+.channel-list > button > .channel-quick-menu-trigger {
+  grid-column: 4;
+  justify-self: end;
+  width: 25px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  border-radius: 6px;
+  color: #69758b;
+  background: transparent;
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 800;
+  letter-spacing: 1px;
+  line-height: 1;
+  opacity: 0;
+  cursor: pointer;
+  transition: opacity .14s ease, color .14s ease, background .14s ease;
+}
+
+.channel-list > button:hover > .channel-quick-menu-trigger,
+.channel-list > button.active > .channel-quick-menu-trigger,
+.channel-list > button > .channel-quick-menu-trigger:focus-visible {
+  opacity: 1;
+}
+
+.channel-list > button > .channel-quick-menu-trigger:hover,
+.channel-list > button > .channel-quick-menu-trigger:focus-visible {
+  color: #d7e0f2;
+  background: rgba(139,174,255,.08);
+  outline: none;
+}
+
+.dm-conversation-actions > .dm-conversation-more {
+  width: 34px;
+  height: 34px;
+  flex: 0 0 34px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 1px solid rgba(137,165,222,.11);
+  border-radius: 9px;
+  color: #7b879b;
+  background: rgba(8,12,19,.82);
+  font-size: 11px;
+  font-weight: 850;
+  letter-spacing: 1.5px;
+  line-height: 1;
+  cursor: pointer;
+  transition: color .14s ease, border-color .14s ease, background .14s ease;
+}
+
+.dm-conversation-actions > .dm-conversation-more:hover,
+.dm-conversation-actions > .dm-conversation-more:focus-visible {
+  border-color: rgba(139,174,255,.24);
+  color: #e7eefb;
+  background: rgba(99,139,232,.09);
+  outline: none;
+}
+
+.labstar-action-progress {
+  position: fixed;
+  z-index: 16000;
+  left: 50%;
+  bottom: max(24px, env(safe-area-inset-bottom));
+  width: min(390px, calc(100vw - 28px));
+  min-height: 66px;
+  padding: 11px 13px;
+  display: grid;
+  grid-template-columns: 38px minmax(0,1fr);
+  align-items: center;
+  gap: 10px;
+  border: 1px solid rgba(139,174,255,.19);
+  border-radius: 14px;
+  color: #e8eef9;
+  background: linear-gradient(145deg, rgba(13,18,28,.985), rgba(6,9,15,.992));
+  box-shadow: 0 24px 70px rgba(0,0,0,.65), inset 0 1px rgba(255,255,255,.04);
+  backdrop-filter: blur(18px);
+  transform: translateX(-50%);
+  animation: labstar-action-progress-enter .16s ease-out;
+}
+
+.labstar-action-progress > span {
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(139,174,255,.14);
+  border-radius: 11px;
+  color: #a9bfff;
+  background: rgba(90,126,215,.08);
+}
+
+.labstar-action-progress > div {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.labstar-action-progress strong {
+  font-size: 11px;
+  font-weight: 780;
+}
+
+.labstar-action-progress small {
+  color: #7c899e;
+  font-size: 8.5px;
+  line-height: 1.4;
+}
+
+.labstar-action-progress.success {
+  border-color: rgba(89,190,157,.22);
+}
+
+.labstar-action-progress.success > span {
+  color: #80c8ae;
+  border-color: rgba(89,190,157,.18);
+  background: rgba(52,134,108,.09);
+}
+
+.labstar-action-progress.error {
+  border-color: rgba(221,93,107,.24);
+}
+
+.labstar-action-progress.error > span {
+  color: #ef8c96;
+  border-color: rgba(221,93,107,.2);
+  background: rgba(151,45,58,.1);
+}
+
+/* A exclusão permanente já tinha spinner no botão, mas o texto não mudava.
+   Quando o RPC está rodando, deixa inequívoco que o Labstar está trabalhando. */
+.permanent-deletion-modal:has(.removal-actions .spin) {
+  cursor: wait;
+}
+
+.permanent-deletion-modal:has(.removal-actions .spin) .removal-actions .confirm {
+  min-width: 190px;
+  color: #f4f7ff;
+  border-color: rgba(139,174,255,.32);
+  background: rgba(91,126,215,.15);
+  box-shadow: 0 0 0 3px rgba(91,126,215,.055);
+  cursor: wait;
+}
+
+.permanent-deletion-modal:has(.removal-actions .spin) .removal-actions .confirm {
+  font-size: 0;
+}
+
+.permanent-deletion-modal:has(.removal-actions .spin) .removal-actions .confirm svg {
+  width: 15px;
+  height: 15px;
+}
+
+.permanent-deletion-modal:has(.removal-actions .spin) .removal-actions .confirm::after {
+  content: "Excluindo conta e login…";
+  font-size: 10px;
+  font-weight: 760;
+}
+
+/* Acabamento leve e consistente para as superfícies mais usadas, sem mudar o layout. */
+.app button,
+.collaboration-shell button,
+.direct-hub button {
+  -webkit-tap-highlight-color: transparent;
+}
+
+.channel-scroll,
+.message-scroll,
+.dm-message-scroll,
+.dm-contact-list,
+.dm-inbox-list {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(91,112,150,.42) transparent;
+}
+
+.channel-scroll::-webkit-scrollbar,
+.message-scroll::-webkit-scrollbar,
+.dm-message-scroll::-webkit-scrollbar,
+.dm-contact-list::-webkit-scrollbar,
+.dm-inbox-list::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.channel-scroll::-webkit-scrollbar-thumb,
+.message-scroll::-webkit-scrollbar-thumb,
+.dm-message-scroll::-webkit-scrollbar-thumb,
+.dm-contact-list::-webkit-scrollbar-thumb,
+.dm-inbox-list::-webkit-scrollbar-thumb {
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background: rgba(91,112,150,.38);
+  background-clip: padding-box;
+}
+
+.chat-message,
+.dm-message,
+.dm-contact-entry {
+  transition: background .14s ease, border-color .14s ease, opacity .14s ease;
+}
+
+@keyframes workspace-menu-enter {
+  from { opacity: 0; transform: translateY(-4px) scale(.985); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes labstar-action-progress-enter {
+  from { opacity: 0; transform: translate(-50%, 8px) scale(.985); }
+  to { opacity: 1; transform: translate(-50%, 0) scale(1); }
+}
+
+@media (hover: none), (max-width: 760px) {
+  .channel-list > button > .channel-quick-menu-trigger {
+    opacity: .9;
+  }
+
+  .workspace-quick-menu {
+    width: min(270px, calc(100vw - 20px));
+  }
+
+  .dm-conversation-actions > .dm-conversation-more {
+    width: 36px;
+    height: 36px;
+    flex-basis: 36px;
+  }
+
+  .labstar-action-progress {
+    bottom: max(14px, env(safe-area-inset-bottom));
+    width: min(390px, calc(100vw - 18px));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .workspace-quick-menu,
+  .workspace-quick-menu > div > button,
+  .channel-list > button,
+  .chat-message,
+  .dm-message,
+  .dm-contact-entry,
+  .labstar-action-progress {
+    animation: none !important;
+    transition: none !important;
+  }
+}

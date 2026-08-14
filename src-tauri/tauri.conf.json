@@ -1,7 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "Labstar",
-  "version": "11.0.0",
+  "mainBinaryName": "Labstar",
+  "version": "11.2.9",
   "identifier": "co.labstar.app",
   "build": {
     "beforeDevCommand": "npm run dev",
@@ -10,6 +11,7 @@
     "frontendDist": "../dist"
   },
   "app": {
+    "withGlobalTauri": true,
     "windows": [
       {
         "label": "main",
@@ -22,14 +24,14 @@
         "resizable": true,
         "fullscreen": false,
         "visible": true,
-        "theme": "Dark",
-        "backgroundColor": "#030407",
+        "theme": "Light",
+        "backgroundColor": "#010207",
         "shadow": true
       }
     ],
     "security": {
-      "capabilities": ["desktop-main"],
-      "csp": "default-src 'self'; connect-src 'self' ipc: http://ipc.localhost https://pgzwyngxsxnheulvusdq.supabase.co wss://pgzwyngxsxnheulvusdq.supabase.co; img-src 'self' asset: http://asset.localhost blob: data: https://pgzwyngxsxnheulvusdq.supabase.co; media-src 'self' blob:; style-src 'self' 'unsafe-inline'; font-src 'self' data:; script-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'"
+      "capabilities": ["desktop-main", "desktop-communications"],
+      "csp": "default-src 'self'; connect-src 'self' ipc: http://ipc.localhost https://pgzwyngxsxnheulvusdq.supabase.co wss://pgzwyngxsxnheulvusdq.supabase.co https://api.github.com; img-src 'self' asset: http://asset.localhost blob: data: https://pgzwyngxsxnheulvusdq.supabase.co https://avatars.githubusercontent.com https://github.com; media-src 'self' blob:; style-src 'self' 'unsafe-inline'; font-src 'self' data:; script-src 'self' 'wasm-unsafe-eval'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'"
     }
   },
   "plugins": {
@@ -41,7 +43,10 @@
   },
   "bundle": {
     "active": true,
-    "targets": "all",
+    "targets": ["nsis", "msi"],
+    "publisher": "Hepter Studios",
+    "copyright": "Copyright © 2026 Hepter Studios. Todos os direitos reservados.",
+    "homepage": "https://labstar.pages.dev",
     "icon": [
       "../public/favicon.ico",
       "../public/favicon-180.png",
@@ -49,6 +54,19 @@
     ],
     "category": "Business",
     "shortDescription": "Ambiente profissional para empresas, projetos e equipes.",
-    "longDescription": "Labstar organiza empresas, projetos, equipes, comunicação e integrações em uma experiência profissional para desktop."
+    "longDescription": "Labstar organiza empresas, projetos, equipes, comunicação e integrações em uma experiência profissional para desktop.",
+    "windows": {
+      "nsis": {
+        "installerIcon": "../public/favicon.ico",
+        "uninstallerIcon": "../public/favicon.ico",
+        "installMode": "both",
+        "languages": ["PortugueseBR", "English"],
+        "displayLanguageSelector": false,
+        "startMenuFolder": "Labstar"
+      },
+      "wix": {
+        "language": "pt-BR"
+      }
+    }
   }
 }

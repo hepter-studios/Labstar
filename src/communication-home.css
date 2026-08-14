@@ -1,0 +1,566 @@
+.communication-home-overlay {
+  position: fixed !important;
+  z-index: 18;
+  top: 68px !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  left: 136px !important;
+  min-width: 0;
+  min-height: 0;
+  height: auto;
+  overflow: clip;
+  overflow-anchor: none;
+  overscroll-behavior: none;
+  contain: layout paint;
+  border-left: 1px solid rgba(255, 255, 255, .055);
+  background: #05070b;
+}
+
+.communication-home {
+  position: relative;
+  width: 100%;
+  height: auto;
+  max-height: none;
+  min-width: 0;
+  min-height: 100%;
+  box-sizing: border-box;
+  overflow: clip;
+  overflow-anchor: none;
+  padding: 28px clamp(22px, 3vw, 44px) 42px;
+  color: #eef3ff;
+  background:
+    radial-gradient(circle at 8% 0%, rgba(81, 126, 255, .11), transparent 28%),
+    radial-gradient(circle at 92% 4%, rgba(74, 202, 173, .06), transparent 24%),
+    #05070b;
+  scrollbar-width: thin;
+  scrollbar-color: #263047 transparent;
+}
+
+.communication-home-loading {
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 8px;
+  color: #77839a;
+  text-align: center;
+}
+
+.communication-home-loading strong {
+  color: #dce5f7;
+  font-size: 15px;
+}
+
+.communication-home-loading span {
+  font-size: 11px;
+}
+
+.communication-home-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 20px;
+}
+
+.communication-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin-bottom: 8px;
+  color: #8faeff;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .13em;
+  text-transform: uppercase;
+}
+
+.communication-home-head h1 {
+  margin: 0;
+  font-size: clamp(28px, 3vw, 38px);
+  line-height: 1.04;
+  letter-spacing: -.045em;
+}
+
+.communication-home-head p {
+  max-width: 680px;
+  margin: 9px 0 0;
+  color: #8490a7;
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.communication-head-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.communication-head-actions button {
+  min-height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 0 12px;
+  border: 1px solid #20283a;
+  border-radius: 10px;
+  color: #cbd5e8;
+  background: #0a0e15;
+  font-size: 11px;
+  font-weight: 720;
+  cursor: pointer;
+}
+
+.communication-head-actions button:first-child {
+  width: 38px;
+  padding: 0;
+}
+
+.communication-head-actions button:hover {
+  border-color: #3b4c70;
+  background: #101723;
+}
+
+.communication-head-actions button.primary {
+  border-color: rgba(132, 166, 245, .42);
+  color: #eff4ff;
+  background: #18243b;
+}
+
+.communication-home-error {
+  min-height: 38px;
+  margin-bottom: 12px;
+  padding: 8px 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  border: 1px solid rgba(226, 143, 92, .25);
+  border-radius: 10px;
+  color: #d8a77f;
+  background: rgba(80, 42, 20, .18);
+  font-size: 11px;
+}
+
+.communication-home-error button {
+  border: 0;
+  color: #ffd1ad;
+  background: transparent;
+  cursor: pointer;
+}
+
+.communication-home-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.communication-home-metrics article {
+  min-width: 0;
+  min-height: 74px;
+  padding: 13px 14px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border: 1px solid #1a2130;
+  border-radius: 13px;
+  color: #8ea8e8;
+  background: linear-gradient(145deg, rgba(14, 18, 27, .97), rgba(8, 11, 17, .97));
+}
+
+.communication-home-metrics article.attention {
+  border-color: rgba(126, 158, 238, .32);
+  background: linear-gradient(145deg, rgba(24, 35, 58, .9), rgba(8, 11, 17, .97));
+}
+
+.communication-home-metrics article > span {
+  min-width: 0;
+}
+
+.communication-home-metrics b {
+  display: block;
+  color: #f2f6ff;
+  font-size: 21px;
+  line-height: 1;
+}
+
+.communication-home-metrics small {
+  display: block;
+  margin-top: 5px;
+  overflow: hidden;
+  color: #6d7890;
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.communication-home-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.55fr) minmax(280px, .72fr);
+  gap: 14px;
+  margin-top: 14px;
+}
+
+.communication-home-grid.lower {
+  grid-template-columns: minmax(0, 1.35fr) minmax(320px, .85fr);
+}
+
+.communication-panel {
+  min-width: 0;
+  border: 1px solid #1a2130;
+  border-radius: 15px;
+  background: rgba(8, 11, 17, .95);
+  overflow: hidden;
+}
+
+.communication-panel > header {
+  min-height: 59px;
+  padding: 13px 15px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 1px solid #151b27;
+  color: #8399ce;
+}
+
+.communication-panel > header strong {
+  display: block;
+  color: #e7edf9;
+  font-size: 12px;
+}
+
+.communication-panel > header small {
+  display: block;
+  margin-top: 3px;
+  color: #657187;
+  font-size: 10px;
+}
+
+.communication-list {
+  display: grid;
+}
+
+.recent-conversations .communication-list,
+.communication-notices .communication-list {
+  max-height: 236px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: #263047 transparent;
+}
+
+.communication-list > button {
+  width: 100%;
+  min-width: 0;
+  min-height: 59px;
+  padding: 9px 12px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto auto;
+  align-items: center;
+  gap: 9px;
+  border: 0;
+  border-bottom: 1px solid #121722;
+  color: #e9eef9;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.communication-list > button:last-child {
+  border-bottom: 0;
+}
+
+.communication-list > button:hover,
+.communication-file-grid > button:hover,
+.communication-people-grid > button:hover {
+  background: #0d131e;
+}
+
+.communication-channel-icon {
+  width: 33px;
+  height: 33px;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  color: #93adf0;
+  background: #111827;
+}
+
+.communication-list button > span:nth-child(2) {
+  min-width: 0;
+}
+
+.communication-list b,
+.communication-file-grid b,
+.communication-people-grid b {
+  display: block;
+  overflow: hidden;
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.communication-list small,
+.communication-file-grid small,
+.communication-people-grid small {
+  display: block;
+  overflow: hidden;
+  margin-top: 3px;
+  color: #68758c;
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.communication-list em,
+.communication-list time {
+  color: #69758a;
+  font-size: 9px;
+  font-style: normal;
+  white-space: nowrap;
+}
+
+.communication-list em {
+  max-width: 115px;
+  overflow: hidden;
+  padding: 4px 7px;
+  border: 1px solid #252e40;
+  border-radius: 999px;
+  text-overflow: ellipsis;
+}
+
+.communication-list.compact > button {
+  min-height: 66px;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+}
+
+.communication-notice-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #89aaff;
+  box-shadow: 0 0 10px rgba(137, 170, 255, .38);
+}
+
+.communication-file-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  max-height: 248px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: #263047 transparent;
+}
+
+.communication-file-grid > button {
+  min-width: 0;
+  min-height: 62px;
+  padding: 10px 12px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 9px;
+  border: 0;
+  border-right: 1px solid #121722;
+  border-bottom: 1px solid #121722;
+  color: #e7ecf7;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.communication-file-grid > button:nth-child(2n) {
+  border-right: 0;
+}
+
+.communication-file-grid > button > span {
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border-radius: 9px;
+  color: #91a9e7;
+  background: #111827;
+}
+
+.communication-file-grid > button > div {
+  min-width: 0;
+}
+
+.communication-people-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  max-height: 248px;
+  padding: 8px;
+  gap: 7px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: #263047 transparent;
+}
+
+.communication-people-grid > button {
+  min-width: 0;
+  min-height: 54px;
+  padding: 8px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 9px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  color: #e7ecf7;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.communication-people-grid > button:hover {
+  border-color: #1f2a40;
+}
+
+.communication-people-grid > button > span {
+  min-width: 0;
+}
+
+.communication-empty {
+  min-height: 150px;
+  padding: 22px;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 6px;
+  color: #67748a;
+  text-align: center;
+}
+
+.communication-empty.small {
+  min-height: 120px;
+}
+
+.communication-empty strong {
+  color: #dce4f4;
+  font-size: 12px;
+}
+
+.communication-empty span {
+  max-width: 250px;
+  font-size: 10px;
+  line-height: 1.45;
+}
+
+@media (max-width: 1280px) {
+  .communication-home-overlay {
+    left: 122px !important;
+  }
+
+  .communication-home {
+    padding-inline: 22px;
+  }
+
+  .communication-home-grid,
+  .communication-home-grid.lower {
+    grid-template-columns: minmax(0, 1fr) minmax(260px, .72fr);
+  }
+}
+
+@media (max-width: 980px), (max-height: 760px) {
+  .communication-home-overlay {
+    overflow-x: hidden;
+    overflow-y: auto;
+  }
+
+  .communication-home {
+    overflow: visible;
+  }
+
+  .communication-home-head {
+    flex-direction: column;
+  }
+
+  .communication-head-actions {
+    justify-content: flex-start;
+  }
+
+  .communication-home-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .communication-home-grid,
+  .communication-home-grid.lower {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 760px) {
+  .communication-home-overlay {
+    top: 110px !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    border-left: 0;
+    border-top: 1px solid rgba(255, 255, 255, .055);
+  }
+
+  .communication-home {
+    padding: 18px 12px 82px;
+  }
+
+  .communication-home-head h1 {
+    font-size: 26px;
+  }
+
+  .communication-head-actions button {
+    flex: 1 1 auto;
+  }
+
+  .communication-head-actions button:first-child {
+    flex: 0 0 38px;
+  }
+
+  .communication-list > button {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+  }
+
+  .communication-list > button em,
+  .communication-list > button time {
+    display: none;
+  }
+
+  .communication-file-grid,
+  .communication-people-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .communication-file-grid > button {
+    border-right: 0;
+  }
+}
+
+
+/* Canais de servidores/comunidades: ancorados entre o cabeçalho e a base da janela. */
+@media (min-width: 761px) {
+  .collaboration-server-mode > .collaboration-shell {
+    position: fixed !important;
+    z-index: 1 !important;
+    top: 68px !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    left: 64px !important;
+    width: auto !important;
+    height: auto !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    transform: none !important;
+  }
+}
+
+@media (min-width: 761px) and (max-width: 1280px) {
+  .collaboration-server-mode > .collaboration-shell {
+    left: 58px !important;
+  }
+}

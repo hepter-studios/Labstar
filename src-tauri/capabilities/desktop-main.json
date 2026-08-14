@@ -12,6 +12,8 @@
     "allow-validate-deep-link",
     "allow-build-invite-deep-link",
     "allow-take-pending-deep-links",
-    "allow-focus-main-window"
+    "allow-focus-main-window",
+    "allow-open-auth-url",
+    "allow-open-profile-connection-url"
   ]
 }

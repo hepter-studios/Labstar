@@ -9,6 +9,7 @@ import {
   CircleDot,
   Cloud,
   CloudOff,
+  Eye,
   Focus,
   FolderKanban,
   FileText,
@@ -43,15 +44,17 @@ import {
   ZoomOut,
   type LucideIcon,
 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import {
   getCurrentIdentity,
   inviteMember as createMemberInvite,
   isSupabaseConfigured,
   listJobRoles,
   listMembers,
+  MEMBER_PROFILE_UPDATED_EVENT,
   loadWorkspace as loadRemoteWorkspace,
   removeOwnAvatar,
+  permanentlyDeleteTeamAccount,
   requestMagicLink,
   saveWorkspace,
   setMemberJobRoles,
@@ -59,21 +62,31 @@ import {
   uploadOwnAvatar,
   updateOwnProfile,
   updateMember as updateRemoteMember,
+  type MemberAdministrationUpdate,
   type Member,
   type JobRole,
 } from "./lib/supabase";
+import { memberPresenceStatus, useMemberPresence } from "./lib/presence";
 import { Avatar } from "./components/Avatar";
 import { CollaborationHub } from "./components/CollaborationHub";
+import { LabstarAccessLoader, MapAmbientFlybys, MascotCelebrationHost, ProjectLottieExperience, SoundToggleLottie, celebrateWithMascot } from "./components/LottieExperience";
 import { NotificationsButton } from "./components/NotificationsPanel";
+import { CurrentProfileConnection, MemberProfileConnection } from "./components/ProfileConnectionsBridge";
 import { RoleBadge, RoleManager } from "./components/RoleManager";
+import { takeGithubProfileConnectionResult, type GithubProfileConnectionResult } from "./lib/profile-connections";
+import { devPreviewCurrentMember, saveDevPreviewProfile } from "./lib/devPreview";
+import { isDevPreviewMode } from "./lib/devPreviewMode";
 
 type NodeKind = "holding" | "empresa" | "area" | "produto" | "projeto";
 type NodeStatus = "planejamento" | "ativo" | "atencao" | "concluido";
 type NodePriority = "baixa" | "media" | "alta";
+type CardTheme = "obsidian" | "snow" | "cream" | "lilac" | "blue" | "red" | "wine" | "green" | "gray" | "pink" | "cosmic";
 type ViewMode = "mapa" | "visao" | "colaboracao" | "equipe";
 type SyncState = "carregando" | "salvando" | "sincronizado" | "local";
 type ManualSaveState = "idle" | "saving" | "saved" | "error";
 type SessionState = "carregando" | "anonimo" | "nao_convidado" | "pendente" | "ativo" | "configuracao" | "erro";
+
+const ProjectSpaceAnimation = lazy(() => import("./components/ProjectSpaceAnimation"));
 
 type SessionData = {
   user: { displayName: string; email: string; fullName: string | null };
@@ -91,6 +104,7 @@ type StructureNode = {
   owner: string;
   githubUrl?: string;
   websiteUrl?: string;
+  cardTheme?: CardTheme;
   progress: number;
   x: number;
   y: number;
@@ -106,6 +120,19 @@ const initialNodes: StructureNode[] = [
   { id: "atlas", parentId: "digital", name: "Atlas", description: "Produto em validação e descoberta.", kind: "produto", status: "planejamento", priority: "media", owner: "Product team", progress: 12, x: 1420, y: 80 },
 ];
 
+const BOARD_WIDTH = 1750;
+const BOARD_HEIGHT = 980;
+const NODE_WIDTH = 274;
+const NODE_HEIGHT = 164;
+const BOARD_SAFE_MARGIN = 24;
+
+function clampNodePosition(x: number, y: number) {
+  return {
+    x: Math.max(BOARD_SAFE_MARGIN, Math.min(BOARD_WIDTH - NODE_WIDTH - BOARD_SAFE_MARGIN, Math.round(x))),
+    y: Math.max(BOARD_SAFE_MARGIN, Math.min(BOARD_HEIGHT - NODE_HEIGHT - BOARD_SAFE_MARGIN, Math.round(y))),
+  };
+}
+
 const kindMeta: Record<NodeKind, { label: string; color: string; Icon: LucideIcon }> = {
   holding: { label: "Holding", color: "#dfe7ff", Icon: Orbit },
   empresa: { label: "Empresa", color: "#8baeff", Icon: Building2 },
@@ -120,6 +147,26 @@ const statusMeta: Record<NodeStatus, { label: string; color: string }> = {
   atencao: { label: "Requer atenção", color: "#e7a55b" },
   concluido: { label: "Concluído", color: "#839ef7" },
 };
+
+const cardThemeMeta: Record<CardTheme, { label: string; swatch: string; tone: "dark" | "light" }> = {
+  obsidian: { label: "Preto", swatch: "#0a0d13", tone: "dark" },
+  snow: { label: "Branco", swatch: "#f4f6fb", tone: "light" },
+  cream: { label: "Creme", swatch: "#f2eadb", tone: "light" },
+  lilac: { label: "Lilás", swatch: "#e4dcfa", tone: "light" },
+  blue: { label: "Azul", swatch: "#173b69", tone: "dark" },
+  red: { label: "Vermelho", swatch: "#9a313a", tone: "dark" },
+  wine: { label: "Vinho", swatch: "#70283c", tone: "dark" },
+  green: { label: "Verde", swatch: "#1b5a45", tone: "dark" },
+  gray: { label: "Cinza", swatch: "#39414e", tone: "dark" },
+  pink: { label: "Rosa", swatch: "#efc9dd", tone: "light" },
+  cosmic: { label: "Céu profundo", swatch: "#3d2871", tone: "dark" },
+};
+
+function cardThemeFor(node: StructureNode): CardTheme {
+  return node.cardTheme && Object.prototype.hasOwnProperty.call(cardThemeMeta, node.cardTheme)
+    ? node.cardTheme
+    : "obsidian";
+}
 
 function playTone() {
   const AudioContextClass = window.AudioContext || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
@@ -141,20 +188,25 @@ function playTone() {
 }
 
 export default function Home() {
-  const [introComplete, setIntroComplete] = useState(false);
+  const [showProjectLottieBackground, setShowProjectLottieBackground] = useState(() => window.matchMedia("(min-width: 701px)").matches);
+  const [projectSkyEnabled, setProjectSkyEnabled] = useState(() => window.matchMedia("(min-width: 701px)").matches);
   const [sessionState, setSessionState] = useState<SessionState>("carregando");
   const [session, setSession] = useState<SessionData | null>(null);
   const [blockedIdentity, setBlockedIdentity] = useState<{ email: string } | null>(null);
   const [nodes, setNodes] = useState<StructureNode[]>(initialNodes);
   const [selectedId, setSelectedId] = useState("labstar");
   const [view, setView] = useState<ViewMode>("mapa");
+  const [projectLoadToken, setProjectLoadToken] = useState(0);
   const [zoom, setZoom] = useState(0.78);
   const [sound, setSound] = useState(true);
+  const [soundFeedbackToken, setSoundFeedbackToken] = useState(0);
   const [search, setSearch] = useState("");
   const [quickPanel, setQuickPanel] = useState<"profile" | "help" | "summary" | null>(null);
+  const [githubConnectionResult] = useState(() => takeGithubProfileConnectionResult());
   const [notificationChannelId, setNotificationChannelId] = useState<string | null>(null);
   const [legalOpen, setLegalOpen] = useState(false);
   const [editorOpen, setEditorOpen] = useState(false);
+  const [inspectedId, setInspectedId] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
   const [sync, setSync] = useState<SyncState>("carregando");
   const [manualSave, setManualSave] = useState<ManualSaveState>("idle");
@@ -163,6 +215,8 @@ export default function Home() {
   const searchRef = useRef<HTMLInputElement>(null);
   const viewportRef = useRef<HTMLDivElement>(null);
   const boardRef = useRef<HTMLDivElement>(null);
+  const inspectedCardRef = useRef<HTMLElement>(null);
+  const inspectedOriginRef = useRef<HTMLElement | null>(null);
   const dragRef = useRef<{ id: string; dx: number; dy: number } | null>(null);
   const panRef = useRef<{ x: number; y: number; left: number; top: number } | null>(null);
   const zoomRef = useRef(zoom);
@@ -170,8 +224,43 @@ export default function Home() {
   const wheelFrameRef = useRef<number | null>(null);
 
   useEffect(() => {
-    const timer = window.setTimeout(() => setIntroComplete(true), 2350);
-    return () => window.clearTimeout(timer);
+    const media = window.matchMedia("(min-width: 701px)");
+    const syncBackground = () => setShowProjectLottieBackground(media.matches);
+    syncBackground();
+    media.addEventListener("change", syncBackground);
+    return () => media.removeEventListener("change", syncBackground);
+  }, []);
+
+  useEffect(() => {
+    const updateCurrentMember = (event: Event) => {
+      const member = (event as CustomEvent<Member>).detail;
+      if (!member) return;
+      setSession((current) => current?.member.id === member.id ? { ...current, member } : current);
+    };
+    window.addEventListener(MEMBER_PROFILE_UPDATED_EVENT, updateCurrentMember);
+    return () => window.removeEventListener(MEMBER_PROFILE_UPDATED_EVENT, updateCurrentMember);
+  }, []);
+
+  useEffect(() => {
+    if (githubConnectionResult) setQuickPanel("profile");
+  }, [githubConnectionResult]);
+
+  useEffect(() => {
+    const open = (event: Event) => {
+      const detail = (event as CustomEvent<{ channelId?: string | null; eventType?: string | null }>).detail ?? {};
+      setQuickPanel(null);
+      setView("colaboracao");
+      if (detail.channelId) setNotificationChannelId(detail.channelId);
+      window.setTimeout(() => {
+        if (detail.channelId) {
+          window.dispatchEvent(new CustomEvent("labstar:open-channel", { detail: { channelId: detail.channelId } }));
+        } else if (/direct|call/i.test(detail.eventType ?? "")) {
+          window.dispatchEvent(new CustomEvent("labstar:open-direct", { detail: {} }));
+        }
+      }, 180);
+    };
+    window.addEventListener("labstar:open-notification", open);
+    return () => window.removeEventListener("labstar:open-notification", open);
   }, []);
 
   useEffect(() => {
@@ -181,24 +270,11 @@ export default function Home() {
   useEffect(() => {
     let cancelled = false;
     async function loadSession() {
-      if (import.meta.env.DEV && new URLSearchParams(window.location.search).has("preview")) {
+      if (isDevPreviewMode()) {
+        const previewMember = devPreviewCurrentMember();
         setSession({
-          user: { displayName: "Mackson Victor", email: "preview@labstar.local", fullName: "Mackson Victor" },
-          member: {
-            id: "preview-member",
-            email: "preview@labstar.local",
-            name: "Mackson Victor",
-            status: "active",
-            role: "owner",
-            jobTitle: "CEO",
-            area: "Direção",
-            assignments: ["labstar"],
-            createdAt: new Date().toISOString(),
-            lastSeenAt: new Date().toISOString(),
-            avatarPath: "",
-            avatarUrl: "",
-            jobRoles: [{ id: "preview-role", name: "CEO", department: "Diretoria", color: "#ef5b62", icon: "star", position: 10, permissions: ["manage_members", "manage_channels", "manage_projects"] }],
-          },
+          user: { displayName: previewMember.name, email: previewMember.email, fullName: previewMember.name },
+          member: previewMember,
         });
         setSessionState("ativo");
         return;
@@ -216,22 +292,14 @@ export default function Home() {
           setBlockedIdentity({ email: identity.user.email ?? "Conta não autorizada" });
           setSessionState("nao_convidado");
         } else {
-          let member = identity.member;
-          const legacyOwnerNames = new Set(["fundador labstar", "hepter studios", "fundador"]);
-          if (member.role === "owner" && legacyOwnerNames.has(member.name.trim().toLocaleLowerCase())) {
-            try {
-              member = await updateRemoteMember(member.id, { name: "Mackson Victor" });
-            } catch {
-              // A edição manual continua disponível na área Equipe.
-            }
-          }
+          const member = identity.member;
           if (cancelled) return;
           const fullName = identity.user.user_metadata?.full_name
             ?? identity.user.user_metadata?.name
             ?? null;
           setSession({
             user: {
-              displayName: fullName ?? identity.user.email ?? identity.member.name,
+              displayName: member.name,
               email: identity.user.email ?? identity.member.email,
               fullName,
             },
@@ -255,6 +323,11 @@ export default function Home() {
       if (local) {
         try { setNodes(JSON.parse(local)); } catch { /* use initial workspace */ }
       }
+      if (isDevPreviewMode()) {
+        setSync("local");
+        setReady(true);
+        return;
+      }
       try {
         const remoteNodes = await loadRemoteWorkspace<StructureNode[]>();
         if (!cancelled && Array.isArray(remoteNodes) && remoteNodes.length) {
@@ -276,6 +349,13 @@ export default function Home() {
   useEffect(() => {
     if (!ready) return;
     localStorage.setItem("labstar-workspace-v1", JSON.stringify(nodes));
+    window.dispatchEvent(new CustomEvent("labstar:workspace-nodes-changed", {
+      detail: { nodes },
+    }));
+    if (isDevPreviewMode()) {
+      setSync("local");
+      return;
+    }
     setSync("salvando");
     const timer = window.setTimeout(async () => {
       try {
@@ -293,6 +373,7 @@ export default function Home() {
       const pan = panRef.current;
       const viewport = viewportRef.current;
       if (pan && viewport) {
+        event.preventDefault();
         viewport.scrollLeft = pan.left - (event.clientX - pan.x);
         viewport.scrollTop = pan.top - (event.clientY - pan.y);
         return;
@@ -300,11 +381,13 @@ export default function Home() {
       const drag = dragRef.current;
       const board = boardRef.current;
       if (!drag || !board) return;
+      event.preventDefault();
       const rect = board.getBoundingClientRect();
       const x = Math.round((event.clientX - rect.left) / zoom - drag.dx);
       const y = Math.round((event.clientY - rect.top) / zoom - drag.dy);
+      const position = clampNodePosition(x, y);
       setNodes((current) => current.map((node) =>
-        node.id === drag.id ? { ...node, x: Math.max(24, x), y: Math.max(24, y) } : node
+        node.id === drag.id ? { ...node, ...position } : node
       ));
     };
     const stop = () => {
@@ -324,6 +407,11 @@ export default function Home() {
 
   useEffect(() => {
     const shortcuts = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && inspectedId) {
+        event.preventDefault();
+        closeInspector();
+        return;
+      }
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") {
         event.preventDefault();
         searchRef.current?.focus();
@@ -335,7 +423,16 @@ export default function Home() {
     };
     window.addEventListener("keydown", shortcuts);
     return () => window.removeEventListener("keydown", shortcuts);
-  }, [view, nodes]);
+  }, [view, nodes, inspectedId]);
+
+  useEffect(() => {
+    if (!inspectedId) return;
+    inspectedCardRef.current?.focus();
+  }, [inspectedId]);
+
+  useEffect(() => {
+    if (view !== "mapa") setInspectedId(null);
+  }, [view]);
 
   const selected = nodes.find((node) => node.id === selectedId) ?? null;
   const connections = useMemo(() => nodes.flatMap((node) => {
@@ -355,14 +452,35 @@ export default function Home() {
   }
 
   function openEditor(id: string) {
+    setInspectedId(null);
     selectNode(id);
     setEditorOpen(true);
   }
 
+  function openInspector(id: string) {
+    inspectedOriginRef.current = Array.from(document.querySelectorAll<HTMLElement>(".node-card:not(.node-card-inspection)"))
+      .find((candidate) => candidate.dataset.projectNodeId === id) ?? null;
+    dragRef.current = null;
+    setDraggingId(null);
+    setEditorOpen(false);
+    selectNode(id);
+    setInspectedId(id);
+  }
+
+  function closeInspector() {
+    setInspectedId(null);
+    window.requestAnimationFrame(() => inspectedOriginRef.current?.focus());
+  }
+
   function addNode(parentId: string | null = selectedId) {
+    setInspectedId(null);
     const parent = nodes.find((node) => node.id === parentId);
     const siblings = nodes.filter((node) => node.parentId === parentId).length;
     const id = `node-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    const position = clampNodePosition(
+      parent ? parent.x + 350 : 720,
+      parent ? parent.y + (siblings % 2 === 0 ? -205 : 205) : 400,
+    );
     const next: StructureNode = {
       id,
       parentId,
@@ -372,14 +490,18 @@ export default function Home() {
       status: "planejamento",
       priority: "media",
       owner: "Sem responsável",
+      cardTheme: "obsidian",
       progress: 0,
-      x: parent ? parent.x + 350 : 720,
-      y: parent ? parent.y + (siblings % 2 === 0 ? -205 : 205) : 400,
+      ...position,
     };
     setNodes((current) => [...current, next]);
     setView("mapa");
     selectNode(id);
     setEditorOpen(true);
+    window.requestAnimationFrame(() => {
+      const card = Array.from(document.querySelectorAll<HTMLElement>(".node-card")).find((candidate) => candidate.dataset.projectNodeId === id);
+      card?.scrollIntoView({ behavior: "smooth", block: "center", inline: "center" });
+    });
   }
 
   function updateSelected(patch: Partial<StructureNode>) {
@@ -396,6 +518,11 @@ export default function Home() {
       setSync("sincronizado");
       setManualSave("saved");
       setEditorOpen(false);
+      celebrateWithMascot({
+        variant: "happy",
+        title: "Projeto salvo",
+        message: selected?.name ? `${selected.name} voltou para a órbita.` : "As alterações foram registradas.",
+      });
     } catch {
       setSync("local");
       setManualSave("error");
@@ -437,6 +564,12 @@ export default function Home() {
     });
   }
 
+  function openProjectMap() {
+    setProjectSkyEnabled(true);
+    setProjectLoadToken((current) => current + 1);
+    setView("mapa");
+  }
+
   function zoomAt(event: React.WheelEvent<HTMLDivElement>) {
     event.preventDefault();
     const viewport = viewportRef.current;
@@ -463,7 +596,6 @@ export default function Home() {
     });
   }
 
-  if (!introComplete) return <BrandIntro />;
   if (sessionState === "carregando") return <AccessLoading />;
   if (sessionState === "configuracao") return <ConfigurationRequired />;
   if (sessionState === "anonimo") return <AccessGate />;
@@ -497,17 +629,17 @@ export default function Home() {
             setQuickPanel(null);
             setView("colaboracao");
           }} />
-          <button className="icon-button" data-tooltip={sound ? "Desativar som" : "Ativar som"} onClick={() => setSound((value) => !value)} aria-label="Ativar ou desativar som">{sound ? <Volume2 size={15} /> : <VolumeX size={15} />}</button>
+          <button className="icon-button" data-tooltip={sound ? "Desativar som" : "Ativar som"} onClick={() => { setSound((value) => !value); setSoundFeedbackToken((value) => value + 1); }} aria-label="Ativar ou desativar som">{sound ? <Volume2 size={15} /> : <VolumeX size={15} />}</button>
           <button className="create-button" onClick={() => addNode(null)}><Plus size={14} /> Criar núcleo</button>
-          <button className="avatar avatar-button" onClick={() => setQuickPanel(quickPanel === "profile" ? null : "profile")} aria-label="Perfil"><Avatar name={session.member.name} url={session.member.avatarUrl} size="sm" status="online" /></button>
+          <button className="avatar avatar-button" onClick={() => setQuickPanel(quickPanel === "profile" ? null : "profile")} aria-label="Perfil"><Avatar name={session.member.name} url={session.member.avatarUrl} size="sm" /></button>
         </div>
       </header>
 
       <section className={`workspace ${view === "equipe" ? "team-workspace" : ""} ${view === "colaboracao" ? "collaboration-workspace" : ""} ${view === "mapa" && editorOpen ? "editor-open" : ""}`}>
         <nav className="rail" aria-label="Navegação principal">
-          <div className="rail-group">
+          <div className="rail-group" data-labstar-liquid-group>
             <button data-tooltip="Visão geral" className={view === "visao" ? "active" : ""} onClick={() => setView("visao")} aria-label="Visão geral"><LayoutDashboard size={18} /></button>
-            <button data-tooltip="Mapa" className={view === "mapa" ? "active" : ""} onClick={() => setView("mapa")} aria-label="Mapa da organização"><Network size={18} /></button>
+            <button data-tooltip="Mapa" className={view === "mapa" ? "active" : ""} onClick={openProjectMap} aria-label="Mapa da organização"><Network size={18} /></button>
             <button data-tooltip="Central de trabalho" className={view === "colaboracao" ? "active" : ""} onClick={() => setView("colaboracao")} aria-label="Central de trabalho"><MessagesSquare size={18} /></button>
             <button data-tooltip="Equipe" className={view === "equipe" ? "active" : ""} onClick={() => setView("equipe")} aria-label="Equipe"><Users size={18} /></button>
           </div>
@@ -517,7 +649,14 @@ export default function Home() {
         </nav>
 
         {view === "mapa" ? (
-          <section className="canvas-shell">
+          <section className={`canvas-shell ${showProjectLottieBackground && projectSkyEnabled ? "project-lottie-sky-active" : ""}`}>
+            {showProjectLottieBackground && projectSkyEnabled && (
+              <>
+                <img className="project-sky-poster" src="/project-sky-poster.png" alt="" aria-hidden="true" />
+                <Suspense fallback={null}><ProjectSpaceAnimation /></Suspense>
+                <MapAmbientFlybys />
+              </>
+            )}
             <div className="cosmic-effects" aria-hidden="true">
               <i className="shooting-star shooting-star-one" />
               <i className="shooting-star shooting-star-two" />
@@ -568,19 +707,38 @@ export default function Home() {
                 {nodes.map((node) => {
                   const meta = kindMeta[node.kind];
                   const status = statusMeta[node.status];
+                  const cardTheme = cardThemeFor(node);
                   const NodeIcon = meta.Icon;
                   const matches = !query || `${node.name} ${node.description} ${node.owner}`.toLocaleLowerCase().includes(query);
                   const childCount = nodes.filter((candidate) => candidate.parentId === node.id).length;
                   return (
                     <article
                       key={node.id}
+                      data-project-node-id={node.id}
+                      data-card-theme={cardTheme}
+                      data-card-tone={cardThemeMeta[cardTheme].tone}
+                      tabIndex={0}
+                      role="button"
+                      title="Clique duas vezes para inspecionar o núcleo"
+                      aria-label={`Selecionar ${meta.label.toLocaleLowerCase()} ${node.name}`}
                       className={`node-card ${selectedId === node.id ? "selected" : ""} ${draggingId === node.id ? "dragging" : ""} ${matches ? "" : "search-muted"}`}
                       style={{ left: node.x, top: node.y, "--accent": meta.color, "--status": status.color } as React.CSSProperties}
+                      onDoubleClick={(event) => {
+                        if ((event.target as HTMLElement).closest("button, a")) return;
+                        event.preventDefault();
+                        event.stopPropagation();
+                        dragRef.current = null;
+                        setDraggingId(null);
+                        openInspector(node.id);
+                      }}
+                      onKeyDown={(event) => {
+                        if (event.key !== "Enter" && event.key !== " ") return;
+                        event.preventDefault();
+                        selectNode(node.id);
+                      }}
                       onPointerDown={(event) => {
                         if (event.button !== 0) return;
                         if ((event.target as HTMLElement).closest("button, a")) return;
-                        event.preventDefault();
-                        event.currentTarget.setPointerCapture(event.pointerId);
                         const rect = event.currentTarget.getBoundingClientRect();
                         dragRef.current = { id: node.id, dx: (event.clientX - rect.left) / zoom, dy: (event.clientY - rect.top) / zoom };
                         setDraggingId(node.id);
@@ -591,6 +749,7 @@ export default function Home() {
                         <span className="node-symbol"><NodeIcon size={16} strokeWidth={1.55} /></span>
                         <span className="node-kind">{meta.label}</span>
                         <span className="node-actions">
+                          <button data-tooltip="Inspecionar bloco" aria-label={`Inspecionar ${node.name}`} onClick={(event) => { event.stopPropagation(); openInspector(node.id); }}><Eye size={13} /></button>
                           <button data-tooltip="Editar bloco" aria-label={`Editar ${node.name}`} onClick={(event) => { event.stopPropagation(); openEditor(node.id); }}><Pencil size={13} /></button>
                           <button data-tooltip="Adicionar conexão" aria-label={`Adicionar conexão em ${node.name}`} onClick={() => addNode(node.id)}><Plus size={15} /></button>
                         </span>
@@ -621,7 +780,74 @@ export default function Home() {
               <i />
               <button data-tooltip="Enquadrar tudo" onClick={fitMap} aria-label="Enquadrar toda a estrutura"><Focus size={14} /></button>
             </div>
-            <div className="canvas-tip">Zoom suave pela roda · Arraste o fundo para navegar · Arraste cartões para organizar</div>
+            <div className="canvas-tip">Zoom suave pela roda · Arraste o fundo para navegar · Duplo clique inspeciona</div>
+            {inspectedId && (() => {
+              const node = nodes.find((candidate) => candidate.id === inspectedId);
+              if (!node) return null;
+              const meta = kindMeta[node.kind];
+              const status = statusMeta[node.status];
+              const cardTheme = cardThemeFor(node);
+              const NodeIcon = meta.Icon;
+              const childCount = nodes.filter((candidate) => candidate.parentId === node.id).length;
+              return (
+                <div
+                  className="node-inspection-layer"
+                  role="presentation"
+                  onPointerDown={(event) => {
+                    if (event.target === event.currentTarget) closeInspector();
+                  }}
+                >
+                  <article
+                    ref={inspectedCardRef}
+                    className="node-card node-card-inspection selected"
+                    data-card-theme={cardTheme}
+                    data-card-tone={cardThemeMeta[cardTheme].tone}
+                    role="dialog"
+                    aria-modal="true"
+                    aria-label={`Inspecionando ${node.name}`}
+                    tabIndex={-1}
+                    style={{ "--accent": meta.color, "--status": status.color } as React.CSSProperties}
+                    onKeyDown={(event) => {
+                      if (event.key !== "Tab") return;
+                      const focusable = Array.from(event.currentTarget.querySelectorAll<HTMLElement>("button:not(:disabled), a[href]"));
+                      if (!focusable.length) return;
+                      const first = focusable[0];
+                      const last = focusable[focusable.length - 1];
+                      if (event.shiftKey && (document.activeElement === first || document.activeElement === event.currentTarget)) {
+                        event.preventDefault();
+                        last.focus();
+                      } else if (!event.shiftKey && document.activeElement === last) {
+                        event.preventDefault();
+                        first.focus();
+                      }
+                    }}
+                  >
+                    <div className="node-top">
+                      <span className="node-symbol"><NodeIcon size={16} strokeWidth={1.55} /></span>
+                      <span className="node-kind">{meta.label}</span>
+                      <span className="node-actions">
+                        <button data-tooltip="Fechar inspeção" aria-label={`Fechar inspeção de ${node.name}`} onClick={closeInspector}><X size={13} /></button>
+                        <button data-tooltip="Editar bloco" aria-label={`Editar ${node.name}`} onClick={() => openEditor(node.id)}><Pencil size={13} /></button>
+                        <button data-tooltip="Adicionar conexão" aria-label={`Adicionar conexão em ${node.name}`} onClick={() => addNode(node.id)}><Plus size={15} /></button>
+                      </span>
+                    </div>
+                    <h2>{node.name}</h2>
+                    <p>{node.description}</p>
+                    <div className="node-status"><i />{status.label}<span>{node.progress}%</span></div>
+                    <div className="progress-track"><i style={{ width: `${node.progress}%` }} /></div>
+                    <footer>
+                      <span className="owner-avatar">{node.owner.slice(0, 2).toUpperCase()}</span>
+                      <span>{node.owner}</span>
+                      <span className="node-links">
+                        {node.githubUrl && <a data-tooltip="Abrir GitHub" href={externalUrl(node.githubUrl)} target="_blank" rel="noreferrer" aria-label={`Abrir GitHub de ${node.name}`}><Github size={11} /></a>}
+                        {node.websiteUrl && <a data-tooltip="Abrir site" href={externalUrl(node.websiteUrl)} target="_blank" rel="noreferrer" aria-label={`Abrir site de ${node.name}`}><Globe2 size={11} /></a>}
+                        {childCount > 0 && <em><Network size={10} /> {childCount}</em>}
+                      </span>
+                    </footer>
+                  </article>
+                </div>
+              );
+            })()}
           </section>
         ) : view === "visao" ? (
           <Overview
@@ -630,7 +856,7 @@ export default function Home() {
             attentionNodes={attentionNodes}
             completeCount={completeCount}
             averageProgress={averageProgress}
-            onSelect={(id) => { setSelectedId(id); setEditorOpen(false); setView("mapa"); }}
+            onSelect={(id) => { setSelectedId(id); setEditorOpen(false); setProjectSkyEnabled(true); setView("mapa"); }}
             onOpenSummary={() => setQuickPanel("summary")}
           />
         ) : view === "colaboracao" ? (
@@ -655,6 +881,31 @@ export default function Home() {
                 <div><small>{kindMeta[selected.kind].label}</small><strong>{selected.name}</strong></div>
                 <button onClick={() => setEditorOpen(false)} aria-label="Fechar painel"><X size={16} /></button>
               </div>
+
+              <fieldset className="card-theme-picker">
+                <legend>Aparência do cartão</legend>
+                <div role="radiogroup" aria-label="Cor do cartão" data-labstar-liquid-group>
+                  {(Object.keys(cardThemeMeta) as CardTheme[]).map((theme) => {
+                    const option = cardThemeMeta[theme];
+                    const active = cardThemeFor(selected) === theme;
+                    return (
+                      <button
+                        key={theme}
+                        type="button"
+                        role="radio"
+                        aria-checked={active}
+                        className={active ? "active" : ""}
+                        onClick={() => updateSelected({ cardTheme: theme })}
+                        title={option.label}
+                      >
+                        <i style={{ "--card-theme-swatch": option.swatch } as React.CSSProperties} />
+                        <span>{option.label}</span>
+                        {active && <Check size={11} aria-hidden="true" />}
+                      </button>
+                    );
+                  })}
+                </div>
+              </fieldset>
 
               <div className="field-grid">
                 <label className="full">Nome<input value={selected.name} onChange={(event) => updateSelected({ name: event.target.value })} /></label>
@@ -711,9 +962,13 @@ export default function Home() {
           onOpenTeam={() => { setQuickPanel(null); setView("equipe"); }}
           onOpenLegal={() => { setQuickPanel(null); setLegalOpen(true); }}
           onMemberUpdated={(member) => setSession((current) => current ? { ...current, member } : current)}
+          githubConnectionResult={githubConnectionResult}
         />
       )}
       {legalOpen && <LegalModal anchored onClose={() => setLegalOpen(false)} />}
+      <ProjectLottieExperience projectLoadToken={projectLoadToken} />
+      <SoundToggleLottie token={soundFeedbackToken} />
+      <MascotCelebrationHost memberId={session.member.id} />
     </main>
   );
 }
@@ -798,13 +1053,56 @@ function TeamDirectory({ nodes, currentMember, onMemberUpdated }: { nodes: Struc
   const [loading, setLoading] = useState(true);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [inviteOpen, setInviteOpen] = useState(false);
+  const [removalTarget, setRemovalTarget] = useState<Member | null>(null);
+  const [removing, setRemoving] = useState(false);
+  const [accountDeletionTarget, setAccountDeletionTarget] = useState<Member | "manual" | null>(null);
+  const [accountDeletionEmail, setAccountDeletionEmail] = useState("");
+  const [accountDeletionConfirmation, setAccountDeletionConfirmation] = useState("");
+  const [accountDeletionError, setAccountDeletionError] = useState("");
+  const [deletingAccount, setDeletingAccount] = useState(false);
+  const [editingMemberId, setEditingMemberId] = useState<string | null>(null);
+  const [memberDraft, setMemberDraft] = useState<Member | null>(null);
+  const [savingMember, setSavingMember] = useState(false);
   const [message, setMessage] = useState("");
   const [memberSearch, setMemberSearch] = useState("");
   const [teamTab, setTeamTab] = useState<"members" | "roles">("members");
   const [invite, setInvite] = useState({ email: "", name: "", jobTitle: "", area: "", role: "member" as "admin" | "manager" | "member" | "viewer" });
+  const onlineMemberIds = useMemberPresence(currentMember.id);
 
   async function loadMembers() {
     setLoading(true);
+    if (isDevPreviewMode()) {
+      const csoRole: JobRole = {
+        id: "preview-cso",
+        name: "CSO",
+        department: "Diretoria Científica",
+        color: "#8B1E3F",
+        icon: "star",
+        position: 16,
+        permissions: [],
+      };
+      const suspendedScientist: Member = {
+        id: "preview-suspended-member",
+        email: "cientista.preview@labstar.local",
+        name: "Dra. Helena Preview",
+        status: "suspended",
+        role: "member",
+        jobTitle: "Chief Scientific Officer",
+        area: "Diretoria Científica",
+        assignments: ["labstar"],
+        createdAt: new Date().toISOString(),
+        lastSeenAt: new Date().toISOString(),
+        avatarPath: "",
+        avatarUrl: "",
+        jobRoles: [csoRole],
+      };
+      setMembers([currentMember, suspendedScientist]);
+      setJobRoles([...currentMember.jobRoles, csoRole]);
+      setCanManage(true);
+      setSelectedId((current) => current ?? suspendedScientist.id);
+      setLoading(false);
+      return;
+    }
     try {
       const [data, roles] = await Promise.all([listMembers(), listJobRoles()]);
       setMembers(data.members);
@@ -820,7 +1118,7 @@ function TeamDirectory({ nodes, currentMember, onMemberUpdated }: { nodes: Struc
 
   useEffect(() => { loadMembers(); }, []);
 
-  async function patchMember(id: string, updates: Partial<Member>) {
+  async function patchMember(id: string, updates: MemberAdministrationUpdate) {
     setMessage("Salvando alterações...");
     try {
       const updated = await updateRemoteMember(id, updates);
@@ -829,6 +1127,49 @@ function TeamDirectory({ nodes, currentMember, onMemberUpdated }: { nodes: Struc
       setMessage("Alterações salvas");
     } catch {
       setMessage("Não foi possível salvar");
+    }
+  }
+
+  function startMemberEdit(member: Member) {
+    setEditingMemberId(member.id);
+    setMemberDraft({
+      ...member,
+      assignments: [...member.assignments],
+      jobRoles: [...member.jobRoles],
+    });
+    setMessage("");
+  }
+
+  function cancelMemberEdit() {
+    setEditingMemberId(null);
+    setMemberDraft(null);
+    setMessage("");
+  }
+
+  async function saveMemberEdit() {
+    if (!memberDraft || editingMemberId !== memberDraft.id || savingMember) return;
+    setSavingMember(true);
+    setMessage("Salvando alterações...");
+    try {
+      const [updated, assignedRoles] = await Promise.all([
+        updateRemoteMember(memberDraft.id, {
+          jobTitle: memberDraft.jobTitle,
+          area: memberDraft.area,
+          role: memberDraft.role,
+          assignments: memberDraft.assignments,
+        }),
+        setMemberJobRoles(memberDraft.id, memberDraft.jobRoles.map((role) => role.id)),
+      ]);
+      const savedMember = { ...updated, jobRoles: assignedRoles };
+      setMembers((current) => current.map((member) => member.id === savedMember.id ? savedMember : member));
+      onMemberUpdated(savedMember);
+      setEditingMemberId(null);
+      setMemberDraft(null);
+      setMessage("Alterações salvas");
+    } catch {
+      setMessage("Não foi possível salvar as alterações. Nada foi apagado.");
+    } finally {
+      setSavingMember(false);
     }
   }
 
@@ -851,28 +1192,110 @@ function TeamDirectory({ nodes, currentMember, onMemberUpdated }: { nodes: Struc
     }
   }
 
+  async function confirmMemberRemoval() {
+    if (!removalTarget || removing) return;
+    const target = removalTarget;
+    setRemoving(true);
+    setMessage("Removendo o acesso…");
+    try {
+      const suspended = await updateRemoteMember(target.id, { status: "suspended" });
+      setMembers((current) => current.map((member) => member.id === target.id ? suspended : member));
+      setMessage(`${target.name} foi suspenso e já não pode entrar. Agora você pode excluir a conta e o login permanentemente.`);
+      setRemovalTarget(null);
+    } catch (error) {
+      const code = (error as { code?: string }).code;
+      if (code === "self_removal_forbidden") {
+        setMessage("Você não pode remover sua própria conta.");
+      } else if (code === "owner_removal_forbidden") {
+        setMessage("O proprietário nunca pode ser removido.");
+      } else if (code === "permission_denied" || code === "42501") {
+        setMessage("Sua conta não tem permissão para remover este membro.");
+      } else {
+        setMessage("Não foi possível suspender este acesso. Nada foi alterado.");
+      }
+    } finally {
+      setRemoving(false);
+    }
+  }
+
+  function openAccountDeletion(target: Member | "manual") {
+    setAccountDeletionTarget(target);
+    setAccountDeletionEmail(target === "manual" ? "" : target.email);
+    setAccountDeletionConfirmation("");
+    setAccountDeletionError("");
+    setMessage("");
+  }
+
+  function closeAccountDeletion() {
+    if (deletingAccount) return;
+    setAccountDeletionTarget(null);
+    setAccountDeletionEmail("");
+    setAccountDeletionConfirmation("");
+    setAccountDeletionError("");
+  }
+
+  async function confirmAccountDeletion() {
+    if (!accountDeletionTarget || deletingAccount) return;
+    const normalizedEmail = accountDeletionEmail.trim().toLocaleLowerCase();
+    if (!normalizedEmail || normalizedEmail !== accountDeletionConfirmation.trim().toLocaleLowerCase()) {
+      setAccountDeletionError("Digite exatamente o mesmo e-mail para confirmar a exclusão.");
+      return;
+    }
+
+    setDeletingAccount(true);
+    setAccountDeletionError("");
+    try {
+      const result = await permanentlyDeleteTeamAccount(normalizedEmail, accountDeletionConfirmation);
+      setMembers((current) => {
+        const remaining = current.filter((member) =>
+          member.id !== result.memberId && member.email.toLocaleLowerCase() !== normalizedEmail
+        );
+        setSelectedId((currentSelected) => remaining.some((member) => member.id === currentSelected)
+          ? currentSelected
+          : remaining[0]?.id ?? null);
+        return remaining;
+      });
+      const successMessage = result.authIdentityDeleted
+        ? `A conta ${normalizedEmail} e o login correspondente foram excluídos do Labstar.`
+        : `O cadastro ${normalizedEmail} foi encerrado. Não existia mais um login Auth vinculado.`;
+      setMessage(result.cleanupWarning
+        ? `${successMessage} A limpeza do avatar ficou pendente e pode ser repetida sem reativar o acesso.`
+        : successMessage);
+      setAccountDeletionTarget(null);
+      setAccountDeletionEmail("");
+      setAccountDeletionConfirmation("");
+      setAccountDeletionError("");
+    } catch (error) {
+      const code = (error as { code?: string }).code;
+      const errors: Record<string, string> = {
+        self_deletion_forbidden: "Você não pode excluir sua própria conta por esta tela.",
+        owner_deletion_forbidden: "A conta do proprietário nunca pode ser excluída pela administração da equipe.",
+        owner_required: "Somente o proprietário pode excluir outro administrador ou limpar um login antigo por e-mail.",
+        member_must_be_suspended: "Suspenda este membro antes de excluir permanentemente a conta.",
+        confirmation_email_mismatch: "O e-mail de confirmação não corresponde à conta escolhida.",
+        account_not_found: "Nenhum membro ou login do Labstar foi encontrado com este e-mail.",
+        permission_denied: "Sua conta não tem permissão para excluir este login.",
+        member_not_authorized: "Sua sessão não possui autorização administrativa válida.",
+        authentication_failed: "Sua sessão expirou. Entre novamente antes de repetir a exclusão.",
+        admin_api_unavailable: "O serviço administrativo está indisponível. Nada foi anonimizado; tente novamente em instantes.",
+        auth_identity_delete_failed: "O Supabase Auth não concluiu a exclusão. O cadastro interno não foi anonimizado.",
+        account_cleanup_incomplete: "O login foi removido, mas a anonimização do cadastro precisa ser repetida. Mantenha este membro suspenso.",
+        invalid_account_deletion_response: "O serviço respondeu sem confirmar a exclusão. Recarregue a equipe antes de tentar novamente.",
+      };
+      setAccountDeletionError(errors[code ?? ""] ?? "Não foi possível excluir a conta. Nada foi alterado.");
+    } finally {
+      setDeletingAccount(false);
+    }
+  }
+
   const selected = members.find((member) => member.id === selectedId) ?? null;
+  const editingSelected = Boolean(selected && editingMemberId === selected.id && memberDraft);
+  const memberForm = editingSelected && memberDraft ? memberDraft : selected;
   const pending = members.filter((member) => member.status === "pending");
   const active = members.filter((member) => member.status === "active");
   const managers = members.filter((member) => member.role === "owner" || member.role === "admin" || member.role === "manager");
   const memberQuery = memberSearch.trim().toLocaleLowerCase();
   const visibleMembers = members.filter((member) => !memberQuery || [member.name, member.email, member.area, member.jobTitle].some((value) => value.toLocaleLowerCase().includes(memberQuery)));
-
-  async function toggleJobRole(member: Member, role: JobRole) {
-    const currentIds = member.jobRoles.map((item) => item.id);
-    const roleIds = currentIds.includes(role.id) ? currentIds.filter((id) => id !== role.id) : [...currentIds, role.id];
-    setMessage("Salvando cargos...");
-    try {
-      const assigned = await setMemberJobRoles(member.id, roleIds);
-      const updated = { ...member, jobRoles: assigned, jobTitle: assigned[0]?.name ?? member.jobTitle };
-      if (assigned[0]?.name && assigned[0].name !== member.jobTitle) await updateRemoteMember(member.id, { jobTitle: assigned[0].name });
-      setMembers((current) => current.map((item) => item.id === member.id ? updated : item));
-      onMemberUpdated(updated);
-      setMessage("Cargos atualizados");
-    } catch {
-      setMessage("Não foi possível atualizar os cargos");
-    }
-  }
 
   if (teamTab === "roles") {
     return (
@@ -880,7 +1303,7 @@ function TeamDirectory({ nodes, currentMember, onMemberUpdated }: { nodes: Struc
         <header className="team-head">
           <div><span className="overline">ADMINISTRAÇÃO / CARGOS</span><h1>Cargos e permissões</h1><p>Crie uma hierarquia profissional com cor, escudo e permissões próprias.</p></div>
         </header>
-        <div className="team-section-tabs">
+        <div className="team-section-tabs" data-labstar-liquid-group>
           <button onClick={() => setTeamTab("members")}><Users size={15} /> Membros</button>
           <button className="active" onClick={() => setTeamTab("roles")}><ShieldCheck size={15} /> Cargos</button>
         </div>
@@ -893,9 +1316,12 @@ function TeamDirectory({ nodes, currentMember, onMemberUpdated }: { nodes: Struc
     <section className="team-page">
       <header className="team-head">
         <div><span className="overline">ADMINISTRAÇÃO / PESSOAS</span><h1>Equipe Labstar</h1><p>Gerencie quem entra, onde trabalha e o que pode acessar.</p></div>
-        {canManage && <button onClick={() => setInviteOpen(true)}><UserPlus size={14} /> Autorizar membro</button>}
+        {canManage && <div className="team-head-actions">
+          {currentMember.role === "owner" && <button className="secondary" type="button" onClick={() => openAccountDeletion("manual")}><Trash2 size={14} /> Excluir login antigo</button>}
+          <button type="button" onClick={() => setInviteOpen(true)}><UserPlus size={14} /> Autorizar membro</button>
+        </div>}
       </header>
-      <div className="team-section-tabs">
+      <div className="team-section-tabs" data-labstar-liquid-group>
         <button className="active" onClick={() => setTeamTab("members")}><Users size={15} /> Membros</button>
         {canManage && <button onClick={() => setTeamTab("roles")}><ShieldCheck size={15} /> Cargos</button>}
         <span>Conectado como {currentMember.name}</span>
@@ -919,8 +1345,11 @@ function TeamDirectory({ nodes, currentMember, onMemberUpdated }: { nodes: Struc
           ) : (
             <div className="member-list">
               {visibleMembers.map((member) => (
-                <button key={member.id} className={selectedId === member.id ? "active" : ""} onClick={() => setSelectedId(member.id)}>
-                  <Avatar name={member.name} url={member.avatarUrl} size="sm" />
+                <button key={member.id} className={selectedId === member.id ? "active" : ""} onClick={() => {
+                  setSelectedId(member.id);
+                  if (editingMemberId !== member.id) cancelMemberEdit();
+                }}>
+                  <Avatar name={member.name} url={member.avatarUrl} size="sm" status={memberPresenceStatus(onlineMemberIds, currentMember.id, member.id)} />
                   <span className="member-main"><b>{member.name}</b><small>{member.email}</small></span>
                   <span className="member-area">{member.area || "Área não definida"}</span>
                   <span className={`member-state ${member.status}`}><i />{member.status === "active" ? "Ativo" : member.status === "pending" ? "Pendente" : "Suspenso"}</span>
@@ -936,31 +1365,42 @@ function TeamDirectory({ nodes, currentMember, onMemberUpdated }: { nodes: Struc
           {selected ? (
             <>
               <div className="member-profile">
-                <Avatar name={selected.name} url={selected.avatarUrl} size="lg" />
-                <div><strong>{selected.name}</strong><small>{selected.email}</small></div>
+                <Avatar name={selected.name} url={selected.avatarUrl} size="lg" status={memberPresenceStatus(onlineMemberIds, currentMember.id, selected.id)} />
+                <div><strong>{selected.name}{selected.id === currentMember.id ? " (você)" : ""}</strong><small>{selected.email}</small></div>
                 {selected.jobRoles[0] ? <RoleBadge role={selected.jobRoles[0]} compact /> : <span className={`role-badge ${selected.role}`}>{roleLabel(selected.role)}</span>}
               </div>
+              <MemberProfileConnection memberId={selected.id} />
 
               {selected.status === "pending" && canManage && (
                 <div className="approval-box"><ShieldCheck size={18} /><div><strong>Solicitação de acesso</strong><p>Confirme os dados abaixo antes de liberar esta pessoa.</p></div></div>
               )}
 
-              <div className="member-fields">
-                <label className="full">Nome completo<input value={selected.name} disabled={!canManage} onChange={(event) => setMembers((current) => current.map((member) => member.id === selected.id ? { ...member, name: event.target.value } : member))} onBlur={() => patchMember(selected.id, { name: selected.name })} placeholder="Nome profissional do membro" /></label>
-                <label>Cargo<input value={selected.jobTitle} disabled={!canManage} onChange={(event) => setMembers((current) => current.map((member) => member.id === selected.id ? { ...member, jobTitle: event.target.value } : member))} onBlur={() => patchMember(selected.id, { jobTitle: selected.jobTitle })} placeholder="Ex.: Desenvolvedor de jogos" /></label>
-                <label>Área<input value={selected.area} disabled={!canManage} onChange={(event) => setMembers((current) => current.map((member) => member.id === selected.id ? { ...member, area: event.target.value } : member))} onBlur={() => patchMember(selected.id, { area: selected.area })} placeholder="Ex.: Labstar Games" /></label>
-                <label>Nível de acesso<select value={selected.role} disabled={!canManage || selected.role === "owner"} onChange={(event) => patchMember(selected.id, { role: event.target.value as Member["role"] })}>
-                  {selected.role === "owner" && <option value="owner">Fundador</option>}
+              {canManage && !editingSelected && (
+                <div className="member-actions">
+                  <button className="approve-member" type="button" onClick={() => startMemberEdit(selected)}><Pencil size={14} /> Editar membro</button>
+                </div>
+              )}
+
+              {memberForm && <div className="member-fields">
+                <label className="full">Nome do perfil<input value={memberForm.name} readOnly aria-readonly="true" /><small>Somente esta pessoa pode alterar o próprio nome nas configurações da conta.</small></label>
+                <label>Cargo<input value={memberForm.jobTitle} disabled={!editingSelected} onChange={(event) => setMemberDraft((current) => current ? { ...current, jobTitle: event.target.value } : current)} placeholder="Ex.: Desenvolvedor de jogos" /></label>
+                <label>Área<input value={memberForm.area} disabled={!editingSelected} onChange={(event) => setMemberDraft((current) => current ? { ...current, area: event.target.value } : current)} placeholder="Ex.: Labstar Games" /></label>
+                <label>Nível de acesso<select value={memberForm.role} disabled={!editingSelected || selected.role === "owner" || selected.id === currentMember.id} onChange={(event) => setMemberDraft((current) => current ? { ...current, role: event.target.value as Member["role"] } : current)}>
+                  {memberForm.role === "owner" && <option value="owner">Fundador</option>}
                   <option value="admin">Administrador</option><option value="manager">Gestor</option><option value="member">Membro</option><option value="viewer">Convidado somente leitura</option>
                 </select></label>
-              </div>
+              </div>}
 
               <div className="job-role-assignment">
-                <div><strong>Cargos profissionais</strong><small>O primeiro cargo na hierarquia define a cor e o escudo exibidos.</small></div>
+                <div><strong>Cargos profissionais</strong></div>
                 <div>
                   {jobRoles.map((role) => {
-                    const checked = selected.jobRoles.some((item) => item.id === role.id);
-                    return <label key={role.id} className={checked ? "active" : ""}><input type="checkbox" checked={checked} disabled={!canManage} onChange={() => void toggleJobRole(selected, role)} /><RoleBadge role={role} compact /></label>;
+                    const checked = memberForm?.jobRoles.some((item) => item.id === role.id) ?? false;
+                    const selectedOrder = memberForm?.jobRoles.findIndex((item) => item.id === role.id) ?? -1;
+                    return <label key={role.id} className={checked ? "active" : ""}><input type="checkbox" checked={checked} disabled={!editingSelected} onChange={() => setMemberDraft((current) => current ? {
+                      ...current,
+                      jobRoles: checked ? current.jobRoles.filter((item) => item.id !== role.id) : [...current.jobRoles, role],
+                    } : current)} />{selectedOrder >= 0 && <span className="job-role-order" aria-label={`Ordem ${selectedOrder + 1}`}>{selectedOrder + 1}</span>}<RoleBadge role={role} compact /></label>;
                   })}
                 </div>
               </div>
@@ -969,19 +1409,32 @@ function TeamDirectory({ nodes, currentMember, onMemberUpdated }: { nodes: Struc
                 <div><strong>Núcleos atribuídos</strong><small>Escolha onde esta pessoa poderá atuar.</small></div>
                 <div className="assignment-list">
                   {nodes.map((node) => {
-                    const checked = selected.assignments.includes(node.id);
-                    return <label key={node.id}><input type="checkbox" checked={checked} disabled={!canManage} onChange={() => {
-                      const assignments = checked ? selected.assignments.filter((id) => id !== node.id) : [...selected.assignments, node.id];
-                      patchMember(selected.id, { assignments });
+                    const checked = memberForm?.assignments.includes(node.id) ?? false;
+                    return <label key={node.id}><input type="checkbox" checked={checked} disabled={!editingSelected} onChange={() => {
+                      if (!editingSelected) return;
+                      setMemberDraft((current) => current ? {
+                        ...current,
+                        assignments: checked ? current.assignments.filter((id) => id !== node.id) : [...current.assignments, node.id],
+                      } : current);
                     }} /><span>{kindMeta[node.kind].label}</span><b>{node.name}</b></label>;
                   })}
                 </div>
               </div>
 
-              {canManage && selected.role !== "owner" && (
+              {editingSelected && (
+                <div className="member-actions">
+                  <button className="approve-member" type="button" disabled={savingMember} onClick={() => void saveMemberEdit()}>{savingMember ? <LoaderCircle className="spin" size={14} /> : <Save size={14} />} {savingMember ? "Salvando…" : "Salvar alterações"}</button>
+                  <button className="suspend-member" type="button" disabled={savingMember} onClick={cancelMemberEdit}><X size={14} /> Cancelar edição</button>
+                </div>
+              )}
+
+              {canManage && !editingSelected && selected.role !== "owner" && selected.id !== currentMember.id && (
                 <div className="member-actions">
                   {selected.status !== "active" && <button className="approve-member" onClick={() => patchMember(selected.id, { status: "active" })}><UserCheck size={14} /> Aprovar acesso</button>}
                   {selected.status === "active" && <button className="suspend-member" onClick={() => patchMember(selected.id, { status: "suspended" })}><LockKeyhole size={14} /> Suspender acesso</button>}
+                  {selected.status !== "suspended"
+                    ? <button className="remove-member" onClick={() => setRemovalTarget(selected)}><Trash2 size={14} /> Remover do Labstar</button>
+                    : <button className="remove-member" onClick={() => openAccountDeletion(selected)}><Trash2 size={14} /> Excluir conta e login</button>}
                 </div>
               )}
               {message && <p className="team-message">{message}</p>}
@@ -1006,6 +1459,32 @@ function TeamDirectory({ nodes, currentMember, onMemberUpdated }: { nodes: Struc
           </form>
         </div>
       )}
+
+      {removalTarget && (
+        <div className="modal-backdrop" onMouseDown={() => !removing && setRemovalTarget(null)}>
+          <section className="invite-modal removal-modal" role="alertdialog" aria-modal="true" aria-labelledby="removal-title" onMouseDown={(event) => event.stopPropagation()}>
+            <div className="modal-head"><span><Trash2 size={17} /></span><div><strong id="removal-title">Remover acesso de {removalTarget.name}?</strong><small>Esta ação bloqueia a entrada desta pessoa no Labstar.</small></div><button type="button" disabled={removing} onClick={() => setRemovalTarget(null)} aria-label="Fechar"><X size={16} /></button></div>
+            <p>Esta é a primeira etapa: o membro será suspenso imediatamente e o histórico será preservado. Depois da suspensão, a administração poderá escolher “Excluir conta e login”.</p>
+            <div className="removal-identity"><Avatar name={removalTarget.name} url={removalTarget.avatarUrl} size="sm" /><span><strong>{removalTarget.name}</strong><small>{removalTarget.email}</small></span></div>
+            <div className="removal-actions"><button type="button" disabled={removing} onClick={() => setRemovalTarget(null)}>Cancelar</button><button className="confirm" type="button" disabled={removing} onClick={() => void confirmMemberRemoval()}>{removing ? <LoaderCircle className="spin" size={14} /> : <Trash2 size={14} />} Confirmar remoção</button></div>
+          </section>
+        </div>
+      )}
+
+      {accountDeletionTarget && (
+        <div className="modal-backdrop" onMouseDown={closeAccountDeletion}>
+          <section className="invite-modal removal-modal permanent-deletion-modal" role="alertdialog" aria-modal="true" aria-labelledby="account-deletion-title" aria-describedby="account-deletion-description" onMouseDown={(event) => event.stopPropagation()}>
+            <div className="modal-head"><span><Trash2 size={17} /></span><div><strong id="account-deletion-title">Excluir conta e login permanentemente?</strong><small>Esta ação não poderá ser desfeita.</small></div><button type="button" disabled={deletingAccount} onClick={closeAccountDeletion} aria-label="Fechar"><X size={16} /></button></div>
+            <p id="account-deletion-description">O acesso do Labstar e a identidade correspondente no Supabase Auth serão apagados. A conta Google/Gmail real da pessoa não será alterada, e o nome continuará apenas nas mensagens antigas para preservar o histórico.</p>
+            {accountDeletionTarget !== "manual" && <div className="removal-identity"><Avatar name={accountDeletionTarget.name} url={accountDeletionTarget.avatarUrl} size="sm" /><span><strong>{accountDeletionTarget.name}</strong><small>{accountDeletionTarget.email}</small></span></div>}
+            <label>E-mail da conta<input type="email" autoComplete="off" disabled={deletingAccount} readOnly={accountDeletionTarget !== "manual"} value={accountDeletionEmail} onChange={(event) => { setAccountDeletionEmail(event.target.value); setAccountDeletionError(""); }} placeholder="pessoa@email.com" /></label>
+            <label>Digite o e-mail novamente para confirmar<input type="email" autoComplete="off" disabled={deletingAccount} value={accountDeletionConfirmation} onChange={(event) => { setAccountDeletionConfirmation(event.target.value); setAccountDeletionError(""); }} placeholder={accountDeletionEmail || "pessoa@email.com"} /></label>
+            {accountDeletionError && <div className="modal-inline-error" role="alert"><AlertTriangle size={15} /><span>{accountDeletionError}</span></div>}
+            {deletingAccount && <div className="modal-inline-status" role="status" aria-live="polite"><LoaderCircle className="spin" size={14} />Excluindo o login com segurança…</div>}
+            <div className="removal-actions"><button type="button" disabled={deletingAccount} onClick={closeAccountDeletion}>Cancelar</button><button className="confirm" type="button" disabled={deletingAccount || !accountDeletionEmail.trim() || accountDeletionEmail.trim().toLocaleLowerCase() !== accountDeletionConfirmation.trim().toLocaleLowerCase()} onClick={() => void confirmAccountDeletion()}>{deletingAccount ? <LoaderCircle className="spin" size={14} /> : <Trash2 size={14} />} Excluir conta e login</button></div>
+          </section>
+        </div>
+      )}
     </section>
   );
 }
@@ -1017,6 +1496,7 @@ function QuickPanel({
   onOpenTeam,
   onOpenLegal,
   onMemberUpdated,
+  githubConnectionResult,
 }: {
   type: "profile" | "help" | "summary";
   session: SessionData;
@@ -1024,6 +1504,7 @@ function QuickPanel({
   onOpenTeam: () => void;
   onOpenLegal: () => void;
   onMemberUpdated: (member: Member) => void;
+  githubConnectionResult: GithubProfileConnectionResult;
 }) {
   const [profileName, setProfileName] = useState(session.member.name);
   const [profileState, setProfileState] = useState("");
@@ -1073,7 +1554,9 @@ function QuickPanel({
   async function saveProfileName() {
     setProfileState("Salvando nome...");
     try {
-      const updated = await updateOwnProfile(session.member.id, profileName);
+      const updated = isDevPreviewMode()
+        ? saveDevPreviewProfile(session.member, profileName)
+        : await updateOwnProfile(session.member.id, profileName);
       onMemberUpdated(updated);
       setProfileState("Perfil salvo");
     } catch {
@@ -1085,13 +1568,14 @@ function QuickPanel({
     <div ref={panelRef} className={`quick-panel ${type}`} role="dialog" aria-label={type === "help" ? "Central de ajuda" : type === "profile" ? "Sua conta" : "Resumo executivo"}>
       <div className="quick-head">
         <strong>{type === "profile" ? "Sua conta" : type === "help" ? "Central de ajuda" : "Resumo executivo"}</strong>
-        <button onClick={onClose}><X size={14} /></button>
+        <button type="button" onClick={onClose} aria-label="Fechar painel"><X size={14} /></button>
       </div>
       {type === "profile" && <>
         <div className="profile-card">
-          <Avatar name={session.member.name} url={session.member.avatarUrl} size="lg" status="online" />
+          <Avatar name={session.member.name} url={session.member.avatarUrl} size="lg" />
           <div><b>{session.member.name}</b><small>{session.member.email}</small></div>
         </div>
+        {session.member.bio?.trim() && <p className="profile-bio">{session.member.bio}</p>}
         <div className="profile-photo-actions">
           <button type="button" onClick={() => fileRef.current?.click()}><Pencil size={13} /> {session.member.avatarUrl ? "Trocar foto" : "Adicionar foto"}</button>
           {session.member.avatarPath && <button className="remove" type="button" onClick={() => void clearProfilePhoto()}><Trash2 size={13} /> Remover</button>}
@@ -1101,12 +1585,13 @@ function QuickPanel({
             event.target.value = "";
           }} />
         </div>
-        <label className="profile-name-field">Nome exibido<div><input value={profileName} onChange={(event) => setProfileName(event.target.value)} /><button type="button" onClick={() => void saveProfileName()}><Save size={13} /></button></div></label>
+        <label className="profile-name-field">Nome exibido<div><input value={profileName} onChange={(event) => setProfileName(event.target.value)} /><button type="button" onClick={() => void saveProfileName()} aria-label="Salvar nome exibido"><Save size={13} /></button></div></label>
         <div className="profile-info">
           <span>Cargo<b>{session.member.jobRoles[0]?.name || session.member.jobTitle || "Não definido"}</b></span>
           <span>Acesso<b>{roleLabel(session.member.role)}</b></span>
         </div>
         {session.member.jobRoles.length > 0 && <div className="profile-role-list">{session.member.jobRoles.slice(0, 4).map((role) => <RoleBadge role={role} compact key={role.id} />)}</div>}
+        <CurrentProfileConnection result={githubConnectionResult} />
         {profileState && <p className="profile-state">{profileState}</p>}
         <button className="panel-action" type="button" onClick={onOpenTeam}><UserCog size={13} /> Abrir equipe e cargos</button>
         <button className="sign-out" type="button" onClick={() => void signOut()}>Sair do Labstar</button>
@@ -1118,7 +1603,7 @@ function QuickPanel({
 }
 
 function AccessLoading() {
-  return <main className="access-screen"><div className="access-card secure-loading"><Wordmark large /><span className="security-orbit"><ShieldCheck size={21} /><i /></span><h1>Verificando acesso</h1><p>Validando sua identidade e as permissões do ambiente.</p><div className="security-progress"><i /></div><small>CONEXÃO PROTEGIDA</small></div></main>;
+  return <LabstarAccessLoader />;
 }
 
 function AccessGate() {
@@ -1188,17 +1673,6 @@ function Wordmark({ large = false, animated = false }: { large?: boolean; animat
       <span className="word-letter" aria-hidden="true">A</span>
       <span className="word-letter" aria-hidden="true">R</span>
     </strong>
-  );
-}
-
-function BrandIntro() {
-  return (
-    <main className="access-screen brand-intro" aria-label="Abrindo Labstar">
-      <div className="intro-mark">
-        <Wordmark large animated />
-        <span className="intro-progress" aria-hidden="true"><i /></span>
-      </div>
-    </main>
   );
 }
 

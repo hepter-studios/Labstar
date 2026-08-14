@@ -1,0 +1,8 @@
+dm_loading=isolated_queries
+emoji_picker=layout_fixed
+presence=realtime_visible_only
+message_notifications=in_app_and_system
+incoming_calls=global_bridge_system_attention_ringtone
+private_call_ui=redesigned
+attachments=8_files_50mb_any_extension
+windows_installer=branded_nsis_msi

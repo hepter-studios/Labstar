@@ -1,0 +1,6 @@
+Labstar Windows release confirmed
+version=11.2.9
+tag=desktop-v11.2.9
+source_sha=d9bdffc3ec10a4f0d1ff2fc296158890045c4bbf
+workflow_run=31151985521
+verified_at=2026-08-07T05:58:13.9297736Z

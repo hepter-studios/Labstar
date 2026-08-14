@@ -1,0 +1,174 @@
+name: APPLY_PHASE5_PUSH_NOTIFICATIONS
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: apply-phase5-push-notifications
+  cancel-in-progress: false
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Validate required secrets
+        env:
+          DATABASE_URL: ${{ secrets.SUPABASE_DATABASE_URL }}
+          ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: |
+          set -Eeuo pipefail
+          if [ -z "$DATABASE_URL" ]; then
+            echo "::error title=Secret ausente::Cadastre SUPABASE_DATABASE_URL em Settings > Secrets and variables > Actions."
+            exit 1
+          fi
+          if [ -z "$ACCESS_TOKEN" ]; then
+            echo "::error title=Secret ausente::Cadastre SUPABASE_ACCESS_TOKEN em Settings > Secrets and variables > Actions."
+            exit 1
+          fi
+
+      - name: Verify database and initialize Vault
+        env:
+          DATABASE_URL: ${{ secrets.SUPABASE_DATABASE_URL }}
+        run: |
+          set -Eeuo pipefail
+          echo "Conferindo conexão PostgreSQL…"
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -Atc "select 'connected:' || current_database() || ':' || current_user;"
+          echo "Conferindo Supabase Vault…"
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -c "create extension if not exists supabase_vault with schema vault;"
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -Atc "select case when to_regclass('vault.decrypted_secrets') is not null then 'vault:ready' else 'vault:missing' end;" | grep -q 'vault:ready'
+
+      - name: Prepare stable encrypted push secrets
+        env:
+          DATABASE_URL: ${{ secrets.SUPABASE_DATABASE_URL }}
+        run: |
+          set -Eeuo pipefail
+          vapid_public="$(psql "$DATABASE_URL" -Atc "select coalesce((select decrypted_secret from vault.decrypted_secrets where name='labstar_vapid_public_key' order by created_at desc limit 1), '')")"
+          vapid_private="$(psql "$DATABASE_URL" -Atc "select coalesce((select decrypted_secret from vault.decrypted_secrets where name='labstar_vapid_private_jwk' order by created_at desc limit 1), '')")"
+          push_secret="$(psql "$DATABASE_URL" -Atc "select coalesce((select decrypted_secret from vault.decrypted_secrets where name='labstar_push_webhook_secret' order by created_at desc limit 1), '')")"
+
+          if [ -z "$vapid_public" ] || [ -z "$vapid_private" ]; then
+            echo "Nenhuma chave VAPID estável encontrada; gerando o primeiro par…"
+            key_output="$(npx --yes --cache "$RUNNER_TEMP/npm-cache" @pushforge/builder@2.0.5 vapid)"
+            vapid_public="$(printf '%s\n' "$key_output" | awk '/^Public Key:/{getline; print; exit}')"
+            vapid_private="$(printf '%s\n' "$key_output" | awk '/^Private Key \(JWK\):/{getline; print; exit}')"
+          fi
+          if [ -z "$push_secret" ]; then
+            push_secret="$(openssl rand -hex 32)"
+          fi
+
+          test -n "$vapid_public"
+          test -n "$vapid_private"
+          test -n "$push_secret"
+          printf '%s' "$vapid_private" | jq -e '.kty == "EC" and .crv == "P-256" and (.d | length > 20)' >/dev/null
+          test "${#vapid_public}" -gt 20
+          echo "::add-mask::$vapid_public"
+          echo "::add-mask::$vapid_private"
+          echo "::add-mask::$push_secret"
+
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 \
+            -v vapid_public="$vapid_public" \
+            -v vapid_private="$vapid_private" \
+            -v push_secret="$push_secret" >/dev/null <<'SQL'
+          select set_config('labstar.vapid_public', :'vapid_public', false);
+          select set_config('labstar.vapid_private', :'vapid_private', false);
+          select set_config('labstar.push_secret', :'push_secret', false);
+          do $$
+          declare
+            secret_row record;
+            existing_id uuid;
+          begin
+            for secret_row in
+              select * from (values
+                ('labstar_vapid_public_key', 'labstar.vapid_public'),
+                ('labstar_vapid_private_jwk', 'labstar.vapid_private'),
+                ('labstar_push_webhook_secret', 'labstar.push_secret')
+              ) as configured_secret(secret_name, setting_name)
+            loop
+              select id into existing_id from vault.secrets where name = secret_row.secret_name limit 1;
+              if existing_id is null then
+                perform vault.create_secret(current_setting(secret_row.setting_name), secret_row.secret_name, 'Labstar Phase 5 push infrastructure');
+              else
+                perform vault.update_secret(existing_id, current_setting(secret_row.setting_name), secret_row.secret_name, 'Labstar Phase 5 push infrastructure');
+              end if;
+            end loop;
+          end $$;
+          SQL
+
+          printf 'LABSTAR_VAPID_PUBLIC_KEY=%s\n' "$vapid_public" >> "$GITHUB_ENV"
+          printf 'LABSTAR_VAPID_PRIVATE_JWK=%s\n' "$vapid_private" >> "$GITHUB_ENV"
+          printf 'LABSTAR_PUSH_WEBHOOK_SECRET=%s\n' "$push_secret" >> "$GITHUB_ENV"
+
+      - name: Backup affected schema
+        env:
+          DATABASE_URL: ${{ secrets.SUPABASE_DATABASE_URL }}
+        run: |
+          set -Eeuo pipefail
+          # The hosted Supabase project runs PostgreSQL 17.  ubuntu-latest
+          # currently exposes pg_dump 16, which refuses to back up a newer
+          # server.  The official PostgreSQL 17 image supplies the matching
+          # client without altering the runner's system packages.
+          docker run --rm \
+            --env DATABASE_URL \
+            --volume "$RUNNER_TEMP:/backup" \
+            postgres:17 \
+            pg_dump "$DATABASE_URL" --schema-only --no-owner --no-privileges \
+            --table=public.notifications --table=public.members \
+            --file=/backup/phase5-before.sql
+          test -s "$RUNNER_TEMP/phase5-before.sql"
+
+      - name: Apply Phase 5 database migration
+        env:
+          DATABASE_URL: ${{ secrets.SUPABASE_DATABASE_URL }}
+        run: psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f supabase/migrations/20260809010000_phase5_device_push_notifications.sql
+
+      - name: Configure and deploy the push function
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: |
+          set -Eeuo pipefail
+          supabase secrets set --project-ref pgzwyngxsxnheulvusdq \
+            LABSTAR_VAPID_PUBLIC_KEY="$LABSTAR_VAPID_PUBLIC_KEY" \
+            LABSTAR_VAPID_PRIVATE_JWK="$LABSTAR_VAPID_PRIVATE_JWK" \
+            LABSTAR_PUSH_WEBHOOK_SECRET="$LABSTAR_PUSH_WEBHOOK_SECRET"
+          supabase functions deploy labstar-push --project-ref pgzwyngxsxnheulvusdq --no-verify-jwt
+
+      - name: Audit installation
+        env:
+          DATABASE_URL: ${{ secrets.SUPABASE_DATABASE_URL }}
+        run: |
+          set -Eeuo pipefail
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -Atc "select to_regclass('public.push_subscriptions'), to_regprocedure('public.upsert_push_subscription(text,text,text,text,text,text)'), exists(select 1 from pg_trigger where tgname='notifications_enqueue_labstar_push' and not tgisinternal);"
+          curl --fail --silent --show-error https://pgzwyngxsxnheulvusdq.supabase.co/functions/v1/labstar-push | jq -e '.publicKey | length > 20'
+
+      - name: Publish safe diagnostic summary
+        if: always()
+        env:
+          DATABASE_URL: ${{ secrets.SUPABASE_DATABASE_URL }}
+        run: |
+          {
+            echo "## Phase 5 · diagnóstico"
+            echo
+            echo "- Resultado do job: **${{ job.status }}**"
+            echo "- Projeto: \`pgzwyngxsxnheulvusdq\`"
+            echo "- Supabase CLI: \`$(supabase --version 2>/dev/null || echo indisponível)\`"
+            echo "- PostgreSQL: \`$(psql --version 2>/dev/null || echo indisponível)\`"
+            if [ -n "$DATABASE_URL" ] && psql "$DATABASE_URL" -Atc 'select 1' >/dev/null 2>&1; then
+              echo "- Banco: conectado"
+              echo "- Vault: \`$(psql "$DATABASE_URL" -Atc "select coalesce(to_regclass('vault.decrypted_secrets')::text, 'ausente')" 2>/dev/null || echo erro)\`"
+              echo "- Push subscriptions: \`$(psql "$DATABASE_URL" -Atc "select coalesce(to_regclass('public.push_subscriptions')::text, 'ainda não criada')" 2>/dev/null || echo erro)\`"
+            else
+              echo "- Banco: conexão indisponível; confira o secret e se a URL é a conexão direta ou Session Pooler (porta 5432)."
+            fi
+            echo
+            echo "O passo vermelho acima contém o erro exato e agora falha com uma mensagem específica, sem imprimir chaves privadas."
+          } >> "$GITHUB_STEP_SUMMARY"

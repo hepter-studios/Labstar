@@ -1,0 +1,4 @@
+/* A ponte V2 mantém o campo global funcional após indexação e troca de tela. */
+.labstar-global-results:not(.global-search-v2) {
+  display: none !important;
+}

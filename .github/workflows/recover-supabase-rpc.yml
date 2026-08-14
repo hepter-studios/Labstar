@@ -1,0 +1,137 @@
+name: Recuperar convites sem Fly.io
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "supabase/labstar-supabase-v12-direct-rpc-recovery.sql"
+      - ".github/workflows/recover-supabase-rpc.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: labstar-supabase-rpc-recovery
+  cancel-in-progress: false
+
+jobs:
+  recover:
+    name: Backup, migração e auditoria
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+
+    steps:
+      - name: Baixar código oficial
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: Validar conexão protegida
+        shell: bash
+        env:
+          SUPABASE_DATABASE_URL: ${{ secrets.SUPABASE_DATABASE_URL }}
+        run: |
+          set -euo pipefail
+          if [ -z "${SUPABASE_DATABASE_URL:-}" ]; then
+            echo "O secret SUPABASE_DATABASE_URL não está configurado."
+            exit 1
+          fi
+
+      - name: Preparar cliente PostgreSQL 17
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker pull postgres:17-bookworm
+          docker run --rm postgres:17-bookworm psql --version
+
+      - name: Gerar backup antes da migração
+        shell: bash
+        env:
+          SUPABASE_DATABASE_URL: ${{ secrets.SUPABASE_DATABASE_URL }}
+        run: |
+          set -euo pipefail
+          mkdir -p backup
+          timestamp="$(date -u +'%Y-%m-%dT%H-%M-%SZ')"
+          docker run --rm \
+            -e SUPABASE_DATABASE_URL \
+            -e PGSSLMODE=require \
+            -e BACKUP_TIMESTAMP="${timestamp}" \
+            -v "${PWD}/backup:/backup" \
+            postgres:17-bookworm \
+            bash -euo pipefail -c '
+              pg_dump \
+                --dbname="${SUPABASE_DATABASE_URL}" \
+                --format=custom \
+                --no-owner \
+                --no-privileges \
+                --file="/backup/labstar-before-v12-${BACKUP_TIMESTAMP}.dump"
+            '
+          sha256sum backup/* > backup/SHA256SUMS.txt
+
+      - name: Aplicar migração v12
+        shell: bash
+        env:
+          SUPABASE_DATABASE_URL: ${{ secrets.SUPABASE_DATABASE_URL }}
+        run: |
+          set -euo pipefail
+          docker run --rm \
+            -e SUPABASE_DATABASE_URL \
+            -e PGSSLMODE=require \
+            -v "${PWD}:/workspace:ro" \
+            postgres:17-bookworm \
+            psql "${SUPABASE_DATABASE_URL}" \
+              --set ON_ERROR_STOP=1 \
+              --file /workspace/supabase/labstar-supabase-v12-direct-rpc-recovery.sql
+
+      - name: Auditar permissões finais
+        shell: bash
+        env:
+          SUPABASE_DATABASE_URL: ${{ secrets.SUPABASE_DATABASE_URL }}
+        run: |
+          set -euo pipefail
+          docker run --rm \
+            -e SUPABASE_DATABASE_URL \
+            -e PGSSLMODE=require \
+            postgres:17-bookworm \
+            psql "${SUPABASE_DATABASE_URL}" --set ON_ERROR_STOP=1 --tuples-only --no-align --command "
+              select
+                has_function_privilege('authenticated', 'public.create_member_invite_link_client(text,text,text,text,text,text,integer)', 'EXECUTE')
+                and has_function_privilege('anon', 'public.inspect_member_invite(text)', 'EXECUTE')
+                and has_function_privilege('authenticated', 'public.accept_member_invite(text)', 'EXECUTE')
+                and has_function_privilege('authenticated', 'public.revoke_member_invite(uuid)', 'EXECUTE')
+                and not has_table_privilege('anon', 'public.member_invites', 'SELECT')
+                and not has_table_privilege('authenticated', 'public.member_invites', 'SELECT');
+            " | tee permission-check.txt
+          grep -qx 't' permission-check.txt
+
+      - name: Registrar recuperação confirmada
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git pull --rebase origin main
+          mkdir -p docs/runtime
+          cat > docs/runtime/supabase-rpc-recovered.txt <<EOF
+          Labstar Supabase RPC recovery confirmed
+          migration=labstar-supabase-v12-direct-rpc-recovery.sql
+          source_sha=${GITHUB_SHA}
+          workflow_run=${GITHUB_RUN_ID}
+          verified_at=$(date -u +'%Y-%m-%dT%H:%M:%SZ')
+          EOF
+          git add docs/runtime/supabase-rpc-recovered.txt
+          git commit -m "Confirma recuperação dos convites no Supabase"
+          git push origin HEAD:main
+
+      - name: Guardar backup privado
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: labstar-before-direct-rpc-${{ github.run_number }}
+          path: backup/
+          if-no-files-found: warn
+          retention-days: 7
+          compression-level: 6

@@ -1,0 +1,242 @@
+[data-labstar-message-work] {
+  display: contents;
+}
+
+.message-to-work-button {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: #667187;
+  cursor: pointer;
+}
+
+.message-to-work-button:hover {
+  color: #a8bfff;
+  background: rgba(139, 174, 255, .08);
+}
+
+.message-work-backdrop {
+  position: fixed;
+  z-index: 2600;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  background: rgba(0, 0, 0, .7);
+  backdrop-filter: blur(12px);
+}
+
+.message-work-modal {
+  width: min(620px, 100%);
+  max-height: min(760px, calc(100vh - 36px));
+  overflow-y: auto;
+  padding: 0;
+  border: 1px solid #273149;
+  border-radius: 16px;
+  background: #090d14;
+  color: #edf2ff;
+  box-shadow: 0 30px 100px rgba(0, 0, 0, .65);
+}
+
+.message-work-modal > header {
+  min-height: 68px;
+  padding: 13px 15px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 1px solid #1b2231;
+}
+
+.message-work-modal > header > div {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.message-work-modal > header > div > span {
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  background: rgba(139, 174, 255, .09);
+  color: #9eb8ff;
+}
+
+.message-work-modal > header strong,
+.message-work-modal > header small {
+  display: block;
+}
+
+.message-work-modal > header strong {
+  font-size: 13px;
+}
+
+.message-work-modal > header small {
+  margin-top: 3px;
+  color: #6e7990;
+  font-size: 10px;
+}
+
+.message-work-modal > header > button {
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #69758c;
+  cursor: pointer;
+}
+
+.message-work-origin {
+  margin: 14px 15px 2px;
+  padding: 12px;
+  border: 1px solid #1f283a;
+  border-radius: 11px;
+  background: #070a10;
+}
+
+.message-work-origin b {
+  color: #dce4f4;
+  font-size: 11px;
+}
+
+.message-work-origin > span {
+  margin-left: 8px;
+  color: #72809a;
+  font-size: 9px;
+}
+
+.message-work-origin p {
+  max-height: 110px;
+  margin: 8px 0 0;
+  overflow-y: auto;
+  color: #9ba6ba;
+  font-size: 11px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+
+.message-work-modal > label,
+.message-work-grid label {
+  display: grid;
+  gap: 6px;
+  color: #7f8ba2;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.message-work-modal > label {
+  margin: 12px 15px 0;
+}
+
+.message-work-modal input,
+.message-work-modal textarea,
+.message-work-modal select {
+  width: 100%;
+  border: 1px solid #202a3d;
+  border-radius: 9px;
+  background: #070a10;
+  color: #e6ecf9;
+  outline: 0;
+}
+
+.message-work-modal input,
+.message-work-modal select {
+  height: 38px;
+  padding: 0 10px;
+}
+
+.message-work-modal textarea {
+  resize: vertical;
+  padding: 10px;
+  line-height: 1.5;
+}
+
+.message-work-modal input:focus,
+.message-work-modal textarea:focus,
+.message-work-modal select:focus {
+  border-color: #5279d8;
+  box-shadow: 0 0 0 3px rgba(82, 121, 216, .11);
+}
+
+.message-work-grid {
+  margin: 12px 15px 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.message-work-modal > footer {
+  margin-top: 15px;
+  padding: 12px 15px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  border-top: 1px solid #1b2231;
+}
+
+.message-work-modal > footer button {
+  min-height: 37px;
+  padding: 0 13px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border: 1px solid #242e42;
+  border-radius: 9px;
+  background: #0c111a;
+  color: #bdc8dc;
+  font-weight: 740;
+  cursor: pointer;
+}
+
+.message-work-modal > footer button.primary {
+  border-color: #e6edff;
+  background: #e6edff;
+  color: #080b11;
+}
+
+.message-work-modal button:disabled {
+  opacity: .48;
+  cursor: not-allowed;
+}
+
+.message-work-toast {
+  position: fixed;
+  z-index: 2800;
+  right: 18px;
+  bottom: 18px;
+  max-width: min(360px, calc(100vw - 36px));
+  padding: 11px 13px;
+  border: 1px solid rgba(111, 210, 184, .28);
+  border-radius: 10px;
+  background: #0a1515;
+  color: #9de0cd;
+  box-shadow: 0 18px 50px rgba(0, 0, 0, .5);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+@media (max-width: 620px) {
+  .message-work-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .message-work-backdrop {
+    padding: 8px;
+  }
+
+  .message-work-modal {
+    max-height: calc(100vh - 16px);
+    border-radius: 13px;
+  }
+}

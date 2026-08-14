@@ -1,0 +1,104 @@
+name: Ativar arquivos do README de projetos
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "supabase/migrations/20260809232000_project_document_assets_cso.sql"
+      - ".github/workflows/apply-project-readme-assets.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: labstar-project-readme-assets
+  cancel-in-progress: false
+
+jobs:
+  migrate:
+    name: Backup, migração e auditoria
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - name: Baixar código oficial
+        uses: actions/checkout@v4
+
+      - name: Validar conexão protegida
+        shell: bash
+        env:
+          SUPABASE_DATABASE_URL: ${{ secrets.SUPABASE_DATABASE_URL }}
+        run: |
+          set -euo pipefail
+          if [ -z "${SUPABASE_DATABASE_URL:-}" ]; then
+            echo "O secret SUPABASE_DATABASE_URL não está configurado."
+            exit 1
+          fi
+
+      - name: Preparar PostgreSQL 17
+        run: |
+          docker pull postgres:17-bookworm
+          docker run --rm postgres:17-bookworm psql --version
+
+      - name: Backup antes da migração
+        shell: bash
+        env:
+          SUPABASE_DATABASE_URL: ${{ secrets.SUPABASE_DATABASE_URL }}
+        run: |
+          set -euo pipefail
+          mkdir -p backup
+          timestamp="$(date -u +'%Y-%m-%dT%H-%M-%SZ')"
+          docker run --rm \
+            -e SUPABASE_DATABASE_URL \
+            -e PGSSLMODE=require \
+            -e BACKUP_TIMESTAMP="${timestamp}" \
+            -v "${PWD}/backup:/backup" \
+            postgres:17-bookworm \
+            bash -euo pipefail -c '
+              pg_dump --dbname="${SUPABASE_DATABASE_URL}" --format=custom --no-owner --no-privileges --file="/backup/labstar-before-project-readme-assets-${BACKUP_TIMESTAMP}.dump"
+            '
+          sha256sum backup/*.dump > backup/SHA256SUMS.txt
+
+      - name: Aplicar arquivos de projeto e CSO
+        shell: bash
+        env:
+          SUPABASE_DATABASE_URL: ${{ secrets.SUPABASE_DATABASE_URL }}
+        run: |
+          set -euo pipefail
+          docker run --rm \
+            -e SUPABASE_DATABASE_URL \
+            -e PGSSLMODE=require \
+            -v "${PWD}:/workspace:ro" \
+            postgres:17-bookworm \
+            psql "${SUPABASE_DATABASE_URL}" --set ON_ERROR_STOP=1 --file /workspace/supabase/migrations/20260809232000_project_document_assets_cso.sql
+
+      - name: Auditar contratos finais
+        shell: bash
+        env:
+          SUPABASE_DATABASE_URL: ${{ secrets.SUPABASE_DATABASE_URL }}
+        run: |
+          set -euo pipefail
+          docker run --rm \
+            -e SUPABASE_DATABASE_URL \
+            -e PGSSLMODE=require \
+            postgres:17-bookworm \
+            psql "${SUPABASE_DATABASE_URL}" --set ON_ERROR_STOP=1 --tuples-only --no-align --command "
+              select
+                to_regclass('public.project_document_assets') is not null
+                and (select relrowsecurity from pg_class where oid='public.project_document_assets'::regclass)
+                and exists (select 1 from public.job_roles where lower(trim(name))='cso');
+            " | tee project-readme-assets-audit.txt
+          grep -qx 't' project-readme-assets-audit.txt
+
+      - name: Guardar backup privado
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: labstar-before-project-readme-assets-${{ github.run_number }}
+          path: |
+            backup/
+            project-readme-assets-audit.txt
+          if-no-files-found: warn
+          retention-days: 7
+          compression-level: 6

@@ -1,0 +1,107 @@
+.profile-connections-mount{display:block}.profile-connections{margin:10px 0;padding:10px 0;display:grid;gap:7px;border-top:1px solid rgba(139,174,255,.09);border-bottom:1px solid rgba(139,174,255,.09)}.github-connect-button{width:100%;min-height:36px;padding:0 12px;display:flex;align-items:center;justify-content:center;gap:7px;border:1px solid rgba(255,255,255,.12);border-radius:9px;color:#f0f4fb;background:linear-gradient(180deg,rgba(57,67,82,.95),rgba(27,33,43,.98));box-shadow:0 8px 22px rgba(0,0,0,.22);font:inherit;font-size:8px;cursor:pointer}.github-connect-button:hover{background:linear-gradient(180deg,rgba(69,80,98,.98),rgba(34,41,53,.98));border-color:rgba(255,255,255,.2)}.github-connect-button:disabled{opacity:.48;cursor:wait}.github-connected-row{min-width:0;padding:8px;display:grid;grid-template-columns:34px minmax(0,1fr) auto;align-items:center;gap:8px;border:1px solid rgba(91,144,255,.16);border-radius:9px;background:rgba(65,113,220,.045)}.connection-icon{width:34px;height:34px;display:grid;place-items:center;overflow:hidden;border:1px solid rgba(139,174,255,.13);border-radius:9px;color:#a7baf0;background:#0a0f18}.connection-icon img{width:100%;height:100%;display:block;object-fit:cover}.github-public-link{width:max-content;max-width:100%;min-height:30px;padding:0 8px;display:flex;align-items:center;gap:5px;overflow:hidden;border:1px solid rgba(139,174,255,.09);border-radius:7px;color:#92abe7;background:rgba(71,115,217,.04);font-size:8px;text-decoration:none}.github-public-link:hover{color:#eef4ff;border-color:rgba(91,137,246,.24);background:rgba(71,115,217,.08)}.github-public-link span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.github-public-link.compact{min-height:27px}.connection-actions{display:flex;gap:5px}.connection-actions button{width:31px;min-height:31px;padding:0;display:grid;place-items:center;border:1px solid rgba(91,137,246,.16);border-radius:8px;color:#99b1eb;background:rgba(74,119,224,.065);font:inherit;cursor:pointer}.connection-actions button:hover{color:#f1f5ff;border-color:rgba(91,137,246,.3);background:rgba(74,119,224,.12)}.connection-actions button:disabled{opacity:.48;cursor:wait}.connection-actions button.danger{color:#c47e87;border-color:rgba(213,79,92,.12);background:rgba(213,79,92,.04)}.connection-message{margin:0;color:#9aa8bc;font-size:7.5px;line-height:1.4;text-align:center}.member-directory-connections-mount:empty{display:none}.member-directory-connections{margin:-2px 0 12px;padding:8px;display:flex;border:1px solid rgba(139,174,255,.07);border-radius:9px;background:rgba(255,255,255,.012)}@media(max-width:700px){.github-connect-button{min-height:40px;font-size:9px}.github-connected-row{grid-template-columns:38px minmax(0,1fr) auto;padding:9px}.connection-icon{width:38px;height:38px}.github-public-link{min-height:34px;font-size:9px}.connection-message{font-size:8.5px}.member-directory-connections{margin-bottom:10px}}@media(max-width:420px){.github-connected-row{grid-template-columns:36px minmax(0,1fr)}.connection-icon{width:36px;height:36px}.connection-actions{grid-column:1/-1;justify-content:flex-end}}
+
+/* Ações sólidas do perfil: apenas aparência, sem alterar comportamento. */
+.quick-panel.profile .profile-photo-actions button,
+.quick-panel.profile .profile-name-field button,
+.quick-panel.profile .panel-action,
+.quick-panel.profile .sign-out{
+  min-height:38px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:7px;
+  border-radius:9px;
+  font-weight:650;
+  line-height:1;
+  cursor:pointer;
+  user-select:none;
+  transition:background .16s ease,border-color .16s ease,color .16s ease,box-shadow .16s ease,transform .12s ease;
+}
+.quick-panel.profile .profile-photo-actions button:not(.remove),
+.quick-panel.profile .panel-action,
+.quick-panel.profile .profile-name-field button{
+  color:#edf2fa;
+  border:1px solid rgba(255,255,255,.14);
+  background:linear-gradient(180deg,rgba(48,57,71,.98),rgba(25,31,41,.98));
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.055),0 7px 18px rgba(0,0,0,.22);
+}
+.quick-panel.profile .profile-photo-actions button:not(.remove):hover,
+.quick-panel.profile .panel-action:hover,
+.quick-panel.profile .profile-name-field button:hover{
+  color:#fff;
+  border-color:rgba(255,255,255,.22);
+  background:linear-gradient(180deg,rgba(61,72,89,.99),rgba(33,40,52,.99));
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.07),0 9px 24px rgba(0,0,0,.28);
+  transform:translateY(-1px);
+}
+.quick-panel.profile .profile-name-field button{
+  width:38px;
+  min-width:38px;
+  padding:0;
+}
+.quick-panel.profile .panel-action{
+  width:100%;
+  padding:0 13px;
+}
+.quick-panel.profile .profile-photo-actions button.remove{
+  color:#efb7bf;
+  border:1px solid rgba(225,91,108,.24);
+  background:linear-gradient(180deg,rgba(81,31,39,.92),rgba(50,19,25,.96));
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.035),0 7px 18px rgba(31,5,10,.2);
+}
+.quick-panel.profile .profile-photo-actions button.remove:hover{
+  color:#ffe7ea;
+  border-color:rgba(239,111,128,.38);
+  background:linear-gradient(180deg,rgba(101,37,47,.96),rgba(65,23,31,.98));
+  transform:translateY(-1px);
+}
+.quick-panel.profile .sign-out{
+  width:100%;
+  min-height:40px;
+  margin-top:10px;
+  padding:0 14px;
+  color:#ffd8dd;
+  border:1px solid rgba(225,91,108,.3);
+  background:linear-gradient(180deg,rgba(84,27,36,.94),rgba(53,16,23,.98));
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.035),0 8px 20px rgba(31,5,10,.24);
+}
+.quick-panel.profile .sign-out:hover{
+  color:#fff;
+  border-color:rgba(239,111,128,.46);
+  background:linear-gradient(180deg,rgba(107,34,45,.98),rgba(70,20,29,.99));
+  transform:translateY(-1px);
+}
+.quick-panel.profile .profile-photo-actions button:active,
+.quick-panel.profile .profile-name-field button:active,
+.quick-panel.profile .panel-action:active,
+.quick-panel.profile .sign-out:active{
+  transform:translateY(0);
+  box-shadow:inset 0 1px 3px rgba(0,0,0,.38);
+}
+.quick-panel.profile .profile-photo-actions button:focus-visible,
+.quick-panel.profile .profile-name-field button:focus-visible,
+.quick-panel.profile .panel-action:focus-visible,
+.quick-panel.profile .sign-out:focus-visible{
+  outline:none;
+  box-shadow:0 0 0 3px rgba(88,166,255,.22),inset 0 1px 0 rgba(255,255,255,.05);
+}
+.quick-panel.profile .profile-photo-actions button:disabled,
+.quick-panel.profile .profile-name-field button:disabled,
+.quick-panel.profile .panel-action:disabled,
+.quick-panel.profile .sign-out:disabled{
+  opacity:.5;
+  cursor:not-allowed;
+  transform:none;
+}
+.quick-panel.profile .profile-photo-actions svg,
+.quick-panel.profile .profile-name-field svg,
+.quick-panel.profile .panel-action svg,
+.quick-panel.profile .sign-out svg{
+  flex:0 0 auto;
+}
+@media(max-width:700px){
+  .quick-panel.profile .profile-photo-actions button,
+  .quick-panel.profile .profile-name-field button,
+  .quick-panel.profile .panel-action,
+  .quick-panel.profile .sign-out{min-height:42px}
+}

@@ -1,0 +1,9 @@
+Labstar private communications confirmed
+compatibility_migration=labstar-supabase-v9-compatibility.sql
+direct_messages_migration=labstar-supabase-v9-direct-messages.sql
+private_calls_migration=labstar-supabase-v13-private-calls.sql
+hardening_migration=labstar-supabase-v14-private-communications-hardening.sql
+audit=labstar-supabase-v14-private-communications-audit.sql
+source_sha=b7b42c6d63bea95cd23a8f37dc48388c56e408e0
+workflow_run=30966554048
+verified_at=2026-08-05T01:31:59Z

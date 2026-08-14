@@ -1,18 +1,24 @@
 {
   "name": "labstar",
-  "version": "11.0.0",
+  "version": "11.2.9",
   "private": true,
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "desktop:build": "npx --yes @tauri-apps/cli@2 build",
+    "desktop:build:windows": "powershell -ExecutionPolicy Bypass -File scripts/build-windows.ps1",
     "preview": "vite preview"
   },
   "dependencies": {
+    "@lottiefiles/dotlottie-react": "^0.19.13",
     "@supabase/supabase-js": "^2.55.0",
+    "lottie-web": "5.12.2",
     "lucide-react": "^0.468.0",
     "react": "^19.2.0",
-    "react-dom": "^19.2.0"
+    "react-dom": "^19.2.0",
+    "react-markdown": "^10.1.0",
+    "remark-gfm": "^4.0.1"
   },
   "devDependencies": {
     "@types/react": "^19.2.0",

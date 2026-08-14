@@ -1,0 +1,31 @@
+/* Limpeza final do estado sem acesso: o título já explica a situação.
+   Removemos o ícone de alerta e a cápsula “ACESSO RESTRITO” para deixar
+   a tela mais direta e consistente com o login minimalista. */
+html body .access-v2-screen > .access-v2-card:not(.login):has(.access-v2-icon.amber):not(:has(.access-v2-identity)) .access-v2-icon,
+html body .access-v2-screen > .access-v2-card:not(.login):has(.access-v2-icon.amber):not(:has(.access-v2-identity)) > small {
+  display: none !important;
+}
+
+html body .access-v2-screen > .access-v2-card:not(.login):has(.access-v2-icon.amber):not(:has(.access-v2-identity)) .access-v2-wordmark {
+  margin-bottom: 34px !important;
+}
+
+html body .access-v2-screen > .access-v2-card:not(.login):has(.access-v2-icon.amber):not(:has(.access-v2-identity)) h1 {
+  margin-top: 0 !important;
+  margin-bottom: 14px !important;
+}
+
+html body .access-v2-screen > .access-v2-card:not(.login):has(.access-v2-icon.amber):not(:has(.access-v2-identity)) p {
+  max-width: 370px !important;
+  margin-bottom: 22px !important;
+}
+
+@media (max-width: 620px) {
+  html body .access-v2-screen > .access-v2-card:not(.login):has(.access-v2-icon.amber):not(:has(.access-v2-identity)) .access-v2-wordmark {
+    margin-bottom: 30px !important;
+  }
+
+  html body .access-v2-screen > .access-v2-card:not(.login):has(.access-v2-icon.amber):not(:has(.access-v2-identity)) p {
+    max-width: 330px !important;
+  }
+}

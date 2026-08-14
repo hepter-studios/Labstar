@@ -1,0 +1,298 @@
+/* LABSTAR — acabamento de experiência da Central de Trabalho */
+
+/* O marcador azul indica seleção real. No modo de servidor o botão de DMs é só um atalho. */
+.collaboration-server-mode .workspace-dm-entry i {
+  display: none !important;
+}
+
+.workspace-dm-entry,
+.dm-home-mark {
+  box-shadow:
+    0 0 0 2px rgba(77,132,255,.045),
+    0 8px 24px rgba(0,0,0,.28),
+    inset 0 1px rgba(255,255,255,.08) !important;
+}
+
+.workspace-dm-entry {
+  border-color: rgba(88,139,255,.34) !important;
+  background:
+    radial-gradient(circle at 50% 36%, rgba(104,149,255,.14), transparent 42%),
+    linear-gradient(145deg,#0d1c3b,#071020 70%) !important;
+}
+
+.dm-home-mark {
+  border-color: rgba(77,132,255,.48) !important;
+  background:
+    radial-gradient(circle at 50% 36%,rgba(108,153,255,.19),transparent 42%),
+    linear-gradient(145deg,#102145,#071022 70%) !important;
+}
+
+.dm-home-mark i {
+  box-shadow: 0 0 7px rgba(87,137,255,.35) !important;
+}
+
+/* Cosmic Chat: usa o SVG vetorial real no vazio das DMs. */
+.dm-orbit {
+  width: min(290px, 42vw) !important;
+  height: auto !important;
+  aspect-ratio: 4 / 3;
+  margin-bottom: 8px !important;
+  background: url('/cosmic-chat.svg') center / contain no-repeat;
+  filter: drop-shadow(0 18px 35px rgba(0,0,0,.26));
+}
+
+.dm-orbit > i,
+.dm-orbit > span,
+.dm-orbit::before,
+.dm-orbit::after {
+  display: none !important;
+}
+
+/* Nebulosas: trilhas longas e suaves, não manchas redondas. */
+.direct-hub,
+.collaboration-server-mode {
+  background-color: #04070d;
+}
+
+.direct-hub::after,
+.collaboration-server-mode::after {
+  content: "";
+  position: absolute;
+  inset: -18%;
+  z-index: 0;
+  pointer-events: none;
+  opacity: .54;
+  transform: rotate(-11deg) scale(1.04);
+  transform-origin: center;
+  background:
+    radial-gradient(ellipse 8% 48% at 68% 50%, rgba(37,101,206,.12), transparent 70%),
+    radial-gradient(ellipse 5% 39% at 66% 53%, rgba(73,139,243,.075), transparent 72%),
+    radial-gradient(ellipse 12% 55% at 73% 47%, rgba(16,61,137,.085), transparent 74%),
+    radial-gradient(ellipse 7% 34% at 39% 67%, rgba(32,94,190,.055), transparent 72%),
+    radial-gradient(ellipse 4% 25% at 42% 63%, rgba(91,154,255,.035), transparent 75%);
+  filter: saturate(.9) blur(.15px);
+}
+
+.direct-hub > * {
+  position: relative;
+  z-index: 1;
+}
+
+.collaboration-server-mode > .collaboration-shell {
+  position: relative;
+  z-index: 1;
+}
+
+.dm-home-main,
+.dm-inbox,
+.dm-sidebar,
+.dm-conversation,
+.dm-profile-panel {
+  background-color: rgba(5,8,13,.93);
+}
+
+.dm-home-main {
+  background:
+    radial-gradient(46% 32% at 72% 62%, rgba(28,86,180,.055), transparent 72%),
+    linear-gradient(160deg,rgba(7,11,17,.94),rgba(7,12,20,.91)) !important;
+}
+
+.dm-inbox {
+  background:
+    radial-gradient(54% 32% at 82% 30%, rgba(30,88,185,.045), transparent 76%),
+    linear-gradient(180deg,#090d14,#06090e) !important;
+}
+
+/* Estrela Labstar: giro 2D, pausa, giro 2D, pausa. Só em carregamentos. */
+@keyframes labstar-loading-spin-pause {
+  0%, 8% {
+    transform: rotate(0deg) scale(.96);
+  }
+  30% {
+    transform: rotate(360deg) scale(1);
+  }
+  31%, 54% {
+    transform: rotate(360deg) scale(1);
+  }
+  78% {
+    transform: rotate(720deg) scale(1);
+  }
+  79%, 100% {
+    transform: rotate(720deg) scale(.96);
+  }
+}
+
+.dm-loading,
+.dm-thread-loading,
+.team-loading,
+.collab-loading,
+.access-v2-card.compact,
+.sync-state.carregando,
+.sync-state.salvando {
+  position: relative;
+}
+
+.dm-loading > .spin,
+.dm-thread-loading > .spin,
+.team-loading > .spin,
+.collab-loading > .spin,
+.access-v2-card.compact > .spin {
+  display: none !important;
+}
+
+.dm-loading::before,
+.dm-thread-loading::before,
+.team-loading::before,
+.collab-loading::before,
+.access-v2-card.compact::before {
+  content: "";
+  width: 30px;
+  height: 30px;
+  flex: 0 0 30px;
+  display: block;
+  background: url('/labstar-loading-star.svg') center / contain no-repeat;
+  filter: drop-shadow(0 0 5px rgba(94,142,255,.18));
+  animation: labstar-loading-spin-pause 4.1s cubic-bezier(.45,.05,.22,1) infinite;
+  transform-origin: 50% 50%;
+  will-change: transform;
+}
+
+.dm-loading::before,
+.collab-loading::before {
+  width: 38px;
+  height: 38px;
+  margin-bottom: 2px;
+}
+
+.sync-state.carregando .spin,
+.sync-state.salvando .spin {
+  display: none !important;
+}
+
+.sync-state.carregando::before,
+.sync-state.salvando::before {
+  content: "";
+  width: 13px;
+  height: 13px;
+  flex: 0 0 13px;
+  background: url('/labstar-loading-star.svg') center / contain no-repeat;
+  filter: drop-shadow(0 0 3px rgba(94,142,255,.16));
+  animation: labstar-loading-spin-pause 4.1s cubic-bezier(.45,.05,.22,1) infinite;
+  transform-origin: 50% 50%;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dm-loading::before,
+  .dm-thread-loading::before,
+  .team-loading::before,
+  .collab-loading::before,
+  .access-v2-card.compact::before,
+  .sync-state.carregando::before,
+  .sync-state.salvando::before {
+    animation: none;
+  }
+}
+
+/* Logos e avatares: nunca esticam nem deixam texto invadir a imagem. */
+.dm-space-list img,
+.space-rail img,
+.space-title img,
+.logo-upload img {
+  object-fit: contain !important;
+  object-position: center !important;
+}
+
+.dm-contact-list > button > span,
+.dm-own-profile > span,
+.member-list button .member-main,
+.dm-message-body,
+.dm-inbox-list article > div {
+  min-width: 0;
+}
+
+.dm-contact-list strong,
+.dm-contact-list small,
+.dm-own-profile strong,
+.dm-own-profile small,
+.member-list button .member-main b,
+.member-list button .member-main small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Controles funcionais adicionados na V3. */
+.dm-search-hint {
+  min-width: 24px;
+  color: #566277;
+  font-size: 7px;
+  text-align: right;
+}
+
+.dm-inbox-list article.clickable {
+  cursor: pointer;
+  transition: background .14s ease, border-color .14s ease;
+}
+
+.dm-inbox-list article.clickable:hover {
+  background: rgba(77,132,255,.045);
+}
+
+.dm-conversation-actions > button.active {
+  color: #dbe7ff;
+  border-color: rgba(77,132,255,.34);
+  background: rgba(77,132,255,.14);
+}
+
+.dm-profile-actions {
+  grid-template-columns: repeat(3,1fr) !important;
+}
+
+.dm-shared-file {
+  min-width: 0;
+  min-height: 34px;
+  margin-top: 6px;
+  padding: 0 9px;
+  display: grid;
+  grid-template-columns: 16px minmax(0,1fr) 15px;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid rgba(151,173,220,.09);
+  border-radius: 8px;
+  color: #8290a6;
+  background: rgba(255,255,255,.018);
+  text-decoration: none;
+}
+
+.dm-shared-file:hover {
+  color: #d6e2f7;
+  border-color: rgba(77,132,255,.22);
+  background: rgba(77,132,255,.045);
+}
+
+.dm-shared-file span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 8px;
+}
+
+.dm-note-field {
+  width: 100%;
+  min-height: 72px;
+  resize: vertical;
+  padding: 9px 10px;
+  border: 1px solid rgba(151,173,220,.09);
+  border-radius: 8px;
+  outline: none;
+  color: #aeb8c8;
+  background: rgba(255,255,255,.018);
+  font: inherit;
+  font-size: 8px;
+  line-height: 1.5;
+}
+
+.dm-note-field:focus {
+  border-color: rgba(77,132,255,.28);
+  box-shadow: 0 0 0 3px rgba(77,132,255,.04);
+}

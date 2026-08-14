@@ -1,0 +1,130 @@
+name: Validar API publicada para Web e desktop
+run-name: Smoke API Web/Desktop — ${{ github.event.pull_request.head.sha || github.sha }}
+
+on:
+  pull_request:
+    branches:
+      - "feat/tauri2-rust-foundation"
+    types: [opened, synchronize, reopened]
+    paths:
+      - ".github/workflows/smoke-api-desktop.yml"
+      - "src/lib/backend.ts"
+      - "src/lib/access.ts"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: labstar-api-desktop-smoke-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  smoke:
+    name: Saúde e CORS da Web/Tauri
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    env:
+      API_URL: https://labstar-api-mackson.fly.dev
+      TAURI_ORIGIN: http://tauri.localhost
+      WEB_ORIGIN: https://labstar.pages.dev
+      PREVIEW_ORIGIN: https://2a368937.labstar.pages.dev
+      UNTRUSTED_ORIGIN: http://example.com
+
+    steps:
+      - name: Aguardar API e validar saúde
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error \
+            --retry 5 --retry-all-errors --retry-delay 3 \
+            --connect-timeout 20 --max-time 60 \
+            "$API_URL/health/live" | tee live.json
+          grep -q '"status":"ok"' live.json
+
+          curl --fail --silent --show-error \
+            --retry 5 --retry-all-errors --retry-delay 3 \
+            --connect-timeout 20 --max-time 60 \
+            "$API_URL/health/ready" | tee ready.json
+          grep -q '"status":"ready"' ready.json
+
+      - name: Validar preflight do aplicativo Tauri
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error \
+            --retry 5 --retry-all-errors --retry-delay 3 \
+            --connect-timeout 20 --max-time 60 \
+            --dump-header tauri-headers.txt \
+            --output /dev/null \
+            --request OPTIONS \
+            --header "Origin: $TAURI_ORIGIN" \
+            --header "Access-Control-Request-Method: GET" \
+            --header "Access-Control-Request-Headers: authorization,content-type" \
+            "$API_URL/v1/me"
+
+          tr -d '\r' < tauri-headers.txt > tauri-headers-normalized.txt
+          grep -Eiq '^access-control-allow-origin:[[:space:]]*http://tauri\.localhost[[:space:]]*$' tauri-headers-normalized.txt
+          grep -Eiq '^access-control-allow-methods:.*GET' tauri-headers-normalized.txt
+          grep -Eiq '^access-control-allow-headers:.*authorization' tauri-headers-normalized.txt
+
+      - name: Validar preflight da Web oficial
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error \
+            --retry 5 --retry-all-errors --retry-delay 3 \
+            --connect-timeout 20 --max-time 60 \
+            --dump-header web-headers.txt \
+            --output /dev/null \
+            --request OPTIONS \
+            --header "Origin: $WEB_ORIGIN" \
+            --header "Access-Control-Request-Method: GET" \
+            --header "Access-Control-Request-Headers: authorization,content-type" \
+            "$API_URL/v1/me"
+
+          tr -d '\r' < web-headers.txt > web-headers-normalized.txt
+          grep -Eiq '^access-control-allow-origin:[[:space:]]*https://labstar\.pages\.dev[[:space:]]*$' web-headers-normalized.txt
+          grep -Eiq '^access-control-allow-methods:.*GET' web-headers-normalized.txt
+          grep -Eiq '^access-control-allow-headers:.*authorization' web-headers-normalized.txt
+
+      - name: Validar preflight da Preview Cloudflare usada nos testes
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error \
+            --retry 5 --retry-all-errors --retry-delay 3 \
+            --connect-timeout 20 --max-time 60 \
+            --dump-header preview-headers.txt \
+            --output /dev/null \
+            --request OPTIONS \
+            --header "Origin: $PREVIEW_ORIGIN" \
+            --header "Access-Control-Request-Method: GET" \
+            --header "Access-Control-Request-Headers: authorization,content-type" \
+            "$API_URL/v1/me"
+
+          tr -d '\r' < preview-headers.txt > preview-headers-normalized.txt
+          grep -Eiq '^access-control-allow-origin:[[:space:]]*https://2a368937\.labstar\.pages\.dev[[:space:]]*$' preview-headers-normalized.txt
+          grep -Eiq '^access-control-allow-methods:.*GET' preview-headers-normalized.txt
+          grep -Eiq '^access-control-allow-headers:.*authorization' preview-headers-normalized.txt
+
+      - name: Confirmar bloqueio de origem não confiável
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --silent --show-error \
+            --connect-timeout 20 --max-time 60 \
+            --dump-header untrusted-headers.txt \
+            --output /dev/null \
+            --request OPTIONS \
+            --header "Origin: $UNTRUSTED_ORIGIN" \
+            --header "Access-Control-Request-Method: GET" \
+            --header "Access-Control-Request-Headers: authorization,content-type" \
+            "$API_URL/v1/me"
+
+          tr -d '\r' < untrusted-headers.txt > untrusted-headers-normalized.txt
+          if grep -Eiq '^access-control-allow-origin:[[:space:]]*http://example\.com[[:space:]]*$' untrusted-headers-normalized.txt; then
+            echo "A API autorizou uma origem HTTP remota não confiável."
+            exit 1
+          fi

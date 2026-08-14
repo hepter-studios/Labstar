@@ -1,0 +1,247 @@
+name: Ativar handles e usernames únicos
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "supabase/migrations/20260811004100_unique_handles_and_usernames.sql"
+      - ".github/workflows/apply-unique-handles-and-usernames.yml"
+  workflow_dispatch:
+    inputs:
+      migration:
+        description: Migração a executar manualmente
+        required: true
+        default: unique_handles
+        type: choice
+        options:
+          - unique_handles
+          - self_owned_profile_names
+
+permissions:
+  contents: read
+
+concurrency:
+  group: labstar-unique-handles-usernames
+  cancel-in-progress: false
+
+jobs:
+  migrate:
+    if: github.event_name == 'push' || inputs.migration == 'unique_handles'
+    name: Backup, migração e auditoria
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - name: Baixar código oficial
+        uses: actions/checkout@v4
+
+      - name: Validar conexão protegida
+        shell: bash
+        env:
+          SUPABASE_DATABASE_URL: ${{ secrets.SUPABASE_DATABASE_URL }}
+        run: |
+          set -euo pipefail
+          test -n "${SUPABASE_DATABASE_URL:-}" || { echo "SUPABASE_DATABASE_URL não configurado."; exit 1; }
+
+      - name: Preparar PostgreSQL 17
+        run: docker pull postgres:17-bookworm
+
+      - name: Backup antes da migração
+        shell: bash
+        env:
+          SUPABASE_DATABASE_URL: ${{ secrets.SUPABASE_DATABASE_URL }}
+        run: |
+          set -euo pipefail
+          mkdir -p backup
+          timestamp="$(date -u +'%Y-%m-%dT%H-%M-%SZ')"
+          docker run --rm \
+            -e SUPABASE_DATABASE_URL \
+            -e PGSSLMODE=require \
+            -e BACKUP_TIMESTAMP="${timestamp}" \
+            -v "${PWD}/backup:/backup" \
+            postgres:17-bookworm \
+            bash -euo pipefail -c 'pg_dump --dbname="${SUPABASE_DATABASE_URL}" --format=custom --no-owner --no-privileges --file="/backup/labstar-before-unique-handles-${BACKUP_TIMESTAMP}.dump"'
+          sha256sum backup/*.dump > backup/SHA256SUMS.txt
+
+      - name: Confirmar fundação de organizações
+        shell: bash
+        env:
+          SUPABASE_DATABASE_URL: ${{ secrets.SUPABASE_DATABASE_URL }}
+        run: |
+          set -euo pipefail
+          docker run --rm \
+            -e SUPABASE_DATABASE_URL \
+            -e PGSSLMODE=require \
+            postgres:17-bookworm \
+            psql "${SUPABASE_DATABASE_URL}" --set ON_ERROR_STOP=1 --tuples-only --no-align --command "
+              select
+                to_regclass('public.organizations') is not null
+                and to_regclass('public.organization_accounts') is not null;
+            " | tee foundation-ready.txt
+          grep -qx 't' foundation-ready.txt
+
+      - name: Aplicar handles e usernames únicos
+        shell: bash
+        env:
+          SUPABASE_DATABASE_URL: ${{ secrets.SUPABASE_DATABASE_URL }}
+        run: |
+          set -euo pipefail
+          docker run --rm \
+            -e SUPABASE_DATABASE_URL \
+            -e PGSSLMODE=require \
+            -v "${PWD}:/workspace:ro" \
+            postgres:17-bookworm \
+            psql "${SUPABASE_DATABASE_URL}" --set ON_ERROR_STOP=1 --file /workspace/supabase/migrations/20260811004100_unique_handles_and_usernames.sql
+
+      - name: Auditar unicidade
+        shell: bash
+        env:
+          SUPABASE_DATABASE_URL: ${{ secrets.SUPABASE_DATABASE_URL }}
+        run: |
+          set -euo pipefail
+          docker run --rm \
+            -e SUPABASE_DATABASE_URL \
+            -e PGSSLMODE=require \
+            postgres:17-bookworm \
+            psql "${SUPABASE_DATABASE_URL}" --set ON_ERROR_STOP=1 --tuples-only --no-align --command "
+              select
+                to_regclass('public.account_profiles') is not null
+                and to_regprocedure('public.organization_handle_available(text)') is not null
+                and to_regprocedure('public.username_available(text)') is not null
+                and to_regprocedure('public.claim_username(text)') is not null
+                and exists (
+                  select 1 from pg_indexes
+                  where schemaname='public'
+                    and indexname='organizations_slug_lower_idx'
+                )
+                and exists (
+                  select 1 from pg_indexes
+                  where schemaname='public'
+                    and indexname='account_profiles_username_lower_unique_idx'
+                );
+            " | tee unique-handles-audit.txt
+          grep -qx 't' unique-handles-audit.txt
+
+      - name: Guardar backup privado
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: labstar-before-unique-handles-${{ github.run_number }}
+          path: |
+            backup/
+            foundation-ready.txt
+            unique-handles-audit.txt
+          if-no-files-found: warn
+          retention-days: 7
+          compression-level: 6
+
+  migrate-self-owned-profile-names:
+    if: github.event_name == 'workflow_dispatch' && inputs.migration == 'self_owned_profile_names'
+    name: Backup e proteção dos nomes de perfil
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - name: Baixar código oficial
+        uses: actions/checkout@v4
+
+      - name: Validar conexão protegida
+        shell: bash
+        env:
+          SUPABASE_DATABASE_URL: ${{ secrets.SUPABASE_DATABASE_URL }}
+        run: |
+          set -euo pipefail
+          test -n "${SUPABASE_DATABASE_URL:-}" || { echo "SUPABASE_DATABASE_URL não configurado."; exit 1; }
+
+      - name: Preparar PostgreSQL 17
+        run: docker pull postgres:17-bookworm
+
+      - name: Backup completo antes da migração
+        shell: bash
+        env:
+          SUPABASE_DATABASE_URL: ${{ secrets.SUPABASE_DATABASE_URL }}
+        run: |
+          set -euo pipefail
+          mkdir -p backup
+          timestamp="$(date -u +'%Y-%m-%dT%H-%M-%SZ')"
+          docker run --rm \
+            -e SUPABASE_DATABASE_URL \
+            -e PGSSLMODE=require \
+            -e BACKUP_TIMESTAMP="${timestamp}" \
+            -v "${PWD}/backup:/backup" \
+            postgres:17-bookworm \
+            bash -euo pipefail -c 'pg_dump --dbname="${SUPABASE_DATABASE_URL}" --format=custom --no-owner --no-privileges --file="/backup/labstar-before-self-owned-profiles-${BACKUP_TIMESTAMP}.dump"'
+          sha256sum backup/*.dump > backup/SHA256SUMS.txt
+
+      - name: Confirmar fundação de perfis
+        shell: bash
+        env:
+          SUPABASE_DATABASE_URL: ${{ secrets.SUPABASE_DATABASE_URL }}
+        run: |
+          set -euo pipefail
+          docker run --rm \
+            -e SUPABASE_DATABASE_URL \
+            -e PGSSLMODE=require \
+            postgres:17-bookworm \
+            psql "${SUPABASE_DATABASE_URL}" --set ON_ERROR_STOP=1 --tuples-only --no-align --command "
+              select
+                to_regclass('public.members') is not null
+                and to_regclass('public.account_profiles') is not null
+                and to_regclass('public.organization_accounts') is not null
+                and to_regprocedure('public.current_member_id()') is not null
+                and to_regprocedure('public.update_own_profile(text,text,text)') is not null;
+            " | tee profile-foundation-ready.txt
+          grep -qx 't' profile-foundation-ready.txt
+
+      - name: Aplicar propriedade pessoal do perfil
+        shell: bash
+        env:
+          SUPABASE_DATABASE_URL: ${{ secrets.SUPABASE_DATABASE_URL }}
+        run: |
+          set -euo pipefail
+          docker run --rm \
+            -e SUPABASE_DATABASE_URL \
+            -e PGSSLMODE=require \
+            -v "${PWD}:/workspace:ro" \
+            postgres:17-bookworm \
+            psql "${SUPABASE_DATABASE_URL}" --set ON_ERROR_STOP=1 --file /workspace/supabase/migrations/20260813170000_self_owned_profile_names.sql
+
+      - name: Auditar proteção e leitura global
+        shell: bash
+        env:
+          SUPABASE_DATABASE_URL: ${{ secrets.SUPABASE_DATABASE_URL }}
+        run: |
+          set -euo pipefail
+          docker run --rm \
+            -e SUPABASE_DATABASE_URL \
+            -e PGSSLMODE=require \
+            postgres:17-bookworm \
+            psql "${SUPABASE_DATABASE_URL}" --set ON_ERROR_STOP=1 --tuples-only --no-align --command "
+              select
+                to_regprocedure('public.update_own_display_name(text)') is not null
+                and to_regprocedure('public.protect_member_owned_profile_fields()') is not null
+                and has_function_privilege('authenticated', 'public.update_own_display_name(text)', 'EXECUTE')
+                and not has_function_privilege('anon', 'public.update_own_display_name(text)', 'EXECUTE')
+                and exists (
+                  select 1
+                  from pg_trigger
+                  where tgrelid = 'public.members'::regclass
+                    and tgname = 'protect_member_owned_profile_fields'
+                    and not tgisinternal
+                    and tgenabled <> 'D'
+                )
+                and pg_get_functiondef('public.list_organization_accounts(uuid)'::regprocedure) ilike '%account_profiles%';
+            " | tee self-owned-profile-audit.txt
+          grep -qx 't' self-owned-profile-audit.txt
+
+      - name: Guardar backup privado
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: labstar-before-self-owned-profiles-${{ github.run_number }}
+          path: |
+            backup/
+            profile-foundation-ready.txt
+            self-owned-profile-audit.txt
+          if-no-files-found: warn
+          retention-days: 7
+          compression-level: 6

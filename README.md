@@ -1,232 +1,267 @@
-# Labstar v11
+<p align="center">
+  <img src="docs/assets/labstar-readme-hero.webp" alt="Labstar" width="100%" />
+</p>
 
-Labstar é um ambiente privado de colaboração para organizar empresas, produtos,
-projetos, equipes e pessoas. A versão 11 reúne o mapa operacional original com
-espaços de colaboração, canais, mensagens, reuniões e integrações em uma PWA
-responsiva para desktop e dispositivos móveis.
+<h1 align="center">LABSTAR</h1>
 
-## Funcionalidades
+<p align="center">
+  <strong>A developer-first organization workspace where people, code, projects and operations stay in the same orbit.</strong>
+</p>
 
-- PWA instalável, com atualização automática do service worker;
-- chat em tempo real com respostas, fixação, mensagens e anexos;
-- miniaturas e visualizador de imagens em tela cheia;
-- espaços, categorias e canais de texto, avisos, regras, voz e social;
-- reuniões WebRTC por voz e vídeo;
-- seleção, teste e medidor real do microfone com Web Audio API;
-- Picture-in-Picture para vídeos em navegadores compatíveis;
-- perfis, avatares, cargos profissionais e permissões;
-- agendamento e cancelamento de reuniões com notificações;
-- Central de Integrações para GitHub, Discord, monitoramento, cobrança e suporte;
-- interface responsiva para desktop e mobile.
+<p align="center">
+  🌌 <a href="#mission">Mission</a> ·
+  🪐 <a href="#product-universe">Product Universe</a> ·
+  🚀 <a href="#architecture">Architecture</a> ·
+  ✨ <a href="docs/LABSTAR_EVOLUTION_ROADMAP.md">Evolution Roadmap</a> ·
+  🌍 <a href="docs/INTERNATIONAL_RELEASE_ROADMAP.md">International Roadmap</a> ·
+  🛰️ <a href="docs/README.md">Docs</a>
+</p>
 
-## Tecnologias
+<p align="center">
+  <a href="https://labstar.pages.dev/">Web App</a> ·
+  <a href="CONTRIBUTING.md">Contributing</a> ·
+  <a href="SECURITY.md">Security</a> ·
+  <a href="docs/legal/TERMS_OF_USE_DRAFT.md">Terms</a> ·
+  <a href="docs/legal/PRIVACY_NOTICE_DRAFT.md">Privacy</a>
+</p>
 
-- React 19 e TypeScript;
-- Vite 7;
-- Supabase Auth, Database, Storage e Realtime;
-- WebRTC e Web Audio API;
-- Workbox por meio do `vite-plugin-pwa`;
-- Cloudflare Pages como destino de publicação estática.
+<p align="center">
+  <img alt="Version" src="https://img.shields.io/badge/version-11.2.9-2563eb" />
+  <img alt="React" src="https://img.shields.io/badge/React-19-20232a?logo=react&logoColor=61dafb" />
+  <img alt="Tauri" src="https://img.shields.io/badge/Tauri-2-20232a?logo=tauri&logoColor=ffc131" />
+  <img alt="Rust" src="https://img.shields.io/badge/Rust-backend-20232a?logo=rust&logoColor=white" />
+  <img alt="Status" src="https://img.shields.io/badge/status-active%20development-0f766e" />
+</p>
 
-## Requisitos
+---
 
-- Node.js 22;
-- npm compatível com o Node.js 22;
-- projeto Supabase já preparado para o esquema da Labstar;
-- navegador moderno;
-- HTTPS em produção para PWA, câmera, microfone e Picture-in-Picture.
+## 🌌 Mission
 
-## Instalação local
+**Labstar** is an organization and collaboration platform developed by **Hepter Studios** for people who build, monitor and organize projects together.
+
+An **organization** is the neutral root of Labstar. It can represent a software team, startup, company, studio, research lab, open-source group, community, student team or any other group working toward shared projects.
+
+Labstar is evolving beyond a private internal tool into a **public, multi-organization platform**. The key model is simple:
+
+> **Labstar can be public. Your organization is not.**
+
+The application, documentation and product evolution can be visible publicly while each organization keeps its channels, members, projects, repositories, operational data and internal activity isolated by default.
+
+Labstar is being built around one idea: **keep people, code, context and execution together**.
+
+---
+
+## 🪐 Product Universe
+
+| Orbit | What lives there |
+| --- | --- |
+| 🌎 **Organizations** | isolated spaces for teams, roles, permissions, membership and shared work |
+| 💬 **Communication** | channels, direct messages, realtime presence, voice/video direction and notifications |
+| 🧑‍🚀 **People** | members, squads, roles, availability and identity connections |
+| 💻 **Developer Workflows** | GitHub activity, pull requests, reviews, CI events and developer-focused navigation |
+| 🛰️ **Projects & Operations** | projects, code context, integrations, monitoring, alerts and operational workflows |
+| ⚡ **Desktop Experience** | Tauri 2 + Rust, native notifications, deep links and future global shortcuts |
+| 🌐 **Public Layer** | optional public developer profiles and product surfaces that never expose private organization data by default |
+
+### Public product, private organizations
+
+The target security boundary is **organization-first isolation**:
+
+- organization content is private by default;
+- membership and authorization are enforced by the backend, not trusted to the UI;
+- external integrations receive only the permissions they need;
+- public developer profiles, when introduced, are explicit opt-in;
+- public visibility of this repository does **not** make organization data public.
+
+---
+
+## ✨ Why Labstar is becoming developer-first
+
+The next product cycle is focused on making Labstar something a programmer wants to install voluntarily — not merely software a team administrator tells them to use.
+
+The roadmap includes:
+
+1. **GitHub Organization Integration** — import teams, members, repositories and permissions instead of rebuilding an organization's technical structure manually.
+2. **Command Palette** — `Cmd+K` / `Ctrl+K` navigation across squads, people, PRs, settings and actions.
+3. **GitHub Pulse** — realtime push, PR, review and CI activity inside Labstar with native desktop notifications.
+4. **Labstar CLI** — a terminal companion for login, status, PRs, squads and deep-linking into the desktop app.
+5. **Automatic PR War Rooms** — contextual rooms created around PRs and failed CI runs.
+6. **Public Developer Profiles** — verified GitHub-backed profiles, always opt-in and separated from private organization data.
+7. **Context Graph / Project Memory** — connect code, PRs, incidents, decisions, docs and conversations into searchable project memory.
+8. **Developer Platform & Automations** — APIs, webhooks, integrations and an extension surface so Labstar can become a platform, not a closed app.
+
+See the full implementation order, dependencies and rationale in the **[Labstar Evolution Roadmap](docs/LABSTAR_EVOLUTION_ROADMAP.md)**.
+
+---
+
+## 🚀 Current Technology
+
+Current application version: **`11.2.9`**.
+
+| Area | Technology / direction |
+| --- | --- |
+| Web / PWA | React 19 + TypeScript + Vite |
+| Desktop | Tauri 2 + Rust |
+| Backend | Rust + Axum |
+| Authentication | Supabase Auth + connected identity providers |
+| Database | PostgreSQL / Supabase |
+| Realtime | Supabase Realtime |
+| Storage | Supabase Storage |
+| Web deployment | Cloudflare Pages |
+| API deployment | Fly.io |
+
+> Labstar is under active development. Public repository visibility is not the same thing as a finished public release.
+
+---
+
+## 🛰️ Architecture
+
+```text
+                              ✦ LABSTAR ✦
+                                   │
+                 ┌─────────────────┴─────────────────┐
+                 │                                   │
+            Web / PWA                          Desktop App
+     React 19 + TypeScript                  Tauri 2 + Rust
+                 │                                   │
+                 └─────────────────┬─────────────────┘
+                                   │
+                            Rust / Axum API
+                                   │
+                  ┌────────────────┼────────────────┐
+                  │                │                │
+                Auth          PostgreSQL        Realtime
+                  │                │                │
+                  └────────────── Storage ──────────┘
+                                   │
+                         Organization Boundary
+                                   │
+                     GitHub / future integrations
+```
+
+### Architecture principles
+
+- backend authorization is the source of truth for protected operations;
+- organization boundaries must be explicit in data, API and Realtime policies;
+- desktop and web share product logic without duplicating critical authorization rules;
+- external integrations use least privilege;
+- public surfaces consume deliberately aggregated or opt-in data rather than private organization records.
+
+---
+
+## 🌠 Repository Constellation
+
+```text
+.
+├── src/             # React application and product UI
+├── src-tauri/       # Tauri 2 desktop application
+├── backend/         # Rust/Axum backend
+├── supabase/        # Database, migrations and Supabase resources
+├── public/          # Public web assets
+├── docs/            # Product, architecture, operations and roadmap docs
+├── scripts/         # Build and maintenance scripts
+└── .github/         # CI and repository workflows
+```
+
+### Explore the docs
+
+| Destination | Document |
+| --- | --- |
+| ⭐ Product evolution | [`docs/LABSTAR_EVOLUTION_ROADMAP.md`](docs/LABSTAR_EVOLUTION_ROADMAP.md) |
+| 🌍 International release | [`docs/INTERNATIONAL_RELEASE_ROADMAP.md`](docs/INTERNATIONAL_RELEASE_ROADMAP.md) |
+| 🗺️ Documentation index | [`docs/README.md`](docs/README.md) |
+| 🧭 Product completion map | [`docs/PRODUCT_COMPLETION_MAP.md`](docs/PRODUCT_COMPLETION_MAP.md) |
+| 🏗️ Architecture decisions | [`docs/ARCHITECTURE_DECISIONS.md`](docs/ARCHITECTURE_DECISIONS.md) |
+| 🔐 Security policy | [`SECURITY.md`](SECURITY.md) |
+| 🤝 Contributing | [`CONTRIBUTING.md`](CONTRIBUTING.md) |
+| 🌱 Community conduct | [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md) |
+| ⚖️ Terms draft | [`docs/legal/TERMS_OF_USE_DRAFT.md`](docs/legal/TERMS_OF_USE_DRAFT.md) |
+| 🛡️ Privacy draft | [`docs/legal/PRIVACY_NOTICE_DRAFT.md`](docs/legal/PRIVACY_NOTICE_DRAFT.md) |
+
+---
+
+## 🔭 Local Development
+
+### Requirements
+
+- Node.js 22
+- npm
+- Rust 1.85+ for desktop/backend development
+
+### Web
 
 ```bash
-git clone https://github.com/macksonvictor/Labstar.git
+git clone https://github.com/hepter-studios/Labstar.git
 cd Labstar
 npm ci
-```
-
-Copie o arquivo de exemplo:
-
-```bash
 cp .env.example .env.local
-```
-
-No Windows PowerShell:
-
-```powershell
-Copy-Item .env.example .env.local
-```
-
-Preencha as duas variáveis públicas do frontend e inicie o projeto:
-
-```bash
 npm run dev
 ```
 
-O Vite informa a URL local no terminal. O servidor aceita conexões na rede local
-por estar configurado com `host: "0.0.0.0"`.
+On Windows PowerShell:
 
-## Variáveis de ambiente
-
-| Variável | Visibilidade | Descrição |
-| --- | --- | --- |
-| `VITE_SUPABASE_URL` | Pública | URL do projeto Supabase usada pelo navegador. |
-| `VITE_SUPABASE_ANON_KEY` | Pública | Chave `anon` legada ou `publishable` usada pelo cliente web e protegida por RLS. |
-
-Variáveis com prefixo `VITE_` são incorporadas ao JavaScript do navegador e,
-portanto, nunca podem conter segredos. Não configure `service_role`, chaves
-privadas, tokens administrativos ou senhas no frontend, no Cloudflare Pages ou
-em arquivos versionados. A chave `service_role` do Supabase ignora RLS e deve
-permanecer exclusivamente em um backend confiável — a Labstar v11 não precisa
-dela para o build.
-
-O `.gitignore` bloqueia arquivos `.env*`, com exceção do `.env.example`.
-
-## Comandos
-
-```bash
-npm run dev      # servidor de desenvolvimento
-npm run build    # checagem TypeScript e build de produção em dist/
-npm run preview  # pré-visualização local do build
+```powershell
+Copy-Item .env.example .env.local
+npm run dev
 ```
 
-O projeto não inclui uma suíte de testes automatizados. A validação disponível é
-a checagem estrita do TypeScript seguida do build de produção; a mesma validação
-é executada pelo GitHub Actions em todo push e pull request.
-
-## Configuração do Supabase
-
-> Atenção: não execute SQL contra produção sem backup, revisão e uma janela de
-> mudança aprovada. Nenhum SQL deste repositório é executado automaticamente.
-
-1. Confirme que o projeto Supabase de destino já contém as estruturas de
-   colaboração usadas pela Labstar.
-2. Revise os arquivos em `supabase/` antes de qualquer execução.
-3. Em **Authentication > URL Configuration**, adicione a URL local e a URL
-   publicada às URLs de redirecionamento permitidas.
-4. Confirme o login por link mágico e o acesso apenas a membros ativos.
-5. Confirme o bucket privado `labstar-files`, suas políticas e os limites de
-   upload antes de habilitar anexos e avatares.
-6. Confirme que Realtime está habilitado para as tabelas necessárias e que as
-   políticas de `realtime.messages` permitem Presence e Broadcast dos canais de
-   voz autorizados.
-7. Use somente a URL e a chave pública no frontend.
-
-### Arquivos SQL preservados
-
-- `supabase/schema.sql`: base inicial legada de membros e mapa;
-- `supabase/labstar-supabase-v6.sql`: perfis, cargos e reuniões;
-- `supabase/labstar-supabase-v7.sql`: canais de voz e autorização Realtime;
-- `supabase/labstar-supabase-v8.sql`: v7 mais Central de Integrações;
-- `supabase/labstar-supabase-v8-hotfix.sql`: correção idempotente das políticas
-  da Central de Integrações.
-
-Os scripts v6–v8 são migrações incrementais e dependem de tabelas e funções de
-versões intermediárias anteriores que não estão incluídas neste pacote. Para um
-banco de produção existente, aplique somente as migrações ainda não instaladas.
-Para um projeto Supabase totalmente novo, obtenha e revise primeiro as migrações
-intermediárias originais; executar apenas `schema.sql` não cria toda a estrutura
-necessária à v11.
-
-## Build de produção
+Build the web application:
 
 ```bash
-npm ci
 npm run build
 ```
 
-O resultado fica em `dist/`. O diretório é gerado, está no `.gitignore` e não
-deve ser enviado ao GitHub.
+Build the desktop application:
 
-O build gera:
+```bash
+npm run desktop:build
+```
 
-- `manifest.webmanifest`;
-- `sw.js` e runtime do Workbox;
-- registro automático do service worker;
-- precache do shell, estilos, scripts e ícones;
-- limpeza de caches antigos;
-- ativação imediata da versão nova com `skipWaiting` e `clientsClaim`.
+Never place credentials, service-role keys, OAuth client secrets or production tokens in frontend variables or committed files.
 
-As chamadas ao Supabase usam `NetworkOnly` para evitar cachear dados privados.
+---
 
-## Publicação no Cloudflare Pages
+## 🌍 Roadmaps
 
-Este repositório está preparado para Cloudflare Pages, mas publicar o código no
-GitHub não faz deploy externo automaticamente.
+Labstar has two complementary roadmaps:
 
-1. No Cloudflare Pages, conecte o repositório privado.
-2. Selecione a branch de produção `main`.
-3. Use `npm run build` como comando de build.
-4. Use `dist` como diretório de saída.
-5. Configure Node.js 22.
-6. Cadastre `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY` no ambiente de build.
-7. Após obter o domínio, inclua-o nas URLs permitidas do Supabase Auth.
-8. Valide `_headers`, `_redirects`, o manifesto e o service worker em HTTPS.
+- **[Evolution Roadmap](docs/LABSTAR_EVOLUTION_ROADMAP.md)** — developer adoption, GitHub-native workflows, CLI, realtime, War Rooms, public profiles, Context Graph and extension platform.
+- **[International Release Roadmap](docs/INTERNATIONAL_RELEASE_ROADMAP.md)** — multi-organization isolation, desktop distribution, i18n, global infrastructure, legal readiness and broader public launch.
 
-Os arquivos `public/_headers` e `public/_redirects` são copiados para `dist/`.
-Eles configuram o fallback da SPA e cabeçalhos de segurança compatíveis com
-câmera e microfone.
+The two roadmaps intentionally meet at the same product model: **a public Labstar platform with private-by-default organizations**.
 
-O hostname do projeto Supabase atual também está permitido explicitamente em
-`public/_headers` e na regra `NetworkOnly` de `vite.config.ts`. Se o projeto
-Supabase mudar, atualize os dois arquivos antes do build.
+---
 
-## Instalação como PWA
+## 🔐 Trust, Privacy & Source Visibility
 
-A instalação exige uma publicação em HTTPS e ao menos uma visita pelo navegador.
+This repository is publicly visible for product transparency and development visibility.
 
-### Windows
+**No software license is currently included.** Public source visibility alone does not grant permission to copy, redistribute, relicense or commercially reuse the code.
 
-Abra a Labstar no Microsoft Edge ou Google Chrome, clique no ícone de instalação
-na barra de endereço ou use **Menu > Aplicativos > Instalar Labstar**.
+Organization data is a separate concern from repository visibility. The product direction is to keep private workspace data isolated while allowing selected public product surfaces only when intentionally enabled.
 
-### macOS
+Public legal documents in this repository are currently **pre-release drafts** and require professional legal review before a broad public launch:
 
-No Chrome ou Edge, use o ícone de instalação. No Safari compatível, use
-**Arquivo > Adicionar ao Dock**.
+- [Terms of Use — Draft](docs/legal/TERMS_OF_USE_DRAFT.md)
+- [Privacy Notice — Draft](docs/legal/PRIVACY_NOTICE_DRAFT.md)
+- [Security Policy](SECURITY.md)
 
-### Linux
+---
 
-Abra no Chrome, Chromium ou Edge e use o ícone de instalação ou
-**Menu > Instalar Labstar**.
+## 🤝 Contributing
 
-### Android
+Labstar is developed in public, but contribution scope is still curated while the architecture evolves quickly.
 
-Abra no Chrome e toque em **Instalar app** ou **Adicionar à tela inicial**.
+Before opening a substantial pull request, read **[CONTRIBUTING.md](CONTRIBUTING.md)** and prefer discussing large changes first.
 
-### iPhone e iPad
+Please never publish secrets, private organization data, access tokens, production logs containing personal information or security exploit details in public issues.
 
-Abra no Safari, toque em **Compartilhar** e escolha
-**Adicionar à Tela de Início**. O iOS não oferece o mesmo prompt automático dos
-navegadores Chromium.
+---
 
-## Atualizações da PWA
+<p align="center">
+  ✦　·　🌌　·　⭐　·　🪐　·　🚀　·　🛰️　·　⭐　·　🌌　·　✦
+</p>
 
-O service worker é gerado com estratégia `autoUpdate`. Quando uma nova versão é
-publicada, o navegador baixa os arquivos alterados, remove caches antigos e
-assume o controle das páginas abertas assim que permitido pelo navegador. Se uma
-instalação parecer desatualizada, feche todas as janelas da PWA e abra novamente.
-
-## Limitações conhecidas
-
-- Dados, autenticação e anexos dependem de conexão com o Supabase; o cache
-  offline mantém apenas o shell estático da aplicação.
-- WebRTC usa uma topologia entre participantes e um servidor STUN público.
-  Redes corporativas restritivas podem exigir um serviço TURN para voz e vídeo.
-- Câmera, microfone e Picture-in-Picture dependem das permissões e da
-  compatibilidade do navegador e do sistema operacional.
-- Picture-in-Picture e instalação PWA têm suporte mais limitado no iPhone e iPad.
-- O bundle principal supera 500 kB minificado; o Vite emite um aviso de tamanho,
-  mas o build é concluído normalmente.
-- Não há testes automatizados além da checagem TypeScript e do build na CI.
-- Um Supabase novo requer as migrações intermediárias originais, não presentes
-  no pacote recebido, antes das migrações v6–v8.
-
-## Segurança
-
-- RLS deve permanecer habilitado em todas as tabelas com dados privados.
-- O bucket de arquivos deve permanecer privado e usar URLs assinadas.
-- `.env`, `dist`, `node_modules`, caches, logs e pacotes ZIP não são versionados.
-- O repositório não contém nem utiliza chave `service_role`.
-- O `override` de `ejs` no `package.json` mantém corrigida a cadeia de build da PWA.
-- Revise dependências, políticas RLS, URLs de autenticação e cabeçalhos antes de
-  cada publicação.
+<p align="center">
+  <strong>Labstar — keep your organization, your code and your people in the same orbit.</strong>
+</p>

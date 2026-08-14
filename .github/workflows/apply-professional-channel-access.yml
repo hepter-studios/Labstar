@@ -1,0 +1,136 @@
+name: Ativar cargos e canais privados
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "supabase/migrations/20260809213000_professional_roles_channel_access.sql"
+      - "supabase/migrations/20260809213100_channel_access_assignment_compat.sql"
+      - ".github/workflows/apply-professional-channel-access.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: labstar-professional-channel-access
+  cancel-in-progress: false
+
+jobs:
+  migrate:
+    name: Backup, aplicar acesso e auditar
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - name: Baixar código oficial
+        uses: actions/checkout@v4
+
+      - name: Validar conexão protegida
+        shell: bash
+        env:
+          SUPABASE_DATABASE_URL: ${{ secrets.SUPABASE_DATABASE_URL }}
+        run: |
+          set -euo pipefail
+          if [ -z "${SUPABASE_DATABASE_URL:-}" ]; then
+            echo "O secret SUPABASE_DATABASE_URL não está configurado."
+            exit 1
+          fi
+
+      - name: Preparar PostgreSQL 17
+        run: |
+          docker pull postgres:17-bookworm
+          docker run --rm postgres:17-bookworm psql --version
+
+      - name: Backup antes das permissões profissionais
+        shell: bash
+        env:
+          SUPABASE_DATABASE_URL: ${{ secrets.SUPABASE_DATABASE_URL }}
+        run: |
+          set -euo pipefail
+          mkdir -p backup
+          timestamp="$(date -u +'%Y-%m-%dT%H-%M-%SZ')"
+          docker run --rm \
+            -e SUPABASE_DATABASE_URL \
+            -e PGSSLMODE=require \
+            -e BACKUP_TIMESTAMP="${timestamp}" \
+            -v "${PWD}/backup:/backup" \
+            postgres:17-bookworm \
+            bash -euo pipefail -c '
+              pg_dump --dbname="${SUPABASE_DATABASE_URL}" --format=custom --no-owner --no-privileges --file="/backup/labstar-before-professional-access-${BACKUP_TIMESTAMP}.dump"
+            '
+          sha256sum backup/*.dump > backup/SHA256SUMS.txt
+
+      - name: Aplicar cargos profissionais e canais privados
+        shell: bash
+        env:
+          SUPABASE_DATABASE_URL: ${{ secrets.SUPABASE_DATABASE_URL }}
+        run: |
+          set -euo pipefail
+          for migration in \
+            supabase/migrations/20260809213000_professional_roles_channel_access.sql \
+            supabase/migrations/20260809213100_channel_access_assignment_compat.sql
+          do
+            docker run --rm \
+              -e SUPABASE_DATABASE_URL \
+              -e PGSSLMODE=require \
+              -v "${PWD}:/workspace:ro" \
+              postgres:17-bookworm \
+              psql "${SUPABASE_DATABASE_URL}" --set ON_ERROR_STOP=1 --file "/workspace/${migration}"
+          done
+
+      - name: Auditar autorização final
+        shell: bash
+        env:
+          SUPABASE_DATABASE_URL: ${{ secrets.SUPABASE_DATABASE_URL }}
+        run: |
+          set -euo pipefail
+          docker run --rm \
+            -e SUPABASE_DATABASE_URL \
+            -e PGSSLMODE=require \
+            postgres:17-bookworm \
+            psql "${SUPABASE_DATABASE_URL}" --set ON_ERROR_STOP=1 --tuples-only --no-align --command "
+              select
+                to_regclass('public.hidden_direct_messages') is not null
+                and to_regclass('public.hidden_channel_messages') is not null
+                and exists (
+                  select 1 from information_schema.columns
+                  where table_schema = 'public' and table_name = 'channels' and column_name = 'is_private'
+                )
+                and exists (
+                  select 1 from information_schema.columns
+                  where table_schema = 'public' and table_name = 'channels' and column_name = 'allowed_job_roles'
+                )
+                and exists (
+                  select 1 from information_schema.columns
+                  where table_schema = 'public' and table_name = 'channels' and column_name = 'allowed_member_ids'
+                )
+                and has_function_privilege('authenticated', 'public.member_can_access_labstar_channel(uuid)', 'EXECUTE')
+                and has_function_privilege('authenticated', 'public.member_can_post_labstar_channel(uuid)', 'EXECUTE')
+                and has_function_privilege('authenticated', 'public.can_manage_professional_roles()', 'EXECUTE')
+                and (
+                  select bool_and(relrowsecurity)
+                  from pg_class
+                  where oid in (
+                    'public.channels'::regclass,
+                    'public.channel_messages'::regclass,
+                    'public.job_roles'::regclass,
+                    'public.member_job_roles'::regclass,
+                    'public.hidden_direct_messages'::regclass,
+                    'public.hidden_channel_messages'::regclass
+                  )
+                );
+            " | tee professional-channel-access-audit.txt
+          grep -qx 't' professional-channel-access-audit.txt
+
+      - name: Guardar backup privado
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: labstar-before-professional-access-${{ github.run_number }}
+          path: |
+            backup/
+            professional-channel-access-audit.txt
+          if-no-files-found: warn
+          retention-days: 7
+          compression-level: 6

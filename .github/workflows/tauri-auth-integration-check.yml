@@ -1,0 +1,54 @@
+name: Validar integração Tauri Auth
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tauri-auth-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  validate:
+    name: OAuth, web e Rust no Windows
+    runs-on: windows-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Baixar código
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Instalar dependências web
+        run: npm ci
+
+      - name: Validar TypeScript e Vite
+        run: npm run build
+
+      - name: Instalar Rust estável
+        shell: pwsh
+        run: |
+          rustup toolchain install stable --profile minimal --component rustfmt,clippy
+          rustup default stable
+
+      - name: Resolver dependências nativas
+        run: cargo fetch --manifest-path src-tauri/Cargo.toml
+
+      - name: Verificar formatação Rust
+        run: cargo fmt --manifest-path src-tauri/Cargo.toml -- --check
+
+      - name: Executar Clippy sem avisos
+        run: cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets --all-features -- -D warnings
+
+      - name: Executar testes Rust
+        run: cargo test --manifest-path src-tauri/Cargo.toml --all-features

@@ -1,0 +1,198 @@
+import { ArrowRight, LoaderCircle, Server } from "lucide-react";
+import { useEffect, useMemo, useState, type CSSProperties } from "react";
+import { createPortal } from "react-dom";
+import {
+  getCurrentIdentity,
+  loadCollaboration,
+  type CollaborationSpace,
+  type LabstarChannel,
+  type Member,
+} from "../lib/supabase";
+import { WorkHome } from "./WorkHome";
+
+type DashboardData = {
+  member: Member | null;
+  spaces: CollaborationSpace[];
+  channels: LabstarChannel[];
+};
+
+const EMPTY_DATA: DashboardData = {
+  member: null,
+  spaces: [],
+  channels: [],
+};
+
+const DASHBOARD_LOAD_TIMEOUT_MS = 10_000;
+
+function withDashboardTimeout<T>(promise: Promise<T>) {
+  return new Promise<T>((resolve, reject) => {
+    const timer = window.setTimeout(() => reject(new Error("dashboard_load_timeout")), DASHBOARD_LOAD_TIMEOUT_MS);
+    promise.then(
+      (value) => { window.clearTimeout(timer); resolve(value); },
+      (error) => { window.clearTimeout(timer); reject(error); },
+    );
+  });
+}
+
+function clickView(label: string) {
+  document.querySelector<HTMLButtonElement>(`button[aria-label="${label}"]`)?.click();
+}
+
+export function DashboardWorkSurface() {
+  const [mount, setMount] = useState<HTMLElement | null>(null);
+  const [data, setData] = useState<DashboardData>(EMPTY_DATA);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
+
+  useEffect(() => {
+    const previewMode = import.meta.env.DEV && new URLSearchParams(window.location.search).has("preview");
+    if (previewMode) {
+      const timestamp = new Date().toISOString();
+      setData({
+        member: {
+          id: "preview-member",
+          email: "preview@labstar.local",
+          name: "Mackson Victor",
+          status: "active",
+          role: "owner",
+          jobTitle: "CEO",
+          area: "Direção",
+          assignments: ["labstar"],
+          createdAt: timestamp,
+          lastSeenAt: timestamp,
+          avatarPath: "",
+          avatarUrl: "",
+          jobRoles: [],
+        },
+        spaces: [],
+        channels: [],
+      });
+      setLoading(false);
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      const [identityResult, collaborationResult] = await Promise.allSettled([
+        withDashboardTimeout(getCurrentIdentity()),
+        withDashboardTimeout(loadCollaboration()),
+      ]);
+      if (cancelled) return;
+      const collaboration = collaborationResult.status === "fulfilled"
+        ? collaborationResult.value
+        : { spaces: [], categories: [], channels: [] };
+      setData({
+        member: identityResult.status === "fulfilled" ? identityResult.value?.member ?? null : null,
+        spaces: collaboration.spaces,
+        channels: collaboration.channels,
+      });
+      setLoadError(identityResult.status === "rejected"
+        ? "Não foi possível carregar sua identidade para o Dashboard. Use a navegação principal e tente novamente."
+        : "");
+      setLoading(false);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    let currentOverview: HTMLElement | null = null;
+    let currentWorkspace: HTMLElement | null = null;
+
+    const syncMount = () => {
+      const overview = document.querySelector<HTMLElement>(".overview");
+      if (!overview) {
+        if (currentOverview) currentOverview.classList.remove("dashboard-work-surface");
+        if (currentWorkspace) currentWorkspace.classList.remove("dashboard-workspace");
+        currentOverview = null;
+        currentWorkspace = null;
+        setMount((value) => value === null ? value : null);
+        return;
+      }
+
+      const workspace = overview.closest<HTMLElement>(".workspace");
+      if (currentOverview && currentOverview !== overview) currentOverview.classList.remove("dashboard-work-surface");
+      if (currentWorkspace && currentWorkspace !== workspace) currentWorkspace.classList.remove("dashboard-workspace");
+      currentOverview = overview;
+      currentWorkspace = workspace;
+      overview.classList.add("dashboard-work-surface");
+      workspace?.classList.add("dashboard-workspace");
+
+      let target = overview.querySelector<HTMLElement>("[data-labstar-dashboard-work]");
+      if (!target) {
+        target = document.createElement("div");
+        target.dataset.labstarDashboardWork = "true";
+        overview.prepend(target);
+      }
+      setMount((value) => value === target ? value : target);
+    };
+
+    syncMount();
+    const observer = new MutationObserver(syncMount);
+    observer.observe(document.body, { childList: true, subtree: true });
+    return () => {
+      observer.disconnect();
+      currentOverview?.classList.remove("dashboard-work-surface");
+      currentWorkspace?.classList.remove("dashboard-workspace");
+    };
+  }, []);
+
+  const firstChannelBySpace = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const space of data.spaces) {
+      const channel = data.channels.find((item) => item.spaceId === space.id);
+      if (channel) map.set(space.id, channel.id);
+    }
+    return map;
+  }, [data.channels, data.spaces]);
+
+  function openChannel(channelId?: string | null) {
+    clickView("Central de trabalho");
+    window.setTimeout(() => {
+      window.dispatchEvent(new CustomEvent("labstar:open-channel", {
+        detail: { channelId: channelId ?? undefined },
+      }));
+    }, 80);
+  }
+
+  function openDirect() {
+    clickView("Central de trabalho");
+    window.setTimeout(() => window.dispatchEvent(new CustomEvent("labstar:open-direct")), 80);
+  }
+
+  if (!mount) return null;
+
+  return createPortal(
+    <section className="dashboard-work-shell">
+      <section className="dashboard-server-strip" aria-label="Servidores e espaços de trabalho">
+        <div><Server size={15} /><span><strong>Servidores</strong><small>Acesso direto aos espaços principais</small></span></div>
+        <div className="dashboard-server-list">
+          {data.spaces.map((space) => (
+            <button
+              type="button"
+              key={space.id}
+              onClick={() => openChannel(firstChannelBySpace.get(space.id))}
+              style={{ "--server-color": space.color } as CSSProperties}
+              title={`Abrir ${space.name}`}
+            >
+              <span>{space.logoUrl ? <img src={space.logoUrl} alt="" /> : space.icon || "★"}</span>
+              <b>{space.name}</b>
+              <ArrowRight size={13} />
+            </button>
+          ))}
+          {!data.spaces.length && !loading && <p>Nenhum servidor configurado ainda.</p>}
+          {loading && <p><LoaderCircle className="spin" size={14} /> Carregando servidores…</p>}
+        </div>
+      </section>
+
+      {data.member ? (
+        <WorkHome member={data.member} onOpenChannel={openChannel} onOpenDirect={openDirect} />
+      ) : loading ? (
+        <div className="dashboard-work-loading"><LoaderCircle className="spin" size={22} /><strong>Carregando o Dashboard</strong><span>Preparando os dados compartilhados da Web e do aplicativo.</span></div>
+      ) : (
+        <div className="dashboard-work-loading" role="alert"><Server size={22} /><strong>Dashboard indisponível</strong><span>{loadError || "Sua identidade não está disponível para esta superfície."}</span></div>
+      )}
+    </section>,
+    mount,
+  );
+}

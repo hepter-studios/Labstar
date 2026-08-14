@@ -1,0 +1,95 @@
+name: Gerar instalador Windows integrado
+run-name: Instalador Windows integrado — ${{ github.head_ref || github.ref_name }} @ ${{ github.event.pull_request.head.sha || github.sha }}
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: labstar-windows-integrated-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-windows:
+    name: Compilar EXE e MSI integrados
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: windows-latest
+    timeout-minutes: 60
+
+    env:
+      CARGO_TERM_COLOR: always
+      VITE_SUPABASE_URL: https://pgzwyngxsxnheulvusdq.supabase.co
+      VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
+      # Compatibilidade temporária com módulos antigos que ainda leem VITE_SUPABASE_ANON_KEY.
+      # O valor é a MESMA chave publicável; não existe um segundo segredo.
+      VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
+      VITE_LABSTAR_API_URL: https://labstar-api-mackson.fly.dev
+      LABSTAR_SOURCE_BRANCH: ${{ github.head_ref || github.ref_name }}
+      LABSTAR_SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+
+    steps:
+      - name: Baixar código validado pelo PR
+        uses: actions/checkout@v4
+
+      - name: Identificar origem do build
+        shell: pwsh
+        run: |
+          Write-Host "Branch de origem: $env:LABSTAR_SOURCE_BRANCH"
+          Write-Host "Commit de origem: $env:LABSTAR_SOURCE_SHA"
+          Write-Host "Commit testado pelo Actions: $env:GITHUB_SHA"
+          Write-Host "Execução: $env:GITHUB_RUN_NUMBER"
+
+      - name: Validar configuração pública do Supabase
+        shell: pwsh
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:VITE_SUPABASE_PUBLISHABLE_KEY)) {
+            Write-Error "O secret VITE_SUPABASE_PUBLISHABLE_KEY não foi configurado."
+            exit 1
+          }
+
+          if (-not $env:VITE_SUPABASE_PUBLISHABLE_KEY.StartsWith("sb_publishable_") -and $env:VITE_SUPABASE_PUBLISHABLE_KEY.Length -lt 40) {
+            Write-Error "A chave publicável do Supabase tem formato inválido."
+            exit 1
+          }
+
+          if ($env:VITE_SUPABASE_ANON_KEY -ne $env:VITE_SUPABASE_PUBLISHABLE_KEY) {
+            Write-Error "O alias legado da chave pública não está sincronizado."
+            exit 1
+          }
+
+      - name: Configurar Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Instalar dependências web
+        run: npm ci
+
+      - name: Configurar Rust estável
+        shell: pwsh
+        run: |
+          rustup toolchain install stable --profile minimal
+          rustup default stable
+          rustc --version
+          cargo --version
+
+      - name: Gerar instaladores Windows
+        uses: tauri-apps/tauri-action@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VITE_SUPABASE_URL: ${{ env.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_PUBLISHABLE_KEY: ${{ env.VITE_SUPABASE_PUBLISHABLE_KEY }}
+          VITE_SUPABASE_ANON_KEY: ${{ env.VITE_SUPABASE_ANON_KEY }}
+          VITE_LABSTAR_API_URL: ${{ env.VITE_LABSTAR_API_URL }}
+        with:
+          tagName: ${{ github.event_name == 'push' && 'desktop-v11.2.6' || '' }}
+          releaseName: ${{ github.event_name == 'push' && 'Labstar 11.2.6' || '' }}
+          releaseBody: "Versão oficial consolidada do Labstar para Windows, com Central de Trabalho, DMs, busca, tarefas, backend Rust e identidade visual atualizada."
+          releaseDraft: false
+          prerelease: false
+          uploadWorkflowArtifacts: true
+          workflowArtifactNamePattern: labstar-windows-[arch]-[bundle]
+          retryAttempts: 1

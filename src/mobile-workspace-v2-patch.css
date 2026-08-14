@@ -1,0 +1,248 @@
+@media (max-width: 760px) {
+  /* A folha desktop usa o mesmo pseudo-elemento como fundo. No mobile ele vira o nome do servidor. */
+  body.mobile-workspace-active .space-list button::after {
+    position: static !important;
+    inset: auto !important;
+    z-index: auto !important;
+    display: block !important;
+    align-self: center;
+    background: none !important;
+    border-radius: 0 !important;
+    pointer-events: none;
+  }
+
+  body.mobile-workspace-active .add-space::after {
+    position: static !important;
+    display: block !important;
+    background: none !important;
+  }
+
+  /* Classe real das mensagens dos canais. */
+  body.mobile-workspace-active .chat-message {
+    padding: 9px 10px !important;
+    display: grid !important;
+    grid-template-columns: 36px minmax(0, 1fr) !important;
+    align-items: start !important;
+    gap: 8px !important;
+  }
+
+  body.mobile-workspace-active .chat-message > .message-body {
+    min-width: 0 !important;
+  }
+
+  body.mobile-workspace-active .chat-message > .message-actions {
+    position: static !important;
+    grid-column: 2 !important;
+    width: max-content;
+    margin-top: 6px;
+    display: flex !important;
+    gap: 4px;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+
+  body.mobile-workspace-active .chat-message > .message-actions button {
+    width: 31px;
+    height: 31px;
+    border-radius: 9px;
+  }
+
+  body.mobile-workspace-active .message-body > header {
+    min-width: 0;
+    flex-wrap: wrap;
+    row-gap: 3px;
+  }
+
+  body.mobile-workspace-active .message-body > p {
+    max-width: 100% !important;
+    margin-top: 4px;
+    overflow-wrap: anywhere;
+    line-height: 1.48;
+  }
+
+  body.mobile-workspace-active .message-reply-preview {
+    max-width: 100% !important;
+    grid-template-columns: auto auto minmax(0, 1fr) !important;
+  }
+
+  body.mobile-workspace-active .message-attachments {
+    width: 100%;
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  body.mobile-workspace-active .image-attachment,
+  body.mobile-workspace-active .file-attachment {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  body.mobile-workspace-active .image-attachment img {
+    width: 100% !important;
+    max-height: 280px !important;
+    object-fit: contain !important;
+  }
+
+  body.mobile-workspace-active .context-menu {
+    position: fixed !important;
+    z-index: 1500 !important;
+    left: 8px !important;
+    right: 8px !important;
+    top: auto !important;
+    bottom: calc(var(--workspace-mobile-nav) + max(14px, env(safe-area-inset-bottom))) !important;
+    width: auto !important;
+    max-width: none !important;
+    border-radius: 14px !important;
+  }
+
+  body.mobile-workspace-active .modal-backdrop,
+  body.mobile-workspace-active .integrations-backdrop,
+  body.mobile-workspace-active .image-preview-backdrop {
+    z-index: 1400 !important;
+  }
+
+  body.mobile-workspace-active .image-preview-backdrop {
+    padding: 8px !important;
+  }
+
+  body.mobile-workspace-active .image-preview {
+    width: 100% !important;
+    max-width: none !important;
+    max-height: calc(100dvh - 16px) !important;
+    border-radius: 16px !important;
+  }
+
+  body.mobile-workspace-active .work-modal,
+  body.mobile-workspace-active .integrations-center {
+    overflow: hidden !important;
+  }
+
+  body.mobile-workspace-active .integrations-center > header {
+    position: sticky !important;
+    z-index: 5 !important;
+    top: 0 !important;
+    min-height: 62px !important;
+    padding: max(9px, env(safe-area-inset-top)) 10px 9px !important;
+    gap: 8px !important;
+    background: rgba(8,10,15,.97) !important;
+    backdrop-filter: blur(16px) !important;
+  }
+
+  body.mobile-workspace-active .integrations-center > header > div {
+    min-width: 0 !important;
+    flex: 1 !important;
+  }
+
+  body.mobile-workspace-active .integrations-center > header > div > span {
+    display: none !important;
+  }
+
+  body.mobile-workspace-active .integrations-center > header > div > div {
+    min-width: 0 !important;
+  }
+
+  body.mobile-workspace-active .integrations-center > header small {
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+  }
+
+  body.mobile-workspace-active .integrations-mobile-back {
+    width: auto !important;
+    min-width: 44px !important;
+    min-height: 42px !important;
+    padding: 0 10px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+    flex: 0 0 auto !important;
+    border: 1px solid rgba(139,174,255,.16) !important;
+    color: #aebfe2 !important;
+    background: rgba(139,174,255,.06) !important;
+  }
+
+  body.mobile-workspace-active .integrations-mobile-back span {
+    display: inline !important;
+    font-size: 10px !important;
+    font-weight: 750 !important;
+  }
+
+  body.mobile-workspace-active .integrations-close {
+    min-width: 42px !important;
+    min-height: 42px !important;
+    flex: 0 0 42px !important;
+  }
+
+  body.mobile-workspace-active .work-modal > label,
+  body.mobile-workspace-active .work-modal > fieldset,
+  body.mobile-workspace-active .work-modal > .form-grid,
+  body.mobile-workspace-active .integrations-center > .integration-intro,
+  body.mobile-workspace-active .integrations-center > .integration-rule-list {
+    min-width: 0;
+  }
+
+  body.mobile-workspace-active .work-modal input,
+  body.mobile-workspace-active .work-modal textarea,
+  body.mobile-workspace-active .work-modal select,
+  body.mobile-workspace-active .integrations-center input,
+  body.mobile-workspace-active .integrations-center textarea,
+  body.mobile-workspace-active .integrations-center select {
+    width: 100% !important;
+    min-width: 0 !important;
+    font-size: 16px !important;
+  }
+
+  body.mobile-workspace-active .work-modal footer,
+  body.mobile-workspace-active .integrations-center footer {
+    padding-bottom: max(10px, env(safe-area-inset-bottom)) !important;
+    flex-wrap: wrap;
+  }
+
+  body.mobile-workspace-active .work-modal footer button,
+  body.mobile-workspace-active .integrations-center footer button {
+    min-height: 42px;
+    flex: 1 1 120px;
+  }
+}
+
+@media (min-width: 701px) {
+  .integrations-mobile-back {
+    display: none !important;
+  }
+}
+
+@media (max-width: 390px) {
+  body.mobile-workspace-active .space-list {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  body.mobile-workspace-active .space-list button,
+  body.mobile-workspace-active .add-space {
+    height: 78px !important;
+    grid-template-columns: 48px minmax(0, 1fr) !important;
+    grid-template-rows: 1fr !important;
+    justify-items: start !important;
+    text-align: left !important;
+  }
+
+  body.mobile-workspace-active .space-list button::after,
+  body.mobile-workspace-active .add-space::after {
+    width: 100%;
+    text-align: left !important;
+  }
+
+  body.mobile-communication-home-active .communication-head-actions {
+    grid-template-columns: 38px minmax(0, 1fr) !important;
+  }
+
+  body.mobile-communication-home-active .communication-head-actions .primary {
+    grid-column: 1 / -1;
+  }
+
+  body.mobile-direct-active .dm-conversation-actions > button:nth-child(2) {
+    display: none !important;
+  }
+
+  body.mobile-direct-active .dm-conversation-person strong {
+    max-width: 31vw !important;
+  }
+}

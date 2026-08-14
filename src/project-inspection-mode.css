@@ -1,0 +1,28 @@
+.project-logo-preview {
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border: 1px solid rgba(139, 174, 255, .2);
+  border-radius: 11px;
+  color: #8baeff;
+  background: #0a0f19;
+}
+
+.project-logo-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.project-inspector-read-only {
+  margin: 0;
+  padding: 8px 9px;
+  border: 1px solid rgba(139, 174, 255, .12);
+  border-radius: 8px;
+  color: #8394b5;
+  background: rgba(139, 174, 255, .045);
+  font-size: 9px;
+  line-height: 1.45;
+}
