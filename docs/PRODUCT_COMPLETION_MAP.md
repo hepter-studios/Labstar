@@ -1,14 +1,16 @@
 # Labstar Product Completion Map
 
-Updated: 10 August 2026.
+Updated: 13 August 2026.
 
-This document is the product map for taking Labstar from the current internal build to a convincing, sellable developer-work operating system. It is intentionally broader than a release checklist: it defines what the product must become, what order the work should follow, and which technologies are justified for each responsibility.
+This document maps the path from the current build to a convincing developer-work operating system. It defines what the product must become, the order of work, and which technologies are justified for each responsibility.
 
 ## Product position
 
 Labstar is **not a social network** and should not drift toward feed-first engagement patterns.
 
-The target is a private operating environment for companies, engineering teams, research teams and software projects where communication, repositories, work, permissions, files, meetings, automation and operational context live together.
+The target is an operating environment for **organizations and teams that build things together**: software teams, startups, companies, studios, research labs, open-source groups, communities, student teams and other collaborative groups.
+
+A company is one possible organization, not the definition of the product.
 
 The closest mental model is:
 
@@ -21,7 +23,7 @@ GitHub organization/workflows
 = Labstar
 ```
 
-The goal is not to clone GitHub or Discord. Labstar should make the common work that currently jumps between those products feel native in one place.
+The goal is not to clone GitHub or Discord. Labstar should make work that currently jumps between those products feel native in one place.
 
 ## Product hierarchy
 
@@ -31,10 +33,10 @@ The canonical hierarchy is:
 Account
 └── Organization
     ├── Spaces
-    │   ├── Company
+    │   ├── Department / Area
     │   ├── Product
     │   ├── Project
-    │   └── Team
+    │   └── Team / Squad
     ├── Repositories / Developer surfaces
     ├── Channels
     ├── Direct messages
@@ -42,10 +44,10 @@ Account
     ├── Meetings / Voice / Video
     ├── Members / Roles / Permissions
     ├── Integrations / Automations
-    └── Settings / Audit / Billing
+    └── Settings / Audit / Plans
 ```
 
-**Organization** is the root commercial boundary. A person can belong to multiple organizations and switch between them. Data from one organization must never appear in another organization unless an explicit cross-organization feature is designed later.
+**Organization** is the root isolation and ownership boundary. A person can belong to multiple organizations and switch between them. Data from one organization must never appear in another unless an explicit cross-organization feature is designed later.
 
 The existing Hepter Studios workspace is the primary legacy organization and must remain intact while multi-organization support is introduced.
 
@@ -63,13 +65,13 @@ Required outcome:
 - organization switcher;
 - new organizations start isolated and empty;
 - no legacy workspace data appears while a secondary organization is selected;
-- next migration scopes spaces, channels, roles, projects and integrations by organization;
+- spaces, channels, roles, projects and integrations are scoped by organization;
 - invitations target an organization;
-- organization owner/admin/member/viewer roles become independent from global identity;
+- organization owner/admin/member/viewer roles are independent from global identity;
 - audit logs include organization ID;
 - deletion/export can operate per organization.
 
-Exit criterion: two organizations can be used by the same account without any cross-organization data leakage in frontend, API, RLS, Realtime, Storage or background jobs.
+Exit criterion: two organizations can be used by the same account without cross-organization leakage in frontend, API, RLS, Realtime, Storage or background jobs.
 
 ---
 
@@ -113,7 +115,7 @@ Exit criterion: an English-only organization can complete every required workflo
 
 # Phase C — Developer-native workspaces
 
-The application still needs more reasons for a programmer or technical company to keep Labstar open all day.
+Labstar needs strong reasons for a programmer or technical organization to keep it open all day.
 
 ## Repository surface
 
@@ -131,10 +133,10 @@ Each project/space should be able to connect one or more repositories and expose
 - deployment state;
 - contributors;
 - linked domains/environments;
-- repository files that are useful to project operations;
+- repository files useful to project operations;
 - open in GitHub for advanced source browsing.
 
-Labstar should not attempt to replace Git hosting. It should make repository state operationally available next to the team and conversation that acts on it.
+Labstar should not attempt to replace Git hosting. It should make repository state operationally available next to the people and conversations that act on it.
 
 ## Work surfaces to add
 
@@ -143,7 +145,7 @@ Labstar should not attempt to replace Git hosting. It should make repository sta
 - **Issues** — engineering issues linked to channels and work items;
 - **CI / Runs** — builds, checks, logs and retry actions where permitted;
 - **Deployments** — Vercel/Cloudflare/Fly/other environment status;
-- **Environments** — production, staging and development links/secrets metadata (never secret values in the browser);
+- **Environments** — production, staging and development links/secrets metadata, never secret values in the browser;
 - **Packages / Releases** — release artifacts and versions;
 - **Incidents** — operational incidents linked to monitoring and conversation;
 - **Docs** — Markdown, README, decisions, specifications and attachments;
@@ -152,11 +154,11 @@ Labstar should not attempt to replace Git hosting. It should make repository sta
 
 ## Reference syntax
 
-The existing smart composer direction should become consistent across the product:
+The smart composer direction should become consistent across the product:
 
 - `@person` — members;
 - `#channel` — channels;
-- repository/project reference syntax for developer entities;
+- repository/project references for developer entities;
 - command syntax for explicit actions;
 - suggestions narrow as the user types and complete the most likely unique match.
 
@@ -164,7 +166,7 @@ The existing smart composer direction should become consistent across the produc
 
 # Phase D — Communication: Discord strengths without social-network behavior
 
-Keep the parts that are valuable for work:
+Keep the parts that are useful for coordinated work:
 
 - persistent text channels;
 - categories;
@@ -185,7 +187,7 @@ Keep the parts that are valuable for work:
 - right-click/context actions;
 - integrations that post structured operational events into channels.
 
-Avoid product patterns whose main purpose is social engagement:
+Avoid patterns whose main purpose is social engagement:
 
 - algorithmic feed;
 - follower economy;
@@ -225,7 +227,7 @@ Useful Discord compatibility:
 - preserve familiar channel/voice interaction patterns;
 - do not make Discord a required dependency for core Labstar communication.
 
-## Other high-value developer environments
+## Other high-value environments
 
 Add based on real demand, not logo count:
 
@@ -239,7 +241,7 @@ Add based on real demand, not logo count:
 - Datadog/Grafana-compatible monitoring;
 - Linear;
 - Jira;
-- Slack/Microsoft Teams bridges for companies that need coexistence;
+- Slack/Microsoft Teams bridges for organizations that need coexistence;
 - Docker/container registries;
 - package registries;
 - calendars and transactional email.
@@ -301,7 +303,7 @@ Required:
 
 # Phase H — Architecture and language strategy
 
-Do **not** add programming languages merely because Discord or another large company uses them. Large systems become polyglot because different workloads eventually justify different runtimes.
+Do **not** add programming languages merely because another large product uses them. Large systems become polyglot because different workloads eventually justify different runtimes.
 
 Labstar should evolve by responsibility:
 
@@ -330,7 +332,7 @@ Before adding a runtime, document:
 
 ---
 
-# Phase I — Reliability, security and enterprise readiness
+# Phase I — Reliability, security and advanced organization readiness
 
 - organization-scoped RLS everywhere;
 - API authorization tests;
@@ -352,20 +354,20 @@ Before adding a runtime, document:
 
 ---
 
-# Phase J — Commercial product
+# Phase J — Adoption, plans and public readiness
 
 A technically powerful app can still feel poor if onboarding and product framing are weak.
 
-Before external sales, add:
+Before broad external adoption, add:
 
 - organization onboarding;
-- templates for software company / startup / research team / game studio;
+- templates for software team / startup / research lab / game studio / open-source group;
 - guided GitHub connection;
 - sample project or import existing repositories;
 - empty states that explain the next action;
 - organization branding;
 - member invitation and onboarding;
-- plan/usage limits;
+- plan/usage limits where applicable;
 - billing when pricing is finalized;
 - export/delete controls;
 - documentation/help center;
@@ -388,7 +390,7 @@ Before external sales, add:
 8. Desktop signing/updater/native experience
 9. Integration ecosystem
 10. Security/observability/load testing
-11. Onboarding/templates/commercial readiness
+11. Onboarding/templates/public readiness
 12. Controlled external beta
 ```
 
