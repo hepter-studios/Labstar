@@ -1,0 +1,59 @@
+name: Aplicar redução de Egress
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "supabase/migrations/20260903010000_egress_reduction.sql"
+      - ".github/workflows/apply-egress-reduction.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: labstar-egress-reduction
+  cancel-in-progress: false
+
+jobs:
+  migrate:
+    name: Aplicar manutenção de Egress
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+
+    steps:
+      - name: Baixar código
+        uses: actions/checkout@v4
+
+      - name: Validar conexão protegida
+        shell: bash
+        env:
+          SUPABASE_DATABASE_URL: ${{ secrets.SUPABASE_DATABASE_URL }}
+        run: |
+          set -euo pipefail
+          test -n "${SUPABASE_DATABASE_URL:-}" || {
+            echo "O secret SUPABASE_DATABASE_URL não está configurado."
+            exit 1
+          }
+
+      - name: Preparar PostgreSQL 17
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker pull postgres:17-bookworm
+
+      - name: Aplicar migration
+        shell: bash
+        env:
+          SUPABASE_DATABASE_URL: ${{ secrets.SUPABASE_DATABASE_URL }}
+        run: |
+          set -euo pipefail
+          docker run --rm \
+            -e SUPABASE_DATABASE_URL \
+            -e PGSSLMODE=require \
+            -v "${PWD}:/workspace:ro" \
+            postgres:17-bookworm \
+            psql "${SUPABASE_DATABASE_URL}" \
+              --set ON_ERROR_STOP=1 \
+              --file /workspace/supabase/migrations/20260903010000_egress_reduction.sql
