@@ -1,0 +1,30 @@
+name: Apply frontend egress reduction
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Apply deterministic source changes
+        run: node scripts/reduce-egress-overfetch.mjs
+
+      - name: Commit source changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/lib/supabase.ts src/components/CommunicationHome.tsx src/components/WorkHome.tsx src/components/GlobalSearchBridge.tsx src/components/WorkspaceIntelligence.tsx
+          if git diff --cached --quiet; then
+            echo "No source changes needed."
+            exit 0
+          fi
+          git commit -m "perf: reduce frontend Supabase message overfetch"
+          git push origin HEAD:perf/egress-reduction
