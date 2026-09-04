@@ -1,6 +1,9 @@
 name: Apply frontend egress reduction
 
 on:
+  push:
+    branches:
+      - perf/egress-reduction
   workflow_dispatch:
 
 permissions:
