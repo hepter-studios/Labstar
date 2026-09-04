@@ -187,7 +187,7 @@ export function WorkspaceIntelligence() {
         .filter((channel) => channel.type !== "voice")
         .slice(0, 30);
 
-      const messageResults = await Promise.allSettled(searchableChannels.map((channel) => listMessages(channel.id)));
+      const messageResults = await Promise.allSettled(searchableChannels.map((channel) => listMessages(channel.id, 40)));
       const messages = messageResults.flatMap((result) => result.status === "fulfilled" ? result.value.slice(-100) : []);
       const notifications = identity?.member
         ? await listNotifications(identity.member.id).catch(() => [])

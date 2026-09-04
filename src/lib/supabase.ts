@@ -897,13 +897,13 @@ export async function rotateIntegrationWebhookToken(id: string) {
   return token;
 }
 
-export async function listMessages(channelId: string) {
+export async function listMessages(channelId: string, limit = 60) {
   const { data, error } = await requireClient()
     .from("channel_messages")
     .select("*,author:members!channel_messages_author_id_fkey(id,name,email,avatar_path,job_title),attachments:channel_message_attachments(*)")
     .eq("channel_id", channelId)
     .order("created_at", { ascending: true })
-    .limit(200);
+    .limit(Math.max(1, Math.min(limit, 100)));
   if (error) throw error;
   const authorIds = [...new Set((data ?? []).map((row) => String(row.author_id)))];
   const rolesByAuthor = new Map<string, JobRole[]>();

@@ -127,7 +127,7 @@ export function GlobalSearchBridge() {
       const collaboration = collaborationResult.status === "fulfilled" ? collaborationResult.value : { spaces: [], categories: [], channels: [] };
       const members: Member[] = membersResult.status === "fulfilled" ? membersResult.value.members : [];
       const messageResults = await Promise.allSettled(
-        collaboration.channels.filter((channel) => channel.type !== "voice").slice(0, 30).map((channel) => listMessages(channel.id)),
+        collaboration.channels.filter((channel) => channel.type !== "voice").slice(0, 30).map((channel) => listMessages(channel.id, 40)),
       );
       const messages: ChannelMessage[] = messageResults.flatMap((result) => result.status === "fulfilled" ? result.value.slice(-100) : []);
       const spaceById = new Map(collaboration.spaces.map((space) => [space.id, space]));

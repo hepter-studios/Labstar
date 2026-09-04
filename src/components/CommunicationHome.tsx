@@ -158,7 +158,7 @@ export function CommunicationHome({ member, onOpenChannel, onOpenDirect }: Commu
 
       const messageResults = await Promise.allSettled(
         readableChannels.map((channel) => withTimeout(
-          listMessages(channel.id),
+          listMessages(channel.id, 20),
           HOME_MESSAGES_TIMEOUT_MS,
           `messages_${channel.id}`,
         )),
