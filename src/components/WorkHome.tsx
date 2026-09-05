@@ -149,7 +149,7 @@ export function WorkHome({ member, onOpenChannel, onOpenDirect }: WorkHomeProps)
       const voiceChannels = collaboration.channels.filter((channel) => channel.type === "voice").slice(0, 12);
 
       const [messageResults, meetingResults] = await Promise.all([
-        Promise.allSettled(readableChannels.map((channel) => listMessages(channel.id))),
+        Promise.allSettled(readableChannels.map((channel) => listMessages(channel.id, 20))),
         Promise.allSettled(voiceChannels.map((channel) => listMeetings(channel.id))),
       ]);
 
